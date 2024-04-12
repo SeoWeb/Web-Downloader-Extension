@@ -1,8 +1,8 @@
 {
-  "name": "chrome-extension-starter",
+  "name": "web-page-downloader",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@8.11.0",
   "scripts": {
     "prepare": "husky install",
     "dev": "vite build --watch",
@@ -10,11 +10,21 @@
     "style": "prettier --check \"src/**/*.{ts,tsx}\"",
     "style:fix": "prettier --write \"src/**/*.{ts,tsx}\""
   },
-  "author": "MichaelYuhe",
+  "author": "Siim Liimand",
   "license": "MIT",
   "dependencies": {
+    "axios": "^1.6.7",
+    "cheerio": "^1.0.0-rc.12",
+    "classnames": "^2.5.1",
+    "immutability-helper": "^3.1.1",
+    "jszip": "^3.10.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.0.1",
+    "vite-plugin-zip-file": "^2.2.0",
+    "zustand": "^4.5.2"
   },
   "prettier": {
     "tabWidth": 2

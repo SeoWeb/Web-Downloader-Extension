@@ -1,26 +1,20 @@
 {
   "manifest_version": 3,
-  "name": "Chrome Extension Starter",
-  "description": "Chrome extension starter template with React, TypeScript, Vite and Tailwind",
+  "name": "Web Page Downloader",
+  "description": "Web Page Downloader allows you to download and save entire web pages, including linked resources, for offline viewing.",
   "version": "1.0",
-  "options_ui": {
-    "page": "options.html",
-    "open_in_tab": true
-  },
   "action": {
-    "default_icon": "icon.png",
+    "default_icon": "./icons/128x128.png",
     "default_popup": "popup.html"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content_script.js"]
-    }
-  ],
-  "background": {
-    "type": "module",
-    "service_worker": "service_worker.js"
-  },
-  "permissions": ["storage", "tabs", "tabGroups"],
-  "host_permissions": ["<all_urls>"]
+  "permissions": ["activeTab", "scripting"],
+  "icons": {
+    "16": "./icons/16x16.png",
+    "32": "./icons/32x32.png",
+    "48": "./icons/48x48.png",
+    "64": "./icons/64x64.png",
+    "96": "./icons/96x96.png",
+    "128": "./icons/128x128.png",
+    "256": "./icons/256x256.png"
+  }
 }
