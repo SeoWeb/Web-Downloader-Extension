@@ -119,11 +119,11 @@ async function fetchUrl(url: string, baseUrl: string) {
   const fullUrl = new URL(url, baseUrl).href;
   const response = await fetch(fullUrl);
 
-  if (response.ok) {
-    return response;
+  if (response.status >= 400) {
+    return null;
   }
 
-  return null;
+  return response;
 }
 
 async function downloadResources(urls: string[], tabUrl: string) {
@@ -199,7 +199,7 @@ const func = () => {
   const resources: string[] = [];
 
   const links = document.querySelectorAll(
-    "link[rel='stylesheet'], script[src]"
+    "link[rel='stylesheet'], script[src]",
   );
   links.forEach((link: any) => {
     if (
@@ -317,5 +317,5 @@ const root = createRoot(document.getElementById("root")!);
 root.render(
   <React.StrictMode>
     <Popup />
-  </React.StrictMode>
+  </React.StrictMode>,
 );
