@@ -20,7 +20,8 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, "popup.html"),
+        sidePanel: resolve(__dirname, "sidePanel.html"),
+        background: resolve(__dirname, "background.js"),
       },
       output: {
         chunkFileNames: "[name].[hash].js",
