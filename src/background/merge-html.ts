@@ -55,12 +55,12 @@ function findParentSelector($1: cheerio.CheerioAPI, $2: cheerio.CheerioAPI) {
   return parentSelector;
 }
 
-function getSelector(element: cheerio.Cheerio<cheerio.Element>): string {
+function getSelector(element: cheerio.Cheerio<any>): string {
   const selectors = getSelectors(element);
   return selectors.join(" > ");
 }
 
-function getSelectors(element: cheerio.Cheerio<cheerio.Element>): string[] {
+function getSelectors(element: cheerio.Cheerio<any>): string[] {
   const selectors = [];
 
   if (element.length > 0) {

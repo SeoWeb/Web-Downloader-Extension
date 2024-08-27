@@ -3,7 +3,7 @@ import { Checkbox } from "./Checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Button } from "./Button";
 
-export function Filter({
+export default function Filter({
   download,
 }: {
   download: (options: {
@@ -13,6 +13,7 @@ export function Filter({
     downloadAssets: boolean;
     downloadContentAsText: boolean;
     downloadDocuments: boolean;
+    singleFile: boolean;
   }) => void;
 }) {
   const [downloadHTML, setDownloadHTML] = useState(true);
@@ -21,6 +22,7 @@ export function Filter({
   const [downloadAssets, setDownloadAssets] = useState(true);
   const [downloadContentAsText, setDownloadContentAsText] = useState(false);
   const [downloadDocuments, setDownloadDocuments] = useState(true);
+  const [singleFile, setSingleFile] = useState(false);
 
   const handleDownload = () => {
     download({
@@ -30,8 +32,21 @@ export function Filter({
       downloadAssets,
       downloadContentAsText,
       downloadDocuments,
+      singleFile,
     });
   };
+
+  if (
+    (!!downloadHTML ||
+      !!downloadImages ||
+      !!downloadLinks ||
+      !!downloadAssets ||
+      !!downloadContentAsText ||
+      !!downloadDocuments) &&
+    !!singleFile
+  ) {
+    setSingleFile(false);
+  }
 
   if (
     !downloadHTML &&
@@ -39,7 +54,8 @@ export function Filter({
     !downloadLinks &&
     !downloadAssets &&
     !downloadContentAsText &&
-    !downloadDocuments
+    !downloadDocuments &&
+    !singleFile
   ) {
     setDownloadHTML(true);
     setDownloadImages(true);
@@ -191,6 +207,29 @@ export function Filter({
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
             Download content as text
+          </label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="singleFile"
+            checked={singleFile}
+            onCheckedChange={(checked: CheckedState) => {
+              if (!!checked) {
+                setDownloadHTML(false);
+                setDownloadImages(false);
+                setDownloadLinks(false);
+                setDownloadAssets(false);
+                setDownloadContentAsText(false);
+                setDownloadDocuments(false);
+              }
+              setSingleFile(!!checked);
+            }}
+          />
+          <label
+            htmlFor="singleFile"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Download in single HTML file
           </label>
         </div>
       </div>

@@ -4,13 +4,15 @@ import { getActiveTab, listenMessage } from "./common/chrome";
 import "./popup.css";
 import { sendMessageToBackground } from "./client/message";
 import { MessageAction, messageActions } from "./common/message";
-import { Filter } from "./components/Filter";
 import Heading from "./components/Heading";
 import Actions from "./components/Actions";
-import { downloadResources } from "./background/download";
 import { mergeHtml } from "./background/merge-html";
 import { Button } from "./components/Button";
-import ChromeExtensionRating from "./components/ChromeExtensionRating";
+
+const ChromeExtensionRating = React.lazy(
+  () => import("./components/ChromeExtensionRating"),
+);
+const Filter = React.lazy(() => import("./components/Filter"));
 
 export default function SidePanel() {
   const [tabId, setTabId] = useState<number>(0);
@@ -28,6 +30,7 @@ export default function SidePanel() {
     downloadAssets: boolean;
     downloadContentAsText: boolean;
     downloadDocuments: boolean;
+    singleFile: boolean;
   } | null>(null);
 
   function reset(tabUrl: string) {
@@ -45,6 +48,18 @@ export default function SidePanel() {
     async function startScrolling() {
       return await sendMessageToBackground(messageActions.START_SCROLL, {
         tabId,
+      });
+    }
+
+    async function startDownload(html: string) {
+      const addMessage = (message: string) =>
+        setMessages((prev) => [...prev, message]);
+      return await sendMessageToBackground(messageActions.START_DOWNLOAD, {
+        tabId,
+        html,
+        tabUrl,
+        downloadOptions,
+        addMessage,
       });
     }
 
@@ -71,21 +86,14 @@ export default function SidePanel() {
     if (isScraping) {
       scrape();
     } else if (!!downloadResponse?.html && !!downloadOptions) {
-      downloadResources(
-        downloadResponse.html,
-        tabUrl,
-        downloadOptions,
-        (message: string) => {
-          setMessages((prev) => [...prev, message]);
-        },
-      ).then((links) => {
+      startDownload(downloadResponse.html).then((links) => {
         setDownloadDone(links || []);
       });
     }
   }, [isScraping, scrollAttempts, downloadResponse?.height]);
 
   useEffect(() => {
-    listenMessage(async (message) => {
+    listenMessage(async (message, _addMessage) => {
       const action = message.action;
       const data = message.data;
       return messageWorker(action, data);
@@ -132,6 +140,7 @@ export default function SidePanel() {
     downloadAssets: boolean;
     downloadContentAsText: boolean;
     downloadDocuments: boolean;
+    singleFile: boolean;
   }) => Promise<void> = async (options) => {
     setIsScraping(true);
     setDownloadOptions(options);
@@ -148,7 +157,9 @@ export default function SidePanel() {
         action !== messageActions.DOWNLOAD_DONE &&
         !downloadResponse?.html && (
           <div className="pt-8">
-            <Filter download={onClickStartDownload} />
+            <React.Suspense>
+              <Filter download={onClickStartDownload} />
+            </React.Suspense>
           </div>
         )}
 
@@ -180,7 +191,9 @@ export default function SidePanel() {
             <h3 className="pb-4 font-bold">
               If you were satisfied, please leave a positive review :)
             </h3>
-            <ChromeExtensionRating />
+            <React.Suspense>
+              <ChromeExtensionRating />
+            </React.Suspense>
           </div>
           <div className="pb-2 font-bold">Other links to download:</div>
           <div className="pb-2 flex flex-col gap-0 justify-start">

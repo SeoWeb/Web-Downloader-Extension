@@ -1,3 +1,4 @@
+import { sendMessageToPanel } from "../background/message";
 import { MessageAction } from "./message";
 
 export async function executeScript(
@@ -81,15 +82,21 @@ export async function sendMessage(
 }
 
 export function listenMessage(
-  callback: (message: Message) => Promise<void>,
+  callback: (
+    message: Message,
+    addMessage: (message: Message) => void,
+  ) => Promise<void>,
   target: string,
 ) {
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.target === target) {
-      callback(message.message as Message).then(sendResponse);
+      callback(message.message as Message, (message: Message) => {
+        console.log("sendResponse", message);
+        // sendResponse({ message });
+        sendMessageToPanel(message.action, message.data, true);
+      }).then(sendResponse);
     }
 
-    // sendResponse({});
     return true;
   });
 }

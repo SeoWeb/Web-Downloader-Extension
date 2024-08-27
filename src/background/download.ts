@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 import { getResources } from "./resources";
+import { DOMParser } from "linkedom";
 
 export async function downloadResources(
   html: string,
@@ -11,6 +12,7 @@ export async function downloadResources(
     downloadAssets: boolean;
     downloadContentAsText: boolean;
     downloadDocuments: boolean;
+    singleFile: boolean;
   },
   sendMessage: (message: string) => void,
 ) {
@@ -22,7 +24,7 @@ export async function downloadResources(
   }
 
   const u = new URL(tabUrl || "");
-  const zipFilename =
+  let zipFilename =
     u.pathname.split("/").slice(1).join("-") + `${Date.now()}.zip`;
 
   if (downloadOptions.downloadHTML) {
@@ -65,33 +67,29 @@ export async function downloadResources(
     sendMessage("Content as text downloaded");
   }
 
-  const zipBlob = await zip.generateAsync({ type: "blob" });
-  const url = URL.createObjectURL(zipBlob);
+  let blob: any;
 
-  const downloadLink = document.createElement("a");
-  downloadLink.href = url;
-  downloadLink.download = zipFilename;
-  downloadLink.click();
+  if (downloadOptions.singleFile) {
+    sendMessage("Creating index.html");
+    const singleFileHtml = await convertToSingleFileHtml(html, tabUrl);
+    blob = new Blob([singleFileHtml], { type: "text/html;charset=UTF-8" });
+    zipFilename = zipFilename.replace(".zip", ".html");
+  } else {
+    blob = await zip.generateAsync({ type: "blob" });
+  }
 
-  URL.revokeObjectURL(url);
+  const reader = new FileReader();
+  reader.onloadend = function () {
+    const base64data = (reader?.result as string)?.split(",")?.[1];
+    chrome.downloads.download({
+      url: "data:application/octet-stream;base64," + base64data,
+      filename: zipFilename,
+      saveAs: false,
+    });
+  };
+  reader.readAsDataURL(blob);
 
   return data.links;
-}
-
-export async function downloadFile(html: string) {
-  const zip = new JSZip();
-  const blob = new Blob([html], { type: "text/html" });
-
-  zip.file("index.html", blob);
-  const zipBlob = await zip.generateAsync({ type: "blob" });
-  const url = URL.createObjectURL(zipBlob);
-
-  const downloadLink = document.createElement("a");
-  downloadLink.href = url;
-  downloadLink.download = `${Date.now()}.zip`;
-  downloadLink.click();
-
-  URL.revokeObjectURL(url);
 }
 
 async function addIndexHtml(inputHtml: string, zip: JSZip, tabUrl: string) {
@@ -122,6 +120,26 @@ function convertHtml(inputHtml: string, tabUrl: string, path: string = "./") {
   html = convertImagesToRelative(html, tabUrl, path);
   html = convertStylesToRelative(html, tabUrl, path);
   html = convertScriptsToRelative(html, tabUrl, path);
+
+  return html;
+}
+
+async function convertToSingleFileHtml(inputHtml: string, tabUrl: string) {
+  let html = inputHtml;
+
+  if (html.includes("<base")) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const base = doc.querySelector("base");
+    if (base) {
+      base.remove();
+      html = doc.documentElement.outerHTML;
+    }
+  }
+
+  html = await convertImagesToBase64(html, tabUrl);
+  html = await convertStylesToBase64(html, tabUrl);
+  html = await convertScriptsToBase64(html, tabUrl);
 
   return html;
 }
@@ -349,6 +367,30 @@ function convertScriptsToRelative(
   return doc.documentElement.outerHTML;
 }
 
+async function convertScriptsToBase64(htmlString: string, tabUrl: string) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlString, "text/html");
+  const scripts = doc.querySelectorAll("script[src]");
+
+  for (const script of scripts) {
+    let src: string | null = script.getAttribute("src");
+    if (!src) {
+      continue;
+    }
+
+    const u = new URL(src.startsWith("http") ? src : tabUrl);
+    const baseUrl = u.origin + "/";
+    const response = await fetchUrl(src, baseUrl);
+    const newScript = parser.parseFromString("<script></script>", "text/html")
+      .firstChild as any;
+    const scriptContent = response ? await response.text() : "";
+    newScript.innerHTML = scriptContent;
+    script.replaceWith(newScript);
+  }
+
+  return doc.documentElement.outerHTML;
+}
+
 function convertStylesToRelative(
   htmlString: string,
   tabUrl: string,
@@ -388,6 +430,30 @@ function convertStylesToRelative(
   return doc.documentElement.outerHTML;
 }
 
+async function convertStylesToBase64(htmlString: string, tabUrl: string) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlString, "text/html");
+  const links = doc.querySelectorAll("link[rel='stylesheet']");
+
+  for (const link of links) {
+    let href: string | null = link.getAttribute("href");
+    if (!href) {
+      continue;
+    }
+
+    const u = new URL(href.startsWith("http") ? href : tabUrl);
+    const baseUrl = u.origin + "/";
+    const response = await fetchUrl(href, baseUrl);
+    const newLink = parser.parseFromString("<style></style>", "text/html")
+      .firstChild as any;
+    const content = response ? await response.text() : "";
+    newLink.innerHTML = content;
+    link.replaceWith(newLink);
+  }
+
+  return doc.documentElement.outerHTML;
+}
+
 function convertImagesToRelative(
   htmlString: string,
   tabUrl: string,
@@ -419,6 +485,52 @@ function convertImagesToRelative(
 
     if (src.split(".").length > 1) {
       src = path + "images/" + src.split("/").pop();
+    }
+
+    image.setAttribute("src", src);
+  }
+
+  return doc.documentElement.outerHTML;
+}
+
+async function convertImagesToBase64(htmlString: string, tabUrl: string) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlString, "text/html");
+  const images = doc.querySelectorAll("img[src]");
+
+  for (const image of images) {
+    let src: string | null = image.getAttribute("src");
+
+    if (!src) {
+      continue;
+    }
+    src = src.split("?")[0];
+
+    if (!src) {
+      continue;
+    }
+
+    if (src.startsWith("data:")) {
+      // Already base64, skip
+    } else {
+      const u = new URL(src.startsWith("http") ? src : tabUrl);
+      const baseUrl = u.origin + "/";
+      const response = await fetchUrl(src, baseUrl);
+      const blob = response ? await response.blob() : null;
+      if (blob) {
+        const reder = new FileReader();
+        reder.readAsDataURL(blob);
+        src = await new Promise<string>((resolve, reject) => {
+          reder.onload = () => {
+            src = reder.result as string;
+            resolve(src);
+          };
+          reder.onerror = (error) => {
+            reject(error);
+          };
+        });
+      }
+      // src = `data:image/jpg;base64,${Buffer.from(src).toString("base64")}`;
     }
 
     image.setAttribute("src", src);

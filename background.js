@@ -10,8 +10,8 @@ chrome.action.onClicked.addListener((tab) => {
   );
 });
 
-listenMessage(async (message) => {
+listenMessage(async (message, addMessage) => {
   const action = message.action;
   const data = message.data;
-  return await messageWorker(action, data);
+  return await messageWorker(action, data, addMessage);
 }, "background");
