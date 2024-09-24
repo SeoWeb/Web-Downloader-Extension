@@ -24,8 +24,13 @@ export async function downloadResources(
   }
 
   const u = new URL(tabUrl || "");
-  let zipFilename =
-    u.pathname.split("/").slice(1).join("-") + `${Date.now()}.zip`;
+  let zipFilename = u.pathname
+  .split("/")
+  .slice(1)
+  .join("-")
+  .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "") // Replace invalid characters
+  .slice(0, 200) // Limit filename length to 200 characters
+  + `${Date.now()}.zip`;
 
   if (downloadOptions.downloadHTML) {
     sendMessage("Creating index.html");
@@ -169,8 +174,21 @@ async function addCssFiles(csss: string[], zip: JSZip, tabUrl: string) {
       continue;
     }
 
-    zstyles.file(filename, blob);
+    zstyles.file(fixFilename(filename), blob);
   }
+}
+
+function fixFilename(filename: string) {
+  const newFilename = filename.split("?")[0];
+  const extension = newFilename.split(".").pop();
+  const name = newFilename
+  .split(".")
+  .slice(0, -1)
+  .join(".")
+  .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "") // Replace invalid characters
+  .slice(0, 200); // Truncate to 200 characters
+
+  return `${name}.${extension}`;
 }
 
 async function addJsFiles(jss: string[], zip: JSZip, tabUrl: string) {
@@ -199,7 +217,7 @@ async function addJsFiles(jss: string[], zip: JSZip, tabUrl: string) {
       continue;
     }
 
-    zscripts.file(filename, blob);
+    zscripts.file(fixFilename(filename), blob);
   }
 }
 
@@ -233,7 +251,7 @@ async function addDocumentFiles(
       continue;
     }
 
-    zdocuments.file(filename, blob);
+    zdocuments.file(fixFilename(filename), blob);
   }
 }
 
@@ -263,7 +281,7 @@ async function addImageFiles(images: string[], zip: JSZip, tabUrl: string) {
       continue;
     }
 
-    zimages.file(filename, blob);
+    zimages.file(fixFilename(filename), blob);
   }
 }
 
@@ -305,7 +323,7 @@ async function addHtmlFiles(links: string[], zip: JSZip, tabUrl: string) {
       filename += ".html";
     }
 
-    zhtmls.file(filename, html);
+    zhtmls.file(fixFilename(filename), html);
   }
 }
 

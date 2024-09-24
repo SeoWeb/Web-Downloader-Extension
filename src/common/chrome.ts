@@ -91,8 +91,6 @@ export function listenMessage(
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.target === target) {
       callback(message.message as Message, (message: Message) => {
-        console.log("sendResponse", message);
-        // sendResponse({ message });
         sendMessageToPanel(message.action, message.data, true);
       }).then(sendResponse);
     }

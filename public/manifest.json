@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Web Page Downloader",
   "description": "Web Page Downloader allows you to download and save entire web pages, including linked resources, for offline viewing.",
-  "version": "2.1",
+  "version": "2.2",
   "action": {
     "default_icon": "./icons/128x128.png",
     "default_title": "Web Page Downloader"
