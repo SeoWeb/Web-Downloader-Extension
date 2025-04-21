@@ -1,13 +1,25 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react"; // Removed useEffect, added useCallback
 import { createRoot } from "react-dom/client";
-import { getActiveTab, listenMessage } from "./common/chrome";
 import "./popup.css";
-import { sendMessageToBackground } from "./client/message";
+// Removed sendMessageToBackground (handled in hooks)
 import { MessageAction, messageActions } from "./common/message";
 import Heading from "./components/Heading";
 import Actions from "./components/Actions";
-import { mergeHtml } from "./background/merge-html";
+// Removed mergeHtml import
 import { Button } from "./components/Button";
+import { useActiveTabInfo } from "./sidepanel/hooks/useActiveTabInfo"; // Added hook import
+import { useMessageListener } from "./sidepanel/hooks/useMessageListener"; // Added hook import
+import { useScrapingDownloader } from "./sidepanel/hooks/useScrapingDownloader"; // Added hook import
+
+interface Options {
+  downloadHTML: boolean;
+  downloadImages: boolean;
+  downloadLinks: boolean;
+  downloadAssets: boolean;
+  downloadContentAsText: boolean;
+  downloadDocuments: boolean;
+  singleFile: boolean;
+}
 
 const ChromeExtensionRating = React.lazy(
   () => import("./components/ChromeExtensionRating"),
@@ -21,8 +33,7 @@ export default function SidePanel() {
   const [action, setAction] = useState<MessageAction | null>(null);
   const [links, setLinks] = useState<string[]>([]);
   const [isScraping, setIsScraping] = useState<boolean>(false);
-  const [downloadResponse, setDownloadResponse] = useState<any>(null);
-  const [scrollAttempts, setScrollAttempts] = useState<number>(0);
+  // downloadResponse and scrollAttempts are now managed by useScrapingDownloader hook
   const [downloadOptions, setDownloadOptions] = useState<{
     downloadHTML: boolean;
     downloadImages: boolean;
@@ -33,94 +44,11 @@ export default function SidePanel() {
     singleFile: boolean;
   } | null>(null);
 
-  function reset(tabUrl: string) {
-    setTabUrl(tabUrl);
-    setMessages(["Waiting connection...", "Website connected!"]);
-    setAction(null);
-    setLinks([]);
-    setIsScraping(false);
-    setDownloadResponse(null);
-    setScrollAttempts(0);
-    setDownloadOptions(null);
-  }
+  // Use the custom hooks
+  useActiveTabInfo({ setTabId, setTabUrl, setMessages });
 
-  useEffect(() => {
-    async function startScrolling() {
-      return await sendMessageToBackground(messageActions.START_SCROLL, {
-        tabId,
-      });
-    }
-
-    async function startDownload(html: string) {
-      const addMessage = (message: string) =>
-        setMessages((prev) => [...prev, message]);
-      return await sendMessageToBackground(messageActions.START_DOWNLOAD, {
-        tabId,
-        html,
-        tabUrl,
-        downloadOptions,
-        addMessage,
-      });
-    }
-
-    async function scrape() {
-      const response = await startScrolling();
-
-      if (response && response.height && response.html) {
-        setDownloadResponse((prev: any) => {
-          const prevTop = prev?.top || 0;
-          const data = mergeDownloadResponse(prev, response);
-
-          if (response.top === prevTop) {
-            // download starts
-            setIsScraping(false);
-          } else {
-            setScrollAttempts((prev) => prev + 1);
-          }
-
-          return data;
-        });
-      }
-    }
-
-    if (isScraping) {
-      scrape();
-    } else if (!!downloadResponse?.html && !!downloadOptions) {
-      startDownload(downloadResponse.html).then((links) => {
-        setDownloadDone(links || []);
-      });
-    }
-  }, [isScraping, scrollAttempts, downloadResponse?.height]);
-
-  useEffect(() => {
-    listenMessage(async (message, _addMessage) => {
-      const action = message.action;
-      const data = message.data;
-      return messageWorker(action, data);
-    }, "side-panel");
-  }, []);
-
-  useEffect(() => {
-    if (action === null) {
-      getActiveTab().then((tab) => {
-        if (tab) {
-          setTabId(tab.id);
-          setTabUrl(tab.url);
-          setMessages((prev) => [...prev, "Website connected!"]);
-        }
-      });
-    }
-  }, []);
-
-  function setDownloadDone(links: string[]) {
-    setLinks(links);
-    setMessages((prev) => [...prev, "Website scraped!"]);
-    setAction(messageActions.DOWNLOAD_DONE);
-    setMessages((prev) => [...prev, "Zip file created!"]);
-    setMessages((prev) => [...prev, "Download complete"]);
-  }
-
-  async function messageWorker(action: MessageAction, data: any): Promise<any> {
+  // Memoize messageWorker to stabilize useMessageListener dependency
+  const messageWorker = useCallback(async (action: MessageAction, data: any): Promise<any> => {
     switch (action) {
       case messageActions.PANEL_MESSAGE:
         setMessages((prev) => [...prev, data.message]);
@@ -129,23 +57,52 @@ export default function SidePanel() {
       default:
         break;
     }
-
     return null;
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Keep dependencies minimal, setMessages is stable
 
-  const onClickStartDownload: (options: {
-    downloadHTML: boolean;
-    downloadImages: boolean;
-    downloadLinks: boolean;
-    downloadAssets: boolean;
-    downloadContentAsText: boolean;
-    downloadDocuments: boolean;
-    singleFile: boolean;
-  }) => Promise<void> = async (options) => {
+  useMessageListener({ messageWorker });
+
+  // Memoize setDownloadDone to stabilize useScrapingDownloader dependency
+  const setDownloadDone = useCallback((newLinks: string[]) => {
+    setLinks(newLinks);
+    setMessages((prev) => [...prev, "Website scraped!"]);
+    setAction(messageActions.DOWNLOAD_DONE);
+    setMessages((prev) => [...prev, "Zip file created!"]);
+    setMessages((prev) => [...prev, "Download complete"]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Keep dependencies minimal, setLinks, setMessages, setAction are stable
+
+  const { downloadResponse, setDownloadResponse, setScrollAttempts } = useScrapingDownloader({
+    tabId,
+    tabUrl,
+    isScraping,
+    setIsScraping,
+    downloadOptions,
+    setMessages,
+    setDownloadDone,
+  });
+
+  // Memoize reset function
+  const reset = useCallback((newTabUrl: string) => {
+    setTabUrl(newTabUrl);
+    setMessages(["Waiting connection...", "Website connected!"]);
+    setAction(null);
+    setLinks([]);
+    setIsScraping(false);
+    setDownloadResponse(null); // Use setter from hook
+    setScrollAttempts(0);    // Use setter from hook
+    setDownloadOptions(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setDownloadResponse, setScrollAttempts]); // Add setters from hook to dependencies
+
+  // Memoize onClickStartDownload
+  const onClickStartDownload = useCallback(async (options: Options) => {
     setIsScraping(true);
     setDownloadOptions(options);
     setMessages((prev) => [...prev, "Scraping website..."]);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Keep dependencies minimal
 
   return (
     <div className="p-6">
@@ -226,21 +183,7 @@ export default function SidePanel() {
   );
 }
 
-function mergeDownloadResponse(prev: any, response: any) {
-  let html = "";
-
-  if (!!prev?.html?.length && prev.height !== response.height) {
-    html = mergeHtml(prev.html, response.html);
-  } else {
-    html = response.html;
-  }
-
-  return {
-    html,
-    top: response.top,
-    height: response.height,
-  };
-}
+// mergeDownloadResponse function removed (moved to utils)
 
 const root = createRoot(document.getElementById("root")!);
 

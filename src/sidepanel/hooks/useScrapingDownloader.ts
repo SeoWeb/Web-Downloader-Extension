@@ -1,0 +1,124 @@
+import { useEffect, useState, useCallback } from "react";
+import { handleStartScroll, handleStartDownload } from "../utils/messageHandlers";
+import { mergeDownloadResponse } from "../utils/downloadUtils";
+
+export interface DownloadOptions {
+  downloadHTML: boolean;
+  downloadImages: boolean;
+  downloadLinks: boolean;
+  downloadAssets: boolean;
+  downloadContentAsText: boolean;
+  downloadDocuments: boolean;
+  singleFile: boolean;
+}
+
+interface ScrollingResponse {
+  height?: number;
+  html?: string;
+  top?: number;
+}
+
+interface UseScrapingDownloaderProps {
+  tabId: number;
+  tabUrl: string;
+  isScraping: boolean;
+  setIsScraping: React.Dispatch<React.SetStateAction<boolean>>;
+  downloadOptions: DownloadOptions | null;
+  setMessages: React.Dispatch<React.SetStateAction<string[]>>;
+  setDownloadDone: (links: string[]) => void;
+}
+
+export function useScrapingDownloader({
+  tabId,
+  tabUrl,
+  isScraping,
+  setIsScraping,
+  downloadOptions,
+  setMessages,
+  setDownloadDone,
+}: UseScrapingDownloaderProps) {
+  const [downloadResponse, setDownloadResponse] =
+    useState<ScrollingResponse | null>(null);
+  const [scrollAttempts, setScrollAttempts] = useState<number>(0);
+
+  const startScrolling = useCallback(async (): Promise<
+    ScrollingResponse | undefined
+  > => {
+    return handleStartScroll(tabId,
+      (msg) => setMessages(prev => [...prev, msg]),
+      setIsScraping
+    );
+  }, [tabId, setIsScraping, setMessages]);
+
+  const startDownload = useCallback(
+    async (html: string): Promise<string[] | undefined> => {
+      return handleStartDownload(
+        tabId,
+        html,
+        tabUrl,
+        downloadOptions,
+        (msg) => setMessages(prev => [...prev, msg])
+      );
+    },
+    [tabId, tabUrl, downloadOptions, setMessages],
+  );
+
+  const scrape = useCallback(async () => {
+    if (!tabId) {
+      setIsScraping(false);
+      setMessages((prev) => [...prev, "Invalid tab ID"]);
+      return;
+    }
+
+    const response = await startScrolling();
+
+    if (response?.height && response.html) {
+      setDownloadResponse((prev) => {
+        const prevTop = prev?.top || 0;
+        const data = mergeDownloadResponse(prev, response);
+
+        if (response.top === prevTop) {
+          setIsScraping(false);
+        } else {
+          setScrollAttempts((prevCount) => prevCount + 1);
+        }
+
+        return data;
+      });
+    } else {
+      setIsScraping(false);
+      setMessages((prev) => [...prev, "Scraping failed or stopped"]);
+    }
+  }, [tabId, startScrolling, setIsScraping, setMessages]);
+
+  useEffect(() => {
+    if (isScraping) {
+      scrape();
+    } else if (downloadResponse?.html && downloadOptions) {
+      startDownload(downloadResponse.html)
+        .then((links) => {
+          setDownloadDone(links || []);
+          setDownloadResponse(null);
+        })
+        .catch(() => {
+          setMessages((prev) => [...prev, "Failed to complete download"]);
+        });
+    }
+  }, [
+    isScraping,
+    scrollAttempts,
+    downloadResponse?.html,
+    downloadOptions,
+    scrape,
+    startDownload,
+    setDownloadDone,
+    setMessages,
+  ]);
+
+  return {
+    downloadResponse,
+    scrollAttempts,
+    setDownloadResponse,
+    setScrollAttempts,
+  };
+}

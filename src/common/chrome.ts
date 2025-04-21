@@ -81,14 +81,24 @@ export async function sendMessage(
   });
 }
 
+interface ListenerMessage {
+  target: string;
+  message: Message;
+}
+type ListenerFn = (
+  message: ListenerMessage,
+  _sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: any) => void,
+) => void;
+
 export function listenMessage(
   callback: (
     message: Message,
     addMessage: (message: Message) => void,
   ) => Promise<void>,
   target: string,
-) {
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+): () => void {
+  const listener: ListenerFn = (message, _sender, sendResponse) => {
     if (message.target === target) {
       callback(message.message as Message, (message: Message) => {
         sendMessageToPanel(message.action, message.data, true);
@@ -96,5 +106,11 @@ export function listenMessage(
     }
 
     return true;
-  });
+  };
+
+  chrome.runtime.onMessage.addListener(listener);
+
+  return () => {
+    chrome.runtime.onMessage.removeListener(listener);
+  };
 }
