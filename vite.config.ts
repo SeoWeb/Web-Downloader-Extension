@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import { resolve } from "path";
 import react from "@vitejs/plugin-react-swc";
 import { viteZip } from "vite-plugin-zip-file";
+import tailwindcss from "@tailwindcss/vite";
 
 import manifest from "./public/manifest.json";
 const version = manifest.version;
@@ -10,6 +11,7 @@ const version = manifest.version;
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     viteZip({
       folderPath: resolve(__dirname, "dist"),
       outPath: resolve(__dirname, "zip"),
