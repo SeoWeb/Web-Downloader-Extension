@@ -169,7 +169,7 @@ export async function downloadResources(
               chrome.downloads.download({
                 url: "data:application/octet-stream;base64," + base64data,
                 filename: zipFilename,
-                saveAs: false,
+                saveAs: true,
               }, (downloadId) => {
                 if (chrome.runtime.lastError) {
                   reject(chrome.runtime.lastError);
