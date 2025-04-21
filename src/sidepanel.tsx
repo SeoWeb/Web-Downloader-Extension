@@ -1,12 +1,10 @@
-import React, { useState, useCallback } from "react"; // Removed useEffect, added useCallback
+import React, { useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import "./popup.css";
-// Removed sendMessageToBackground (handled in hooks)
 import { MessageAction, messageActions } from "./common/message";
-import Heading from "./components/Heading";
-import Actions from "./components/Actions";
-// Removed mergeHtml import
-import { Button } from "./components/Button";
+import { MainContent } from "./sidepanel/components/MainContent";
+import { DownloadStatus } from "./sidepanel/components/DownloadStatus";
+import { DownloadComplete } from "./sidepanel/components/DownloadComplete";
 import { useActiveTabInfo } from "./sidepanel/hooks/useActiveTabInfo"; // Added hook import
 import { useMessageListener } from "./sidepanel/hooks/useMessageListener"; // Added hook import
 import { useScrapingDownloader } from "./sidepanel/hooks/useScrapingDownloader"; // Added hook import
@@ -20,11 +18,6 @@ interface Options {
   downloadDocuments: boolean;
   singleFile: boolean;
 }
-
-const ChromeExtensionRating = React.lazy(
-  () => import("./components/ChromeExtensionRating"),
-);
-const Filter = React.lazy(() => import("./components/Filter"));
 
 function ErrorFallback({error, resetErrorBoundary}: {error: Error, resetErrorBoundary: () => void}) {
   return (
@@ -142,79 +135,28 @@ export default function SidePanel() {
 
   return (
     <div className="p-6">
-      <Heading />
-      <Actions messages={messages} />
-
-      {!!tabId &&
-        !isScraping &&
-        action !== messageActions.DOWNLOAD_DONE &&
-        !downloadResponse?.html && (
-          <div className="pt-8">
-            <React.Suspense>
-              <Filter download={onClickStartDownload} />
-            </React.Suspense>
-          </div>
-        )}
-
-      {!!tabId &&
-        !isScraping &&
-        action !== messageActions.DOWNLOAD_DONE &&
-        !!downloadResponse?.html && (
-          <div className="pt-8">
-            <h3 className="pb-2 font-bold">Downloading website content ...</h3>
-          </div>
-        )}
-
-      {!!tabId && isScraping && (
-        <div className="pt-8">
-          <h3 className="pb-2 font-bold">Scraping...</h3>
-          <Button onClick={() => setIsScraping(false)} variant={"secondary"}>
-            Stop
-          </Button>
-        </div>
-      )}
-
-      {action === messageActions.DOWNLOAD_DONE && (
-        <div className="pt-8">
-          <div className="pb-2 font-bold">Download is complete:</div>
-          <div className="pb-4">
-            You can find the zip file in your downloads folder
-          </div>
-          <div className="pb-4">
-            <h3 className="pb-4 font-bold">
-              If you were satisfied, please leave a positive review :)
-            </h3>
-            <React.Suspense>
-              <ChromeExtensionRating />
-            </React.Suspense>
-          </div>
-          <div className="pb-2 font-bold">Other links to download:</div>
-          <div className="pb-2 flex flex-col gap-0 justify-start">
-            {links
-              .filter(
-                (link) =>
-                  !!link && link !== "" && link !== "/" && link !== "/#",
-              )
-              .map((link, index) => (
-                <Button
-                  key={index}
-                  className="pb-2"
-                  variant="link"
-                  onClick={() => {
-                    const u = new URL(tabUrl);
-                    const baseUrl = u.origin + "/";
-                    const url = new URL(link, baseUrl);
-                    chrome.tabs.update(tabId, { url: url.href }, () => {
-                      reset(url.href);
-                    });
-                  }}
-                >
-                  {link}
-                </Button>
-              ))}
-          </div>
-        </div>
-      )}
+      <MainContent
+        messages={messages}
+        tabId={tabId}
+        isScraping={isScraping}
+        action={action}
+        downloadResponse={downloadResponse}
+        onClickStartDownload={onClickStartDownload}
+      />
+      <DownloadStatus
+        tabId={tabId}
+        isScraping={isScraping}
+        action={action}
+        downloadResponse={downloadResponse}
+        setIsScraping={setIsScraping}
+      />
+      <DownloadComplete
+        tabId={tabId}
+        tabUrl={tabUrl}
+        links={links}
+        action={action}
+        reset={reset}
+      />
     </div>
   );
 }

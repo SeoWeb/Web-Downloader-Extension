@@ -12,7 +12,7 @@ export interface DownloadOptions {
   singleFile: boolean;
 }
 
-interface ScrollingResponse {
+export interface ScrollingResponse {
   height?: number;
   html?: string;
   top?: number;
