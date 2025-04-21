@@ -286,7 +286,7 @@ async function addCssFiles(csss: string[], zip: JSZip, tabUrl: string, sendMessa
   let i = 0;
   for (const css of csss) {
     i++;
-    sendMessage(`Downloading: ${i}/${count}`);
+    sendMessage(`Downloading CSS files: ${i}/${count}`);
     if (!css) {
       continue;
     }
@@ -332,7 +332,7 @@ async function addJsFiles(jss: string[], zip: JSZip, tabUrl: string, sendMessage
   let i = 0;
   for (const js of jss) {
     i++;
-    sendMessage(`Downloading: ${i}/${count}`);
+    sendMessage(`Downloading JS files: ${i}/${count}`);
     if (!js) {
       continue;
     }
@@ -373,7 +373,7 @@ async function addDocumentFiles(
   const docs = documents.entries();
   const count = documents.length;
   for (const [index, document] of docs) {
-    sendMessage(`Downloading: ${index+1}/${count}`);
+    sendMessage(`Downloading document files: ${index+1}/${count}`);
     if (!document) {
       console.log(`Skipping empty document at index ${index}`);
       failCount++;
@@ -424,7 +424,7 @@ async function addImageFiles(images: string[], zip: JSZip, tabUrl: string, sendM
   let i = 1;
   for (const image of images) {
     i++;
-    sendMessage(`Downloading: ${i}/${count}`);
+    sendMessage(`Downloading images: ${i}/${count}`);
     if (!image || image.startsWith("data:")) {
       continue;
     }
@@ -458,7 +458,7 @@ async function addHtmlFiles(links: string[], zip: JSZip, tabUrl: string, sendMes
   let i = 1;
   for (const link of links) {
     i++;
-    sendMessage(`Downloading: ${i}/${count}`);
+    sendMessage(`Downloading linked html files: ${i}/${count}`);
     if (!link) {
       continue;
     }
