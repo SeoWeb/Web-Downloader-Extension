@@ -68,7 +68,7 @@ export async function downloadResources(
     console.log("Downloading assets");
     sendMessage("Downloading CSS files");
     try {
-      await addCssFiles(data.css, zip, tabUrl);
+      await addCssFiles(data.css, zip, tabUrl, sendMessage);
       console.log("CSS files downloaded:", data.css.length);
       sendMessage("CSS files downloaded");
     } catch (error) {
@@ -78,7 +78,7 @@ export async function downloadResources(
 
     sendMessage("Downloading JS files");
     try {
-      await addJsFiles(data.js, zip, tabUrl);
+      await addJsFiles(data.js, zip, tabUrl, sendMessage);
       console.log("JS files downloaded:", data.js.length);
       sendMessage("JS files downloaded");
     } catch (error) {
@@ -90,7 +90,7 @@ export async function downloadResources(
   if (downloadOptions.downloadDocuments) {
     console.log("Downloading documents");
     sendMessage("Downloading document files");
-    await addDocumentFiles(data.documents, zip, tabUrl);
+    await addDocumentFiles(data.documents, zip, tabUrl, sendMessage);
     console.log("Documents downloaded:", data.documents.length);
     sendMessage("Document files downloaded");
   }
@@ -98,7 +98,7 @@ export async function downloadResources(
   if (downloadOptions.downloadImages) {
     console.log("Downloading images");
     sendMessage("Downloading images");
-    await addImageFiles(data.images, zip, tabUrl);
+    await addImageFiles(data.images, zip, tabUrl, sendMessage);
     console.log("Images downloaded:", data.images.length);
     sendMessage("Images downloaded");
   }
@@ -106,7 +106,7 @@ export async function downloadResources(
   if (downloadOptions.downloadLinks) {
     console.log("Downloading linked HTML files");
     sendMessage("Downloading linked html files");
-    await addHtmlFiles(data.links, zip, tabUrl);
+    await addHtmlFiles(data.links, zip, tabUrl, sendMessage);
     console.log("Linked HTML files downloaded:", data.links.length);
     sendMessage("Linked html files downloaded");
   }
@@ -275,14 +275,18 @@ async function convertToSingleFileHtml(inputHtml: string, tabUrl: string) {
   return html;
 }
 
-async function addCssFiles(csss: string[], zip: JSZip, tabUrl: string) {
+async function addCssFiles(csss: string[], zip: JSZip, tabUrl: string, sendMessage: (message: string) => void) {
   if (!csss?.length) {
     return;
   }
 
   const zstyles = zip.folder("styles") || zip;
 
+  const count = csss.length;
+  let i = 0;
   for (const css of csss) {
+    i++;
+    sendMessage(`Downloading: ${i}/${count}`);
     if (!css) {
       continue;
     }
@@ -317,14 +321,18 @@ function fixFilename(filename: string) {
   return `${name}.${extension}`;
 }
 
-async function addJsFiles(jss: string[], zip: JSZip, tabUrl: string) {
+async function addJsFiles(jss: string[], zip: JSZip, tabUrl: string, sendMessage: (message: string) => void) {
   if (!jss?.length) {
     return;
   }
 
   const zscripts = zip.folder("scripts") || zip;
 
+  const count = jss.length;
+  let i = 0;
   for (const js of jss) {
+    i++;
+    sendMessage(`Downloading: ${i}/${count}`);
     if (!js) {
       continue;
     }
@@ -351,6 +359,7 @@ async function addDocumentFiles(
   documents: string[],
   zip: JSZip,
   tabUrl: string,
+  sendMessage: (message: string) => void
 ) {
   if (!documents?.length) {
     console.log("No documents to download");
@@ -361,7 +370,10 @@ async function addDocumentFiles(
   let successCount = 0;
   let failCount = 0;
 
-  for (const [index, document] of documents.entries()) {
+  const docs = documents.entries();
+  const count = documents.length;
+  for (const [index, document] of docs) {
+    sendMessage(`Downloading: ${index+1}/${count}`);
     if (!document) {
       console.log(`Skipping empty document at index ${index}`);
       failCount++;
@@ -401,14 +413,18 @@ async function addDocumentFiles(
   console.log(`Document download summary: ${successCount} succeeded, ${failCount} failed`);
 }
 
-async function addImageFiles(images: string[], zip: JSZip, tabUrl: string) {
+async function addImageFiles(images: string[], zip: JSZip, tabUrl: string, sendMessage: (message: string) => void) {
   if (!images?.length) {
     return;
   }
 
   const zimages = zip.folder("images") || zip;
 
+  const count = images.length;
+  let i = 1;
   for (const image of images) {
+    i++;
+    sendMessage(`Downloading: ${i}/${count}`);
     if (!image || image.startsWith("data:")) {
       continue;
     }
@@ -431,14 +447,18 @@ async function addImageFiles(images: string[], zip: JSZip, tabUrl: string) {
   }
 }
 
-async function addHtmlFiles(links: string[], zip: JSZip, tabUrl: string) {
+async function addHtmlFiles(links: string[], zip: JSZip, tabUrl: string, sendMessage: (message: string) => void) {
   if (!links?.length) {
     return;
   }
 
   const zhtmls = zip.folder("html") || zip;
 
+  const count = links.length;
+  let i = 1;
   for (const link of links) {
+    i++;
+    sendMessage(`Downloading: ${i}/${count}`);
     if (!link) {
       continue;
     }
