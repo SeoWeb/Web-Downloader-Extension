@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import { getResources } from "./resources";
 import { DOMParser } from "linkedom";
+// import { messageActions } from "../common/message";
 
 export async function downloadResources(
   html: string,
@@ -16,12 +17,35 @@ export async function downloadResources(
   },
   sendMessage: (message: string) => void,
 ) {
-  const zip = new JSZip();
-  const data = getResources(html);
-
+  console.log("Starting downloadResources for URL:", tabUrl);
+  
   if (!tabUrl) {
+    console.error("No tab URL provided");
     return;
   }
+
+  // Check network connectivity
+  // try {
+  //   const online = await new Promise(resolve => {
+  //     chrome.runtime.sendMessage(
+  //       {action: messageActions.CHECK_ONLINE_STATUS},
+  //       resolve
+  //     );
+  //   });
+  //   if (!online) {
+  //     sendMessage("No internet connection - cannot download");
+  //     console.error("No internet connection");
+  //     return;
+  //   }
+  // } catch (error) {
+  //   console.error("Network check failed:", error);
+  //   sendMessage("Failed to check network status");
+  //   return;
+  // }
+
+  const zip = new JSZip();
+  const data = getResources(html);
+  console.log("Extracted resources:", data);
 
   const u = new URL(tabUrl || "");
   let zipFilename = u.pathname
@@ -33,66 +57,168 @@ export async function downloadResources(
   + `${Date.now()}.zip`;
 
   if (downloadOptions.downloadHTML) {
+    console.log("Creating index.html");
     sendMessage("Creating index.html");
     await addIndexHtml(html, zip, tabUrl);
+    console.log("index.html created");
     sendMessage("Index.html created");
   }
 
   if (downloadOptions.downloadAssets) {
+    console.log("Downloading assets");
     sendMessage("Downloading CSS files");
-    await addCssFiles(data.css, zip, tabUrl);
-    sendMessage("CSS files downloaded");
+    try {
+      await addCssFiles(data.css, zip, tabUrl);
+      console.log("CSS files downloaded:", data.css.length);
+      sendMessage("CSS files downloaded");
+    } catch (error) {
+      console.error("Error downloading CSS files:", error);
+      sendMessage("Error downloading CSS files - some may be missing");
+    }
 
     sendMessage("Downloading JS files");
-    await addJsFiles(data.js, zip, tabUrl);
-    sendMessage("JS files downloaded");
+    try {
+      await addJsFiles(data.js, zip, tabUrl);
+      console.log("JS files downloaded:", data.js.length);
+      sendMessage("JS files downloaded");
+    } catch (error) {
+      console.error("Error downloading JS files:", error);
+      sendMessage("Error downloading JS files - some may be missing");
+    }
   }
 
   if (downloadOptions.downloadDocuments) {
+    console.log("Downloading documents");
     sendMessage("Downloading document files");
     await addDocumentFiles(data.documents, zip, tabUrl);
+    console.log("Documents downloaded:", data.documents.length);
     sendMessage("Document files downloaded");
   }
 
   if (downloadOptions.downloadImages) {
+    console.log("Downloading images");
     sendMessage("Downloading images");
     await addImageFiles(data.images, zip, tabUrl);
+    console.log("Images downloaded:", data.images.length);
     sendMessage("Images downloaded");
   }
 
   if (downloadOptions.downloadLinks) {
+    console.log("Downloading linked HTML files");
     sendMessage("Downloading linked html files");
     await addHtmlFiles(data.links, zip, tabUrl);
+    console.log("Linked HTML files downloaded:", data.links.length);
     sendMessage("Linked html files downloaded");
   }
 
   if (downloadOptions.downloadContentAsText) {
+    console.log("Downloading content as text");
     sendMessage("Downloading content as text");
     await addContentText(data.text, zip);
+    console.log("Content text downloaded");
     sendMessage("Content as text downloaded");
   }
 
-  let blob: any;
+  try {
+    console.log("Creating final download package");
+    let blob: any;
 
-  if (downloadOptions.singleFile) {
-    sendMessage("Creating index.html");
-    const singleFileHtml = await convertToSingleFileHtml(html, tabUrl);
-    blob = new Blob([singleFileHtml], { type: "text/html;charset=UTF-8" });
-    zipFilename = zipFilename.replace(".zip", ".html");
-  } else {
-    blob = await zip.generateAsync({ type: "blob" });
+    if (downloadOptions.singleFile) {
+      sendMessage("Creating index.html");
+      const singleFileHtml = await convertToSingleFileHtml(html, tabUrl);
+      blob = new Blob([singleFileHtml], { type: "text/html;charset=UTF-8" });
+      zipFilename = zipFilename.replace(".zip", ".html");
+      console.log("Single HTML file created");
+    } else {
+      console.log("Generating ZIP archive");
+      blob = await zip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: { level: 6 }
+      });
+      console.log("ZIP archive created");
+    }
+
+    console.log("Preparing download");
+    if (!blob) {
+      throw new Error("No blob data available for download");
+    }
+
+    const reader = new FileReader();
+    
+    reader.onloadend = async function() {
+      try {
+        if (!reader.result) {
+          throw new Error("FileReader returned no result");
+        }
+
+        const resultString = reader.result as string;
+        if (!resultString.includes(',')) {
+          throw new Error("Invalid data URL format from FileReader");
+        }
+
+        const base64data = resultString.split(",")[1];
+        if (!base64data) {
+          throw new Error("Failed to extract base64 data from result");
+        }
+
+        const downloadWithRetry = async (attempt = 1): Promise<void> => {
+          try {
+            console.log(`Initiating Chrome download (attempt ${attempt}):`, zipFilename);
+            const downloadId = await new Promise((resolve, reject) => {
+              chrome.downloads.download({
+                url: "data:application/octet-stream;base64," + base64data,
+                filename: zipFilename,
+                saveAs: false,
+              }, (downloadId) => {
+                if (chrome.runtime.lastError) {
+                  reject(chrome.runtime.lastError);
+                } else {
+                  resolve(downloadId);
+                }
+              });
+            });
+            
+            console.log("Download started successfully, ID:", downloadId);
+            sendMessage("Download started successfully");
+          } catch (error) {
+            if (attempt >= 3) {
+              throw error;
+            }
+            console.warn(`Download attempt ${attempt} failed, retrying...`, error);
+            await new Promise(res => setTimeout(res, 1000 * attempt));
+            return downloadWithRetry(attempt + 1);
+          }
+        };
+
+        await downloadWithRetry();
+      } catch (error) {
+        console.error("Download preparation error:", error);
+        sendMessage("Failed to prepare download - check your internet connection");
+      }
+    };
+
+    reader.onerror = function(error) {
+      console.error("FileReader error:", error);
+      let errorMessage = "Failed to read download data";
+      
+      if (error?.target?.error) {
+        const fileReaderError = error.target.error;
+        errorMessage += `: ${fileReaderError.name} - ${fileReaderError.message}`;
+        
+        if (fileReaderError.name === 'NotReadableError') {
+          errorMessage += ". The file may be corrupted or in an unsupported format.";
+        }
+      }
+      
+      sendMessage(errorMessage);
+    };
+
+    reader.readAsDataURL(blob);
+  } catch (error) {
+    console.error("Error creating download package:", error);
+    sendMessage("Failed to create download package");
   }
-
-  const reader = new FileReader();
-  reader.onloadend = function () {
-    const base64data = (reader?.result as string)?.split(",")?.[1];
-    chrome.downloads.download({
-      url: "data:application/octet-stream;base64," + base64data,
-      filename: zipFilename,
-      saveAs: false,
-    });
-  };
-  reader.readAsDataURL(blob);
 
   return data.links;
 }
@@ -227,32 +353,52 @@ async function addDocumentFiles(
   tabUrl: string,
 ) {
   if (!documents?.length) {
+    console.log("No documents to download");
     return;
   }
 
   const zdocuments = zip.folder("documents") || zip;
+  let successCount = 0;
+  let failCount = 0;
 
-  for (const document of documents) {
+  for (const [index, document] of documents.entries()) {
     if (!document) {
+      console.log(`Skipping empty document at index ${index}`);
+      failCount++;
       continue;
     }
 
-    const u = new URL(document.startsWith("http") ? document : tabUrl);
-    const baseUrl = u.origin + "/";
-    const response = await fetchUrl(document, baseUrl);
-    if (!response) {
-      continue;
+    try {
+      console.log(`Downloading document ${index + 1}/${documents.length}: ${document}`);
+      const u = new URL(document.startsWith("http") ? document : tabUrl);
+      const baseUrl = u.origin + "/";
+      const response = await fetchUrl(document, baseUrl);
+      
+      if (!response) {
+        console.error(`Failed to fetch document: ${document}`);
+        failCount++;
+        continue;
+      }
+
+      const blob = await response.blob();
+      const filename = document.split("/").pop();
+
+      if (!filename) {
+        console.error(`Could not determine filename for document: ${document}`);
+        failCount++;
+        continue;
+      }
+
+      zdocuments.file(fixFilename(filename), blob);
+      successCount++;
+      console.log(`Successfully downloaded document: ${filename}`);
+    } catch (error) {
+      console.error(`Error downloading document ${document}:`, error);
+      failCount++;
     }
-
-    const blob = await response.blob();
-    const filename = document.split("/").pop();
-
-    if (!filename) {
-      continue;
-    }
-
-    zdocuments.file(fixFilename(filename), blob);
   }
+
+  console.log(`Document download summary: ${successCount} succeeded, ${failCount} failed`);
 }
 
 async function addImageFiles(images: string[], zip: JSZip, tabUrl: string) {
@@ -327,23 +473,33 @@ async function addHtmlFiles(links: string[], zip: JSZip, tabUrl: string) {
   }
 }
 
-async function fetchUrl(url: string, baseUrl: string) {
+async function fetchUrl(url: string, baseUrl: string, retries = 3, delay = 1000) {
   if (!url) {
     return null;
   }
 
   const fullUrl = new URL(url, baseUrl).href;
-  try {
-    const response = await fetch(fullUrl);
+  
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(fullUrl);
 
-    if (response.status >= 400) {
-      return null;
+      if (response.status >= 400) {
+        if (i === retries - 1) return null;
+        await new Promise(res => setTimeout(res, delay));
+        continue;
+      }
+
+      return response;
+    } catch (e) {
+      if (i === retries - 1) {
+        console.error(`Failed to fetch ${url} after ${retries} attempts`);
+        return null;
+      }
+      await new Promise(res => setTimeout(res, delay));
     }
-
-    return response;
-  } catch (e) {
-    return null;
   }
+  return null;
 }
 
 function convertScriptsToRelative(

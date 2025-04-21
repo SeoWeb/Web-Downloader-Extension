@@ -70,7 +70,9 @@ export function useScrapingDownloader({
       return;
     }
 
+    console.log("Starting scrolling for tab", tabId);
     const response = await startScrolling();
+    console.log("Scrolling completed with response:", response);
 
     if (response?.height && response.html) {
       setDownloadResponse((prev) => {
@@ -95,12 +97,15 @@ export function useScrapingDownloader({
     if (isScraping) {
       scrape();
     } else if (downloadResponse?.html && downloadOptions) {
+      console.log("Starting download with HTML content");
       startDownload(downloadResponse.html)
         .then((links) => {
+          console.log("Download completed successfully with links:", links);
           setDownloadDone(links || []);
           setDownloadResponse(null);
         })
-        .catch(() => {
+        .catch((error) => {
+          console.error("Download failed:", error);
           setMessages((prev) => [...prev, "Failed to complete download"]);
         });
     }

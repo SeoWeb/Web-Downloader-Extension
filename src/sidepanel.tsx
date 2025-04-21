@@ -26,6 +26,21 @@ const ChromeExtensionRating = React.lazy(
 );
 const Filter = React.lazy(() => import("./components/Filter"));
 
+function ErrorFallback({error, resetErrorBoundary}: {error: Error, resetErrorBoundary: () => void}) {
+  return (
+    <div role="alert" className="p-4 bg-red-100 rounded">
+      <p className="font-bold text-red-800">Something went wrong:</p>
+      <pre className="text-red-600">{error.message}</pre>
+      <button
+        onClick={resetErrorBoundary}
+        className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
 export default function SidePanel() {
   const [tabId, setTabId] = useState<number>(0);
   const [tabUrl, setTabUrl] = useState<string>("");
@@ -33,6 +48,7 @@ export default function SidePanel() {
   const [action, setAction] = useState<MessageAction | null>(null);
   const [links, setLinks] = useState<string[]>([]);
   const [isScraping, setIsScraping] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
   // downloadResponse and scrollAttempts are now managed by useScrapingDownloader hook
   const [downloadOptions, setDownloadOptions] = useState<{
     downloadHTML: boolean;
@@ -52,6 +68,7 @@ export default function SidePanel() {
     switch (action) {
       case messageActions.PANEL_MESSAGE:
         setMessages((prev) => [...prev, data.message]);
+        // Update completion based on message type if needed
         break;
 
       default:
@@ -65,11 +82,17 @@ export default function SidePanel() {
 
   // Memoize setDownloadDone to stabilize useScrapingDownloader dependency
   const setDownloadDone = useCallback((newLinks: string[]) => {
-    setLinks(newLinks);
-    setMessages((prev) => [...prev, "Website scraped!"]);
-    setAction(messageActions.DOWNLOAD_DONE);
-    setMessages((prev) => [...prev, "Zip file created!"]);
-    setMessages((prev) => [...prev, "Download complete"]);
+    try {
+      setLinks(newLinks);
+      setMessages((prev) => [...prev, "Website scraped!"]);
+      setAction(messageActions.DOWNLOAD_DONE);
+      setMessages((prev) => [...prev, "Zip file created!"]);
+      setMessages((prev) => [...prev, "Download complete"]);
+    } catch (err) {
+      console.error("Error in download completion:", err);
+      setError(err instanceof Error ? err : new Error(String(err)));
+      setMessages((prev) => [...prev, "Error completing download"]);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Keep dependencies minimal, setLinks, setMessages, setAction are stable
 
@@ -103,6 +126,19 @@ export default function SidePanel() {
     setMessages((prev) => [...prev, "Scraping website..."]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Keep dependencies minimal
+
+  const resetError = useCallback(() => {
+    setError(null);
+    reset(tabUrl);
+  }, [reset, tabUrl]);
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <ErrorFallback error={error} resetErrorBoundary={resetError} />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">

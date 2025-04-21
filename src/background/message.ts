@@ -1,5 +1,6 @@
 import { sendMessage } from "../common/chrome";
 import { MessageAction, messageActions } from "../common/message";
+console.log("MessageActions in background:", messageActions);
 import { scrollDownAndScrape, startDownload } from "./jobs";
 
 export async function sendMessageToPanel(
@@ -27,6 +28,11 @@ export async function messageWorker(
   data: any,
   addMessage: (message: Message) => void,
 ): Promise<any> {
+  if (!messageActions) {
+    console.error("messageActions is not defined!");
+    throw new Error("messageActions is not defined");
+  }
+
   switch (action) {
     case messageActions.START_SCROLL:
       return await scrollDownAndScrape(data.tabId);
@@ -42,6 +48,10 @@ export async function messageWorker(
             data: { message },
           }),
       );
+    
+    case messageActions.CHECK_ONLINE_STATUS:
+      return true;
+      
     default:
       return null;
   }
