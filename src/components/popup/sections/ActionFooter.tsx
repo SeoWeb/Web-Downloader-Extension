@@ -10,7 +10,7 @@ interface ActionFooterProps {
 
 export default function ActionFooter({ downloadMode }: ActionFooterProps) {
   return (
-    <div className="sticky bottom-0 bg-white border-t border-slate-200 p-4 mt-6">
+    <div className="sticky bottom-0 bg-white border-t border-slate-200 py-2 px-2 mt-4"> {/* Reduced padding p-4 to p-2 and margin mt-6 to mt-4 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button
@@ -23,10 +23,10 @@ export default function ActionFooter({ downloadMode }: ActionFooterProps) {
         </div>
         <Button
           variant="primary"
-          size="lg"
+          size="sm"
           className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
         >
-          <Download className="h-6 w-6 mr-2" />
+          <Download className="h-5 w-5 mr-2" />
           {downloadMode === "single" ? "Download Page" : "Download Website"}
         </Button>
       </div>

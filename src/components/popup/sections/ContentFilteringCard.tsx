@@ -68,33 +68,35 @@ export default function ContentFilteringCard({ isOpen, toggleAccordion }: Conten
     >
 
       {/* Filtering Section */}
-      <div className="space-y-3 pt-4 border-t border-slate-100">
-        <div className="flex items-center mb-2">
-          <FileType className="h-4 w-4 mr-2 text-slate-500" />
-          <Label className="text-sm font-medium text-slate-700">
-            Filter Included Assets By
-          </Label>
-        </div>
+      <div className="">
+        <div className="flex justify-start gap-4 items-center">
+          <div className="flex items-center mb-2">
+            <FileType className="h-4 w-4 mr-2 text-slate-500" />
+            <Label className="text-sm font-medium text-slate-700">
+              Filter Included Assets By:
+            </Label>
+          </div>
 
-        {/* Filter Mode Selection */}
-        <RadioGroup
-          value={filterMode}
-          onValueChange={(value: string) => setFilterMode(value as FilterMode)}
-          className="flex space-x-4 mb-3"
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="type" id="filter-type" />
-            <Label htmlFor="filter-type" className="cursor-pointer">File Type</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="extension" id="filter-extension" />
-            <Label htmlFor="filter-extension" className="cursor-pointer">File Extension</Label>
-          </div>
-        </RadioGroup>
+          {/* Filter Mode Selection */}
+          <RadioGroup
+            value={filterMode}
+            onValueChange={(value: string) => setFilterMode(value as FilterMode)}
+            className="flex space-x-4 mb-3"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="type" id="filter-type" />
+              <Label htmlFor="filter-type" className="cursor-pointer">File Type</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="extension" id="filter-extension" />
+              <Label htmlFor="filter-extension" className="cursor-pointer">File Extension</Label>
+            </div>
+          </RadioGroup>
+        </div>
 
         {/* Conditional Rendering based on Filter Mode */}
         {filterMode === "extension" && (
-          <div className="space-y-2 pl-2 border-l-2 border-blue-200 ml-1">
+          <div className="space-y-1 pl-2 border-l-2 border-blue-200 ml-1">
             <Label htmlFor="extensionsInput" className="text-sm text-slate-600">Enter extensions (comma-separated):</Label>
             <Input
               id="extensionsInput"
@@ -108,17 +110,17 @@ export default function ContentFilteringCard({ isOpen, toggleAccordion }: Conten
         )}
 
         {filterMode === "type" && (
-          <div className="space-y-2 pl-2 border-l-2 border-blue-200 ml-1">
+          <div className="space-y-1 pl-2 border-l-2 border-blue-200 ml-1">
              <Label className="text-sm text-slate-600 mb-1 block">Select asset types:</Label>
             {assetTypes.map((type) => (
-              <div key={type.id} className="flex items-center space-x-2 bg-slate-50 p-2 rounded-md hover:bg-slate-100 transition-colors">
+              <div key={type.id} className="flex items-center space-x-2 bg-slate-50 p-1 rounded-md hover:bg-slate-100 transition-colors">
                 <Checkbox
                   id={`type-${type.id}`}
                   checked={selectedAssetTypes.includes(type.id)}
                   onCheckedChange={() => handleAssetTypeChange(type.id)}
                   className="text-blue-600"
                 />
-                 <Label htmlFor={`type-${type.id}`} className="flex items-center text-sm text-slate-700 cursor-pointer">
+                 <Label htmlFor={`type-${type.id}`} className="flex items-center text-sm text-slate-800 cursor-pointer">
                    {type.icon} {type.label}
                  </Label>
               </div>

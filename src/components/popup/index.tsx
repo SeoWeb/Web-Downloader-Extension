@@ -26,7 +26,7 @@ export default function Popup() {
       <div className="flex-grow ml-56 flex flex-col h-full">
         <Header />
         {/* Allow this content area to grow and push the footer down */}
-        <div className="p-6 space-y-4 flex-grow">
+        <div className="p-2 space-y-4 flex-grow">
           <ContentFilteringCard
             downloadMode={downloadMode}
             isOpen={openAccordion === "filtering"}

@@ -12,9 +12,9 @@ interface LeftMenuProps {
 export default function LeftMenu({ downloadMode, setDownloadMode }: LeftMenuProps) {
   return (
     <div className="w-56 bg-white border-r border-slate-200 shadow-sm flex flex-col fixed h-screen z-10">
-      <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-        <h2 className="font-bold text-lg flex items-center py-1">
-          <Download className="h-6 w-6 mr-2" />
+      <div className="p-2 border-b border-slate-200 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+        <h2 className="font-bold text-lg flex items-center"> {/* Removed py-1 */}
+          <Download className="h-5 w-5 mr-2" /> {/* Slightly smaller icon */}
           Download Mode
         </h2>
       </div>
@@ -34,8 +34,8 @@ export default function LeftMenu({ downloadMode, setDownloadMode }: LeftMenuProp
         />
       </div>
 
-      <div className="p-4 border-t border-slate-200">
-        <div className="text-xs text-slate-500 min-h-11 flex items-center">
+      <div className="p-2 border-t border-slate-200">
+        <div className="text-xs text-slate-500 min-h-9 flex items-center">
           {downloadMode === "single" ? (
             <p>Download just the current page with all its assets.</p>
           ) : (

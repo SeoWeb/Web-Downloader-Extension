@@ -4,10 +4,10 @@ import { Download, HelpCircle } from "lucide-react";
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 shadow-md">
+    <header className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-1 shadow-md">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Download className="h-6 w-6 mr-2" />
+          <Download className="h-5 w-5 mr-2" /> {/* Slightly smaller icon */}
           <h1 className="font-bold text-lg flex items-center">Web Page & Site Downloader</h1>
         </div>
         <div className="flex items-center space-x-2">
