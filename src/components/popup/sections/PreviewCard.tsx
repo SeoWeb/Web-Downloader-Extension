@@ -3,27 +3,39 @@ import { Checkbox } from "../../ui/checkbox";
 import { Label } from "../../ui/label";
 import { Switch } from "../../ui/switch";
 import { CheckSquare } from "lucide-react";
-import AccordionCard from "../../ui/AccordionCard"; // Import the new component
+import StaticCard from "../../ui/StaticCard";
 
-type AccordionName = "download" | "filtering" | "preview";
-
+// Define the props interface including navigation props
 interface PreviewCardProps {
-  isOpen: boolean;
-  toggleAccordion: (accordion: AccordionName) => void;
+  onNext?: () => void;
+  onBack?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
+  containerClassName?: string; // Add containerClassName
 }
 
-export default function PreviewCard({ isOpen, toggleAccordion }: PreviewCardProps) {
+export default function PreviewCard({
+  // Destructure the navigation props
+  onNext,
+  onBack,
+  isFirst,
+  isLast,
+  containerClassName, // Destructure containerClassName
+}: PreviewCardProps) {
   return (
-    <AccordionCard
+    <StaticCard
       title="Files & Subpages to Download"
       icon={<CheckSquare className="h-4 w-4 mr-2" />}
-      isOpen={isOpen}
-      toggleAccordion={() => toggleAccordion("preview")}
-      contentClassName="space-y-3" // Apply spacing directly to content wrapper if needed
+      contentClassName="space-y-3"
+      // Pass the navigation props down
+      onNext={onNext}
+      onBack={onBack}
+      isFirst={isFirst}
+      isLast={isLast}
+      containerClassName={containerClassName} // Pass down containerClassName
     >
-      {/* Content goes here */}
+      {/* ... (rest of the component remains the same) */}
       <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg bg-slate-50">
-        {/* TODO: Replace with dynamic list */}
         <ul className="divide-y divide-slate-200">
           <li className="flex items-center p-3 hover:bg-slate-100 transition-colors">
             <Checkbox id="page1" className="mr-3 text-blue-600" />
@@ -68,6 +80,6 @@ export default function PreviewCard({ isOpen, toggleAccordion }: PreviewCardProp
           <Switch id="autoAccept" defaultChecked className="text-blue-600" />
         </div>
       </div>
-    </AccordionCard>
+    </StaticCard>
   );
 }

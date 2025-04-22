@@ -3,19 +3,32 @@ import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Slider } from "../../ui/slider";
 import { Layers, Clock, FolderDown } from "lucide-react";
-import AccordionCard from "../../ui/AccordionCard"; // Import the new component
+import StaticCard from "../../ui/StaticCard";
+import { useState } from "react"; // Import useState
 
 type DownloadMode = "single" | "website";
-type AccordionName = "download" | "filtering" | "preview";
 
+// Update props interface
 interface DownloadConfigCardProps {
   downloadMode: DownloadMode;
-  isOpen: boolean; // Still needed to pass to AccordionCard
-  toggleAccordion: (accordion: AccordionName) => void; // Keep the original toggle function signature
+  onNext?: () => void;
+  onBack?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
+  containerClassName?: string; // Add containerClassName
 }
 
-export default function DownloadConfigCard({ downloadMode, isOpen, toggleAccordion }: DownloadConfigCardProps) {
-  // Create the title node with the badge
+export default function DownloadConfigCard({
+  downloadMode,
+  // Destructure new props
+  onNext,
+  onBack,
+  isFirst,
+  isLast,
+  containerClassName, // Destructure containerClassName
+}: DownloadConfigCardProps) {
+  const [depthValue, setDepthValue] = useState(1); // State for slider value
+
   const cardTitle = (
     <>
       Download Configuration
@@ -32,13 +45,16 @@ export default function DownloadConfigCard({ downloadMode, isOpen, toggleAccordi
   );
 
   return (
-    <AccordionCard
+    <StaticCard
       title={cardTitle}
       icon={<Layers className="h-4 w-4 mr-2" />}
-      isOpen={isOpen}
-      toggleAccordion={() => toggleAccordion("download")} // Pass the specific toggle call
+      // Pass navigation props down
+      onNext={onNext}
+      onBack={onBack}
+      isFirst={isFirst}
+      isLast={isLast}
+      containerClassName={containerClassName} // Pass down containerClassName
     >
-      {/* Content goes here, AccordionCard handles the visibility and spacing */}
       {downloadMode === "website" && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -49,17 +65,19 @@ export default function DownloadConfigCard({ downloadMode, isOpen, toggleAccordi
               Download Depth
             </Label>
             <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-              <span id="depthValue">1</span> Page(s) {/* TODO: Make dynamic */}
+              {/* Use state for dynamic value */}
+              <span id="depthValue">{depthValue}</span> Page(s)
             </span>
           </div>
           <Slider
-            defaultValue={[1]}
+            defaultValue={[depthValue]} // Use state
             min={1}
             max={10}
             step={1}
             id="downloadDepth"
             className="flex-grow"
-            // TODO: Add onChange handler to update depthValue
+            // Update state on change
+            onValueChange={(value) => setDepthValue(value[0])}
           />
           <p className="text-xs text-slate-500">
             How many levels deep should the crawler go?
@@ -107,6 +125,6 @@ export default function DownloadConfigCard({ downloadMode, isOpen, toggleAccordi
           Specify where to save the downloaded files.
         </p>
       </div>
-    </AccordionCard>
+    </StaticCard>
   );
 }
