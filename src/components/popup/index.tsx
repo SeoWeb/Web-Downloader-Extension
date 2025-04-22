@@ -30,7 +30,7 @@ export default function Popup() {
   return (
     <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 overflow-y-auto flex">
       {/* Left Menu */}
-      <div className="w-56 bg-white border-r border-slate-200 shadow-sm flex flex-col">
+      <div className="w-56 bg-white border-r border-slate-200 shadow-sm flex flex-col fixed h-screen z-10">
         <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
           <h2 className="font-bold text-lg flex items-center py-1">
             <Download className="h-6 w-6 mr-2" />
@@ -76,7 +76,7 @@ export default function Popup() {
       </div>
       
       {/* Main Content */}
-      <div className="flex-grow">
+      <div className="flex-grow ml-56">
         <header className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 shadow-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
