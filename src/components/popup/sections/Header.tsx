@@ -1,6 +1,6 @@
 // src/components/popup/sections/Header.tsx
 import { Button } from "../../ui/button";
-import { Download, Settings, HelpCircle } from "lucide-react";
+import { Download, HelpCircle } from "lucide-react";
 
 export default function Header() {
   return (
@@ -11,10 +11,6 @@ export default function Header() {
           <h1 className="font-bold text-lg flex items-center">Web Page & Site Downloader</h1>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-            <Settings className="h-4 w-4 mr-1" />
-            <span>Settings</span>
-          </Button>
           <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
             <HelpCircle className="h-4 w-4 mr-1" />
             <span>Help</span>

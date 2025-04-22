@@ -1,5 +1,6 @@
 // src/components/popup/sections/LeftMenu.tsx
 import { FileDown, Globe, Download } from "lucide-react";
+import MenuItem from "../../ui/MenuItem"; // Use relative path
 
 type DownloadMode = "single" | "website";
 
@@ -19,33 +20,22 @@ export default function LeftMenu({ downloadMode, setDownloadMode }: LeftMenuProp
       </div>
 
       <div className="flex flex-col p-2 space-y-1 flex-grow">
-        <button
+        <MenuItem
+          icon={<FileDown className="h-5 w-5" />}
+          label="Single Page"
+          isActive={downloadMode === "single"}
           onClick={() => setDownloadMode("single")}
-          className={`flex items-center space-x-2 p-3 rounded-lg text-left transition-colors ${
-            downloadMode === "single"
-              ? "bg-blue-50 text-blue-700 font-medium"
-              : "hover:bg-slate-100 text-slate-700"
-          }`}
-        >
-          <FileDown className="h-5 w-5" />
-          <span>Single Page</span>
-        </button>
-
-        <button
+        />
+        <MenuItem
+          icon={<Globe className="h-5 w-5" />}
+          label="Whole Website"
+          isActive={downloadMode === "website"}
           onClick={() => setDownloadMode("website")}
-          className={`flex items-center space-x-2 p-3 rounded-lg text-left transition-colors ${
-            downloadMode === "website"
-              ? "bg-blue-50 text-blue-700 font-medium"
-              : "hover:bg-slate-100 text-slate-700"
-          }`}
-        >
-          <Globe className="h-5 w-5" />
-          <span>Whole Website</span>
-        </button>
+        />
       </div>
 
-      <div className="p-3 border-t border-slate-200">
-        <div className="text-xs text-slate-500">
+      <div className="p-4 border-t border-slate-200">
+        <div className="text-xs text-slate-500 min-h-11 flex items-center">
           {downloadMode === "single" ? (
             <p>Download just the current page with all its assets.</p>
           ) : (

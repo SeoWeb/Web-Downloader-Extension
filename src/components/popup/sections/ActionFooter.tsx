@@ -1,6 +1,6 @@
 // src/components/popup/sections/ActionFooter.tsx
 import { Button } from "../../ui/button";
-import { Settings, HelpCircle, Download } from "lucide-react";
+import { Settings, Download } from "lucide-react";
 
 type DownloadMode = "single" | "website";
 
@@ -19,13 +19,6 @@ export default function ActionFooter({ downloadMode }: ActionFooterProps) {
             className="text-slate-600 border-slate-300 hover:bg-slate-50"
           >
             <Settings className="mr-1 h-4 w-4" /> Options
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-slate-600 border-slate-300 hover:bg-slate-50"
-          >
-            <HelpCircle className="mr-1 h-4 w-4" /> Support
           </Button>
         </div>
         <Button
