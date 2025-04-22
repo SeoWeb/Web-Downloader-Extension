@@ -23,6 +23,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         sidePanel: resolve(__dirname, "sidePanel.html"),
+        popup: resolve(__dirname, "popup.html"),
+        welcome: resolve(__dirname, "welcome.html"),
         background: resolve(__dirname, "background.js"),
       },
       output: {

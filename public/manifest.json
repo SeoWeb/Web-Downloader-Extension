@@ -5,7 +5,8 @@
   "version": "3.0",
   "action": {
     "default_icon": "./icons/128x128.png",
-    "default_title": "Web Page and Site Downloader"
+    "default_title": "Web Page and Site Downloader",
+    "default_popup": "./popup.html"
   },
   "permissions": ["sidePanel"],
   "optional_permissions": ["activeTab", "scripting", "downloads", "contextMenus", "identity.email", "storage"],
