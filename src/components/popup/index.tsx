@@ -12,7 +12,7 @@ type AccordionName = "download" | "filtering" | "preview";
 
 export default function Popup() {
   const [downloadMode, setDownloadMode] = useState<DownloadMode>("single");
-  const [openAccordion, setOpenAccordion] = useState<AccordionName | null>("download");
+  const [openAccordion, setOpenAccordion] = useState<AccordionName | null>("filtering");
 
   const toggleAccordion = (accordion: AccordionName) => {
     setOpenAccordion(accordion === openAccordion ? null : accordion);
@@ -26,13 +26,7 @@ export default function Popup() {
       <div className="flex-grow ml-56 flex flex-col h-full">
         <Header />
         {/* Allow this content area to grow and push the footer down */}
-        <div className="p-6 space-y-6 flex-grow">
-          <DownloadConfigCard
-            downloadMode={downloadMode}
-            isOpen={openAccordion === "download"}
-            toggleAccordion={toggleAccordion}
-          />
-
+        <div className="p-6 space-y-4 flex-grow">
           <ContentFilteringCard
             downloadMode={downloadMode}
             isOpen={openAccordion === "filtering"}
@@ -41,6 +35,12 @@ export default function Popup() {
 
           <PreviewCard
             isOpen={openAccordion === "preview"}
+            toggleAccordion={toggleAccordion}
+          />
+
+          <DownloadConfigCard
+            downloadMode={downloadMode}
+            isOpen={openAccordion === "download"}
             toggleAccordion={toggleAccordion}
           />
         </div>
