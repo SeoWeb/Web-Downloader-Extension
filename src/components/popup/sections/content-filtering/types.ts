@@ -20,7 +20,6 @@ export type DownloadMode = "single" | "website";
 export type FilterMode = "extension" | "type";
 
 export interface ContentFilteringCardProps {
-  downloadMode: DownloadMode;
   onNext?: () => void;
   onBack?: () => void;
   isFirst?: boolean;

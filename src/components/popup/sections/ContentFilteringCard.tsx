@@ -1,15 +1,15 @@
 // src/components/popup/sections/ContentFilteringCard.tsx
-import { useState } from "react";
 import { Label } from "../../ui/label";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Filter, FileType } from "lucide-react";
 import StaticCard from "../../ui/StaticCard";
 import FilterGroup from "../../ui/FilterGroup";
 import { filterGroups } from "./content-filtering/data";
+import { ContentFilteringCardProps } from "./content-filtering/types";
 import {
-  ContentFilteringCardProps,
+  useDownloadSettingsStore,
   FilterMode,
-} from "./content-filtering/types";
+} from "../../../store/downloadSettingsStore";
 
 export default function ContentFilteringCard({
   onNext,
@@ -18,44 +18,14 @@ export default function ContentFilteringCard({
   isLast,
   containerClassName,
 }: ContentFilteringCardProps) {
-  const [filterMode, setFilterMode] = useState<FilterMode>("type");
-  const [selectedAssetTypes, setSelectedAssetTypes] = useState<string[]>([
-    "image",
-    "script",
-    "stylesheet",
-    "html",
-    "font",
-  ]);
-  const [selectedExtensions, setSelectedExtensions] = useState<string[]>([
-    "jpg",
-    "png",
-    "gif",
-    "svg",
-    "webp",
-    "js",
-    "css",
-    "woff",
-    "woff2",
-    "html",
-  ]);
-
-  const handleAssetTypeChange = (typeId: string) => {
-    setSelectedAssetTypes((prev) =>
-      prev.includes(typeId)
-        ? prev.filter((id) => id !== typeId)
-        : [...prev, typeId],
-    );
-    // TODO: Potentially sync extension selection based on type selection?
-  };
-
-  // Handler for extension changes
-  const handleExtensionChange = (extId: string) => {
-    setSelectedExtensions((prev) =>
-      prev.includes(extId)
-        ? prev.filter((id) => id !== extId)
-        : [...prev, extId],
-    );
-  };
+  const {
+    filterMode,
+    selectedAssetTypes,
+    selectedExtensions,
+    setFilterMode,
+    toggleAssetType,
+    toggleExtension,
+  } = useDownloadSettingsStore();
 
   return (
     <StaticCard
@@ -79,9 +49,7 @@ export default function ContentFilteringCard({
           </div>
           <RadioGroup
             value={filterMode}
-            onValueChange={(value: string) =>
-              setFilterMode(value as FilterMode)
-            }
+            onValueChange={(value) => setFilterMode(value as FilterMode)}
             className="flex space-x-4"
           >
             <div className="flex items-center space-x-2">
@@ -103,7 +71,7 @@ export default function ContentFilteringCard({
           <FilterGroup
             items={filterGroups.flatMap(({ items }) => items)}
             selectedItems={selectedExtensions}
-            onSelectionChange={handleExtensionChange}
+            onSelectionChange={toggleExtension}
           />
         )}
 
@@ -111,7 +79,7 @@ export default function ContentFilteringCard({
           <FilterGroup
             items={filterGroups}
             selectedItems={selectedAssetTypes}
-            onSelectionChange={handleAssetTypeChange}
+            onSelectionChange={toggleAssetType}
           />
         )}
       </div>

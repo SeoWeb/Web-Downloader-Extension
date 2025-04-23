@@ -4,30 +4,25 @@ import { Label } from "../../ui/label";
 import { Slider } from "../../ui/slider";
 import { Layers, Clock, FolderDown } from "lucide-react";
 import StaticCard from "../../ui/StaticCard";
-import { useState } from "react"; // Import useState
-
-type DownloadMode = "single" | "website";
-
-// Update props interface
+import { useState } from "react";
+import { useDownloadSettingsStore } from "../../../store/downloadSettingsStore";
 interface DownloadConfigCardProps {
-  downloadMode: DownloadMode;
   onNext?: () => void;
   onBack?: () => void;
   isFirst?: boolean;
   isLast?: boolean;
-  containerClassName?: string; // Add containerClassName
+  containerClassName?: string;
 }
 
 export default function DownloadConfigCard({
-  downloadMode,
-  // Destructure new props
   onNext,
   onBack,
   isFirst,
   isLast,
-  containerClassName, // Destructure containerClassName
+  containerClassName,
 }: DownloadConfigCardProps) {
-  const [depthValue, setDepthValue] = useState(1); // State for slider value
+  const { downloadMode } = useDownloadSettingsStore();
+  const [depthValue, setDepthValue] = useState(1);
 
   const cardTitle = (
     <>
@@ -48,12 +43,11 @@ export default function DownloadConfigCard({
     <StaticCard
       title={cardTitle}
       icon={<Layers className="h-4 w-4 mr-2" />}
-      // Pass navigation props down
       onNext={onNext}
       onBack={onBack}
       isFirst={isFirst}
       isLast={isLast}
-      containerClassName={containerClassName} // Pass down containerClassName
+      containerClassName={containerClassName} 
     >
       {downloadMode === "website" && (
         <div className="space-y-2">
@@ -65,18 +59,16 @@ export default function DownloadConfigCard({
               Download Depth
             </Label>
             <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-              {/* Use state for dynamic value */}
               <span id="depthValue">{depthValue}</span> Page(s)
             </span>
           </div>
           <Slider
-            defaultValue={[depthValue]} // Use state
+            defaultValue={[depthValue]} 
             min={1}
             max={10}
             step={1}
             id="downloadDepth"
             className="flex-grow"
-            // Update state on change
             onValueChange={(value) => setDepthValue(value[0])}
           />
           <p className="text-xs text-slate-500">

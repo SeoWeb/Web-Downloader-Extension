@@ -7,8 +7,6 @@ import ContentFilteringCard from "./sections/ContentFilteringCard";
 import PreviewCard from "./sections/PreviewCard";
 import ActionFooter from "./sections/ActionFooter";
 
-type DownloadMode = "single" | "website";
-
 const cardComponents = [
   ContentFilteringCard,
   PreviewCard,
@@ -16,7 +14,6 @@ const cardComponents = [
 ];
 
 export default function Popup() {
-  const [downloadMode, setDownloadMode] = useState<DownloadMode>("single");
   const [activeCardIndex, setActiveCardIndex] = useState(0);
 
   const handleNext = () => {
@@ -33,13 +30,12 @@ export default function Popup() {
 
   return (
     <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 overflow-y-auto flex">
-      <LeftMenu downloadMode={downloadMode} setDownloadMode={setDownloadMode} />
+      <LeftMenu /> 
 
       <div className="flex-grow ml-56 flex flex-col h-full">
         <Header />
         <div className="p-2 flex-grow flex flex-col">
           <ActiveCardComponent
-            downloadMode={downloadMode}
             onNext={handleNext}
             onBack={handleBack}
             isFirst={isFirstCard}
@@ -47,7 +43,7 @@ export default function Popup() {
             key={activeCardIndex}
           />
         </div>
-        <ActionFooter downloadMode={downloadMode} isDownloadDisabled={!isLastCard} />
+        <ActionFooter isDownloadDisabled={!isLastCard} />
       </div>
     </div>
   );

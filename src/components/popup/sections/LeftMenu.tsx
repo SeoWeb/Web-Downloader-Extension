@@ -1,20 +1,16 @@
 // src/components/popup/sections/LeftMenu.tsx
 import { FileDown, Globe, Download } from "lucide-react";
-import MenuItem from "../../ui/MenuItem"; // Use relative path
+import MenuItem from "../../ui/MenuItem";
+import { useDownloadSettingsStore } from "../../../store/downloadSettingsStore";
 
-type DownloadMode = "single" | "website";
+export default function LeftMenu() {
+  const { downloadMode, setDownloadMode } = useDownloadSettingsStore();
 
-interface LeftMenuProps {
-  downloadMode: DownloadMode;
-  setDownloadMode: (mode: DownloadMode) => void;
-}
-
-export default function LeftMenu({ downloadMode, setDownloadMode }: LeftMenuProps) {
   return (
     <div className="w-56 bg-white border-r border-slate-200 shadow-sm flex flex-col fixed h-screen z-10">
       <div className="p-2 border-b border-slate-200 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-        <h2 className="font-bold text-lg flex items-center"> {/* Removed py-1 */}
-          <Download className="h-5 w-5 mr-2" /> {/* Slightly smaller icon */}
+        <h2 className="font-bold text-lg flex items-center"> 
+          <Download className="h-5 w-5 mr-2" />
           Download Mode
         </h2>
       </div>
