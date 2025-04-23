@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import StaticCard from "../../ui/StaticCard"; // Import StaticCard correctly
 import { AlertTriangle, CheckCircle, KeyRound } from "lucide-react"; // Add KeyRound icon
 import PrimaryButton from "../../ui/PrimaryButton";
 
 const REQUIRED_PERMISSIONS: chrome.permissions.Permissions = {
-  permissions: ["activeTab", "scripting", "downloads"],
+  permissions: ["activeTab", "scripting", "downloads", "storage"],
 };
 
 interface PermissionsCardProps {
@@ -14,7 +14,7 @@ interface PermissionsCardProps {
   isLast: boolean;
 }
 
-const PermissionsCard: React.FC<PermissionsCardProps> = ({ onNext, onBack, isFirst, isLast }) => {
+export default function PermissionsCard({ onNext, onBack, isFirst, isLast }: PermissionsCardProps){
   const [hasPermissions, setHasPermissions] = useState<boolean | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +83,7 @@ const PermissionsCard: React.FC<PermissionsCardProps> = ({ onNext, onBack, isFir
           <li><strong>activeTab:</strong> Access the content of the current tab.</li>
           <li><strong>scripting:</strong> Inject scripts into the current tab to analyze content.</li>
           <li><strong>downloads:</strong> Download the web page content.</li>
+          <li><strong>storage:</strong> Store extension settings and download configurations locally.</li>
         </ul>
       </>
     );
@@ -131,5 +132,3 @@ const PermissionsCard: React.FC<PermissionsCardProps> = ({ onNext, onBack, isFir
     </StaticCard>
   );
 };
-
-export default PermissionsCard;
