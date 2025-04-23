@@ -2,12 +2,14 @@
 import { useState } from "react";
 import LeftMenu from "./sections/LeftMenu";
 import Header from "./sections/Header";
+import PermissionsCard from "./sections/PermissionsCard";
 import DownloadConfigCard from "./sections/DownloadConfigCard";
 import ContentFilteringCard from "./sections/ContentFilteringCard";
 import PreviewCard from "./sections/PreviewCard";
 import ActionFooter from "./sections/ActionFooter";
 
 const cardComponents = [
+  PermissionsCard,
   ContentFilteringCard,
   PreviewCard,
   DownloadConfigCard,

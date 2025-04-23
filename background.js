@@ -1,11 +1,11 @@
-const {
+import {
   installedListener,
   startupListener,
   messageListener,
   storageListener,
   commandListener,
   contextMenuListener,
-} = require("./src/background/functions");
+} from "./src/background/functions";
 
 // sendMessage({
 //     action: "test",
