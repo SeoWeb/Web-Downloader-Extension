@@ -1,29 +1,24 @@
-import { ResponseMessage } from "../types";
+import { ResponseMessage } from "../../types/message";
 
 export async function openSidePanel(
   tab: chrome.tabs.Tab | undefined,
-  sendResponse: (response?: ResponseMessage) => void,
-) {
+): Promise<ResponseMessage> {
   if (tab?.id) {
     const tabId: number = tab.id;
-    chrome.sidePanel.setOptions(
-      {
-        tabId,
-        path: "sidePanel.html",
-        enabled: true,
-      },
-      () => {
-        chrome.sidePanel.open({ tabId });
-        sendResponse({
-          success: true,
-          message: "done",
-        });
-      },
-    );
-  } else {
-    sendResponse({
-      success: false,
-      message: "tab not found",
+    await chrome.sidePanel.setOptions({
+      tabId,
+      path: "sidePanel.html",
+      enabled: true,
     });
+    chrome.sidePanel.open({ tabId });
+    return {
+      success: true,
+      message: "done",
+    };
   }
+
+  return {
+    success: false,
+    message: "tab not found",
+  };
 }

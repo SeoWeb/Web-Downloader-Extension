@@ -1,9 +1,9 @@
-import { ResponseMessage } from "../types";
+import { ResponseMessage } from "../../types/message";
 
-export async function openOptions(sendResponse: (response?: ResponseMessage) => void) {
+export async function openOptions(): Promise<ResponseMessage> {
   await chrome.runtime.openOptionsPage();
-  sendResponse({
+  return {
     success: true,
     message: "done",
-  });
+  }
 }

@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type FilterMode = "type" | "extension";
-export type DownloadMode = "single" | "website";
+export type DownloadMode = "single_file" | "single" | "website";
 
 interface DownloadSettingsState {
   filterMode: FilterMode;

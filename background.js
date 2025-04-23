@@ -2,7 +2,6 @@ const {
   installedListener,
   startupListener,
   messageListener,
-  sendMessage,
   storageListener,
   commandListener,
   contextMenuListener,
@@ -17,7 +16,7 @@ chrome.runtime.onInstalled.addListener(installedListener);
 
 chrome.runtime.onStartup.addListener(startupListener);
 
-chrome.runtime.onMessage.addListener(messageListener);
+messageListener('backend');
 
 chrome.storage?.onChanged?.addListener(storageListener);
 
