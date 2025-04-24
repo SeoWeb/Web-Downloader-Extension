@@ -4,6 +4,8 @@ export const installedListener = (details: chrome.runtime.InstalledDetails) => {
   // Initialize connection on install or update
   initializeConnection();
 
+  console.log(details.reason)
+
   switch (details.reason) {
     case "install":
       break;
