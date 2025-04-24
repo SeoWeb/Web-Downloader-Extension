@@ -1,9 +1,12 @@
 // src/components/popup/sections/PreviewCard.tsx
+import { useEffect } from 'react'; // Added
 import { Checkbox } from "../../ui/checkbox";
 import { Label } from "../../ui/label";
 import { Switch } from "../../ui/switch";
 import { CheckSquare } from "lucide-react";
 import StaticCard from "../../ui/StaticCard";
+import { sendMessage } from '../../../common/chrome/sendMessage'; // Added
+import { Message } from '../../../types/message'; // Added - Assuming structure
 
 // Define the props interface including navigation props
 interface PreviewCardProps {
@@ -22,6 +25,33 @@ export default function PreviewCard({
   isLast,
   containerClassName, // Destructure containerClassName
 }: PreviewCardProps) {
+
+  // Send sample HTML when the component mounts
+  useEffect(() => {
+    const sampleHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sample Page</title>
+</head>
+<body>
+  <h1>Hello from PreviewCard!</h1>
+  <p>This is sample HTML content.</p>
+</body>
+</html>
+    `.trim();
+
+    const message: Message = {
+        action: 'submitSampleHtml',
+        target: 'background', // Send to the background script
+        data: { htmlContent: sampleHtml },
+    };
+
+    console.log('send message', message);
+    sendMessage(message).catch(console.error); // Send message to background script
+
+  }, []); // Empty dependency array ensures this runs only once on mount
+
   return (
     <StaticCard
       title="Files & Subpages to Download"
@@ -37,6 +67,7 @@ export default function PreviewCard({
       {/* ... (rest of the component remains the same) */}
       <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg bg-slate-50">
         <ul className="divide-y divide-slate-200">
+          {/* List items remain unchanged */}
           <li className="flex items-center p-3 hover:bg-slate-100 transition-colors">
             <Checkbox id="page1" className="mr-3 text-blue-600" />
             <Label htmlFor="page1" className="text-sm text-slate-700 cursor-pointer flex-1">

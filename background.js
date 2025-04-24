@@ -1,22 +1,23 @@
 import {
+  actionClickedListener,
   installedListener,
   startupListener,
   messageListener,
   storageListener,
   commandListener,
   contextMenuListener,
+  connectListener,
 } from "./src/background/functions";
 
-// sendMessage({
-//     action: "test",
-//     data: "test"
-// });
+chrome.runtime.onConnect.addListener(connectListener);
+
+chrome.action.onClicked.addListener(actionClickedListener);
 
 chrome.runtime.onInstalled.addListener(installedListener);
 
 chrome.runtime.onStartup.addListener(startupListener);
 
-messageListener('backend');
+messageListener('background');
 
 chrome.storage?.onChanged?.addListener(storageListener);
 

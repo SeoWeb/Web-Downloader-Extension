@@ -5,6 +5,8 @@ import "./styles.css";
 
 const root = createRoot(document.getElementById("root")!);
 
+chrome.runtime.connect({ name: 'sidepanel' });
+
 root.render(
   <React.StrictMode>
     <SidePanel />

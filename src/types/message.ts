@@ -1,10 +1,10 @@
-export type MessageAction = "openOptions" | "openSidePanel";
-export type MessageTarget = "backend" | "sidepanel" | "popup";
+export type MessageAction = "openOptions" | "updateStore" | "submitSampleHtml";
+export type MessageTarget = "background" | "sidepanel" | "popup";
 
 export interface Message {
   action: MessageAction;
   target: MessageTarget;
-  data: any;
+  data?: any;
 }
 
 export interface ResponseMessage {

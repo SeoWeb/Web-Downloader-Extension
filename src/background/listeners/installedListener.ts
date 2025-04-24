@@ -1,4 +1,4 @@
-import { initializeConnection } from "./connection";
+import { initializeConnection } from "../connection";
 
 export const installedListener = (details: chrome.runtime.InstalledDetails) => {
   // Initialize connection on install or update

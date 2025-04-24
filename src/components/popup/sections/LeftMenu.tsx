@@ -18,12 +18,6 @@ export default function LeftMenu() {
       <div className="flex flex-col p-2 space-y-1 flex-grow">
         <MenuItem
           icon={<FileDown className="h-5 w-5" />}
-          label="Single File (1 page)"
-          isActive={downloadMode === "single_file"}
-          onClick={() => setDownloadMode("single_file")}
-        />
-        <MenuItem
-          icon={<FileDown className="h-5 w-5" />}
           label="Single Page"
           isActive={downloadMode === "single"}
           onClick={() => setDownloadMode("single")}
@@ -33,6 +27,12 @@ export default function LeftMenu() {
           label="Whole Website"
           isActive={downloadMode === "website"}
           onClick={() => setDownloadMode("website")}
+        />
+        <MenuItem
+          icon={<FileDown className="h-5 w-5" />}
+          label="Single File (1 page) (mhtml, html, text content, md)"
+          isActive={downloadMode === "single_file"}
+          onClick={() => setDownloadMode("single_file")}
         />
       </div>
 

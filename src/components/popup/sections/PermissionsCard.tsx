@@ -8,14 +8,11 @@ const REQUIRED_PERMISSIONS: chrome.permissions.Permissions = {
 };
 
 interface PermissionsCardProps {
-  onNext: () => void;
-  onBack: () => void;
-  isFirst: boolean;
-  isLast: boolean;
+  hasPermissions: boolean;
+  setHasPermissions: (set: boolean) => void;
 }
 
-export default function PermissionsCard({ onNext, onBack, isFirst, isLast }: PermissionsCardProps){
-  const [hasPermissions, setHasPermissions] = useState<boolean | null>(null);
+export default function PermissionsCard({ hasPermissions, setHasPermissions }: PermissionsCardProps){
   const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,9 +22,6 @@ export default function PermissionsCard({ onNext, onBack, isFirst, isLast }: Per
         const granted = await chrome.permissions.contains(REQUIRED_PERMISSIONS);
         setHasPermissions(granted);
         setError(null); // Clear previous errors
-        if (granted) {
-          onNext(); // Automatically proceed if permissions are already granted
-        }
       } catch (err) {
         console.error("Error checking permissions:", err);
         setError("Failed to check permissions. Please try again.");
@@ -35,14 +29,7 @@ export default function PermissionsCard({ onNext, onBack, isFirst, isLast }: Per
       }
     };
     checkAndProceed();
-    // Intentionally omitting checkPermissions from dependency array
-    // as we only want this effect to run once on mount to check initial state
-    // and potentially auto-advance. The checkPermissions function itself
-    // is stable due to useCallback. Adding onNext to dependencies.
-  }, [onNext]); // Add onNext to dependency array
-
-  // Remove the standalone checkPermissions call as it's now integrated
-  // const checkPermissions = useCallback(async () => { ... }, []); // Keep useCallback if needed elsewhere, otherwise remove
+  }, []);
 
   const requestPermissions = async () => {
     setIsRequesting(true);
@@ -63,10 +50,6 @@ export default function PermissionsCard({ onNext, onBack, isFirst, isLast }: Per
   };
 
   const renderContent = () => {
-    if (hasPermissions === null) {
-      return <p>Checking permissions...</p>; // Loading state
-    }
-
     if (error) {
         return (
             <div className="text-red-600 flex items-center space-x-2">
@@ -115,18 +98,10 @@ export default function PermissionsCard({ onNext, onBack, isFirst, isLast }: Per
     );
   };
 
-  // Determine if the 'Next' button should be effectively disabled
-  const nextDisabled = isLast || !hasPermissions;
-
   return (
     <StaticCard
       title="Required Permissions"
-      icon={<KeyRound className="mr-2 h-5 w-5 text-white" />} // Add icon
-      onNext={onNext}
-      onBack={onBack}
-      isFirst={isFirst}
-      // Pass the calculated disabled state for the 'Next' button logic within StaticCard
-      isLast={nextDisabled}
+      icon={<KeyRound className="mr-2 h-5 w-5 text-white" />}
     >
       {renderContent()}
     </StaticCard>

@@ -1,4 +1,9 @@
-import { Message, MessageListener, MessageTarget, ResponseMessage } from "../../types/message";
+import {
+  Message,
+  MessageListener,
+  MessageTarget,
+  ResponseMessage,
+} from "../../types/message";
 
 export function listenMessage(
   callback: (message: Message) => Promise<ResponseMessage>,

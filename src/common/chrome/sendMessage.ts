@@ -1,4 +1,4 @@
-import { Message } from "../../types/message";
+import { Message, ResponseMessage } from "../../types/message";
 
 let i: any = null;
 export async function sendMessage(
@@ -9,12 +9,10 @@ export async function sendMessage(
   }
 
   const fn = async () => {
-    return await chrome.runtime.sendMessage({
-      message,
-    });
+    return await chrome.runtime.sendMessage(message);
   };
 
-  return new Promise<any>((resolve) => {
+  return new Promise<ResponseMessage>((resolve) => {
     i = setTimeout(() => {
       fn().then(resolve);
     }, 100);

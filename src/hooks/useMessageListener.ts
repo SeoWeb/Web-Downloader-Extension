@@ -1,11 +1,22 @@
 import { useEffect } from "react";
-import { Message, ResponseMessage } from "../types/message";
+import { Message, MessageTarget, ResponseMessage } from "../types/message";
 import { listenMessage } from "../common/chrome/listenMessage";
+import { useDownloadSettingsStore } from '../store/downloadSettingsStore';
+import { useDownloadStatusStore } from '../store/downloadStatusStore';
+
+const updateStore = async (): Promise<ResponseMessage> => {
+  useDownloadSettingsStore.persist.rehydrate();
+  useDownloadStatusStore.persist.rehydrate();
+
+  return {
+    success: true,
+    message: 'ok'
+  }
+}
 
 const callback = async (message: Message): Promise<ResponseMessage> => {
   switch (message.action) {
-    // case "openOptions": return await openOptions();
-    // case "openSidePanel": return await openSidePanel(message.data?.tab);
+    case "updateStore": return await updateStore();
   }
 
   return {
@@ -14,12 +25,12 @@ const callback = async (message: Message): Promise<ResponseMessage> => {
   }
 }
 
-export function useMessageListener() {
+export function useMessageListener(target: MessageTarget) {
   useEffect(() => {
-    const callbackFn = listenMessage(callback, "sidepanel");
+    const callbackFn = listenMessage(callback, target);
 
     return () => {
       callbackFn();
     };
-  }, []);
+  }, [target]);
 }

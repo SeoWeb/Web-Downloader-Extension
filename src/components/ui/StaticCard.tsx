@@ -61,7 +61,7 @@ export default function StaticCard({
       </div>
 
       {/* Card Footer for Navigation */}
-      {(onBack || onNext) && ( // Only show footer if navigation functions are provided
+      {((onBack || onNext) && (!isFirst || !isLast)) && ( // Only show footer if navigation functions are provided
         <div className="p-2 border-t border-slate-200 bg-slate-50 flex justify-between items-center mt-auto">
           <div> {/* Placeholder for potential left-aligned content */}
             {!isFirst && onBack && (

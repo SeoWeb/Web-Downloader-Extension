@@ -26,6 +26,7 @@ export default function ContentFilteringCard({
     toggleAssetType,
     toggleExtension,
   } = useDownloadSettingsStore();
+  const hasFooter = !isFirst || !isLast;
 
   return (
     <StaticCard
@@ -72,6 +73,7 @@ export default function ContentFilteringCard({
             items={filterGroups.flatMap(({ items }) => items)}
             selectedItems={selectedExtensions}
             onSelectionChange={toggleExtension}
+            hasFooter={hasFooter}
           />
         )}
 
@@ -80,6 +82,7 @@ export default function ContentFilteringCard({
             items={filterGroups}
             selectedItems={selectedAssetTypes}
             onSelectionChange={toggleAssetType}
+            hasFooter={hasFooter}
           />
         )}
       </div>
