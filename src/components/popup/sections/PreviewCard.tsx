@@ -5,8 +5,8 @@ import { Label } from "../../ui/label";
 import { Switch } from "../../ui/switch";
 import { CheckSquare } from "lucide-react";
 import StaticCard from "../../ui/StaticCard";
-import { sendMessage } from '../../../common/chrome/sendMessage'; // Added
-import { Message } from '../../../types/message'; // Added - Assuming structure
+// import { sendMessage } from '../../../common/chrome/sendMessage'; // Added
+import { Message, MESSAGE_SEND_SOCKET_MESSAGE } from '../../../types/message'; // Added - Assuming structure
 
 // Define the props interface including navigation props
 interface PreviewCardProps {
@@ -42,13 +42,16 @@ export default function PreviewCard({
     `.trim();
 
     const message: Message = {
-        action: 'submitSampleHtml',
+        action: MESSAGE_SEND_SOCKET_MESSAGE,
         target: 'background', // Send to the background script
-        data: { htmlContent: sampleHtml },
+        sender: 'popup',
+        data: { action: 'submitHtml', data: sampleHtml },
     };
 
     console.log('send message', message);
-    sendMessage(message).catch(console.error); // Send message to background script
+    // sendMessage(message).catch(console.error); // Send message to background script
+
+    // TODO ! use port message
 
   }, []); // Empty dependency array ensures this runs only once on mount
 

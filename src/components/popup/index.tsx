@@ -10,7 +10,8 @@ import ActionFooter from "./sections/ActionFooter";
 import { getActiveTab } from "../../common/chrome";
 import { useDownloadSettingsStore } from "../../store/downloadSettingsStore";
 import { useDownloadStatusStore } from "../../store/downloadStatusStore";
-import { useMessageListener } from "../../hooks/useMessageListener";
+import { useConnectListener } from "../../hooks/useConnectListener";
+import { MESSAGE_POPUP } from "../../types/message";
 
 const cardComponents = [
   ContentFilteringCard,
@@ -19,7 +20,7 @@ const cardComponents = [
 ];
 
 export default function Popup() {
-  useMessageListener('popup'); // Add this line to use the hook
+  useConnectListener(MESSAGE_POPUP); // Add this line to use the hook
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [hasPermissions, setHasPermissions] = useState<boolean>(false);
   const { activeTabId, setActiveTabId } = useDownloadSettingsStore();

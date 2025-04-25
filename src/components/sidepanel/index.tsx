@@ -1,8 +1,9 @@
-import { useMessageListener } from "../../hooks/useMessageListener";
+import { useConnectListener } from "../../hooks/useConnectListener";
 import { useDownloadStatusStore } from "../../store/downloadStatusStore";
+import { MESSAGE_SIDEPANEL } from "../../types/message";
 
 export default function SidePanel() {
-  useMessageListener('sidepanel'); // Add this line to use the hook
+  useConnectListener(MESSAGE_SIDEPANEL); // Add this line to use the hook
   const { isDownloading } = useDownloadStatusStore();
 
   if (isDownloading) {

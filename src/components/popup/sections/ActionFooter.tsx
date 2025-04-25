@@ -6,6 +6,8 @@ import PrimaryButton from "../../ui/PrimaryButton";
 import { openSidePanel } from "../../../background/messageActions/openSidePanel";
 import closePopup from "../../../common/chrome/closePopup";
 import { useDownloadStatusStore } from "../../../store/downloadStatusStore";
+import useSendPortMessage from "../../../hooks/useSendPortMessage";
+import { MESSAGE_SIDEPANEL, MESSAGE_START_DOWNLOAD } from "../../../types/message";
 
 interface ActionFooterProps {
   isDownloadDisabled?: boolean;
@@ -15,7 +17,8 @@ export default function ActionFooter({
   isDownloadDisabled = false,
 }: ActionFooterProps) {
   const { activeTabId, downloadMode } = useDownloadSettingsStore();
-  const { setIsDownloading } = useDownloadStatusStore();
+  // const { setIsDownloading } = useDownloadStatusStore();
+  const { sendPortMessage } = useSendPortMessage('popup');
 
   const tab: chrome.tabs.Tab = {
     id: activeTabId || undefined,
@@ -37,9 +40,12 @@ export default function ActionFooter({
       return;
     }
 
-    setIsDownloading(true);
-    openSidePanel(tab).then(() => {
-      closePopup();
+    // setIsDownloading(true);
+    openSidePanel(tab).then(async () => {
+      setTimeout(async () => {
+        await sendPortMessage(MESSAGE_START_DOWNLOAD, MESSAGE_SIDEPANEL);
+        await closePopup();
+      }, 1000);
     });
   };
 

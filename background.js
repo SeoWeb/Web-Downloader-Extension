@@ -2,7 +2,6 @@ import {
   actionClickedListener,
   installedListener,
   startupListener,
-  messageListener,
   storageListener,
   commandListener,
   contextMenuListener,
@@ -16,8 +15,6 @@ chrome.action.onClicked.addListener(actionClickedListener);
 chrome.runtime.onInstalled.addListener(installedListener);
 
 chrome.runtime.onStartup.addListener(startupListener);
-
-messageListener('background');
 
 chrome.storage?.onChanged?.addListener(storageListener);
 
