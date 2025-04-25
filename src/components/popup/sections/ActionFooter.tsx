@@ -5,7 +5,6 @@ import { useDownloadSettingsStore } from "../../../store/downloadSettingsStore";
 import PrimaryButton from "../../ui/PrimaryButton";
 import { openSidePanel } from "../../../background/messageActions/openSidePanel";
 import closePopup from "../../../common/chrome/closePopup";
-import { useDownloadStatusStore } from "../../../store/downloadStatusStore";
 import useSendPortMessage from "../../../hooks/useSendPortMessage";
 import { MESSAGE_SIDEPANEL, MESSAGE_START_DOWNLOAD } from "../../../types/message";
 
@@ -42,10 +41,8 @@ export default function ActionFooter({
 
     // setIsDownloading(true);
     openSidePanel(tab).then(async () => {
-      setTimeout(async () => {
-        await sendPortMessage(MESSAGE_START_DOWNLOAD, MESSAGE_SIDEPANEL);
-        await closePopup();
-      }, 1000);
+      await sendPortMessage(MESSAGE_START_DOWNLOAD, MESSAGE_SIDEPANEL);
+      await closePopup();
     });
   };
 
