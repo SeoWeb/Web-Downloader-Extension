@@ -28,8 +28,8 @@ export default defineConfig({
         background: resolve(__dirname, "background.js"),
       },
       output: {
-        chunkFileNames: "[name].[hash].js",
-        assetFileNames: "[name].[hash].[ext]",
+        chunkFileNames: "chunk-[name].[hash].js",
+        assetFileNames: "asset-[name].[hash].[ext]",
         entryFileNames: "[name].js",
         dir: "dist",
       },

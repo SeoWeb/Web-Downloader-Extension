@@ -12,6 +12,7 @@ interface DownloadSettingsState {
   selectedExtensions: string[];
   downloadMode: DownloadMode;
   activeTabId: number | null;
+  isSidePanelOpen: boolean;
   setFilterMode: (mode: FilterMode) => void;
   setSelectedAssetTypes: (types: string[]) => void;
   toggleAssetType: (typeId: string) => void;
@@ -19,6 +20,7 @@ interface DownloadSettingsState {
   toggleExtension: (extId: string) => void;
   setDownloadMode: (mode: DownloadMode) => void;
   setActiveTabId: (id: number | null) => void;
+  setIsSidePanelOpen: (is: boolean) => void;
 }
 
 export const useDownloadSettingsStore = create<DownloadSettingsState>()(
@@ -40,6 +42,7 @@ export const useDownloadSettingsStore = create<DownloadSettingsState>()(
       ],
       downloadMode: "single",
       activeTabId: null,
+      isSidePanelOpen: false,
       setFilterMode: (mode) => set({ filterMode: mode }),
       setSelectedAssetTypes: (types) => set({ selectedAssetTypes: types }),
       toggleAssetType: (typeId) =>
@@ -58,6 +61,7 @@ export const useDownloadSettingsStore = create<DownloadSettingsState>()(
         })),
       setDownloadMode: (mode) => set({ downloadMode: mode }),
       setActiveTabId: (id) => set({ activeTabId: id }),
+      setIsSidePanelOpen: (is) => set({ isSidePanelOpen: is })
     }),
     {
       name: 'download-settings-storage', // unique name

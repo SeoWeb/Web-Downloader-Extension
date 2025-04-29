@@ -13,9 +13,12 @@ import {
 } from "./portManager";
 import { askPopupStoreUpdate, askSidePanelStoreUpdate } from "./storeUpdater";
 
-const stopDownloading = async () => {
+const sidePanelDisconnectedHandler = async () => {
   await chromeStorage.setPartialItem("download-status-storage", {
     isDownloading: false,
+  });
+  await chromeStorage.setPartialItem("download-settings-storage", {
+    isSidePanelOpen: false,
   });
 };
 
@@ -23,7 +26,7 @@ export const portOnDisconnectListener = async (port: chrome.runtime.Port) => {
   if (port.name === MESSAGE_POPUP) {
     clearPopupPort();
   } else if (port.name === MESSAGE_SIDEPANEL) {
-    await stopDownloading();
+    await sidePanelDisconnectedHandler();
     clearSidePanelPort();
   }
 };

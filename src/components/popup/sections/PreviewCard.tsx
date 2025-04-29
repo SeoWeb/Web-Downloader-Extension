@@ -17,6 +17,35 @@ interface PreviewCardProps {
   containerClassName?: string; // Add containerClassName
 }
 
+async function sendStringAsStream(dataString: string, chunkSize: number = 100) {
+  for (let i = 0; i < dataString.length; i += chunkSize) {
+    const chunk = dataString.substring(i, i + chunkSize);
+    const message: Message = {
+      action: MESSAGE_SEND_SOCKET_MESSAGE,
+      target: 'background', // Send to the background script
+      sender: 'popup',
+      data: {
+        action: 'submitHtml',
+        data: chunk
+      },
+    };
+    // socket.emit('stream-chunk', chunk);
+    // Optional: Add a small delay to simulate a more continuous stream
+    // await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  const message: Message = {
+    action: MESSAGE_SEND_SOCKET_MESSAGE,
+    target: 'background', // Send to the background script
+    sender: 'popup',
+    data: {
+      action: 'submitHtml',
+      data: null
+    },
+  };
+  // socket.emit('stream-end');
+  console.log('String sent as stream!');
+}
+
 export default function PreviewCard({
   // Destructure the navigation props
   onNext,
@@ -41,14 +70,9 @@ export default function PreviewCard({
 </html>
     `.trim();
 
-    const message: Message = {
-        action: MESSAGE_SEND_SOCKET_MESSAGE,
-        target: 'background', // Send to the background script
-        sender: 'popup',
-        data: { action: 'submitHtml', data: sampleHtml },
-    };
-
-    console.log('send message', message);
+    sendStringAsStream(sampleHtml).then(() => {
+      // done
+    });
     // sendMessage(message).catch(console.error); // Send message to background script
 
     // TODO ! use port message

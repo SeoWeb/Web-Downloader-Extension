@@ -23,7 +23,7 @@ export default function Popup() {
   useConnectListener(MESSAGE_POPUP); // Add this line to use the hook
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [hasPermissions, setHasPermissions] = useState<boolean>(false);
-  const { activeTabId, setActiveTabId } = useDownloadSettingsStore();
+  const { activeTabId, isSidePanelOpen, setActiveTabId } = useDownloadSettingsStore();
   const { isDownloading } = useDownloadStatusStore();
 
   const handleNext = () => {
@@ -87,6 +87,10 @@ export default function Popup() {
 
   if (isDownloading) {
     return renderLayout(<p>Downloading ...</p>);
+  }
+
+  if (isSidePanelOpen) {
+    return renderLayout(<p>Close sidepanel first.</p>);
   }
 
   return renderLayout(renderActiveCarcComponent());

@@ -15,7 +15,7 @@ interface ActionFooterProps {
 export default function ActionFooter({
   isDownloadDisabled = false,
 }: ActionFooterProps) {
-  const { activeTabId, downloadMode } = useDownloadSettingsStore();
+  const { activeTabId, downloadMode, isSidePanelOpen, setIsSidePanelOpen } = useDownloadSettingsStore();
   // const { setIsDownloading } = useDownloadStatusStore();
   const { sendPortMessage } = useSendPortMessage('popup');
 
@@ -41,6 +41,7 @@ export default function ActionFooter({
 
     // setIsDownloading(true);
     openSidePanel(tab).then(async () => {
+      setIsSidePanelOpen(true);
       await sendPortMessage(MESSAGE_START_DOWNLOAD, MESSAGE_SIDEPANEL);
       await closePopup();
     });
@@ -58,7 +59,7 @@ export default function ActionFooter({
             <Settings className="mr-1 h-4 w-4" /> Options
           </Button>
         </div>
-        <PrimaryButton disabled={isDownloadDisabled || !activeTabId} onClick={handleClick}>
+        <PrimaryButton disabled={isDownloadDisabled || !activeTabId || isSidePanelOpen} onClick={handleClick}>
           <Download className="h-5 w-5 mr-2" />
           {downloadMode === "single" ? "Download Page" : "Download Website"}
         </PrimaryButton>

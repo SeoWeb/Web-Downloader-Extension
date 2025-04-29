@@ -1,239 +1,282 @@
 import * as cheerio from "cheerio";
+import { CheerioAPI, Cheerio } from "cheerio";
 import { Element } from 'domhandler';
 
-// Types for element identification and tracking
+// --- Types ---
+
+interface ElementInfo {
+  element: Element;
+  signature: ElementSignature;
+  index: number; // Original index in its parent
+  cheerioElement: Cheerio<Element>; // Store the Cheerio object
+}
+
 interface ElementSignature {
   tagName: string;
-  id: string | null;
+  id: string | undefined; // Use undefined instead of null for consistency
   classes: string[];
-  key: string;
-  index: number;
+  key: string; // The unique key for matching
 }
 
+// Map from signature key to ElementInfo in the current document
+type ElementMap = Map<string, ElementInfo>;
+
+// --- Helper Functions ---
+
 /**
- * Creates a unique signature for an element based on various attributes
- * for more reliable element matching across HTML documents
+ * Creates a unique signature key for an element.
  */
-function createElementSignature($: cheerio.CheerioAPI, element: Element, index: number): ElementSignature {
+function createElementSignatureKey(element: Element, $: CheerioAPI): string {
   const $el = $(element);
-  const tagName = element.tagName?.toLowerCase() || '';
-  const id = $el.attr('id') || null;
+  const tagName = element.tagName?.toLowerCase() || 'unknown';
+  const id = $el.attr('id');
   const classAttr = $el.attr('class') || '';
+  // Normalize classes: split, filter empty, sort
   const classes = classAttr.split(/\s+/).filter(Boolean).sort();
-  
-  // Create a normalized representation of the element for comparison
-  // This focuses on structure rather than content for better matching
-  const key = tagName + 
-    (id ? `#${id}` : '') + 
-    (classes.length ? `.${classes.join('.')}` : '') +
-    ($el.attr('data-key') || '');
-  
-  return { tagName, id, classes, key, index };
+
+  // Key includes tag, id (if present), and sorted classes
+  return `${tagName}${id ? `#${id}` : ''}${classes.length ? `.${classes.join('.')}` : ''}`;
 }
 
 /**
- * Compares two elements to determine if they're "the same" element
- * across different HTML snapshots
+ * Creates full ElementSignature.
  */
-function elementsMatch(sig1: ElementSignature, sig2: ElementSignature): boolean {
-  // ID is the strongest identifier if available
-  if (sig1.id && sig2.id) {
-    return sig1.id === sig2.id;
-  }
-  
-  // For elements without IDs, use tag name plus class combination
-  if (sig1.tagName === sig2.tagName) {
-    // If both have classes, compare them
-    if (sig1.classes.length && sig2.classes.length) {
-      // Check if they share at least one distinctive class
-      return sig1.classes.some(cls => sig2.classes.includes(cls));
-    } 
-    // If elements have the same tag but no classes, compare their positions
-    return Math.abs(sig1.index - sig2.index) < 3; // Allow small position differences
-  }
-  
-  return false;
+function getElementSignature(element: Element, $: CheerioAPI): ElementSignature {
+    const $el = $(element);
+    const tagName = element.tagName?.toLowerCase() || 'unknown';
+    const id = $el.attr('id');
+    const classAttr = $el.attr('class') || '';
+    const classes = classAttr.split(/\s+/).filter(Boolean).sort();
+    const key = createElementSignatureKey(element, $);
+    return { tagName, id, classes, key };
+}
+
+
+/**
+ * Builds a map from signature key to ElementInfo for efficient lookup.
+ * Only maps elements with potentially unique keys (avoids mapping plain text nodes etc.)
+ */
+function buildElementMap($: CheerioAPI, parent: Cheerio<Element>): Map<string, ElementInfo> {
+  const map: ElementMap = new Map();
+  parent.children().each((index, element) => {
+    // Only map element nodes (type 'tag')
+    if (element.type === 'tag') {
+       const signature = getElementSignature(element, $);
+       const info: ElementInfo = {
+           element: element,
+           signature: signature,
+           index: index,
+           cheerioElement: $(element) // Store Cheerio object
+       };
+       // If the key is already present, it indicates non-unique elements
+       // based on this signature (e.g., multiple divs with the same class).
+       // For simplicity here, we overwrite, favoring the last one.
+       // A more complex strategy could handle lists of elements per key.
+       map.set(signature.key, info);
+    }
+  });
+  return map;
 }
 
 /**
- * Merge two HTML strings, preserving content from the first while adding new content from the second
+ * Recursively merges nodes from 'newElement' into 'currentElement'.
+ * Modifies 'currentElement' in place.
  */
-export async function mergeHtml(currentHtml: string, newHtml: string): Promise<string> {
-  if (!currentHtml) return newHtml;
-  if (!newHtml) return currentHtml;
-
-  const $current = cheerio.load(currentHtml);
-  const $new = cheerio.load(newHtml);
-  
-  // Focus on the body content which typically contains the important parts
-  const $currentBody = $current('body');
-  const $newBody = $new('body');
-  
-  if (!$currentBody.length || !$newBody.length) {
-    console.warn("Could not find body elements for merging. Returning new HTML.");
-    return newHtml;
-  }
-  
-  // First, preserve the document structure: head, attributes, etc.
-  mergeHeadContent($current, $new);
-  mergeBodyAttributes($current, $new);
-  
-  // Process all direct children of the body
-  const currentChildren = $currentBody.children().toArray();
-  const newChildren = $newBody.children().toArray();
-
-  // Build signatures for all current elements for faster lookup
-  const currentSignatures = currentChildren.map((el, idx) => 
-    createElementSignature($current, el, idx));
-  
-  // Track which elements from the current HTML have been matched
-  const matchedCurrentElements = new Set<number>();
-  
-  // Process each child from the new HTML
-  newChildren.forEach((newElement, newIndex) => {
-    const newSig = createElementSignature($new, newElement, newIndex);
-    
-    // Try to find a matching element in the current HTML
-    const matchingCurrentIdx = currentSignatures.findIndex((currentSig, idx) => 
-      !matchedCurrentElements.has(idx) && elementsMatch(currentSig, newSig));
-    
-    if (matchingCurrentIdx !== -1) {
-      // Found a match - update the content of the existing element
-      matchedCurrentElements.add(matchingCurrentIdx);
-      const currentElement = currentChildren[matchingCurrentIdx];
-      
-      // Replace the inner content but keep the element itself
-      if (currentElement.children && currentElement.children.length > 0) {
-        // Recursively merge the children
-        const currentElementHtml = $current.html(currentElement);
-        const newElementHtml = $new.html(newElement);
-        if (currentElementHtml && newElementHtml) {
-          const mergedChildContent = mergeElementContent(currentElementHtml, newElementHtml);
-          $current(currentElement).html(mergedChildContent);
+function recursiveMergeNodes(
+    currentElement: Cheerio<Element>,
+    newElement: Cheerio<Element>,
+    $: CheerioAPI, // The Cheerio instance for the *current* document
+    $new: CheerioAPI // The Cheerio instance for the *new* document
+): void {
+    // 1. Update Attributes on currentElement from newElement
+    const newAttrs = newElement.attr();
+    if (newAttrs) {
+        // Special handling for 'class' to merge rather than replace
+        const currentClasses = (currentElement.attr('class') || '').split(/\s+/).filter(Boolean);
+        const newClasses = (newAttrs.class || '').split(/\s+/).filter(Boolean);
+        const mergedClasses = new Set([...currentClasses, ...newClasses]); // Use Set for uniqueness
+        
+        // Set all attributes from new, then overwrite class with merged
+        currentElement.attr(newAttrs);
+        if (mergedClasses.size > 0) {
+             currentElement.attr('class', Array.from(mergedClasses).join(' '));
+        } else {
+            currentElement.removeAttr('class'); // Remove class attr if empty
         }
-      } else {
-        // If no children, just update the content directly
-        $current(currentElement).html($new(newElement).html() || '');
-      }
-    } else {
-      // No match found - this is a new element
-      // Clone the element into the current HTML context
-      const newElementHtml = $new.html(newElement);
-      if (newElementHtml) {
-        $currentBody.append(newElementHtml);
-      }
     }
-  });
 
-  // Handle elements that were in the original HTML but not in the new HTML
-  // Important: We keep these elements instead of removing them to preserve content
-  // that might have been scrolled off the top
+    // 2. Merge Children
+    const currentChildrenMap = buildElementMap($, currentElement);
+    const newChildrenInfo: ElementInfo[] = [];
+     $new(newElement).children().each((index, child) => {
+        if(child.type === 'tag'){
+            newChildrenInfo.push({
+                element: child,
+                signature: getElementSignature(child, $new),
+                index: index,
+                cheerioElement: $new(child)
+            });
+        }
+         // Rudimentary handling for non-tag content (like text) - replace if changed?
+         // This part needs careful consideration based on desired behavior for text nodes.
+         // For now, we focus on element merging. Consider replacing text if it's the only child?
+     });
 
-  // Return the final merged HTML
-  return $current.html() || '';
+
+    const matchedCurrentKeys = new Set<string>();
+    let lastMatchedCurrentElement: Cheerio<Element> | null = null;
+
+    newChildrenInfo.forEach((newInfo) => {
+        const currentMatchInfo = currentChildrenMap.get(newInfo.signature.key);
+
+        if (currentMatchInfo && !matchedCurrentKeys.has(newInfo.signature.key)) {
+            // --- Match found ---
+            matchedCurrentKeys.add(newInfo.signature.key);
+            const currentMatchedElement = currentMatchInfo.cheerioElement;
+
+            // Recursively merge the matched children
+            recursiveMergeNodes(currentMatchedElement, newInfo.cheerioElement, $, $new);
+
+            lastMatchedCurrentElement = currentMatchedElement; // Track the last match
+
+            // Remove from map to handle potential duplicate keys correctly if needed later
+            currentChildrenMap.delete(newInfo.signature.key);
+
+        } else {
+            // --- No Match found (New element or already matched key) ---
+            // Clone the new element into the '$' context to add it
+            const clonedElement = $<Element, string>(newInfo.cheerioElement.toString()); // Clone using HTML string representation
+
+            if (lastMatchedCurrentElement) {
+                // Insert after the last matched element in the current DOM
+                lastMatchedCurrentElement.after(clonedElement);
+            } else {
+                // Insert at the beginning if this is the first new element
+                currentElement.prepend(clonedElement);
+            }
+            // Update lastMatchedCurrentElement to the newly inserted one
+            // so subsequent new elements are inserted relative to this one
+            lastMatchedCurrentElement = clonedElement;
+        }
+    });
+
+    // 3. Remove current elements that were not matched (optional, depends on goal)
+    // The original goal was to *keep* elements from currentHtml, so we *don't* remove unmatched elements.
+    // If removal was desired:
+    // currentChildrenMap.forEach((info) => {
+    //     info.cheerioElement.remove();
+    // });
 }
 
-/**
- * Merges the content of one element with another
- */
-function mergeElementContent(currentElementHtml: string, newElementHtml: string): string {
-  // For simple cases, we can use a direct replacement
-  if (currentElementHtml.length < 100 || newElementHtml.length < 100) {
-    return newElementHtml;
-  }
-  
-  // For more complex elements, do a recursive merge
-  const $currentEl = cheerio.load(currentElementHtml);
-  const $newEl = cheerio.load(newElementHtml);
-  
-  // Compare children and merge them appropriately
-  // This is a simplified approach - in a real implementation, you might want
-  // more sophisticated logic here depending on your specific HTML structure
-  const $currentRoot = $currentEl('body > *');
-  const $newRoot = $newEl('body > *');
-  
-  // If structures are compatible, attempt to merge
-  if ($currentRoot.length === 1 && $newRoot.length === 1) {
-    const tagName1 = $currentRoot[0].tagName;
-    const tagName2 = $newRoot[0].tagName;
-    
-    if (tagName1 === tagName2) {
-      $currentRoot.html($newRoot.html() || '');
-      return $currentRoot.toString();
-    }
-  }
-  
-  // Default case - use the new content
-  return newElementHtml;
-}
 
-/**
- * Merges head content from new HTML into current HTML
- */
-function mergeHeadContent($current: cheerio.CheerioAPI, $new: cheerio.CheerioAPI): void {
-  const $currentHead = $current('head');
-  const $newHead = $new('head');
-  
-  if (!$currentHead.length || !$newHead.length) return;
-  
-  // Merge meta tags, scripts, styles, etc.
-  // This ensures important resources are included
-  
-  // Update title if present
-  const newTitle = $new('title').text();
-  if (newTitle) {
-    if ($current('title').length) {
-      $current('title').text(newTitle);
-    } else {
-      $currentHead.append(`<title>${newTitle}</title>`);
-    }
-  }
-  
-  // Add new scripts that don't exist in current
-  $new('head script').each((_, script) => {
-    const src = $new(script).attr('src');
-    if (src && !$current(`head script[src="${src}"]`).length) {
-      $currentHead.append($new.html(script));
-    }
-  });
-  
-  // Add new stylesheets that don't exist in current
-  $new('head link[rel="stylesheet"]').each((_, link) => {
-    const href = $new(link).attr('href');
-    if (href && !$current(`head link[href="${href}"]`).length) {
-      $currentHead.append($new.html(link));
-    }
-  });
-}
+// --- Main Merge Function ---
 
-/**
- * Merges body attributes from new HTML into current HTML
- */
-function mergeBodyAttributes($current: cheerio.CheerioAPI, $new: cheerio.CheerioAPI): void {
-  const $currentBody = $current('body');
+export async function mergeHtml(currentHtml: string, newHtml: string): Promise<string> {
+  if (!currentHtml) return newHtml || '';
+  if (!newHtml) return currentHtml || '';
+
+  const $ = cheerio.load(currentHtml); // Use '$' for the current/target document
+  const $new = cheerio.load(newHtml);
+
+  const $currentBody = $('body');
   const $newBody = $new('body');
-  
-  if (!$currentBody.length || !$newBody.length) return;
-  
-  // Preserve important attributes like classes and data attributes
+  const $currentHead = $('head');
+  const $newHead = $new('head');
+
+
+  // --- Safety Checks ---
+  if (!$currentBody.length) {
+      console.warn("Current HTML lacks a <body> tag. Returning new HTML.");
+      return newHtml;
+  }
+   if (!$newBody.length) {
+      console.warn("New HTML lacks a <body> tag. Returning current HTML.");
+      return currentHtml;
+  }
+   if (!$currentHead.length || !$newHead.length) {
+       console.warn("HTML documents missing <head> tags. Proceeding with body merge only.");
+   } else {
+       // --- Merge Head Content (Simplified: Add missing elements) ---
+       // Add new link/script/meta tags from newHead if not present in currentHead
+       $newHead.children().each((_, newHeadChildEl) => {
+           const $newChild = $new(newHeadChildEl);
+           let exists = false;
+           // Basic check based on tag and key attributes (href/src)
+           const tagName = newHeadChildEl.tagName;
+           const src = $newChild.attr('src');
+           const href = $newChild.attr('href');
+           const rel = $newChild.attr('rel'); // Useful for links
+
+           if (tagName === 'script' && src) {
+               exists = $currentHead.find(`script[src="${src}"]`).length > 0;
+           } else if (tagName === 'link' && href && rel === 'stylesheet') {
+                exists = $currentHead.find(`link[href="${href}"][rel="stylesheet"]`).length > 0;
+           } else if (tagName === 'title') {
+               // Replace title
+               $('title').text($newChild.text());
+               exists = true; // Mark as handled
+           }
+           // Add other tag checks (meta, etc.) if needed
+
+           if (!exists) {
+               // Clone and append
+               $currentHead.append($newChild.toString());
+           }
+       });
+   }
+
+
+  // --- Merge Body Attributes ---
   const newBodyAttrs = $newBody.attr();
   if (newBodyAttrs) {
-    // Merge classes rather than replacing
-    if (newBodyAttrs.class) {
-      const currentClasses = ($currentBody.attr('class') || '').split(/\s+/).filter(Boolean);
-      const newClasses = newBodyAttrs.class.split(/\s+/).filter(Boolean);
-      
-      // Add new classes that don't already exist
-      newClasses.forEach(cls => {
-        if (!currentClasses.includes(cls)) {
-          currentClasses.push(cls);
-        }
-      });
-      
-      newBodyAttrs.class = currentClasses.join(' ');
+    const currentClasses = ($currentBody.attr('class') || '').split(/\s+/).filter(Boolean);
+    const newClasses = (newBodyAttrs.class || '').split(/\s+/).filter(Boolean);
+    const mergedClasses = new Set([...currentClasses, ...newClasses]);
+
+    $currentBody.attr(newBodyAttrs); // Apply new attributes first
+    if (mergedClasses.size > 0) {
+        $currentBody.attr('class', Array.from(mergedClasses).join(' ')); // Apply merged class
+    } else {
+         $currentBody.removeAttr('class');
     }
-    
-    // Apply merged attributes to current body
-    $currentBody.attr(newBodyAttrs);
   }
+
+  // --- Merge Body Content Recursively ---
+  // Start the recursive merge from the body elements
+  recursiveMergeNodes($currentBody, $newBody, $, $new);
+
+  // Return the final merged HTML
+  // Use $.html() to get the whole document structure including doctype, html, head, body
+  return $.html() || '';
 }
+
+// Example Usage (Conceptual - requires environment with cheerio)
+/*
+const html1 = `
+<html><head><title>Initial</title></head>
+<body>
+  <div id="a" class="content">Visible Part 1</div>
+  <div id="b" class="content extra">Visible Part 2</div>
+  <div id="c" class="footer">Footer</div>
+</body></html>`;
+
+const html2 = `
+<html><head><title>Scrolled</title><link rel="stylesheet" href="new.css"></head>
+<body>
+  <div id="b" class="content extra updated">Visible Part 2 Updated</div>
+  <div id="d" class="content loaded">Newly Loaded Content</div>
+  <div id="c" class="footer">Footer</div>
+</body></html>`;
+
+mergeHtml(html1, html2).then(merged => {
+  console.log(merged);
+  Expected rough output:
+  <html><head><title>Scrolled</title><link rel="stylesheet" href="new.css"></head>
+  <body>
+    <div id="a" class="content">Visible Part 1</div> // Kept from html1
+    <div id="b" class="content extra updated">Visible Part 2 Updated</div> // Updated from html2
+    <div id="d" class="content loaded">Newly Loaded Content</div> // Inserted from html2 in correct position
+    <div id="c" class="footer">Footer</div> // Kept (or updated if changed in html2)
+  </body></html>
+});
+*/

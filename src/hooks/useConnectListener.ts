@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Message, MESSAGE_START_DOWNLOAD, MESSAGE_UPDATE_STORE, MessageSender, MessageTarget } from "../types/message";
+import { Message, MESSAGE_DONE_SCROLLING_DOWN, MESSAGE_START_DOWNLOAD, MESSAGE_UPDATE_STORE, MessageSender, MessageTarget } from "../types/message";
 import { useDownloadSettingsStore } from '../store/downloadSettingsStore';
 import { useDownloadStatusStore } from '../store/downloadStatusStore';
 import { useConnectPortStore } from "../store/useConnectPortStore";
@@ -31,12 +31,13 @@ export function useConnectListener(sender: MessageSender) {
         case MESSAGE_START_DOWNLOAD:
           setIsDownloading(true);
           break;
+        case MESSAGE_DONE_SCROLLING_DOWN:
+          setIsDownloading(false);
+          break;
       }
     
       return ;
     }
-
-    console.log('ucl', sender, port?.name);
 
     if (port) {
       port.onMessage.addListener(callback);
