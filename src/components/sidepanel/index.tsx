@@ -6,7 +6,7 @@ import useSendPortMessage from "../../hooks/useSendPortMessage";
 import PrimaryButton from "../ui/PrimaryButton";
 
 export default function SidePanel() {
-  useConnectListener(MESSAGE_SIDEPANEL); // Add this line to use the hook
+  useConnectListener(MESSAGE_SIDEPANEL);
   const { isDownloading, setIsDownloading } = useDownloadStatusStore();
   const { sendPortMessage } = useSendPortMessage(MESSAGE_SIDEPANEL);
 

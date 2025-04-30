@@ -11,7 +11,7 @@ interface DownloadSettingsState {
   selectedAssetTypes: string[];
   selectedExtensions: string[];
   downloadMode: DownloadMode;
-  activeTabId: number | null;
+  activeTabId: number | null | undefined;
   isSidePanelOpen: boolean;
   setFilterMode: (mode: FilterMode) => void;
   setSelectedAssetTypes: (types: string[]) => void;
@@ -41,7 +41,7 @@ export const useDownloadSettingsStore = create<DownloadSettingsState>()(
         "html",
       ],
       downloadMode: "single",
-      activeTabId: null,
+      activeTabId: undefined,
       isSidePanelOpen: false,
       setFilterMode: (mode) => set({ filterMode: mode }),
       setSelectedAssetTypes: (types) => set({ selectedAssetTypes: types }),

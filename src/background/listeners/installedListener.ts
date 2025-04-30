@@ -1,8 +1,15 @@
-import { initializeConnection } from "../connection";
+// import { initializeConnection } from "../connection";
 
 export const installedListener = (details: chrome.runtime.InstalledDetails) => {
-  // Initialize connection on install or update
-  initializeConnection();
+  // function waitAndInitializeAgain() {
+  //   initializeConnection(() => {
+  //     setTimeout(waitAndInitializeAgain, 1000);
+  //   });
+  // }
+  // // Initialize connection on install or update
+  // initializeConnection(() => {
+  //   setTimeout(waitAndInitializeAgain, 1000);
+  // });
 
   switch (details.reason) {
     case "install":

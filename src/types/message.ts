@@ -34,3 +34,9 @@ export type MessageListener = (
   sender: chrome.runtime.MessageSender,
   sendResponse: (response?: ResponseMessage) => void,
 ) => void;
+
+export interface SocketResponse {
+  success: boolean;
+  message?: string;
+  data?: any;
+}

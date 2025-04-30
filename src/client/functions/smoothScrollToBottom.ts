@@ -21,7 +21,7 @@ export function smoothScrollToBottom(): Promise<Response> {
             scrollTop: window.scrollY,
             scrollHeight: document.documentElement.scrollHeight,
           });
-        }, 300); // Wait for 150ms of scroll inactivity
+        }, 100); // Wait for 150ms of scroll inactivity
       };
   
       // Check if we are already at the bottom
@@ -57,7 +57,7 @@ export function smoothScrollToBottom(): Promise<Response> {
             scrollTop: window.scrollY,
             scrollHeight: document.documentElement.scrollHeight,
           });
-        }, 200); // A slightly longer timeout for the initial check
+        }, 250); // A slightly longer timeout for the initial check
   
     });
   }

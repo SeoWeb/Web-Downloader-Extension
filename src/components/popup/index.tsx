@@ -42,9 +42,9 @@ export default function Popup() {
 
   useEffect(() => {
     getActiveTab().then((tab) => {
-      if (tab?.id) {
-        setActiveTabId(tab.id);
-      }
+      const url = tab?.url || null;
+      const tabId = tab?.id && url && url.startsWith('https://') ? tab.id : null;
+      setActiveTabId(tabId);
     });
   }, []);
 
@@ -77,8 +77,12 @@ export default function Popup() {
     </div>
   );
 
-  if (!activeTabId) {
+  if (activeTabId === undefined) {
     return renderLayout(<p>Loading ...</p>);
+  }
+
+  if (activeTabId === null) {
+    return renderLayout(<p>This page is not downloadable</p>)
   }
 
   if (!hasPermissions) {

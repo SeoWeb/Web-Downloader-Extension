@@ -1,20 +1,29 @@
 import { useEffect } from "react";
-import { Message, MESSAGE_DONE_SCROLLING_DOWN, MESSAGE_START_DOWNLOAD, MESSAGE_UPDATE_STORE, MessageSender, MessageTarget } from "../types/message";
-import { useDownloadSettingsStore } from '../store/downloadSettingsStore';
-import { useDownloadStatusStore } from '../store/downloadStatusStore';
+import {
+  Message,
+  MESSAGE_DONE_SCROLLING_DOWN,
+  MESSAGE_START_DOWNLOAD,
+  MESSAGE_UPDATE_STORE,
+  MessageSender,
+  MessageTarget,
+} from "../types/message";
+import { useDownloadSettingsStore } from "../store/downloadSettingsStore";
+import { useDownloadStatusStore } from "../store/downloadStatusStore";
 import { useConnectPortStore } from "../store/useConnectPortStore";
 
-const updateStore = async (target: MessageTarget, port: chrome.runtime.Port): Promise<void> => {
+const updateStore = async (
+  target: MessageTarget,
+  port: chrome.runtime.Port,
+): Promise<void> => {
   useDownloadSettingsStore.persist.rehydrate();
   useDownloadStatusStore.persist.rehydrate();
 
   port.postMessage({
-    action: 'storeUpdated',
-    target
+    action: "storeUpdated",
+    target,
   });
-  console.log('port message sent from:', target);
-  return ;
-}
+  return;
+};
 
 export function useConnectListener(sender: MessageSender) {
   const { port, setPort } = useConnectPortStore();
@@ -25,19 +34,24 @@ export function useConnectListener(sender: MessageSender) {
   }, [sender]);
 
   useEffect(() => {
-    const callback = async (message: Message, port: chrome.runtime.Port): Promise<void> => {
+    const callback = async (
+      message: Message,
+      port: chrome.runtime.Port,
+    ): Promise<void> => {
       switch (message.action) {
-        case MESSAGE_UPDATE_STORE: return await updateStore(message.target, port);
+        case MESSAGE_UPDATE_STORE:
+          return await updateStore(message.target, port);
         case MESSAGE_START_DOWNLOAD:
           setIsDownloading(true);
           break;
         case MESSAGE_DONE_SCROLLING_DOWN:
+          // TODO: start downloading assets or rename action
           setIsDownloading(false);
           break;
       }
-    
-      return ;
-    }
+
+      return;
+    };
 
     if (port) {
       port.onMessage.addListener(callback);
@@ -48,10 +62,10 @@ export function useConnectListener(sender: MessageSender) {
         port.onMessage.removeListener(callback);
         port.disconnect();
       }
-    }
+    };
   }, [port]);
 
   return {
-    port
-  }
+    port,
+  };
 }

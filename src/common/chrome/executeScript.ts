@@ -13,7 +13,7 @@
  * @throws If the active tab cannot be found or accessed, or if the script execution fails.
  */
 export async function executeScript<Args extends unknown[], Result>(options: {
-  tab: chrome.tabs.Tab,
+  tab: Partial<chrome.tabs.Tab>,
   func: (...args: Args) => Result; // Function can return Result or Promise<Result>
   args?: Args;
 }): Promise<chrome.scripting.InjectionResult<globalThis.Awaited<Result>>[]> {

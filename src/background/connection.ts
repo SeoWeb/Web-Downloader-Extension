@@ -1,8 +1,6 @@
-import { io, Socket } from 'socket.io-client';
-import { API_URL } from '../config/constants';
+import { io, Socket } from "socket.io-client";
+import { API_URL, SOCKET_URL } from "../config/constants";
 import { chromeStorage } from "../common/chrome/storage";
-
-let socket: Socket | null = null;
 
 interface ConnectResponse {
   success: boolean;
@@ -10,76 +8,87 @@ interface ConnectResponse {
   connection_id?: number; // Make optional in case of failure
 }
 
-export const initializeConnection = async (): Promise<void> => {
+async function getConnectionId() {
+  let connectionId = await chromeStorage.getItemValue(
+    "user-data-storage",
+    "connection_id",
+  );
+  if (!connectionId) {
+    const response = await fetch(`${API_URL}/api/connect`);
+    if (!response.ok) {
+      return null;
+    }
+
+    const data: ConnectResponse = await response.json();
+    if (data.success && data.connection_id) {
+      connectionId = data.connection_id;
+    }
+  }
+  return connectionId;
+}
+
+async function onConnect(
+  socket: Socket,
+  connectionId: string,
+): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    socket.on("connect", () => {
+      socket?.emit(
+        "identify",
+        { connectionId },
+        (response: { success: boolean; message: string }) => {
+          if (response?.success) {
+            console.log("identified");
+            chromeStorage.setPartialItem("user-data-storage", {
+              connection_id: connectionId,
+            });
+            resolve(true);
+          } else {
+            console.warn("Socket identification failed:", response.message);
+            resolve(false);
+          }
+        },
+      );
+    });
+  });
+}
+
+const initializeConnection = async (): Promise<Socket | null> => {
+  chromeStorage.setPartialItem("user-data-storage", {
+    connection_id: null,
+  });
   try {
-    if (socket?.connected) {
-      return;
-    }
-
-    let connectionId = await chromeStorage.getItemValue("user-data-storage", "connection_id");
-
-    if (!connectionId) {
-      const response = await fetch(`${API_URL}/api/connect`);
-      if (!response.ok) {
-        throw new Error(`API request failed with status: ${response.status}`);
-      }
-
-      const data: ConnectResponse = await response.json();
-      console.log('API Connect Response:', data);
-
-      if (data.success && data.connection_id) {
-        connectionId = data.connection_id;
-      }
-    }
-
+    const connectionId = await getConnectionId();
     if (connectionId) {
-      console.log(`Successfully connected, connection ID: ${connectionId}`);
+      const socket = io(SOCKET_URL, {
+        transports: ["websocket"], // Force websocket transport
+      });
 
-      if (socket?.connected) {
-        console.log('Disconnecting previous socket connection...');
-        socket.disconnect();
+      if (await onConnect(socket, connectionId)) {
+        return socket;
       }
-
-      console.log('Establishing socket connection...');
-      socket = io(API_URL, {
-        transports: ['websocket'], // Force websocket transport
-      });
-
-      socket.on('connect', () => {
-        console.log('Socket connected successfully. Identifying...');
-        socket?.emit('identify', { connectionId });
-      });
-
-      socket.on('identify_status', (status: { success: boolean; message: string }) => {
-        chromeStorage.setPartialItem("user-data-storage", {
-          connection_id: connectionId
-        });
-        console.log('Socket Identify Status:', status);
-        if (!status.success) {
-          console.error('Socket identification failed:', status.message);
-        } else {
-            console.log('Socket identified successfully.');
-        }
-      });
-
-      socket.on('disconnect', (reason: string) => {
-        console.log('Socket disconnected:', reason);
-        socket = null; // Clear socket reference
-      });
-
-      socket.on('connect_error', (error: Error) => {
-        console.error('Socket connection error:', error);
-        socket = null; // Clear socket reference
-      });
-
     } else {
-      console.error('API connection failed: connection id not found');
+      console.warn("API connection failed: connection id not found");
     }
   } catch (error) {
-    console.error('Error initializing connection:', error);
+    console.warn("Error initializing connection:", error);
   }
+
+  return null;
 };
 
-export const getSocket = (): Socket | null => {
-    return socket;
+let socket: Socket | null = null;
+
+export const getSocket = async (): Promise<Socket | null> => {
+  if (!socket) {
+    socket = await initializeConnection();
+  }
+  return socket;
+};
+
+export const closeSocketConnection = async () => {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
 }

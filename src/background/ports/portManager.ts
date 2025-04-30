@@ -1,3 +1,4 @@
+import { chromeStorage } from "../../common/chrome/storage";
 import { Message } from "../../types/message";
 
 let popupPort: chrome.runtime.Port | null = null;
@@ -8,6 +9,16 @@ let sidePanelMessageQueue: Message[] = [];
 export const getPopupPort = () => popupPort;
 export const setPopupPort = (port: chrome.runtime.Port | null) => {
   popupPort = port;
+
+  if (port !== null && sidePanelPort === null) {
+    // TODO: Ei toimi
+    chromeStorage.setPartialItem('download-settings-storage', {
+      isSidePanelOpen: false
+    });
+    chromeStorage.setPartialItem('download-status-storage', {
+      isDownloading: false
+    });
+  }
 };
 
 export const getSidePanelPort = () => sidePanelPort;
