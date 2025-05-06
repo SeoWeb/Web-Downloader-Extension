@@ -1,0 +1,370 @@
+{
+    "title": {
+        "message": "מוריד דפי אינטרנט ואתרים",
+        "description": "The title of the extension"
+    },
+    "description": {
+        "message": "מוריד דפי אינטרנט ואתרים מאפשר לך להוריד אתרים שלמים - כולל כל הדפים המקושרים והמשאבים - לצפייה במצב לא מקוון.",
+        "description": "The description of the extension"
+    },
+    "help": {
+        "message": "עזרה",
+        "description": "The help button text"
+    },
+    "download_mode": {
+        "message": "מצב הורדה",
+        "description": "The label for the download mode selection"
+    },
+    "single_download_description": {
+        "message": "הורד רק את הדף הנוכחי עם כל הנכסים שלו.",
+        "description": "Description for the single download mode"
+    },
+    "site_download_description": {
+        "message": "הורד את האתר כולו, כולל כל הדפים המקושרים והמשאבים.",
+        "description": "Description for the site download mode"
+    },
+    "single_page": {
+        "message": "דף בודד",
+        "description": "Label for the single page download mode"
+    },
+    "whole_website": {
+        "message": "אתר שלם",
+        "description": "Label for the whole website download mode"
+    },
+    "single_file": {
+        "message": "קובץ בודד",
+        "description": "Label for the single file download mode"
+    },
+    "loading": {
+        "message": "טוען...",
+        "description": "Loading message"
+    },
+    "downloading": {
+        "message": "מוריד...",
+        "description": "Downloading message"
+    },
+    "not_downloadable": {
+        "message": "דף זה אינו ניתן להורדה",
+        "description": "Message indicating that the page is not downloadable"
+    },
+    "close_sidepanel_message": {
+        "message": "סגור תחילה את חלונית הצד.",
+        "description": "Message to close the side panel"
+    },
+    "permissions_title": {
+        "message": "הרשאות נדרשות",
+        "description": "Title for permissions section"
+    },
+    "permissions_message": {
+        "message": "נדרשות ההרשאות הבאות",
+        "description": "Title for permissions section"
+    },
+    "requesting_permissions": {
+        "message": "מבקש הרשאות...",
+        "description": "Message indicating that permissions are being requested"
+    },
+    "grant_permissions": {
+        "message": "הענק הרשאות",
+        "description": "Button text to grant permissions"
+    },
+    "permissions_granted": {
+        "message": "ההרשאות הוענקו!",
+        "description": "Message indicating that permissions have been granted"
+    },
+    "permissions_intro": {
+        "message": "תוסף זה דורש את ההרשאות הבאות כדי לתפקד כראוי",
+        "description": "Introduction message for permissions"
+    },
+    "permission_activeTab": {
+        "message": "כרטיסייה פעילה",
+        "description": "Permission to access the active tab"
+    },
+    "permission_activeTab_description": {
+        "message": "מאפשר לתוסף לגשת לכרטיסייה הפעילה.",
+        "description": "Description for active tab permission"
+    },
+    "permission_scripting": {
+        "message": "סקריפטים",
+        "description": "Permission to use scripting"
+    },
+    "permission_scripting_description": {
+        "message": "הזרק סקריפטים לכרטיסייה הנוכחית כדי לנתח תוכן.",
+        "description": "Description for scripting permission"
+    },
+    "permission_storage": {
+        "message": "אחסון",
+        "description": "Permission to use storage"
+    },
+    "permission_storage_description": {
+        "message": "אחסן העדפות והגדרות משתמש.",
+        "description": "Description for storage permission"
+    },
+    "permission_downloads": {
+        "message": "הורדות",
+        "description": "Permission to use downloads"
+    },
+    "permission_downloads_description": {
+        "message": "הורד קבצים למחשב המשתמש.",
+        "description": "Description for downloads permission"
+    },
+    "permission_request_error": {
+        "message": "אירעה שגיאה בעת בקשת הרשאות.",
+        "description": "Error message for permission request"
+    },
+    "permission_not_granted_error": {
+        "message": "ההרשאות לא הוענקו. אנא הענק הרשאות כדי להמשיך.",
+        "description": "Error message for permission not granted"
+    },
+    "permission_check_error": {
+        "message": "נכשל בבדיקת ההרשאות. אנא נסה שוב.",
+        "description": "Error message for permission check"
+    },
+    "button_options": {
+        "message": "אפשרויות",
+        "description": "Button text for options"
+    },
+    "button_download_page": {
+        "message": "הורד דף",
+        "description": "Button text for download"
+    },
+    "button_download_website": {
+        "message": "הורד אתר",
+        "description": "Button text for download"
+    },
+    "filtering_title": {
+        "message": "סינון תוכן",
+        "description": "Title for filtering section"
+    },
+    "filtering_label": {
+        "message": "סנן נכסים כלולים לפי",
+        "description": "Label for filtering options"
+    },
+    "filtering_by_type": {
+        "message": "סוג",
+        "description": "Label for filtering by type"
+    },
+    "filtering_by_extension": {
+        "message": "סיומת קובץ",
+        "description": "Label for filtering by extension"
+    },
+    "filter_by_image": {
+        "message": "תמונה",
+        "description": "Label for filtering by image"
+    },
+    "filter_by_script": {
+        "message": "סקריפט",
+        "description": "Label for filtering by script"
+    },
+    "filter_by_stylesheet": {
+        "message": "גיליון סגנונות",
+        "description": "Label for filtering by stylesheet"
+    },
+    "filter_by_font": {
+        "message": "גופן",
+        "description": "Label for filtering by font"
+    },
+    "filter_by_html": {
+        "message": "סימון",
+        "description": "Label for filtering by Markup"
+    },
+    "filter_by_document": {
+        "message": "מסמך",
+        "description": "Label for filtering by Document"
+    },
+    "filter_by_spreadsheet": {
+        "message": "גיליון אלקטרוני",
+        "description": "Label for filtering by Spreadsheet"
+    },
+    "filter_by_video": {
+        "message": "וידאו",
+        "description": "Label for filtering by Video"
+    },
+    "filter_by_audio": {
+        "message": "שמע",
+        "description": "Label for filtering by Audio"
+    },
+    "filter_by_archive": {
+        "message": "ארכיון",
+        "description": "Label for filtering by Archive"
+    },
+    "filter_by_json": {
+        "message": "JSON",
+        "description": "Label for filtering by JSON"
+    },
+    "filter_by_executable": {
+        "message": "קובץ הפעלה",
+        "description": "Label for filtering by Executable"
+    },
+    "filter_by_other": {
+        "message": "אחר",
+        "description": "Label for filtering by Other"
+    },
+    "filter_by_jpg": {
+        "message": "jpg",
+        "description": "File extension for jpg"
+    },
+    "filter_by_png": {
+        "message": "png",
+        "description": "File extension for png"
+    },
+    "filter_by_gif": {
+        "message": "gif",
+        "description": "File extension for gif"
+    },
+    "filter_by_svg": {
+        "message": "svg",
+        "description": "File extension for svg"
+    },
+    "filter_by_webp": {
+        "message": "webp",
+        "description": "File extension for webp"
+    },
+    "filter_by_ico": {
+        "message": "ico",
+        "description": "File extension for ico"
+    },
+    "filter_by_js": {
+        "message": "js",
+        "description": "File extension for js"
+    },
+    "filter_by_ts": {
+        "message": "ts",
+        "description": "File extension for ts"
+    },
+    "filter_by_css": {
+        "message": "css",
+        "description": "File extension for css"
+    },
+    "filter_by_scss": {
+        "message": "scss",
+        "description": "File extension for scss"
+    },
+    "filter_by_less": {
+        "message": "less",
+        "description": "File extension for less"
+    },
+    "filter_by_woff": {
+        "message": "woff",
+        "description": "File extension for woff"
+    },
+    "filter_by_woff2": {
+        "message": "woff2",
+        "description": "File extension for woff2"
+    },
+    "filter_by_ttf": {
+        "message": "ttf",
+        "description": "File extension for ttf"
+    },
+    "filter_by_otf": {
+        "message": "otf",
+        "description": "File extension for otf"
+    },
+    "filter_by_eot": {
+        "message": "eot",
+        "description": "File extension for eot"
+    },
+    "filter_by_htm": {
+        "message": "htm",
+        "description": "File extension for htm"
+    },
+    "filter_by_xml": {
+        "message": "xml",
+        "description": "File extension for xml"
+    },
+    "filter_by_pdf": {
+        "message": "pdf",
+        "description": "File extension for pdf"
+    },
+    "filter_by_doc": {
+        "message": "doc",
+        "description": "File extension for doc"
+    },
+    "filter_by_docx": {
+        "message": "docx",
+        "description": "File extension for docx"
+    },
+    "filter_by_txt": {
+        "message": "txt",
+        "description": "File extension for txt"
+    },
+    "filter_by_rtf": {
+        "message": "rtf",
+        "description": "File extension for rtf"
+    },
+    "filter_by_odt": {
+        "message": "odt",
+        "description": "File extension for odt"
+    },
+    "filter_by_mp3": {
+        "message": "mp3",
+        "description": "File extension for mp3"
+    },
+    "filter_by_wav": {
+        "message": "wav",
+        "description": "File extension for wav"
+    },
+    "filter_by_ogg": {
+        "message": "ogg",
+        "description": "File extension for ogg"
+    },
+    "filter_by_aac": {
+        "message": "aac",
+        "description": "File extension for aac"
+    },
+    "filter_by_mp4": {
+        "message": "mp4",
+        "description": "File extension for mp4"
+    },
+    "filter_by_webm": {
+        "message": "webm",
+        "description": "File extension for webm"
+    },
+    "filter_by_avi": {
+        "message": "avi",
+        "description": "File extension for avi"
+    },
+    "filter_by_mov": {
+        "message": "mov",
+        "description": "File extension for mov"
+    },
+    "filter_by_wmv": {
+        "message": "wmv",
+        "description": "File extension for wmv"
+    },
+    "filter_by_mkv": {
+        "message": "mkv",
+        "description": "File extension for mkv"
+    },
+    "filter_by_zip": {
+        "message": "zip",
+        "description": "File extension for zip"
+    },
+    "filter_by_rar": {
+        "message": "rar",
+        "description": "File extension for rar"
+    },
+    "filter_by_tar": {
+        "message": "tar",
+        "description": "File extension for tar"
+    },
+    "filter_by_gz": {
+        "message": "gz",
+        "description": "File extension for gz"
+    },
+    "filter_by_7z": {
+        "message": "7z",
+        "description": "File extension for 7z"
+    },
+    "filter_by_exe": {
+        "message": "exe",
+        "description": "File extension for exe"
+    },
+    "filter_by_sh": {
+        "message": "sh",
+        "description": "File extension for sh"
+    },
+    "filter_by_bat": {
+        "message": "bat",
+        "description": "File extension for bat"
+    }
+}

@@ -3,6 +3,7 @@ import React from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "./button"; // Assuming button import path
 import { ArrowLeft, ArrowRight } from "lucide-react"; // Import icons
+import { useLanguageStore } from "../../store/languageStore";
 
 interface StaticCardProps {
   title: React.ReactNode;
@@ -31,6 +32,8 @@ export default function StaticCard({
   isFirst = false, // Default values
   isLast = false,  // Default values
 }: StaticCardProps) {
+  const { direction } = useLanguageStore();
+
   return (
     <div
       className={cn(
@@ -40,11 +43,12 @@ export default function StaticCard({
     >
       <div
         className={cn(
-          "bg-gradient-to-r from-blue-600 to-indigo-700 p-2 border-b border-slate-200 flex justify-between items-center",
+          "bg-gradient-to-r from-blue-600 to-indigo-700 p-2 border-b border-slate-200 flex",
+          direction === "rtl" ? "flex-row-reverse" : "",
           headerClassName
         )}
       >
-        <h2 className="text-base font-medium text-white flex items-center">
+        <h2 className={`text-base font-medium text-white flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
           {icon}
           {title}
         </h2>

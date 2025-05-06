@@ -11,7 +11,6 @@ export const setPopupPort = (port: chrome.runtime.Port | null) => {
   popupPort = port;
 
   if (port !== null && sidePanelPort === null) {
-    // TODO: Ei toimi
     chromeStorage.setPartialItem('download-settings-storage', {
       isSidePanelOpen: false
     });

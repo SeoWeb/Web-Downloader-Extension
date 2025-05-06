@@ -2,6 +2,7 @@ import * as React from 'react';
 import * as SelectPrimitives from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useLanguageStore } from '../../store/languageStore';
 
 const Select = SelectPrimitives.Root;
 const SelectTrigger = React.forwardRef<
@@ -26,21 +27,25 @@ const SelectValue = SelectPrimitives.Value;
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitives.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitives.Item>
->(({ className, children, ...props }, ref) => (
-  <SelectPrimitives.Item
-    ref={ref}
-    className={cn(
-      'relative cursor-default select-none py-2 pl-8 pr-4 text-sm outline-none data-[disabled]:opacity-70 data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground',
-      className
-    )}
-    {...props}
-  >
-    <span className="absolute left-2 top-2.5">
+>(({ className, children, ...props }, ref) => {
+  const { direction } = useLanguageStore();
+  const isRtl = direction === 'rtl';
+  const justifyContent = isRtl ? 'flex-row-reverse' : '';
+  return (
+    <SelectPrimitives.Item
+      ref={ref}
+      className={cn(
+        'relative cursor-default select-none py-2 px-2 text-sm outline-none data-[disabled]:opacity-70 data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground flex items-center justify-start justify-items-start gap-1',
+        justifyContent,
+        className
+      )}
+      {...props}
+    >
       <Check className="h-4 w-4" />
-    </span>
-    {children}
-  </SelectPrimitives.Item>
-));
+      {children}
+    </SelectPrimitives.Item>
+  )
+});
 SelectItem.displayName = SelectPrimitives.Item.displayName;
 
 const SelectContent = React.forwardRef<

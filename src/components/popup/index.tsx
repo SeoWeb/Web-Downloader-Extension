@@ -5,13 +5,13 @@ import Header from "./sections/Header";
 import PermissionsCard from "./sections/PermissionsCard";
 // import DownloadConfigCard from "./sections/DownloadConfigCard";
 import ContentFilteringCard from "./sections/ContentFilteringCard";
-// import PreviewCard from "./sections/PreviewCard";
 import ActionFooter from "./sections/ActionFooter";
 import { getActiveTab } from "../../common/chrome";
 import { useDownloadSettingsStore } from "../../store/downloadSettingsStore";
 import { useDownloadStatusStore } from "../../store/downloadStatusStore";
 import { useConnectListener } from "../../hooks/useConnectListener";
 import { MESSAGE_POPUP } from "../../types/message";
+import { useLanguageStore } from "../../store/languageStore";
 
 const cardComponents = [
   ContentFilteringCard,
@@ -20,7 +20,8 @@ const cardComponents = [
 ];
 
 export default function Popup() {
-  useConnectListener(MESSAGE_POPUP); // Add this line to use the hook
+  useConnectListener(MESSAGE_POPUP);
+  const { direction, getTranslation } = useLanguageStore();
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [hasPermissions, setHasPermissions] = useState<boolean>(false);
   const { activeTabId, isSidePanelOpen, setActiveTabId } = useDownloadSettingsStore();
@@ -66,10 +67,10 @@ export default function Popup() {
   );
 
   const renderLayout = (children: React.ReactNode) => (
-    <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 overflow-y-auto flex">
+    <div className={`w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 overflow-y-auto flex ${direction === "rtl" ? "flex-row-reverse justify-start" : ""}`}>
       <LeftMenu />
 
-      <div className="flex-grow ml-56 flex flex-col h-full">
+      <div className={`flex-grow flex flex-col h-full ${direction === "rtl" ? "mr-56" : "ml-56"}`}>
         <Header />
         <div className="p-2 flex-grow flex flex-col">{children}</div>
         <ActionFooter isDownloadDisabled={!isLastCard} />
@@ -78,11 +79,11 @@ export default function Popup() {
   );
 
   if (activeTabId === undefined) {
-    return renderLayout(<p>Loading ...</p>);
+    return renderLayout(<p>{getTranslation('loading')}</p>);
   }
 
   if (activeTabId === null) {
-    return renderLayout(<p>This page is not downloadable</p>)
+    return renderLayout(<p>{getTranslation('not_downloadable')}</p>)
   }
 
   if (!hasPermissions) {
@@ -90,11 +91,11 @@ export default function Popup() {
   }
 
   if (isDownloading) {
-    return renderLayout(<p>Downloading ...</p>);
+    return renderLayout(<p>{getTranslation('downloading')}</p>);
   }
 
   if (isSidePanelOpen) {
-    return renderLayout(<p>Close sidepanel first.</p>);
+    return renderLayout(<p>{getTranslation('close_sidepanel_message')}</p>);
   }
 
   return renderLayout(renderActiveCarcComponent());

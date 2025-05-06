@@ -1,0 +1,370 @@
+{
+    "title": {
+        "message": "ویب صفحہ اور سائٹ ڈاؤنلوڈر",
+        "description": "The title of the extension"
+    },
+    "description": {
+        "message": "ویب پیج اور سائٹ ڈاؤنلوڈر آپ کو آف لائن دیکھنے کے لیے پوری ویب سائٹس بشمول تمام لنک شدہ صفحات اور وسائل ڈاؤن لوڈ کرنے دیتا ہے۔",
+        "description": "The description of the extension"
+    },
+    "help": {
+        "message": "مدد",
+        "description": "The help button"
+    },
+    "download_mode": {
+        "message": "ڈاؤن لوڈ موڈ",
+        "description": "The label for the download mode selection"
+    },
+    "single_download_description": {
+        "message": "اس کے تمام اثاثوں کے ساتھ صرف موجودہ صفحہ ڈاؤن لوڈ کریں۔",
+        "description": "Description for the single download mode"
+    },
+    "site_download_description": {
+        "message": "تمام لنک شدہ صفحات اور وسائل سمیت پوری سائٹ ڈاؤن لوڈ کریں۔",
+        "description": "Description for the site download mode"
+    },
+    "single_page": {
+        "message": "ایک صفحہ",
+        "description": "Label for the single page download mode"
+    },
+    "whole_website": {
+        "message": "پوری ویب سائٹ",
+        "description": "Label for the whole website download mode"
+    },
+    "single_file": {
+        "message": "ایک فائل",
+        "description": "Label for the single file download mode"
+    },
+    "loading": {
+        "message": "لوڈ ہو رہا ہے۔۔۔",
+        "description": "Loading message"
+    },
+    "downloading": {
+        "message": "ڈاؤن لوڈ ہو رہا ہے۔۔۔",
+        "description": "Downloading message"
+    },
+    "not_downloadable": {
+        "message": "یہ صفحہ ڈاؤن لوڈ کے قابل نہیں ہے۔",
+        "description": "Message indicating that the page is not downloadable"
+    },
+    "close_sidepanel_message": {
+        "message": "پہلے سائڈ پینل بند کریں۔",
+        "description": "Message to close the side panel"
+    },
+    "permissions_title": {
+        "message": "مطلوبہ اجازتیں",
+        "description": "Title for permissions section"
+    },
+    "permissions_message": {
+        "message": "درج ذیل اجازتوں کی ضرورت ہے",
+        "description": "Title for permissions section"
+    },
+    "requesting_permissions": {
+        "message": "اجازتیں طلب کی جا رہی ہیں۔۔۔",
+        "description": "Message indicating that permissions are being requested"
+    },
+    "grant_permissions": {
+        "message": "اجازتیں دیں",
+        "description": "Button text to grant permissions"
+    },
+    "permissions_granted": {
+        "message": "اجازتیں مل گئیں!",
+        "description": "Message indicating that permissions have been granted"
+    },
+    "permissions_intro": {
+        "message": "اس ایکسٹینشن کو صحیح طریقے سے کام کرنے کے لیے درج ذیل اجازتوں کی ضرورت ہے",
+        "description": "Introduction message for permissions"
+    },
+    "permission_activeTab": {
+        "message": "فعال ٹیب",
+        "description": "Permission to access the active tab"
+    },
+    "permission_activeTab_description": {
+        "message": "ایکسٹینشن کو فعال ٹیب تک رسائی کی اجازت دیتا ہے۔",
+        "description": "Description for active tab permission"
+    },
+    "permission_scripting": {
+        "message": "اسکرپٹنگ",
+        "description": "Permission to use scripting"
+    },
+    "permission_scripting_description": {
+        "message": "مواد کا تجزیہ کرنے کے لیے موجودہ ٹیب میں اسکرپٹ انجیکٹ کریں۔",
+        "description": "Description for scripting permission"
+    },
+    "permission_storage": {
+        "message": "اسٹوریج",
+        "description": "Permission to use storage"
+    },
+    "permission_storage_description": {
+        "message": "صارف کی ترجیحات اور ترتیبات کو اسٹور کریں۔",
+        "description": "Description for storage permission"
+    },
+    "permission_downloads": {
+        "message": "ڈاؤن لوڈز",
+        "description": "Permission to use downloads"
+    },
+    "permission_downloads_description": {
+        "message": "صارف کے کمپیوٹر پر فائلیں ڈاؤن لوڈ کریں۔",
+        "description": "Description for downloads permission"
+    },
+    "permission_request_error": {
+        "message": "اجازتیں طلب کرنے کے دوران ایک خرابی پیش آگئی۔",
+        "description": "Error message for permission request"
+    },
+    "permission_not_granted_error": {
+        "message": "اجازتیں نہیں دی گئیں۔ براہ کرم جاری رکھنے کے لیے اجازتیں دیں۔",
+        "description": "Error message for permission not granted"
+    },
+    "permission_check_error": {
+        "message": "اجازتیں چیک کرنے میں ناکام۔ براہ کرم دوبارہ کوشش کریں.",
+        "description": "Error message for permission check"
+    },
+    "button_options": {
+        "message": "اختیارات",
+        "description": "Button text for options"
+    },
+    "button_download_page": {
+        "message": "صفحہ ڈاؤن لوڈ کریں",
+        "description": "Button text for download"
+    },
+    "button_download_website": {
+        "message": "ویب سائٹ ڈاؤن لوڈ کریں",
+        "description": "Button text for download"
+    },
+    "filtering_title": {
+        "message": "مواد کی فلٹرنگ",
+        "description": "Title for filtering section"
+    },
+    "filtering_label": {
+        "message": "شامل اثاثوں کو فلٹر کریں بذریعہ",
+        "description": "Label for filtering options"
+    },
+    "filtering_by_type": {
+        "message": "قسم",
+        "description": "Label for filtering by type"
+    },
+    "filtering_by_extension": {
+        "message": "فائل ایکسٹینشن",
+        "description": "Label for filtering by extension"
+    },
+    "filter_by_image": {
+        "message": "تصویر",
+        "description": "Label for filtering by image"
+    },
+    "filter_by_script": {
+        "message": "اسکرپٹ",
+        "description": "Label for filtering by script"
+    },
+    "filter_by_stylesheet": {
+        "message": "اسٹائل شیٹ",
+        "description": "Label for filtering by stylesheet"
+    },
+    "filter_by_font": {
+        "message": "فونٹ",
+        "description": "Label for filtering by font"
+    },
+    "filter_by_html": {
+        "message": "مارک اپ",
+        "description": "Label for filtering by Markup"
+    },
+    "filter_by_document": {
+        "message": "دستاویز",
+        "description": "Label for filtering by Document"
+    },
+    "filter_by_spreadsheet": {
+        "message": "اسپریڈ شیٹ",
+        "description": "Label for filtering by Spreadsheet"
+    },
+    "filter_by_video": {
+        "message": "ویڈیو",
+        "description": "Label for filtering by Video"
+    },
+    "filter_by_audio": {
+        "message": "آڈیو",
+        "description": "Label for filtering by Audio"
+    },
+    "filter_by_archive": {
+        "message": "آرکائیو",
+        "description": "Label for filtering by Archive"
+    },
+    "filter_by_json": {
+        "message": "JSON",
+        "description": "Label for filtering by JSON"
+    },
+    "filter_by_executable": {
+        "message": "قابل عمل",
+        "description": "Label for filtering by Executable"
+    },
+    "filter_by_other": {
+        "message": "دیگر",
+        "description": "Label for filtering by Other"
+    },
+    "filter_by_jpg": {
+        "message": "jpg",
+        "description": "File extension for jpg"
+    },
+    "filter_by_png": {
+        "message": "png",
+        "description": "File extension for png"
+    },
+    "filter_by_gif": {
+        "message": "gif",
+        "description": "File extension for gif"
+    },
+    "filter_by_svg": {
+        "message": "svg",
+        "description": "File extension for svg"
+    },
+    "filter_by_webp": {
+        "message": "webp",
+        "description": "File extension for webp"
+    },
+    "filter_by_ico": {
+        "message": "ico",
+        "description": "File extension for ico"
+    },
+    "filter_by_js": {
+        "message": "js",
+        "description": "File extension for js"
+    },
+    "filter_by_ts": {
+        "message": "ts",
+        "description": "File extension for ts"
+    },
+    "filter_by_css": {
+        "message": "css",
+        "description": "File extension for css"
+    },
+    "filter_by_scss": {
+        "message": "scss",
+        "description": "File extension for scss"
+    },
+    "filter_by_less": {
+        "message": "less",
+        "description": "File extension for less"
+    },
+    "filter_by_woff": {
+        "message": "woff",
+        "description": "File extension for woff"
+    },
+    "filter_by_woff2": {
+        "message": "woff2",
+        "description": "File extension for woff2"
+    },
+    "filter_by_ttf": {
+        "message": "ttf",
+        "description": "File extension for ttf"
+    },
+    "filter_by_otf": {
+        "message": "otf",
+        "description": "File extension for otf"
+    },
+    "filter_by_eot": {
+        "message": "eot",
+        "description": "File extension for eot"
+    },
+    "filter_by_htm": {
+        "message": "htm",
+        "description": "File extension for htm"
+    },
+    "filter_by_xml": {
+        "message": "xml",
+        "description": "File extension for xml"
+    },
+    "filter_by_pdf": {
+        "message": "pdf",
+        "description": "File extension for pdf"
+    },
+    "filter_by_doc": {
+        "message": "doc",
+        "description": "File extension for doc"
+    },
+    "filter_by_docx": {
+        "message": "docx",
+        "description": "File extension for docx"
+    },
+    "filter_by_txt": {
+        "message": "txt",
+        "description": "File extension for txt"
+    },
+    "filter_by_rtf": {
+        "message": "rtf",
+        "description": "File extension for rtf"
+    },
+    "filter_by_odt": {
+        "message": "odt",
+        "description": "File extension for odt"
+    },
+    "filter_by_mp3": {
+        "message": "mp3",
+        "description": "File extension for mp3"
+    },
+    "filter_by_wav": {
+        "message": "wav",
+        "description": "File extension for wav"
+    },
+    "filter_by_ogg": {
+        "message": "ogg",
+        "description": "File extension for ogg"
+    },
+    "filter_by_aac": {
+        "message": "aac",
+        "description": "File extension for aac"
+    },
+    "filter_by_mp4": {
+        "message": "mp4",
+        "description": "File extension for mp4"
+    },
+    "filter_by_webm": {
+        "message": "webm",
+        "description": "File extension for webm"
+    },
+    "filter_by_avi": {
+        "message": "avi",
+        "description": "File extension for avi"
+    },
+    "filter_by_mov": {
+        "message": "mov",
+        "description": "File extension for mov"
+    },
+    "filter_by_wmv": {
+        "message": "wmv",
+        "description": "File extension for wmv"
+    },
+    "filter_by_mkv": {
+        "message": "mkv",
+        "description": "File extension for mkv"
+    },
+    "filter_by_zip": {
+        "message": "zip",
+        "description": "File extension for zip"
+    },
+    "filter_by_rar": {
+        "message": "rar",
+        "description": "File extension for rar"
+    },
+    "filter_by_tar": {
+        "message": "tar",
+        "description": "File extension for tar"
+    },
+    "filter_by_gz": {
+        "message": "gz",
+        "description": "File extension for gz"
+    },
+    "filter_by_7z": {
+        "message": "7z",
+        "description": "File extension for 7z"
+    },
+    "filter_by_exe": {
+        "message": "exe",
+        "description": "File extension for exe"
+    },
+    "filter_by_sh": {
+        "message": "sh",
+        "description": "File extension for sh"
+    },
+    "filter_by_bat": {
+        "message": "bat",
+        "description": "File extension for bat"
+    }
+}

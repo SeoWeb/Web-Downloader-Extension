@@ -7,6 +7,7 @@ import { openSidePanel } from "../../../background/messageActions/openSidePanel"
 import closePopup from "../../../common/chrome/closePopup";
 import useSendPortMessage from "../../../hooks/useSendPortMessage";
 import { MESSAGE_SIDEPANEL, MESSAGE_START_DOWNLOAD } from "../../../types/message";
+import { useLanguageStore } from "../../../store/languageStore";
 
 interface ActionFooterProps {
   isDownloadDisabled?: boolean;
@@ -16,8 +17,8 @@ export default function ActionFooter({
   isDownloadDisabled = false,
 }: ActionFooterProps) {
   const { activeTabId, downloadMode, isSidePanelOpen, setIsSidePanelOpen } = useDownloadSettingsStore();
-  // const { setIsDownloading } = useDownloadStatusStore();
   const { sendPortMessage } = useSendPortMessage('popup');
+  const { direction, getTranslation } = useLanguageStore();
 
   const tab: chrome.tabs.Tab = {
     id: activeTabId || undefined,
@@ -49,19 +50,19 @@ export default function ActionFooter({
 
   return (
     <div className="sticky bottom-0 bg-white border-t border-slate-200 py-2 px-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className={`flex items-center justify-between ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
+        <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="sm"
             className="text-slate-600 border-slate-300 hover:bg-slate-50"
           >
-            <Settings className="mr-1 h-4 w-4" /> Options
+            <Settings className="h-4 w-4" /> {getTranslation('button_options')}
           </Button>
         </div>
         <PrimaryButton disabled={isDownloadDisabled || !activeTabId || isSidePanelOpen} onClick={handleClick}>
-          <Download className="h-5 w-5 mr-2" />
-          {downloadMode === "single" ? "Download Page" : "Download Website"}
+          <Download className="h-5 w-5" />
+          {downloadMode === "single" ? getTranslation('button_download_page') : getTranslation('button_download_website')}
         </PrimaryButton>
       </div>
     </div>

@@ -10,6 +10,7 @@ import {
   useDownloadSettingsStore,
   FilterMode,
 } from "../../../store/downloadSettingsStore";
+import { useLanguageStore } from "../../../store/languageStore";
 
 export default function ContentFilteringCard({
   onNext,
@@ -18,6 +19,7 @@ export default function ContentFilteringCard({
   isLast,
   containerClassName,
 }: ContentFilteringCardProps) {
+  const { direction, getTranslation } = useLanguageStore();
   const {
     filterMode,
     selectedAssetTypes,
@@ -30,7 +32,7 @@ export default function ContentFilteringCard({
 
   return (
     <StaticCard
-      title="Content Filtering"
+      title={getTranslation("filtering_title")}
       icon={<Filter className="h-4 w-4 mr-2" />}
       onNext={onNext}
       onBack={onBack}
@@ -38,31 +40,31 @@ export default function ContentFilteringCard({
       isLast={isLast}
       containerClassName={containerClassName}
     >
-      <div className="">
-        <div className="flex justify-start gap-4 items-center mb-3">
+      <div>
+        <div className={`flex justify-start gap-4 items-center mb-3 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
           {" "}
           <div className="flex items-center">
             {" "}
             <FileType className="h-4 w-4 mr-2 text-slate-500" />
-            <Label className="text-sm font-medium text-slate-700">
-              Filter Included Assets By:
+            <Label className={`text-sm font-medium text-slate-700 flex items-center ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
+              {getTranslation("filtering_label")}<span>:</span>
             </Label>
           </div>
           <RadioGroup
             value={filterMode}
             onValueChange={(value) => setFilterMode(value as FilterMode)}
-            className="flex space-x-4"
+            className="flex gap-4"
           >
-            <div className="flex items-center space-x-2">
+            <div className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
               <RadioGroupItem value="type" id="filter-type" />
               <Label htmlFor="filter-type" className="cursor-pointer">
-                Type
+                {getTranslation("filtering_by_type")}
               </Label>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
               <RadioGroupItem value="extension" id="filter-extension" />
               <Label htmlFor="filter-extension" className="cursor-pointer">
-                File Extension
+                {getTranslation("filtering_by_extension")}
               </Label>
             </div>
           </RadioGroup>

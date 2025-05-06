@@ -25,7 +25,7 @@ export default defineConfig({
         sidePanel: resolve(__dirname, "sidePanel.html"),
         popup: resolve(__dirname, "popup.html"),
         welcome: resolve(__dirname, "welcome.html"),
-        background: resolve(__dirname, "background.js"),
+        background: resolve(__dirname, "background.js")
       },
       output: {
         chunkFileNames: "chunk-[name].[hash].js",

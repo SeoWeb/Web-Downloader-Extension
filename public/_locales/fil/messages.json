@@ -1,0 +1,370 @@
+{
+    "title": {
+        "message": "Pang-download ng Web Page at Site",
+        "description": "Ang pamagat ng extension"
+    },
+    "description": {
+        "message": "Hinahayaan ka ng Web Page and Site Downloader na mag-download ng buong mga website—kasama ang lahat ng naka-link na pahina at mapagkukunan—para sa offline na panonood.",
+        "description": "Ang paglalarawan ng extension"
+    },
+    "help": {
+        "message": "Tulong",
+        "description": "Ang teksto ng pindutan ng tulong"
+    },
+    "download_mode": {
+        "message": "Mode ng Download",
+        "description": "Ang label para sa pagpili ng mode ng pag-download"
+    },
+    "single_download_description": {
+        "message": "I-download lamang ang kasalukuyang pahina kasama ang lahat ng mga asset nito.",
+        "description": "Paglalarawan para sa single download mode"
+    },
+    "site_download_description": {
+        "message": "I-download ang buong site, kasama ang lahat ng naka-link na pahina at mapagkukunan.",
+        "description": "Paglalarawan para sa site download mode"
+    },
+    "single_page": {
+        "message": "Isang Pahina",
+        "description": "Label para sa single page download mode"
+    },
+    "whole_website": {
+        "message": "Buong Website",
+        "description": "Label para sa whole website download mode"
+    },
+    "single_file": {
+        "message": "Isang File",
+        "description": "Label para sa single file download mode"
+    },
+    "loading": {
+        "message": "Naglo-load...",
+        "description": "Mensahe ng paglo-load"
+    },
+    "downloading": {
+        "message": "Nagda-download...",
+        "description": "Mensahe ng pagda-download"
+    },
+    "not_downloadable": {
+        "message": "Hindi maida-download ang pahinang ito",
+        "description": "Mensahe na nagsasaad na hindi maida-download ang pahina"
+    },
+    "close_sidepanel_message": {
+        "message": "Isara muna ang sidepanel.",
+        "description": "Mensahe para isara ang side panel"
+    },
+    "permissions_title": {
+        "message": "Mga Kinakailangang Pahintulot",
+        "description": "Pamagat para sa seksyon ng mga pahintulot"
+    },
+    "permissions_message": {
+        "message": "Kinakailangan ang mga sumusunod na pahintulot",
+        "description": "Pamagat para sa seksyon ng mga pahintulot"
+    },
+    "requesting_permissions": {
+        "message": "Humihingi ng mga pahintulot...",
+        "description": "Mensahe na nagsasaad na humihingi ng mga pahintulot"
+    },
+    "grant_permissions": {
+        "message": "Magbigay ng mga Pahintulot",
+        "description": "Teksto ng pindutan para magbigay ng mga pahintulot"
+    },
+    "permissions_granted": {
+        "message": "Naibigay na ang mga Pahintulot!",
+        "description": "Mensahe na nagsasaad na naibigay na ang mga pahintulot"
+    },
+    "permissions_intro": {
+        "message": "Kinakailangan ng extension na ito ang mga sumusunod na pahintulot upang gumana nang tama",
+        "description": "Panimulang mensahe para sa mga pahintulot"
+    },
+    "permission_activeTab": {
+        "message": "Aktibong Tab",
+        "description": "Pahintulot na i-access ang aktibong tab"
+    },
+    "permission_activeTab_description": {
+        "message": "Pinapayagan ang extension na i-access ang aktibong tab.",
+        "description": "Paglalarawan para sa pahintulot sa aktibong tab"
+    },
+    "permission_scripting": {
+        "message": "Pag-script",
+        "description": "Pahintulot na gumamit ng pag-script"
+    },
+    "permission_scripting_description": {
+        "message": "Mag-inject ng mga script sa kasalukuyang tab upang suriin ang nilalaman.",
+        "description": "Paglalarawan para sa pahintulot sa pag-script"
+    },
+    "permission_storage": {
+        "message": "Imbakan",
+        "description": "Pahintulot na gumamit ng imbakan"
+    },
+    "permission_storage_description": {
+        "message": "Mag-imbak ng mga kagustuhan at setting ng gumagamit.",
+        "description": "Paglalarawan para sa pahintulot sa imbakan"
+    },
+    "permission_downloads": {
+        "message": "Mga Download",
+        "description": "Pahintulot na gumamit ng mga download"
+    },
+    "permission_downloads_description": {
+        "message": "Mag-download ng mga file sa computer ng gumagamit.",
+        "description": "Paglalarawan para sa pahintulot sa mga download"
+    },
+    "permission_request_error": {
+        "message": "Nagkaroon ng error habang humihingi ng mga pahintulot.",
+        "description": "Mensahe ng error para sa kahilingan ng pahintulot"
+    },
+    "permission_not_granted_error": {
+        "message": "Hindi naibigay ang mga pahintulot. Mangyaring magbigay ng mga pahintulot upang magpatuloy.",
+        "description": "Mensahe ng error para sa hindi naibigay na pahintulot"
+    },
+    "permission_check_error": {
+        "message": "Nabigong suriin ang mga pahintulot. Pakisubukang muli.",
+        "description": "Mensahe ng error para sa pagsusuri ng pahintulot"
+    },
+    "button_options": {
+        "message": "Mga Pagpipilian",
+        "description": "Teksto ng pindutan para sa mga pagpipilian"
+    },
+    "button_download_page": {
+        "message": "I-download ang Pahina",
+        "description": "Teksto ng pindutan para sa pag-download"
+    },
+    "button_download_website": {
+        "message": "I-download ang Website",
+        "description": "Teksto ng pindutan para sa pag-download"
+    },
+    "filtering_title": {
+        "message": "Pag-filter ng Nilalaman",
+        "description": "Pamagat para sa seksyon ng pag-filter"
+    },
+    "filtering_label": {
+        "message": "I-filter ang mga Kasamang Asset Ayon sa",
+        "description": "Label para sa mga pagpipilian sa pag-filter"
+    },
+    "filtering_by_type": {
+        "message": "Uri",
+        "description": "Label para sa pag-filter ayon sa uri"
+    },
+    "filtering_by_extension": {
+        "message": "Extension ng File",
+        "description": "Label para sa pag-filter ayon sa extension"
+    },
+    "filter_by_image": {
+        "message": "Larawan",
+        "description": "Label para sa pag-filter ayon sa larawan"
+    },
+    "filter_by_script": {
+        "message": "Script",
+        "description": "Label para sa pag-filter ayon sa script"
+    },
+    "filter_by_stylesheet": {
+        "message": "Stylesheet",
+        "description": "Label para sa pag-filter ayon sa stylesheet"
+    },
+    "filter_by_font": {
+        "message": "Font",
+        "description": "Label para sa pag-filter ayon sa font"
+    },
+    "filter_by_html": {
+        "message": "Markup",
+        "description": "Label para sa pag-filter ayon sa Markup"
+    },
+    "filter_by_document": {
+        "message": "Dokumento",
+        "description": "Label para sa pag-filter ayon sa Dokumento"
+    },
+    "filter_by_spreadsheet": {
+        "message": "Spreadsheet",
+        "description": "Label para sa pag-filter ayon sa Spreadsheet"
+    },
+    "filter_by_video": {
+        "message": "Video",
+        "description": "Label para sa pag-filter ayon sa Video"
+    },
+    "filter_by_audio": {
+        "message": "Audio",
+        "description": "Label para sa pag-filter ayon sa Audio"
+    },
+    "filter_by_archive": {
+        "message": "Archive",
+        "description": "Label para sa pag-filter ayon sa Archive"
+    },
+    "filter_by_json": {
+        "message": "JSON",
+        "description": "Label para sa pag-filter ayon sa JSON"
+    },
+    "filter_by_executable": {
+        "message": "Executable",
+        "description": "Label para sa pag-filter ayon sa Executable"
+    },
+    "filter_by_other": {
+        "message": "Iba pa",
+        "description": "Label para sa pag-filter ayon sa Iba pa"
+    },
+    "filter_by_jpg": {
+        "message": "jpg",
+        "description": "Extension ng file para sa jpg"
+    },
+    "filter_by_png": {
+        "message": "png",
+        "description": "Extension ng file para sa png"
+    },
+    "filter_by_gif": {
+        "message": "gif",
+        "description": "Extension ng file para sa gif"
+    },
+    "filter_by_svg": {
+        "message": "svg",
+        "description": "Extension ng file para sa svg"
+    },
+    "filter_by_webp": {
+        "message": "webp",
+        "description": "Extension ng file para sa webp"
+    },
+    "filter_by_ico": {
+        "message": "ico",
+        "description": "Extension ng file para sa ico"
+    },
+    "filter_by_js": {
+        "message": "js",
+        "description": "Extension ng file para sa js"
+    },
+    "filter_by_ts": {
+        "message": "ts",
+        "description": "Extension ng file para sa ts"
+    },
+    "filter_by_css": {
+        "message": "css",
+        "description": "Extension ng file para sa css"
+    },
+    "filter_by_scss": {
+        "message": "scss",
+        "description": "Extension ng file para sa scss"
+    },
+    "filter_by_less": {
+        "message": "less",
+        "description": "Extension ng file para sa less"
+    },
+    "filter_by_woff": {
+        "message": "woff",
+        "description": "Extension ng file para sa woff"
+    },
+    "filter_by_woff2": {
+        "message": "woff2",
+        "description": "Extension ng file para sa woff2"
+    },
+    "filter_by_ttf": {
+        "message": "ttf",
+        "description": "Extension ng file para sa ttf"
+    },
+    "filter_by_otf": {
+        "message": "otf",
+        "description": "Extension ng file para sa otf"
+    },
+    "filter_by_eot": {
+        "message": "eot",
+        "description": "Extension ng file para sa eot"
+    },
+    "filter_by_htm": {
+        "message": "htm",
+        "description": "Extension ng file para sa htm"
+    },
+    "filter_by_xml": {
+        "message": "xml",
+        "description": "Extension ng file para sa xml"
+    },
+    "filter_by_pdf": {
+        "message": "pdf",
+        "description": "Extension ng file para sa pdf"
+    },
+    "filter_by_doc": {
+        "message": "doc",
+        "description": "Extension ng file para sa doc"
+    },
+    "filter_by_docx": {
+        "message": "docx",
+        "description": "Extension ng file para sa docx"
+    },
+    "filter_by_txt": {
+        "message": "txt",
+        "description": "Extension ng file para sa txt"
+    },
+    "filter_by_rtf": {
+        "message": "rtf",
+        "description": "Extension ng file para sa rtf"
+    },
+    "filter_by_odt": {
+        "message": "odt",
+        "description": "Extension ng file para sa odt"
+    },
+    "filter_by_mp3": {
+        "message": "mp3",
+        "description": "Extension ng file para sa mp3"
+    },
+    "filter_by_wav": {
+        "message": "wav",
+        "description": "Extension ng file para sa wav"
+    },
+    "filter_by_ogg": {
+        "message": "ogg",
+        "description": "Extension ng file para sa ogg"
+    },
+    "filter_by_aac": {
+        "message": "aac",
+        "description": "Extension ng file para sa aac"
+    },
+    "filter_by_mp4": {
+        "message": "mp4",
+        "description": "Extension ng file para sa mp4"
+    },
+    "filter_by_webm": {
+        "message": "webm",
+        "description": "Extension ng file para sa webm"
+    },
+    "filter_by_avi": {
+        "message": "avi",
+        "description": "Extension ng file para sa avi"
+    },
+    "filter_by_mov": {
+        "message": "mov",
+        "description": "Extension ng file para sa mov"
+    },
+    "filter_by_wmv": {
+        "message": "wmv",
+        "description": "Extension ng file para sa wmv"
+    },
+    "filter_by_mkv": {
+        "message": "mkv",
+        "description": "Extension ng file para sa mkv"
+    },
+    "filter_by_zip": {
+        "message": "zip",
+        "description": "Extension ng file para sa zip"
+    },
+    "filter_by_rar": {
+        "message": "rar",
+        "description": "Extension ng file para sa rar"
+    },
+    "filter_by_tar": {
+        "message": "tar",
+        "description": "Extension ng file para sa tar"
+    },
+    "filter_by_gz": {
+        "message": "gz",
+        "description": "Extension ng file para sa gz"
+    },
+    "filter_by_7z": {
+        "message": "7z",
+        "description": "Extension ng file para sa 7z"
+    },
+    "filter_by_exe": {
+        "message": "exe",
+        "description": "Extension ng file para sa exe"
+    },
+    "filter_by_sh": {
+        "message": "sh",
+        "description": "Extension ng file para sa sh"
+    },
+    "filter_by_bat": {
+        "message": "bat",
+        "description": "Extension ng file para sa bat"
+    }
+}

@@ -1,0 +1,447 @@
+{
+    "title": {
+        "message": "Web Page & Site Downloader",
+        "description": "The title of the extension"
+    },
+    "description": {
+        "message": "Web Page and Site Downloader lets you download entire websites—including all linked pages and resources—for offline viewing.",
+        "description": "The description of the extension"
+    },
+    "help": {
+        "message": "Help",
+        "description": "The help button text"
+    },
+    "download_mode": {
+        "message": "Download Mode",
+        "description": "The label for the download mode selection"
+    },
+    "single_download_description": {
+        "message": "Download just the current page with all its assets.",
+        "description": "Description for the single download mode"
+    },
+    "site_download_description": {
+        "message": "Download the entire site, including all linked pages and resources.",
+        "description": "Description for the site download mode"
+    },
+    "single_page": {
+        "message": "Single Page",
+        "description": "Label for the single page download mode"
+    },
+    "whole_website": {
+        "message": "Whole Website",
+        "description": "Label for the whole website download mode"
+    },
+    "single_file": {
+        "message": "Single File",
+        "description": "Label for the single file download mode"
+    },
+    "loading": {
+        "message": "Loading...",
+        "description": "Loading message"
+    },
+    "downloading": {
+        "message": "Downloading...",
+        "description": "Downloading message"
+    },
+    "not_downloadable": {
+        "message": "This page is not downloadable",
+        "description": "Message indicating that the page is not downloadable"
+    },
+    "close_sidepanel_message": {
+        "message": "Close sidepanel first.",
+        "description": "Message to close the side panel"
+    },
+    "permissions_title": {
+        "message": "Required Permissions",
+        "description": "Title for permissions section"
+    },
+    "permissions_message": {
+        "message": "Following permissions are required",
+        "description": "Title for permissions section"
+    },
+    "requesting_permissions": {
+        "message": "Requesting permissions...",
+        "description": "Message indicating that permissions are being requested"
+    },
+    "grant_permissions": {
+        "message": "Grant Permissions",
+        "description": "Button text to grant permissions"
+    },
+    "permissions_granted": {
+        "message": "Permissions Granted!",
+        "description": "Message indicating that permissions have been granted"
+    },
+    "permissions_intro": {
+        "message": "This extension requires the following permissions to function correctly",
+        "description": "Introduction message for permissions"
+    },
+    "permission_activeTab": {
+        "message": "Active Tab",
+        "description": "Permission to access the active tab"
+    },
+    "permission_activeTab_description": {
+        "message": "Allows the extension to access the active tab.",
+        "description": "Description for active tab permission"
+    },
+    "permission_scripting": {
+        "message": "Scripting",
+        "description": "Permission to use scripting"
+    },
+    "permission_scripting_description": {
+        "message": "Inject scripts into the current tab to analyze content.",
+        "description": "Description for scripting permission"
+    },
+    "permission_storage": {
+        "message": "Storage",
+        "description": "Permission to use storage"
+    },
+    "permission_storage_description": {
+        "message": "Store user preferences and settings.",
+        "description": "Description for storage permission"
+    },
+    "permission_downloads": {
+        "message": "Downloads",
+        "description": "Permission to use downloads"
+    },
+    "permission_downloads_description": {
+        "message": "Download files to the user's computer.",
+        "description": "Description for downloads permission"
+    },
+    "permission_request_error": {
+        "message": "An error occurred while requesting permissions.",
+        "description": "Error message for permission request"
+    },
+    "permission_not_granted_error": {
+        "message": "Permissions were not granted. Please grant permissions to continue.",
+        "description": "Error message for permission not granted"
+    },
+    "permission_check_error": {
+        "message": "Failed to check permissions. Please try again.",
+        "description": "Error message for permission check"
+    },
+    "button_options": {
+        "message": "Options",
+        "description": "Button text for options"
+    },
+    "button_download_page": {
+        "message": "Download Page",
+        "description": "Button text for download"
+    },
+    "button_download_website": {
+        "message": "Download Website",
+        "description": "Button text for download"
+    },
+    "filtering_title": {
+        "message": "Content Filtering",
+        "description": "Title for filtering section"
+    },
+    "filtering_label": {
+        "message": "Filter Included Assets By",
+        "description": "Label for filtering options"
+    },
+    "filtering_by_type": {
+        "message": "Type",
+        "description": "Label for filtering by type"
+    },
+    "filtering_by_extension": {
+        "message": "File Extension",
+        "description": "Label for filtering by extension"
+    },
+    "filter_by_image": {
+        "message": "Image",
+        "description": "Label for filtering by image"
+    },
+    "filter_by_script": {
+        "message": "Script",
+        "description": "Label for filtering by script"
+    },
+    "filter_by_stylesheet": {
+        "message": "Stylesheet",
+        "description": "Label for filtering by stylesheet"
+    },
+    "filter_by_font": {
+        "message": "Font",
+        "description": "Label for filtering by font"
+    },
+    "filter_by_html": {
+        "message": "Markup",
+        "description": "Label for filtering by Markup"
+    },
+    "filter_by_document": {
+        "message": "Document",
+        "description": "Label for filtering by Document"
+    },
+    "filter_by_spreadsheet": {
+        "message": "Spreadsheet",
+        "description": "Label for filtering by Spreadsheet"
+    },
+    "filter_by_video": {
+        "message": "Video",
+        "description": "Label for filtering by Video"
+    },
+    "filter_by_audio": {
+        "message": "Audio",
+        "description": "Label for filtering by Audio"
+    },
+    "filter_by_archive": {
+        "message": "Archive",
+        "description": "Label for filtering by Archive"
+    },
+    "filter_by_json": {
+        "message": "JSON",
+        "description": "Label for filtering by JSON"
+    },
+    "filter_by_executable": {
+        "message": "Executable",
+        "description": "Label for filtering by Executable"
+    },
+    "filter_by_other": {
+        "message": "Other",
+        "description": "Label for filtering by Other"
+    },
+    "filter_by_jpg": {
+        "message": "jpg",
+        "description": "File extension for jpg"
+    },
+    "filter_by_png": {
+        "message": "png",
+        "description": "File extension for png"
+    },
+    "filter_by_gif": {
+        "message": "gif",
+        "description": "File extension for gif"
+    },
+    "filter_by_svg": {
+        "message": "svg",
+        "description": "File extension for svg"
+    },
+    "filter_by_webp": {
+        "message": "webp",
+        "description": "File extension for webp"
+    },
+    "filter_by_ico": {
+        "message": "ico",
+        "description": "File extension for ico"
+    },
+    "filter_by_js": {
+        "message": "js",
+        "description": "File extension for js"
+    },
+    "filter_by_ts": {
+        "message": "ts",
+        "description": "File extension for ts"
+    },
+    "filter_by_css": {
+        "message": "css",
+        "description": "File extension for css"
+    },
+    "filter_by_scss": {
+        "message": "scss",
+        "description": "File extension for scss"
+    },
+    "filter_by_less": {
+        "message": "less",
+        "description": "File extension for less"
+    },
+    "filter_by_woff": {
+        "message": "woff",
+        "description": "File extension for woff"
+    },
+    "filter_by_woff2": {
+        "message": "woff2",
+        "description": "File extension for woff2"
+    },
+    "filter_by_ttf": {
+        "message": "ttf",
+        "description": "File extension for ttf"
+    },
+    "filter_by_otf": {
+        "message": "otf",
+        "description": "File extension for otf"
+    },
+    "filter_by_eot": {
+        "message": "eot",
+        "description": "File extension for eot"
+    },
+    "filter_by_htm": {
+        "message": "htm",
+        "description": "File extension for htm"
+    },
+    "filter_by_xml": {
+        "message": "xml",
+        "description": "File extension for xml"
+    },
+    "filter_by_pdf": {
+        "message": "pdf",
+        "description": "File extension for pdf"
+    },
+    "filter_by_doc": {
+        "message": "doc",
+        "description": "File extension for doc"
+    },
+    "filter_by_docx": {
+        "message": "docx",
+        "description": "File extension for docx"
+    },
+    "filter_by_txt": {
+        "message": "txt",
+        "description": "File extension for txt"
+    },
+    "filter_by_rtf": {
+        "message": "rtf",
+        "description": "File extension for rtf"
+    },
+    "filter_by_odt": {
+        "message": "odt",
+        "description": "File extension for odt"
+    },
+    "filter_by_mp3": {
+        "message": "mp3",
+        "description": "File extension for mp3"
+    },
+    "filter_by_wav": {
+        "message": "wav",
+        "description": "File extension for wav"
+    },
+    "filter_by_ogg": {
+        "message": "ogg",
+        "description": "File extension for ogg"
+    },
+    "filter_by_aac": {
+        "message": "aac",
+        "description": "File extension for aac"
+    },
+    "filter_by_mp4": {
+        "message": "mp4",
+        "description": "File extension for mp4"
+    },
+    "filter_by_webm": {
+        "message": "webm",
+        "description": "File extension for webm"
+    },
+    "filter_by_avi": {
+        "message": "avi",
+        "description": "File extension for avi"
+    },
+    "filter_by_mov": {
+        "message": "mov",
+        "description": "File extension for mov"
+    },
+    "filter_by_wmv": {
+        "message": "wmv",
+        "description": "File extension for wmv"
+    },
+    "filter_by_mkv": {
+        "message": "mkv",
+        "description": "File extension for mkv"
+    },
+    "filter_by_zip": {
+        "message": "zip",
+        "description": "File extension for zip"
+    },
+    "filter_by_rar": {
+        "message": "rar",
+        "description": "File extension for rar"
+    },
+    "filter_by_tar": {
+        "message": "tar",
+        "description": "File extension for tar"
+    },
+    "filter_by_gz": {
+        "message": "gz",
+        "description": "File extension for gz"
+    },
+    "filter_by_7z": {
+        "message": "7z",
+        "description": "File extension for 7z"
+    },
+    "filter_by_exe": {
+        "message": "exe",
+        "description": "File extension for exe"
+    },
+    "filter_by_sh": {
+        "message": "sh",
+        "description": "File extension for sh"
+    },
+    "filter_by_bat": {
+        "message": "bat",
+        "description": "File extension for bat"
+    },
+
+
+
+
+
+    "lang_en": {
+        "message": "English",
+        "description": "The language of the extension"
+    },
+    "lang_hi": {
+        "message": "हिन्दी",
+        "description": "The language of the extension"
+    },
+    "lang_vi": {
+        "message": "Tiếng Việt",
+        "description": "The language of the extension"
+    },
+    "lang_pl": {
+        "message": "Polski",
+        "description": "The language of the extension"
+    },
+    "lang_fil": {
+        "message": "Filipino",
+        "description": "The language of the extension"
+    },
+    "lang_ur": {
+        "message": "اردو",
+        "description": "The language of the extension"
+    },
+    "lang_he": {
+        "message": "עברית",
+        "description": "The language of the extension"
+    },
+    "lang_tr": {
+        "message": "Türkçe",
+        "description": "The language of the extension"
+    },
+    "lang_es": {
+        "message": "Español",
+        "description": "The language of the extension"
+    },
+    "lang_ru": {
+        "message": "Русский",
+        "description": "The language of the extension"
+    },
+    "lang_pt": {
+        "message": "Português",
+        "description": "The language of the extension"
+    },
+    "lang_it": {
+        "message": "Italiano",
+        "description": "The language of the extension"
+    },
+    "lang_de": {
+        "message": "Deutsch",
+        "description": "The language of the extension"
+    },
+    "lang_fr": {
+        "message": "Français",
+        "description": "The language of the extension"
+    },
+    "lang_zh": {
+        "message": "中文",
+        "description": "The language of the extension"
+    },
+    "lang_nl": {
+        "message": "Nederlands",
+        "description": "The language of the extension"
+    },
+    "lang_id": {
+        "message": "Bahasa Indonesia",
+        "description": "The language of the extension"
+    },
+    "lang_bn": {
+        "message": "বাংলা",
+        "description": "The language of the extension"
+    }
+}
