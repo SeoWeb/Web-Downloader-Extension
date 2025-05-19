@@ -33,7 +33,7 @@ export default function ContentFilteringCard({
   return (
     <StaticCard
       title={getTranslation("filtering_title")}
-      icon={<Filter className="h-4 w-4 mr-2" />}
+      icon={<Filter className="h-4 w-4" />}
       onNext={onNext}
       onBack={onBack}
       isFirst={isFirst}

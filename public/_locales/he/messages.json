@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "מידע על הורדת קובץ",
+        "description": "כותרת עבור כרטיס הורדת קובץ בודד."
+    },
+    "single_file_download_intro": {
+        "message": "אתה עומד להוריד את דף האינטרנט הנוכחי כקובץ MHTML יחיד (.mhtml).",
+        "description": "מבוא להורדת קובץ MHTML יחיד."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "פורמט MHTML",
+        "description": "כותרת להסבר על פורמט MHTML."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) שומר את כל תוכן הדף (HTML, CSS, JavaScript, תמונות) בקובץ יחיד.",
+        "description": "תיאור של פורמט MHTML."
+    },
+    "single_file_includes_all_title": {
+        "message": "הכל כלול",
+        "description": "כותרת עבור הנקודה 'כולל את כל המשאבים'."
+    },
+    "single_file_includes_all_desc": {
+        "message": "מבטיח שכל המשאבים כלולים, מה שהופך את הדף לפונקציונלי לחלוטין במצב לא מקוון.",
+        "description": "תיאור עבור הנקודה 'כולל את כל המשאבים'."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "צפייה במצב לא מקוון",
+        "description": "כותרת עבור היתרון של צפייה במצב לא מקוון."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "אידיאלי לארכיון דפים או לצפייה בהם מאוחר יותר ללא חיבור לאינטרנט.",
+        "description": "תיאור עבור היתרון של צפייה במצב לא מקוון."
+    },
+    "single_file_browser_support_title": {
+        "message": "תמיכת דפדפן",
+        "description": "כותרת עבור תאימות דפדפן."
+    },
+    "single_file_browser_support_desc": {
+        "message": "רוב דפדפני האינטרנט המודרניים יכולים לפתוח קבצי .mhtml.",
+        "description": "תיאור עבור תאימות דפדפן."
+    },
+    "single_file_download_time_notice": {
+        "message": "שימו לב: בהתאם לגודל הדף, ההורדה עשויה לארוך מספר רגעים.",
+        "description": "הודעה על זמן ההורדה הפוטנציאלי עבור MHTML."
+    },
+    "button_download_single_file": {
+        "message": "הורד קובץ יחיד",
+        "description": "טקסט הכפתור להורדת קובץ יחיד"
     }
 }

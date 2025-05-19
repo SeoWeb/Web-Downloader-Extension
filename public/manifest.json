@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Web Page and Site Downloader",
-  "description": "Web Page and Site Downloader lets you download entire websites—including all linked pages and resources—for offline viewing.",
+  "name": "__MSG_title__",
+  "description": "__MSG_description__",
   "version": "3.0",
   "action": {
     "default_icon": "./icons/128x128.png",
-    "default_title": "Web Page and Site Downloader",
+    "default_title": "__MSG_title__",
     "default_popup": "popup.html"
   },
   "default_locale": "en",
   "permissions": ["sidePanel"],
-  "optional_permissions": ["activeTab", "storage", "scripting", "downloads", "contextMenus", "identity.email"],
+  "optional_permissions": ["activeTab", "storage", "scripting", "downloads", "pageCapture"],
   "optional_host_permissions": ["<all_urls>"],
   "background": {
     "type": "module",

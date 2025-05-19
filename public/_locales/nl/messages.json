@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "Bestandsdownload informatie",
+        "description": "Titel voor de kaart voor het downloaden van één bestand."
+    },
+    "single_file_download_intro": {
+        "message": "U staat op het punt de huidige webpagina te downloaden als een enkel MHTML-bestand (.mhtml).",
+        "description": "Introductie voor het downloaden van één MHTML-bestand."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "MHTML-indeling",
+        "description": "Titel voor de uitleg van de MHTML-indeling."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) slaat alle pagina-inhoud (HTML, CSS, JavaScript, afbeeldingen) op in één bestand.",
+        "description": "Beschrijving van de MHTML-indeling."
+    },
+    "single_file_includes_all_title": {
+        "message": "Alles inbegrepen",
+        "description": "Titel voor het punt 'bevat alle bronnen'."
+    },
+    "single_file_includes_all_desc": {
+        "message": "Zorgt ervoor dat alle bronnen zijn opgenomen, waardoor de pagina volledig functioneel is in de offline modus.",
+        "description": "Beschrijving voor het punt 'bevat alle bronnen'."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "Offline bekijken",
+        "description": "Titel voor het voordeel van offline bekijken."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "Ideaal voor het archiveren van pagina's of het bekijken ervan op een later tijdstip zonder internetverbinding.",
+        "description": "Beschrijving voor het voordeel van offline bekijken."
+    },
+    "single_file_browser_support_title": {
+        "message": "Browserondersteuning",
+        "description": "Titel voor browsercompatibiliteit."
+    },
+    "single_file_browser_support_desc": {
+        "message": "De meeste moderne webbrowsers kunnen .mhtml-bestanden openen.",
+        "description": "Beschrijving voor browsercompatibiliteit."
+    },
+    "single_file_download_time_notice": {
+        "message": "Let op: Afhankelijk van de paginagrootte kan het downloaden even duren.",
+        "description": "Kennisgeving over de potentiële downloadtijd voor MHTML."
+    },
+    "button_download_single_file": {
+        "message": "Enkel bestand downloaden",
+        "description": "Knoptekst voor het downloaden van één bestand"
     }
 }

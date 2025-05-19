@@ -12,19 +12,27 @@ import { useDownloadStatusStore } from "../../store/downloadStatusStore";
 import { useConnectListener } from "../../hooks/useConnectListener";
 import { MESSAGE_POPUP } from "../../types/message";
 import { useLanguageStore } from "../../store/languageStore";
+import SingleFileCard from "./sections/SingleFileCard";
+import { ContentFilteringCardProps } from "./sections/content-filtering/types";
+import WebsiteCard from "./sections/websiteCard";
 
-const cardComponents = [
+const singlePageCardComponents = [
   ContentFilteringCard,
-  // PreviewCard,
-  // DownloadConfigCard
+];
+const singleFileCardComponents = [
+  SingleFileCard,
+];
+const websiteCardComponents = [
+  WebsiteCard,
 ];
 
 export default function Popup() {
   useConnectListener(MESSAGE_POPUP);
   const { direction, getTranslation } = useLanguageStore();
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [activeCardIndex, setActiveCardIndex] = useState(1);
   const [hasPermissions, setHasPermissions] = useState<boolean>(false);
-  const { activeTabId, isSidePanelOpen, setActiveTabId } = useDownloadSettingsStore();
+  const [cardComponents, setCardComponents] = useState<React.FC<ContentFilteringCardProps>[]>(singlePageCardComponents);
+  const { activeTabId, isSidePanelOpen, downloadMode, setActiveTabId } = useDownloadSettingsStore();
   const { isDownloading } = useDownloadStatusStore();
 
   const handleNext = () => {
@@ -48,6 +56,17 @@ export default function Popup() {
       setActiveTabId(tabId);
     });
   }, []);
+
+  useEffect(() => {
+    setActiveCardIndex(0);
+    if (downloadMode === "single_file") {
+      setCardComponents(singleFileCardComponents);
+    } else if (downloadMode === "single") {
+      setCardComponents(singlePageCardComponents);
+    } else if (downloadMode === "website") {
+      setCardComponents(websiteCardComponents);
+    }
+  }, [downloadMode]);
 
   const renderPermissonsCard = () => (
     <PermissionsCard

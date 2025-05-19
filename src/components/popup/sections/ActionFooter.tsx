@@ -6,7 +6,10 @@ import PrimaryButton from "../../ui/PrimaryButton";
 import { openSidePanel } from "../../../background/messageActions/openSidePanel";
 import closePopup from "../../../common/chrome/closePopup";
 import useSendPortMessage from "../../../hooks/useSendPortMessage";
-import { MESSAGE_SIDEPANEL, MESSAGE_START_DOWNLOAD } from "../../../types/message";
+import {
+  MESSAGE_SIDEPANEL,
+  MESSAGE_START_DOWNLOAD,
+} from "../../../types/message";
 import { useLanguageStore } from "../../../store/languageStore";
 
 interface ActionFooterProps {
@@ -16,8 +19,9 @@ interface ActionFooterProps {
 export default function ActionFooter({
   isDownloadDisabled = false,
 }: ActionFooterProps) {
-  const { activeTabId, downloadMode, isSidePanelOpen, setIsSidePanelOpen } = useDownloadSettingsStore();
-  const { sendPortMessage } = useSendPortMessage('popup');
+  const { activeTabId, downloadMode, isSidePanelOpen, setIsSidePanelOpen } =
+    useDownloadSettingsStore();
+  const { sendPortMessage } = useSendPortMessage("popup");
   const { direction, getTranslation } = useLanguageStore();
 
   const tab: chrome.tabs.Tab = {
@@ -32,8 +36,8 @@ export default function ActionFooter({
     selected: false,
     discarded: false,
     autoDiscardable: false,
-    groupId: 0
-  }
+    groupId: 0,
+  };
 
   const handleClick = () => {
     if (!activeTabId) {
@@ -50,19 +54,28 @@ export default function ActionFooter({
 
   return (
     <div className="sticky bottom-0 bg-white border-t border-slate-200 py-2 px-2">
-      <div className={`flex items-center justify-between ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
+      <div
+        className={`flex items-center justify-between ${direction === "rtl" ? "flex-row-reverse" : ""}`}
+      >
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="sm"
             className="text-slate-600 border-slate-300 hover:bg-slate-50"
           >
-            <Settings className="h-4 w-4" /> {getTranslation('button_options')}
+            <Settings className="h-4 w-4" /> {getTranslation("button_options")}
           </Button>
         </div>
-        <PrimaryButton disabled={isDownloadDisabled || !activeTabId || isSidePanelOpen} onClick={handleClick}>
+        <PrimaryButton
+          disabled={isDownloadDisabled || !activeTabId || isSidePanelOpen}
+          onClick={handleClick}
+        >
           <Download className="h-5 w-5" />
-          {downloadMode === "single" ? getTranslation('button_download_page') : getTranslation('button_download_website')}
+          {downloadMode === "single"
+            ? getTranslation("button_download_page")
+            : downloadMode === "single_file"
+              ? getTranslation("button_download_single_file")
+              : getTranslation("button_download_website")}
         </PrimaryButton>
       </div>
     </div>

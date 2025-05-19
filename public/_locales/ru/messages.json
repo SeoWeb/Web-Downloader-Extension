@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "Информация о загрузке файла",
+        "description": "Заголовок для карточки загрузки одного файла."
+    },
+    "single_file_download_intro": {
+        "message": "Вы собираетесь загрузить текущую веб-страницу в виде одного файла MHTML (.mhtml).",
+        "description": "Введение в загрузку одного файла MHTML."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "Формат MHTML",
+        "description": "Заголовок для объяснения формата MHTML."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) сохраняет все содержимое страницы (HTML, CSS, JavaScript, изображения) в одном файле.",
+        "description": "Описание формата MHTML."
+    },
+    "single_file_includes_all_title": {
+        "message": "Все включено",
+        "description": "Заголовок для пункта 'включает все ресурсы'."
+    },
+    "single_file_includes_all_desc": {
+        "message": "Гарантирует включение всех ресурсов, делая страницу полностью функциональной в автономном режиме.",
+        "description": "Описание для пункта 'включает все ресурсы'."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "Просмотр в автономном режиме",
+        "description": "Заголовок для преимущества просмотра в автономном режиме."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "Идеально подходит для архивирования страниц или просмотра их позже без подключения к интернету.",
+        "description": "Описание для преимущества просмотра в автономном режиме."
+    },
+    "single_file_browser_support_title": {
+        "message": "Поддержка браузера",
+        "description": "Заголовок для совместимости браузера."
+    },
+    "single_file_browser_support_desc": {
+        "message": "Большинство современных веб-браузеров могут открывать файлы .mhtml.",
+        "description": "Описание для совместимости браузера."
+    },
+    "single_file_download_time_notice": {
+        "message": "Обратите внимание: в зависимости от размера страницы загрузка может занять несколько секунд.",
+        "description": "Уведомление о потенциальном времени загрузки для MHTML."
+    },
+    "button_download_single_file": {
+        "message": "Скачать один файл",
+        "description": "Текст кнопки для загрузки одного файла"
     }
 }

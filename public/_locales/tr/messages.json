@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "Dosya İndirme Bilgileri",
+        "description": "Tek dosya indirme kartı için başlık."
+    },
+    "single_file_download_intro": {
+        "message": "Geçerli web sayfasını tek bir MHTML dosyası (.mhtml) olarak indirmek üzeresiniz.",
+        "description": "Tek MHTML dosyası indirme için giriş."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "MHTML Formatı",
+        "description": "MHTML format açıklaması için başlık."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML), tüm sayfa içeriğini (HTML, CSS, JavaScript, resimler) tek bir dosyada kaydeder.",
+        "description": "MHTML formatının açıklaması."
+    },
+    "single_file_includes_all_title": {
+        "message": "Her Şey Dahil",
+        "description": "'Tüm kaynakları içerir' noktası için başlık."
+    },
+    "single_file_includes_all_desc": {
+        "message": "Tüm kaynakların dahil edilmesini sağlar, bu da sayfayı çevrimdışı olarak tamamen işlevsel hale getirir.",
+        "description": "'Tüm kaynakları içerir' noktası için açıklama."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "Çevrimdışı Görüntüleme",
+        "description": "Çevrimdışı görüntülemenin faydası için başlık."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "Sayfaları arşivlemek veya daha sonra internet bağlantısı olmadan görüntülemek için idealdir.",
+        "description": "Çevrimdışı görüntüleme faydası için açıklama."
+    },
+    "single_file_browser_support_title": {
+        "message": "Tarayıcı Desteği",
+        "description": "Tarayıcı uyumluluğu için başlık."
+    },
+    "single_file_browser_support_desc": {
+        "message": "Çoğu modern web tarayıcısı .mhtml dosyalarını açabilir.",
+        "description": "Tarayıcı uyumluluğu için açıklama."
+    },
+    "single_file_download_time_notice": {
+        "message": "Lütfen unutmayın: Sayfanın boyutuna bağlı olarak, indirme işlemi birkaç saniye sürebilir.",
+        "description": "MHTML için potansiyel indirme süresi hakkında bildirim."
+    },
+    "button_download_single_file": {
+        "message": "Tek Dosyayı İndir",
+        "description": "Tek dosya indirme için düğme metni"
     }
 }

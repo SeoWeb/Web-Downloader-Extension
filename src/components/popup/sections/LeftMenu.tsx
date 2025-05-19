@@ -1,5 +1,5 @@
 // src/components/popup/sections/LeftMenu.tsx
-import { FileDown, Globe, Download } from "lucide-react";
+import { FileDown, FileStack, Download, FileCode2 } from "lucide-react";
 import MenuItem from "../../ui/MenuItem";
 import { useDownloadSettingsStore } from "../../../store/downloadSettingsStore";
 import { useLanguageStore } from "../../../store/languageStore";
@@ -25,16 +25,16 @@ export default function LeftMenu() {
           onClick={() => setDownloadMode("single")}
         />
         <MenuItem
-          icon={<Globe className="h-5 w-5" />}
-          label={getTranslation("whole_website")}
-          isActive={downloadMode === "website"}
-          onClick={() => setDownloadMode("website")}
-        />
-        <MenuItem
-          icon={<FileDown className="h-5 w-5" />}
+          icon={<FileCode2 className="h-5 w-5" />}
           label={getTranslation("single_file")}
           isActive={downloadMode === "single_file"}
           onClick={() => setDownloadMode("single_file")}
+        />
+        <MenuItem
+          icon={<FileStack className="h-5 w-5" />}
+          label={getTranslation("whole_website")}
+          isActive={downloadMode === "website"}
+          onClick={() => setDownloadMode("website")}
         />
       </div>
 

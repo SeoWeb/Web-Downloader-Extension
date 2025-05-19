@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "Informasi Unduhan File",
+        "description": "Judul untuk kartu unduhan satu file."
+    },
+    "single_file_download_intro": {
+        "message": "Anda akan mengunduh halaman web saat ini sebagai satu file MHTML (.mhtml).",
+        "description": "Pendahuluan untuk pengunduhan satu file MHTML."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "Format MHTML",
+        "description": "Judul untuk penjelasan format MHTML."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) menyimpan semua konten halaman (HTML, CSS, JavaScript, gambar) ke dalam satu file.",
+        "description": "Deskripsi format MHTML."
+    },
+    "single_file_includes_all_title": {
+        "message": "Semua Termasuk",
+        "description": "Judul untuk poin 'termasuk semua sumber daya'."
+    },
+    "single_file_includes_all_desc": {
+        "message": "Memastikan semua sumber daya disertakan, membuat halaman berfungsi penuh secara offline.",
+        "description": "Deskripsi untuk poin 'termasuk semua sumber daya'."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "Tampilan Offline",
+        "description": "Judul untuk manfaat tampilan offline."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "Ideal untuk mengarsipkan halaman atau melihatnya nanti tanpa koneksi internet.",
+        "description": "Deskripsi untuk manfaat tampilan offline."
+    },
+    "single_file_browser_support_title": {
+        "message": "Dukungan Browser",
+        "description": "Judul untuk kompatibilitas browser."
+    },
+    "single_file_browser_support_desc": {
+        "message": "Sebagian besar browser web modern dapat membuka file .mhtml.",
+        "description": "Deskripsi untuk kompatibilitas browser."
+    },
+    "single_file_download_time_notice": {
+        "message": "Harap dicatat: Tergantung pada ukuran halaman, pengunduhan mungkin memerlukan beberapa saat.",
+        "description": "Pemberitahuan tentang potensi waktu pengunduhan untuk MHTML."
+    },
+    "button_download_single_file": {
+        "message": "Unduh Satu File",
+        "description": "Teks tombol untuk pengunduhan satu file"
     }
 }

@@ -184,7 +184,7 @@
         "description": "Label for filtering by Audio"
     },
     "filter_by_archive": {
-        "message": "Arquivo Compactado",
+        "message": "Arquivo",
         "description": "Label for filtering by Archive"
     },
     "filter_by_json": {
@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "Informações de Download do Arquivo",
+        "description": "Título para o cartão de download de um único arquivo."
+    },
+    "single_file_download_intro": {
+        "message": "Você está prestes a baixar a página web atual como um único arquivo MHTML (.mhtml).",
+        "description": "Introdução ao download de um único arquivo MHTML."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "Formato MHTML",
+        "description": "Título para a explicação do formato MHTML."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) salva todo o conteúdo da página (HTML, CSS, JavaScript, imagens) em um único arquivo.",
+        "description": "Descrição do formato MHTML."
+    },
+    "single_file_includes_all_title": {
+        "message": "Tudo Incluído",
+        "description": "Título para o ponto 'inclui todos os recursos'."
+    },
+    "single_file_includes_all_desc": {
+        "message": "Garante que todos os recursos sejam incluídos, tornando a página totalmente funcional offline.",
+        "description": "Descrição para o ponto 'inclui todos os recursos'."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "Visualização offline",
+        "description": "Título para o benefício da visualização offline."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "Ideal para arquivar páginas ou visualizá-las mais tarde sem uma conexão com a internet.",
+        "description": "Descrição para o benefício da visualização offline."
+    },
+    "single_file_browser_support_title": {
+        "message": "Suporte do navegador",
+        "description": "Título para a compatibilidade do navegador."
+    },
+    "single_file_browser_support_desc": {
+        "message": "A maioria dos navegadores web modernos pode abrir arquivos .mhtml.",
+        "description": "Descrição para a compatibilidade do navegador."
+    },
+    "single_file_download_time_notice": {
+        "message": "Observação: Dependendo do tamanho da página, o download pode levar alguns instantes.",
+        "description": "Aviso sobre o tempo potencial de download para MHTML."
+    },
+    "button_download_single_file": {
+        "message": "Baixar Arquivo Único",
+        "description": "Texto do botão para download de arquivo único"
     }
 }

@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "Informations de téléchargement de fichier",
+        "description": "Titre pour la carte de téléchargement d'un seul fichier."
+    },
+    "single_file_download_intro": {
+        "message": "Vous êtes sur le point de télécharger la page Web actuelle sous forme de fichier MHTML unique (.mhtml).",
+        "description": "Introduction au téléchargement d'un seul fichier MHTML."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "Format MHTML",
+        "description": "Titre pour l'explication du format MHTML."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) enregistre tout le contenu de la page (HTML, CSS, JavaScript, images) dans un seul fichier.",
+        "description": "Description du format MHTML."
+    },
+    "single_file_includes_all_title": {
+        "message": "Tout inclus",
+        "description": "Titre pour le point 'inclut toutes les ressources'."
+    },
+    "single_file_includes_all_desc": {
+        "message": "Garantit que toutes les ressources sont incluses, rendant la page entièrement fonctionnelle hors ligne.",
+        "description": "Description pour le point 'inclut toutes les ressources'."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "Consultation hors ligne",
+        "description": "Titre pour l'avantage de la consultation hors ligne."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "Idéal pour archiver des pages ou les consulter plus tard sans connexion Internet.",
+        "description": "Description pour l'avantage de la consultation hors ligne."
+    },
+    "single_file_browser_support_title": {
+        "message": "Prise en charge du navigateur",
+        "description": "Titre pour la compatibilité du navigateur."
+    },
+    "single_file_browser_support_desc": {
+        "message": "La plupart des navigateurs Web modernes peuvent ouvrir les fichiers .mhtml.",
+        "description": "Description pour la compatibilité du navigateur."
+    },
+    "single_file_download_time_notice": {
+        "message": "Veuillez noter : Selon la taille de la page, le téléchargement peut prendre quelques instants.",
+        "description": "Avis concernant le temps de téléchargement potentiel pour MHTML."
+    },
+    "button_download_single_file": {
+        "message": "Télécharger un seul fichier",
+        "description": "Texte du bouton pour le téléchargement d'un seul fichier"
     }
 }

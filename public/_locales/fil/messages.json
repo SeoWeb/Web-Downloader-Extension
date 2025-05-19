@@ -65,7 +65,7 @@
     },
     "grant_permissions": {
         "message": "Magbigay ng mga Pahintulot",
-        "description": "Teksto ng pindutan para magbigay ng mga pahintulot"
+        "description": "Teksto ng pindutan para sa pagbigay ng mga pahintulot"
     },
     "permissions_granted": {
         "message": "Naibigay na ang mga Pahintulot!",
@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "Extension ng file para sa bat"
+    },
+    "single_file_title": {
+        "message": "Impormasyon sa Pag-download ng File",
+        "description": "Pamagat para sa card ng pag-download ng isang file."
+    },
+    "single_file_download_intro": {
+        "message": "Malapit mo nang i-download ang kasalukuyang web page bilang isang solong MHTML file (.mhtml).",
+        "description": "Panimula para sa pag-download ng isang file na MHTML."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "Format ng MHTML",
+        "description": "Pamagat para sa paliwanag ng format ng MHTML."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "Sine-save ng MHTML (MIME HTML) ang lahat ng nilalaman ng pahina (HTML, CSS, JavaScript, mga larawan) sa isang solong file.",
+        "description": "Paglalarawan ng format ng MHTML."
+    },
+    "single_file_includes_all_title": {
+        "message": "Lahat Kasama",
+        "description": "Pamagat para sa puntong 'kasama ang lahat ng mga mapagkukunan'."
+    },
+    "single_file_includes_all_desc": {
+        "message": "Tinitiyak na kasama ang lahat ng mga mapagkukunan, na ginagawang ganap na gumagana ang pahina offline.",
+        "description": "Paglalarawan para sa puntong 'kasama ang lahat ng mga mapagkukunan'."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "Pagtingin Offline",
+        "description": "Pamagat para sa benepisyo ng pagtingin offline."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "Mainam para sa pag-archive ng mga pahina o pagtingin sa mga ito sa ibang pagkakataon nang walang koneksyon sa internet.",
+        "description": "Paglalarawan para sa benepisyo ng pagtingin offline."
+    },
+    "single_file_browser_support_title": {
+        "message": "Suporta sa Browser",
+        "description": "Pamagat para sa pagiging tugma sa browser."
+    },
+    "single_file_browser_support_desc": {
+        "message": "Karamihan sa mga modernong web browser ay maaaring magbukas ng mga file na .mhtml.",
+        "description": "Paglalarawan para sa pagiging tugma sa browser."
+    },
+    "single_file_download_time_notice": {
+        "message": "Pakitandaan: Depende sa laki ng pahina, maaaring tumagal ng ilang sandali ang pag-download.",
+        "description": "Paunawa tungkol sa potensyal na oras ng pag-download para sa MHTML."
+    },
+    "button_download_single_file": {
+        "message": "I-download ang Isang File",
+        "description": "Teksto ng button para sa pag-download ng isang file"
     }
 }

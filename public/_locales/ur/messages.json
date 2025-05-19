@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "فائل ڈاؤن لوڈ کی معلومات",
+        "description": "ایک فائل ڈاؤن لوڈ کارڈ کے لیے عنوان۔"
+    },
+    "single_file_download_intro": {
+        "message": "آپ موجودہ ویب پیج کو ایک واحد MHTML فائل (.mhtml) کے طور پر ڈاؤن لوڈ کرنے والے ہیں۔",
+        "description": "ایک فائل MHTML ڈاؤن لوڈ کرنے کا تعارف۔"
+    },
+    "single_file_format_mhtml_title": {
+        "message": "MHTML فارمیٹ",
+        "description": "MHTML فارمیٹ کی وضاحت کے لیے عنوان۔"
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) ایک ہی فائل میں تمام صفحہ مواد (HTML, CSS, JavaScript, تصاویر) کو محفوظ کرتا ہے۔",
+        "description": "MHTML فارمیٹ کی وضاحت۔"
+    },
+    "single_file_includes_all_title": {
+        "message": "سب شامل ہیں",
+        "description": "'تمام وسائل شامل ہیں' نقطہ کے لیے عنوان۔"
+    },
+    "single_file_includes_all_desc": {
+        "message": "اس بات کو یقینی بناتا ہے کہ تمام وسائل شامل ہیں، جس سے صفحہ آف لائن مکمل طور پر فعال ہو جاتا ہے۔",
+        "description": "'تمام وسائل شامل ہیں' نقطہ کے لیے وضاحت۔"
+    },
+    "single_file_offline_viewing_title": {
+        "message": "آف لائن دیکھنا",
+        "description": "آف لائن دیکھنے کے فائدے کے لیے عنوان۔"
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "صفحات کو محفوظ کرنے یا بعد میں انٹرنیٹ کنکشن کے بغیر دیکھنے کے لیے مثالی ہے۔",
+        "description": "آف لائن دیکھنے کے فائدے کے لیے وضاحت۔"
+    },
+    "single_file_browser_support_title": {
+        "message": "براؤزر سپورٹ",
+        "description": "براؤزر مطابقت کے لیے عنوان۔"
+    },
+    "single_file_browser_support_desc": {
+        "message": "زیادہ تر جدید ویب براؤزر .mhtml فائلوں کو کھول سکتے ہیں۔",
+        "description": "براؤزر مطابقت کے لیے وضاحت۔"
+    },
+    "single_file_download_time_notice": {
+        "message": "براہ کرم نوٹ کریں: صفحہ کے سائز پر منحصر ہے، ڈاؤن لوڈ ہونے میں کچھ لمحے لگ سکتے ہیں۔",
+        "description": "MHTML کے لیے ممکنہ ڈاؤن لوڈ کے وقت کے بارے میں نوٹس۔"
+    },
+    "button_download_single_file": {
+        "message": "ایک فائل ڈاؤن لوڈ کریں",
+        "description": "ایک فائل ڈاؤن لوڈ کرنے کے لیے بٹن کا متن"
     }
 }

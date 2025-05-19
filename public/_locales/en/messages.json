@@ -131,6 +131,10 @@
         "message": "Download Website",
         "description": "Button text for download"
     },
+    "button_download_single_file": {
+        "message": "Download Single File",
+        "description": "Button text for single file download"
+    },
     "filtering_title": {
         "message": "Content Filtering",
         "description": "Title for filtering section"
@@ -372,6 +376,50 @@
 
 
 
+    "single_file_title": {
+        "message": "Download Information",
+        "description": "Title for the single file download card."
+    },
+    "single_file_download_intro": {
+        "message": "You are about to download the current web page as a single MHTML file (.mhtml).",
+        "description": "Introduction for single file MHTML download."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "MHTML Format",
+        "description": "Title for MHTML format explanation."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) saves all page content (HTML, CSS, JavaScript, images) into a single file.",
+        "description": "Description of MHTML format."
+    },
+    "single_file_includes_all_title": {
+        "message": "All-Inclusive",
+        "description": "Title for 'includes all resources' point."
+    },
+    "single_file_includes_all_desc": {
+        "message": "Ensures all resources are included, making the page fully functional offline.",
+        "description": "Description for 'includes all resources' point."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "Offline Viewing",
+        "description": "Title for offline viewing benefit."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "Ideal for archiving pages or viewing them later without an internet connection.",
+        "description": "Description for offline viewing benefit."
+    },
+    "single_file_browser_support_title": {
+        "message": "Browser Support",
+        "description": "Title for browser compatibility."
+    },
+    "single_file_browser_support_desc": {
+        "message": "Most modern web browsers can open .mhtml files.",
+        "description": "Description for browser compatibility."
+    },
+    "single_file_download_time_notice": {
+        "message": "Please note: Depending on the page size, the download might take a few moments.",
+        "description": "Notice about potential download time for MHTML."
+    },
     "lang_en": {
         "message": "English",
         "description": "The language of the extension"

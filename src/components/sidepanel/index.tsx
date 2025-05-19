@@ -31,5 +31,16 @@ export default function SidePanel() {
     </div>
   }
 
+  // HTML lehe laadimise staatus - see ei ole veel allalaadimine va kui tegemist ei ole ainult html allaadimisega
+  // Laaditavad failid koos staatuse ja tühistamisnupuga
+  // Kui automaatrežiim on välja lülitatud, saab kasutaja valida milliseid failid alla laadida
+  // Grpud - lehed, documendid, scriptid jne
+
+  // TODO: mhtml
+  // chrome.pageCapture.saveAsMHTML(
+  //   details: object,
+  //   callback?: function,
+  // )
+
   return <h1>Sidepanel</h1>;
 }

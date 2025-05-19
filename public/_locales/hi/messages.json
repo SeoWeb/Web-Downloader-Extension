@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "फ़ाइल डाउनलोड जानकारी",
+        "description": "एकल फ़ाइल डाउनलोड कार्ड के लिए शीर्षक।"
+    },
+    "single_file_download_intro": {
+        "message": "आप वर्तमान वेब पेज को एक एकल MHTML फ़ाइल (.mhtml) के रूप में डाउनलोड करने वाले हैं।",
+        "description": "एकल फ़ाइल MHTML डाउनलोड के लिए परिचय।"
+    },
+    "single_file_format_mhtml_title": {
+        "message": "MHTML प्रारूप",
+        "description": "MHTML प्रारूप स्पष्टीकरण के लिए शीर्षक।"
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) एक ही फ़ाइल में सभी पृष्ठ सामग्री (HTML, CSS, JavaScript, चित्र) को सहेजता है।",
+        "description": "MHTML प्रारूप का विवरण।"
+    },
+    "single_file_includes_all_title": {
+        "message": "सब शामिल हैं",
+        "description": "'सभी संसाधन शामिल हैं' बिंदु के लिए शीर्षक।"
+    },
+    "single_file_includes_all_desc": {
+        "message": "सुनिश्चित करता है कि सभी संसाधन शामिल हैं, जिससे पृष्ठ ऑफ़लाइन पूरी तरह से कार्यात्मक हो जाता है।",
+        "description": "'सभी संसाधन शामिल हैं' बिंदु के लिए विवरण।"
+    },
+    "single_file_offline_viewing_title": {
+        "message": "ऑफ़लाइन देखना",
+        "description": "ऑफ़लाइन देखने के लाभ के लिए शीर्षक।"
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "पृष्ठों को संग्रहीत करने या बाद में बिना इंटरनेट कनेक्शन के उन्हें देखने के लिए आदर्श।",
+        "description": "ऑफ़लाइन देखने के लाभ के लिए विवरण।"
+    },
+    "single_file_browser_support_title": {
+        "message": "ब्राउज़र समर्थन",
+        "description": "ब्राउज़र संगतता के लिए शीर्षक।"
+    },
+    "single_file_browser_support_desc": {
+        "message": "अधिकांश आधुनिक वेब ब्राउज़र .mhtml फ़ाइलों को खोल सकते हैं।",
+        "description": "ब्राउज़र संगतता के लिए विवरण।"
+    },
+    "single_file_download_time_notice": {
+        "message": "कृपया ध्यान दें: पृष्ठ के आकार के आधार पर, डाउनलोड होने में कुछ क्षण लग सकते हैं।",
+        "description": "MHTML के लिए संभावित डाउनलोड समय के बारे में सूचना।"
+    },
+    "button_download_single_file": {
+        "message": "एकल फ़ाइल डाउनलोड करें",
+        "description": "एकल फ़ाइल डाउनलोड के लिए बटन टेक्स्ट"
     }
 }

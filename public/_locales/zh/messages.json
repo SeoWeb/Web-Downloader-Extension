@@ -1,190 +1,190 @@
 {
     "title": {
-        "message": "网页和网站下载器",
+        "message": "Web Page & Site Downloader",
         "description": "The title of the extension"
     },
     "description": {
-        "message": "网页和网站下载器可让您下载整个网站——包括所有链接的页面和资源——以供离线查看。",
+        "message": "Web Page and Site Downloader lets you download entire websites—including all linked pages and resources—for offline viewing.",
         "description": "The description of the extension"
     },
     "help": {
-        "message": "帮助",
+        "message": "Help",
         "description": "The help button text"
     },
     "download_mode": {
-        "message": "下载模式",
+        "message": "Download Mode",
         "description": "The label for the download mode selection"
     },
     "single_download_description": {
-        "message": "仅下载当前页面及其所有资源。",
+        "message": "Download just the current page with all its assets.",
         "description": "Description for the single download mode"
     },
     "site_download_description": {
-        "message": "下载整个网站，包括所有链接的页面和资源。",
+        "message": "Download the entire site, including all linked pages and resources.",
         "description": "Description for the site download mode"
     },
     "single_page": {
-        "message": "单个页面",
+        "message": "Single Page",
         "description": "Label for the single page download mode"
     },
     "whole_website": {
-        "message": "整个网站",
+        "message": "Whole Website",
         "description": "Label for the whole website download mode"
     },
     "single_file": {
-        "message": "单个文件",
+        "message": "Single File",
         "description": "Label for the single file download mode"
     },
     "loading": {
-        "message": "加载中...",
+        "message": "Loading...",
         "description": "Loading message"
     },
     "downloading": {
-        "message": "下载中...",
+        "message": "Downloading...",
         "description": "Downloading message"
     },
     "not_downloadable": {
-        "message": "此页面不可下载",
+        "message": "This page is not downloadable",
         "description": "Message indicating that the page is not downloadable"
     },
     "close_sidepanel_message": {
-        "message": "请先关闭侧边栏。",
+        "message": "Close sidepanel first.",
         "description": "Message to close the side panel"
     },
     "permissions_title": {
-        "message": "所需权限",
+        "message": "Required Permissions",
         "description": "Title for permissions section"
     },
     "permissions_message": {
-        "message": "需要以下权限",
+        "message": "Following permissions are required",
         "description": "Title for permissions section"
     },
     "requesting_permissions": {
-        "message": "正在请求权限...",
+        "message": "Requesting permissions...",
         "description": "Message indicating that permissions are being requested"
     },
     "grant_permissions": {
-        "message": "授予权限",
+        "message": "Grant Permissions",
         "description": "Button text to grant permissions"
     },
     "permissions_granted": {
-        "message": "权限已授予！",
+        "message": "Permissions Granted!",
         "description": "Message indicating that permissions have been granted"
     },
     "permissions_intro": {
-        "message": "此扩展程序需要以下权限才能正常运行",
+        "message": "This extension requires the following permissions to function correctly",
         "description": "Introduction message for permissions"
     },
     "permission_activeTab": {
-        "message": "活动标签页",
+        "message": "Active Tab",
         "description": "Permission to access the active tab"
     },
     "permission_activeTab_description": {
-        "message": "允许扩展程序访问活动标签页。",
+        "message": "Allows the extension to access the active tab.",
         "description": "Description for active tab permission"
     },
     "permission_scripting": {
-        "message": "脚本",
+        "message": "Scripting",
         "description": "Permission to use scripting"
     },
     "permission_scripting_description": {
-        "message": "将脚本注入当前标签页以分析内容。",
+        "message": "Inject scripts into the current tab to analyze content.",
         "description": "Description for scripting permission"
     },
     "permission_storage": {
-        "message": "存储",
+        "message": "Storage",
         "description": "Permission to use storage"
     },
     "permission_storage_description": {
-        "message": "存储用户偏好和设置。",
+        "message": "Store user preferences and settings.",
         "description": "Description for storage permission"
     },
     "permission_downloads": {
-        "message": "下载",
+        "message": "Downloads",
         "description": "Permission to use downloads"
     },
     "permission_downloads_description": {
-        "message": "将文件下载到用户计算机。",
+        "message": "Download files to the user's computer.",
         "description": "Description for downloads permission"
     },
     "permission_request_error": {
-        "message": "请求权限时发生错误。",
+        "message": "An error occurred while requesting permissions.",
         "description": "Error message for permission request"
     },
     "permission_not_granted_error": {
-        "message": "未授予权限。请授予权限以继续。",
+        "message": "Permissions were not granted. Please grant permissions to continue.",
         "description": "Error message for permission not granted"
     },
     "permission_check_error": {
-        "message": "检查权限失败。请重试。",
+        "message": "Failed to check permissions. Please try again.",
         "description": "Error message for permission check"
     },
     "button_options": {
-        "message": "选项",
+        "message": "Options",
         "description": "Button text for options"
     },
     "button_download_page": {
-        "message": "下载页面",
+        "message": "Download Page",
         "description": "Button text for download"
     },
     "button_download_website": {
-        "message": "下载网站",
+        "message": "Download Website",
         "description": "Button text for download"
     },
     "filtering_title": {
-        "message": "内容筛选",
+        "message": "Content Filtering",
         "description": "Title for filtering section"
     },
     "filtering_label": {
-        "message": "按以下条件筛选包含的资源",
+        "message": "Filter Included Assets By",
         "description": "Label for filtering options"
     },
     "filtering_by_type": {
-        "message": "类型",
+        "message": "Type",
         "description": "Label for filtering by type"
     },
     "filtering_by_extension": {
-        "message": "文件扩展名",
+        "message": "File Extension",
         "description": "Label for filtering by extension"
     },
     "filter_by_image": {
-        "message": "图片",
+        "message": "Image",
         "description": "Label for filtering by image"
     },
     "filter_by_script": {
-        "message": "脚本",
+        "message": "Script",
         "description": "Label for filtering by script"
     },
     "filter_by_stylesheet": {
-        "message": "样式表",
+        "message": "Stylesheet",
         "description": "Label for filtering by stylesheet"
     },
     "filter_by_font": {
-        "message": "字体",
+        "message": "Font",
         "description": "Label for filtering by font"
     },
     "filter_by_html": {
-        "message": "标记语言",
+        "message": "Markup",
         "description": "Label for filtering by Markup"
     },
     "filter_by_document": {
-        "message": "文档",
+        "message": "Document",
         "description": "Label for filtering by Document"
     },
     "filter_by_spreadsheet": {
-        "message": "电子表格",
+        "message": "Spreadsheet",
         "description": "Label for filtering by Spreadsheet"
     },
     "filter_by_video": {
-        "message": "视频",
+        "message": "Video",
         "description": "Label for filtering by Video"
     },
     "filter_by_audio": {
-        "message": "音频",
+        "message": "Audio",
         "description": "Label for filtering by Audio"
     },
     "filter_by_archive": {
-        "message": "存档",
+        "message": "Archive",
         "description": "Label for filtering by Archive"
     },
     "filter_by_json": {
@@ -192,11 +192,11 @@
         "description": "Label for filtering by JSON"
     },
     "filter_by_executable": {
-        "message": "可执行文件",
+        "message": "Executable",
         "description": "Label for filtering by Executable"
     },
     "filter_by_other": {
-        "message": "其他",
+        "message": "Other",
         "description": "Label for filtering by Other"
     },
     "filter_by_jpg": {
@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "文件下载信息",
+        "description": "单个文件下载卡的标题。"
+    },
+    "single_file_download_intro": {
+        "message": "您即将下载当前网页，并将其保存为单个 MHTML 文件 (.mhtml)。",
+        "description": "单个文件 MHTML 下载的介绍。"
+    },
+    "single_file_format_mhtml_title": {
+        "message": "MHTML 格式",
+        "description": "MHTML 格式说明的标题。"
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) 将所有页面内容（HTML、CSS、JavaScript、图像）保存到单个文件中。",
+        "description": "MHTML 格式的描述。"
+    },
+    "single_file_includes_all_title": {
+        "message": "全部包含",
+        "description": "'包含所有资源'这一点的标题。"
+    },
+    "single_file_includes_all_desc": {
+        "message": "确保包含所有资源，使页面在离线状态下完全可用。",
+        "description": "'包含所有资源'这一点的描述。"
+    },
+    "single_file_offline_viewing_title": {
+        "message": "离线查看",
+        "description": "离线查看优势的标题。"
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "非常适合存档页面或稍后在没有互联网连接的情况下查看。",
+        "description": "离线查看优势的描述。"
+    },
+    "single_file_browser_support_title": {
+        "message": "浏览器支持",
+        "description": "浏览器兼容性的标题。"
+    },
+    "single_file_browser_support_desc": {
+        "message": "大多数现代网络浏览器都可以打开 .mhtml 文件。",
+        "description": "浏览器兼容性的描述。"
+    },
+    "single_file_download_time_notice": {
+        "message": "请注意：根据页面大小，下载可能需要几秒钟。",
+        "description": "关于 MHTML 的潜在下载时间的通知。"
+    },
+    "button_download_single_file": {
+        "message": "下载单个文件",
+        "description": "下载单个文件的按钮文本"
     }
 }

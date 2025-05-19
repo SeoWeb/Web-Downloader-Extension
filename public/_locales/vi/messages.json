@@ -1,178 +1,178 @@
 {
     "title": {
-        "message": "Trình tải xuống trang web & trang web",
+        "message": "Web Page & Site Downloader",
         "description": "The title of the extension"
     },
     "description": {
-        "message": "Trình tải xuống trang web và trang web cho phép bạn tải xuống toàn bộ trang web—bao gồm tất cả các trang và tài nguyên được liên kết—để xem ngoại tuyến.",
+        "message": "Web Page and Site Downloader lets you download entire websites—including all linked pages and resources—for offline viewing.",
         "description": "The description of the extension"
     },
     "help": {
-        "message": "Trợ giúp",
+        "message": "Help",
         "description": "The help button text"
     },
     "download_mode": {
-        "message": "Chế độ tải xuống",
+        "message": "Download Mode",
         "description": "The label for the download mode selection"
     },
     "single_download_description": {
-        "message": "Chỉ tải xuống trang hiện tại với tất cả nội dung của nó.",
+        "message": "Download just the current page with all its assets.",
         "description": "Description for the single download mode"
     },
     "site_download_description": {
-        "message": "Tải xuống toàn bộ trang web, bao gồm tất cả các trang và tài nguyên được liên kết.",
+        "message": "Download the entire site, including all linked pages and resources.",
         "description": "Description for the site download mode"
     },
     "single_page": {
-        "message": "Một trang",
+        "message": "Single Page",
         "description": "Label for the single page download mode"
     },
     "whole_website": {
-        "message": "Toàn bộ trang web",
+        "message": "Whole Website",
         "description": "Label for the whole website download mode"
     },
     "single_file": {
-        "message": "Tệp đơn",
+        "message": "Single File",
         "description": "Label for the single file download mode"
     },
     "loading": {
-        "message": "Đang tải...",
+        "message": "Loading...",
         "description": "Loading message"
     },
     "downloading": {
-        "message": "Đang tải xuống...",
+        "message": "Downloading...",
         "description": "Downloading message"
     },
     "not_downloadable": {
-        "message": "Trang này không thể tải xuống",
+        "message": "This page is not downloadable",
         "description": "Message indicating that the page is not downloadable"
     },
     "close_sidepanel_message": {
-        "message": "Đóng bảng điều khiển bên trước.",
+        "message": "Close sidepanel first.",
         "description": "Message to close the side panel"
     },
     "permissions_title": {
-        "message": "Quyền yêu cầu",
+        "message": "Required Permissions",
         "description": "Title for permissions section"
     },
     "permissions_message": {
-        "message": "Các quyền sau đây là bắt buộc",
+        "message": "Following permissions are required",
         "description": "Title for permissions section"
     },
     "requesting_permissions": {
-        "message": "Đang yêu cầu quyền...",
+        "message": "Requesting permissions...",
         "description": "Message indicating that permissions are being requested"
     },
     "grant_permissions": {
-        "message": "Cấp quyền",
+        "message": "Grant Permissions",
         "description": "Button text to grant permissions"
     },
     "permissions_granted": {
-        "message": "Đã cấp quyền!",
+        "message": "Permissions Granted!",
         "description": "Message indicating that permissions have been granted"
     },
     "permissions_intro": {
-        "message": "Tiện ích mở rộng này yêu cầu các quyền sau để hoạt động chính xác",
+        "message": "This extension requires the following permissions to function correctly",
         "description": "Introduction message for permissions"
     },
     "permission_activeTab": {
-        "message": "Tab đang hoạt động",
+        "message": "Active Tab",
         "description": "Permission to access the active tab"
     },
     "permission_activeTab_description": {
-        "message": "Cho phép tiện ích mở rộng truy cập tab đang hoạt động.",
+        "message": "Allows the extension to access the active tab.",
         "description": "Description for active tab permission"
     },
     "permission_scripting": {
-        "message": "Tập lệnh",
+        "message": "Scripting",
         "description": "Permission to use scripting"
     },
     "permission_scripting_description": {
-        "message": "Tiêm tập lệnh vào tab hiện tại để phân tích nội dung.",
+        "message": "Inject scripts into the current tab to analyze content.",
         "description": "Description for scripting permission"
     },
     "permission_storage": {
-        "message": "Lưu trữ",
+        "message": "Storage",
         "description": "Permission to use storage"
     },
     "permission_storage_description": {
-        "message": "Lưu trữ tùy chọn và cài đặt của người dùng.",
+        "message": "Store user preferences and settings.",
         "description": "Description for storage permission"
     },
     "permission_downloads": {
-        "message": "Tải xuống",
+        "message": "Downloads",
         "description": "Permission to use downloads"
     },
     "permission_downloads_description": {
-        "message": "Tải tệp xuống máy tính của người dùng.",
+        "message": "Download files to the user's computer.",
         "description": "Description for downloads permission"
     },
     "permission_request_error": {
-        "message": "Đã xảy ra lỗi khi yêu cầu quyền.",
+        "message": "An error occurred while requesting permissions.",
         "description": "Error message for permission request"
     },
     "permission_not_granted_error": {
-        "message": "Quyền chưa được cấp. Vui lòng cấp quyền để tiếp tục.",
+        "message": "Permissions were not granted. Please grant permissions to continue.",
         "description": "Error message for permission not granted"
     },
     "permission_check_error": {
-        "message": "Không thể kiểm tra quyền. Vui lòng thử lại.",
+        "message": "Failed to check permissions. Please try again.",
         "description": "Error message for permission check"
     },
     "button_options": {
-        "message": "Tùy chọn",
+        "message": "Options",
         "description": "Button text for options"
     },
     "button_download_page": {
-        "message": "Tải xuống trang",
+        "message": "Download Page",
         "description": "Button text for download"
     },
     "button_download_website": {
-        "message": "Tải xuống trang web",
+        "message": "Download Website",
         "description": "Button text for download"
     },
     "filtering_title": {
-        "message": "Lọc nội dung",
+        "message": "Content Filtering",
         "description": "Title for filtering section"
     },
     "filtering_label": {
-        "message": "Lọc nội dung được bao gồm theo",
+        "message": "Filter Included Assets By",
         "description": "Label for filtering options"
     },
     "filtering_by_type": {
-        "message": "Loại",
+        "message": "Type",
         "description": "Label for filtering by type"
     },
     "filtering_by_extension": {
-        "message": "Phần mở rộng tệp",
+        "message": "File Extension",
         "description": "Label for filtering by extension"
     },
     "filter_by_image": {
-        "message": "Hình ảnh",
+        "message": "Image",
         "description": "Label for filtering by image"
     },
     "filter_by_script": {
-        "message": "Tập lệnh",
+        "message": "Script",
         "description": "Label for filtering by script"
     },
     "filter_by_stylesheet": {
-        "message": "Bảng kiểu",
+        "message": "Stylesheet",
         "description": "Label for filtering by stylesheet"
     },
     "filter_by_font": {
-        "message": "Phông chữ",
+        "message": "Font",
         "description": "Label for filtering by font"
     },
     "filter_by_html": {
-        "message": "Đánh dấu",
+        "message": "Markup",
         "description": "Label for filtering by Markup"
     },
     "filter_by_document": {
-        "message": "Tài liệu",
+        "message": "Document",
         "description": "Label for filtering by Document"
     },
     "filter_by_spreadsheet": {
-        "message": "Bảng tính",
+        "message": "Spreadsheet",
         "description": "Label for filtering by Spreadsheet"
     },
     "filter_by_video": {
@@ -180,11 +180,11 @@
         "description": "Label for filtering by Video"
     },
     "filter_by_audio": {
-        "message": "Âm thanh",
+        "message": "Audio",
         "description": "Label for filtering by Audio"
     },
     "filter_by_archive": {
-        "message": "Lưu trữ",
+        "message": "Archive",
         "description": "Label for filtering by Archive"
     },
     "filter_by_json": {
@@ -192,11 +192,11 @@
         "description": "Label for filtering by JSON"
     },
     "filter_by_executable": {
-        "message": "Thực thi",
+        "message": "Executable",
         "description": "Label for filtering by Executable"
     },
     "filter_by_other": {
-        "message": "Khác",
+        "message": "Other",
         "description": "Label for filtering by Other"
     },
     "filter_by_jpg": {
@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "Thông tin tải xuống tệp",
+        "description": "Tiêu đề cho thẻ tải xuống một tệp."
+    },
+    "single_file_download_intro": {
+        "message": "Bạn sắp tải xuống trang web hiện tại dưới dạng một tệp MHTML (.mhtml).",
+        "description": "Giới thiệu về việc tải xuống một tệp MHTML."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "Định dạng MHTML",
+        "description": "Tiêu đề cho phần giải thích định dạng MHTML."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) lưu tất cả nội dung trang (HTML, CSS, JavaScript, hình ảnh) vào một tệp duy nhất.",
+        "description": "Mô tả về định dạng MHTML."
+    },
+    "single_file_includes_all_title": {
+        "message": "Bao gồm tất cả",
+        "description": "Tiêu đề cho điểm 'bao gồm tất cả các tài nguyên'."
+    },
+    "single_file_includes_all_desc": {
+        "message": "Đảm bảo rằng tất cả các tài nguyên được bao gồm, giúp trang hoạt động đầy đủ ngoại tuyến.",
+        "description": "Mô tả cho điểm 'bao gồm tất cả các tài nguyên'."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "Xem ngoại tuyến",
+        "description": "Tiêu đề cho lợi ích của việc xem ngoại tuyến."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "Lý tưởng để lưu trữ các trang hoặc xem chúng sau này mà không cần kết nối internet.",
+        "description": "Mô tả cho lợi ích của việc xem ngoại tuyến."
+    },
+    "single_file_browser_support_title": {
+        "message": "Hỗ trợ trình duyệt",
+        "description": "Tiêu đề cho khả năng tương thích của trình duyệt."
+    },
+    "single_file_browser_support_desc": {
+        "message": "Hầu hết các trình duyệt web hiện đại có thể mở các tệp .mhtml.",
+        "description": "Mô tả cho khả năng tương thích của trình duyệt."
+    },
+    "single_file_download_time_notice": {
+        "message": "Xin lưu ý: Tùy thuộc vào kích thước trang, việc tải xuống có thể mất một vài giây.",
+        "description": "Thông báo về thời gian tải xuống tiềm năng cho MHTML."
+    },
+    "button_download_single_file": {
+        "message": "Tải xuống một tệp",
+        "description": "Văn bản nút để tải xuống một tệp"
     }
 }

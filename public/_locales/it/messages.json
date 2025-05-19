@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "Informazioni sul download del file",
+        "description": "Titolo per la scheda di download di un singolo file."
+    },
+    "single_file_download_intro": {
+        "message": "Stai per scaricare la pagina web corrente come un singolo file MHTML (.mhtml).",
+        "description": "Introduzione al download di un singolo file MHTML."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "Formato MHTML",
+        "description": "Titolo per la spiegazione del formato MHTML."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) salva tutti i contenuti della pagina (HTML, CSS, JavaScript, immagini) in un singolo file.",
+        "description": "Descrizione del formato MHTML."
+    },
+    "single_file_includes_all_title": {
+        "message": "Tutto incluso",
+        "description": "Titolo per il punto 'include tutte le risorse'."
+    },
+    "single_file_includes_all_desc": {
+        "message": "Garantisce che tutte le risorse siano incluse, rendendo la pagina completamente funzionale offline.",
+        "description": "Descrizione per il punto 'include tutte le risorse'."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "Visualizzazione offline",
+        "description": "Titolo per il vantaggio della visualizzazione offline."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "Ideale per archiviare pagine o visualizzarle in un secondo momento senza una connessione Internet.",
+        "description": "Descrizione per il vantaggio della visualizzazione offline."
+    },
+    "single_file_browser_support_title": {
+        "message": "Supporto del browser",
+        "description": "Titolo per la compatibilità del browser."
+    },
+    "single_file_browser_support_desc": {
+        "message": "La maggior parte dei browser web moderni può aprire file .mhtml.",
+        "description": "Descrizione per la compatibilità del browser."
+    },
+    "single_file_download_time_notice": {
+        "message": "Nota: a seconda delle dimensioni della pagina, il download potrebbe richiedere alcuni istanti.",
+        "description": "Avviso sul potenziale tempo di download per MHTML."
+    },
+    "button_download_single_file": {
+        "message": "Scarica File Singolo",
+        "description": "Testo del pulsante per il download di un singolo file"
     }
 }

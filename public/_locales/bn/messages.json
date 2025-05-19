@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "ফাইল ডাউনলোডের তথ্য",
+        "description": "একক ফাইল ডাউনলোডের জন্য শিরোনাম।"
+    },
+    "single_file_download_intro": {
+        "message": "আপনি বর্তমান ওয়েব পেজটি একটি একক MHTML ফাইল (.mhtml) হিসাবে ডাউনলোড করতে চলেছেন।",
+        "description": "একক ফাইল MHTML ডাউনলোডের জন্য ভূমিকা।"
+    },
+    "single_file_format_mhtml_title": {
+        "message": "MHTML ফরম্যাট",
+        "description": "MHTML ফরম্যাট ব্যাখ্যার জন্য শিরোনাম।"
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) একটি একক ফাইলে সমস্ত পেজ কন্টেন্ট (HTML, CSS, জাভাস্ক্রিপ্ট, ছবি) সংরক্ষণ করে।",
+        "description": "MHTML ফরম্যাটের বর্ণনা।"
+    },
+    "single_file_includes_all_title": {
+        "message": "সব অন্তর্ভুক্ত",
+        "description": "'সমস্ত রিসোর্স অন্তর্ভুক্ত' করার জন্য শিরোনাম।"
+    },
+    "single_file_includes_all_desc": {
+        "message": "নিশ্চিত করে যে সমস্ত রিসোর্স অন্তর্ভুক্ত করা হয়েছে, যা পেজটিকে সম্পূর্ণরূপে অফলাইনে কার্যকরী করে তোলে।",
+        "description": "'সমস্ত রিসোর্স অন্তর্ভুক্ত' করার জন্য বর্ণনা।"
+    },
+    "single_file_offline_viewing_title": {
+        "message": "অফলাইন দেখা",
+        "description": "অফলাইন দেখার সুবিধার জন্য শিরোনাম।"
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "আর্কাইভিং পেজগুলির জন্য বা ইন্টারনেট সংযোগ ছাড়াই পরে সেগুলি দেখার জন্য আদর্শ।",
+        "description": "অফলাইন দেখার সুবিধার জন্য বর্ণনা।"
+    },
+    "single_file_browser_support_title": {
+        "message": "ব্রাউজার সমর্থন",
+        "description": "ব্রাউজার সামঞ্জস্যের জন্য শিরোনাম।"
+    },
+    "single_file_browser_support_desc": {
+        "message": "অধিকাংশ আধুনিক ওয়েব ব্রাউজার .mhtml ফাইল খুলতে পারে।",
+        "description": "ব্রাউজার সামঞ্জস্যের জন্য বর্ণনা।"
+    },
+    "single_file_download_time_notice": {
+        "message": "অনুগ্রহ করে মনে রাখবেন: পেজের আকারের উপর নির্ভর করে, ডাউনলোড হতে কয়েক মুহূর্ত সময় লাগতে পারে।",
+        "description": "MHTML-এর জন্য সম্ভাব্য ডাউনলোডের সময় সম্পর্কে বিজ্ঞপ্তি।"
+    },
+    "button_download_single_file": {
+        "message": "একক ফাইল ডাউনলোড করুন",
+        "description": "একক ফাইল ডাউনলোডের জন্য বোতামের টেক্সট"
     }
 }

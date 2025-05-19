@@ -366,5 +366,53 @@
     "filter_by_bat": {
         "message": "bat",
         "description": "File extension for bat"
+    },
+    "single_file_title": {
+        "message": "Información de Descarga de Archivo",
+        "description": "Título para la tarjeta de descarga de un solo archivo."
+    },
+    "single_file_download_intro": {
+        "message": "Estás a punto de descargar la página web actual como un único archivo MHTML (.mhtml).",
+        "description": "Introducción a la descarga de un solo archivo MHTML."
+    },
+    "single_file_format_mhtml_title": {
+        "message": "Formato MHTML",
+        "description": "Título para la explicación del formato MHTML."
+    },
+    "single_file_format_mhtml_desc": {
+        "message": "MHTML (MIME HTML) guarda todo el contenido de la página (HTML, CSS, JavaScript, imágenes) en un único archivo.",
+        "description": "Descripción del formato MHTML."
+    },
+    "single_file_includes_all_title": {
+        "message": "Todo Incluido",
+        "description": "Título para el punto 'incluye todos los recursos'."
+    },
+    "single_file_includes_all_desc": {
+        "message": "Garantiza que se incluyan todos los recursos, haciendo que la página sea completamente funcional sin conexión.",
+        "description": "Descripción para el punto 'incluye todos los recursos'."
+    },
+    "single_file_offline_viewing_title": {
+        "message": "Visualización sin Conexión",
+        "description": "Título para el beneficio de la visualización sin conexión."
+    },
+    "single_file_offline_viewing_desc": {
+        "message": "Ideal para archivar páginas o verlas más tarde sin conexión a Internet.",
+        "description": "Descripción para el beneficio de la visualización sin conexión."
+    },
+    "single_file_browser_support_title": {
+        "message": "Compatibilidad con Navegadores",
+        "description": "Título para la compatibilidad con navegadores."
+    },
+    "single_file_browser_support_desc": {
+        "message": "La mayoría de los navegadores web modernos pueden abrir archivos .mhtml.",
+        "description": "Descripción para la compatibilidad con navegadores."
+    },
+    "single_file_download_time_notice": {
+        "message": "Ten en cuenta: Dependiendo del tamaño de la página, la descarga puede tardar unos momentos.",
+        "description": "Aviso sobre el posible tiempo de descarga para MHTML."
+    },
+    "button_download_single_file": {
+        "message": "Descargar Archivo Único",
+        "description": "Texto del botón para la descarga de un solo archivo"
     }
 }
