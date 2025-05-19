@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "Tính năng này sẽ có sẵn trong phiên bản tiếp theo.",
         "description": "Phụ đề cho tính năng tải xuống trang web đầy đủ."
+    },
+    "permission_pageCapture": {
+        "message": "Chụp trang",
+        "description": "Quyền truy cập để chụp trang hiện tại"
+    },
+    "permission_pageCapture_description": {
+        "message": "Cho phép tiện ích mở rộng truy cập vào nội dung của trang hiện tại.",
+        "description": "Mô tả cho quyền chụp trang"
     }
 }

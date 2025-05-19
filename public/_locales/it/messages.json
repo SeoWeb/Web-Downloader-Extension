@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "Questa funzionalità sarà disponibile nella prossima versione.",
         "description": "Sottotitolo per la funzione di download della pagina web completa."
+    },
+    "permission_pageCapture": {
+        "message": "Cattura pagina",
+        "description": "Permesso di catturare la pagina corrente"
+    },
+    "permission_pageCapture_description": {
+        "message": "Consente all'estensione di catturare il contenuto della pagina corrente.",
+        "description": "Descrizione per il permesso di cattura della pagina"
     }
 }

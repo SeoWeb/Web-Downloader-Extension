@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "此功能将在下一个版本中提供。",
         "description": "完整网页下载功能的副标题。"
+    },
+    "permission_pageCapture": {
+        "message": "页面捕获",
+        "description": "访问当前页面的权限"
+    },
+    "permission_pageCapture_description": {
+        "message": "允许扩展程序访问当前页面的内容。",
+        "description": "页面捕获权限的描述"
     }
 }

@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "Эта функция будет доступна в следующей версии.",
         "description": "Подзаголовок для функции загрузки полной веб-страницы."
+    },
+    "permission_pageCapture": {
+        "message": "Захват страницы",
+        "description": "Разрешение на захват текущей страницы"
+    },
+    "permission_pageCapture_description": {
+        "message": "Позволяет расширению захватывать содержимое текущей страницы.",
+        "description": "Описание разрешения на захват страницы"
     }
 }

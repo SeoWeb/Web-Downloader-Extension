@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "Available ang feature na ito sa susunod na bersyon.",
         "description": "Subtitle para sa tampok na pag-download ng buong web page."
+    },
+    "permission_pageCapture": {
+        "message": "Pagkuha ng Pahina",
+        "description": "Pahintulot na makuha ang kasalukuyang pahina"
+    },
+    "permission_pageCapture_description": {
+        "message": "Pinapayagan ang extension na makuha ang nilalaman ng kasalukuyang pahina.",
+        "description": "Paglalarawan para sa pahintulot sa pagkuha ng pahina"
     }
 }

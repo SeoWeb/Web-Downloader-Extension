@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "यह सुविधा अगले संस्करण में उपलब्ध होगी।",
         "description": "पूर्ण वेब पेज डाउनलोड सुविधा के लिए उपशीर्षक।"
+    },
+    "permission_pageCapture": {
+        "message": "पेज कैप्चर",
+        "description": "वर्तमान पृष्ठ को कैप्चर करने की अनुमति"
+    },
+    "permission_pageCapture_description": {
+        "message": "एक्सटेंशन को वर्तमान पृष्ठ की सामग्री को कैप्चर करने की अनुमति देता है।",
+        "description": "पेज कैप्चर अनुमति के लिए विवरण"
     }
 }

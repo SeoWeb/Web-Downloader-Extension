@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "এই বৈশিষ্ট্যটি পরবর্তী সংস্করণে উপলব্ধ হবে।",
         "description": "পূর্ণ ওয়েব পেজ ডাউনলোড বৈশিষ্ট্যের জন্য সাবটাইটেল।"
+    },
+    "permission_pageCapture": {
+        "message": "পেজ ক্যাপচার",
+        "description": "বর্তমান পেজ ক্যাপচার করার অনুমতি"
+    },
+    "permission_pageCapture_description": {
+        "message": "এক্সটেনশনটিকে বর্তমান পেজের বিষয়বস্তু ক্যাপচার করার অনুমতি দেয়।",
+        "description": "পেজ ক্যাপচার অনুমতির জন্য বর্ণনা"
     }
 }

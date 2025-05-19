@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "Esta funcionalidade estará disponível na próxima versão.",
         "description": "Subtítulo para a função de download da página web completa."
+    },
+    "permission_pageCapture": {
+        "message": "Captura de página",
+        "description": "Permissão para capturar a página atual"
+    },
+    "permission_pageCapture_description": {
+        "message": "Permite que a extensão capture o conteúdo da página atual.",
+        "description": "Descrição para a permissão de captura de página"
     }
 }

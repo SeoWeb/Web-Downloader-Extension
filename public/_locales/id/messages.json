@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "Fitur ini akan tersedia di versi berikutnya.",
         "description": "Subjudul untuk fitur pengunduhan halaman web lengkap."
+    },
+    "permission_pageCapture": {
+        "message": "Pengambilan Halaman",
+        "description": "Izin untuk mengambil halaman saat ini"
+    },
+    "permission_pageCapture_description": {
+        "message": "Memungkinkan ekstensi untuk mengambil konten halaman saat ini.",
+        "description": "Deskripsi untuk izin pengambilan halaman"
     }
 }

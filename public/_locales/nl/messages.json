@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "Deze functie komt beschikbaar in de volgende versie.",
         "description": "Subtitel voor de functie voor het downloaden van volledige webpagina's."
+    },
+    "permission_pageCapture": {
+        "message": "Pagina vastleggen",
+        "description": "Toestemming om de huidige pagina vast te leggen"
+    },
+    "permission_pageCapture_description": {
+        "message": "Staat de extensie toe om de inhoud van de huidige pagina vast te leggen.",
+        "description": "Beschrijving voor de toestemming voor pagina vastleggen"
     }
 }

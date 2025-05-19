@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "Diese Funktion wird in der nächsten Version verfügbar sein.",
         "description": "Untertitel für die Funktion zum Herunterladen der kompletten Webseite."
+    },
+    "permission_pageCapture": {
+        "message": "Seitenaufnahme",
+        "description": "Berechtigung zum Erfassen der aktuellen Seite"
+    },
+    "permission_pageCapture_description": {
+        "message": "Ermöglicht der Erweiterung, den Inhalt der aktuellen Seite zu erfassen.",
+        "description": "Beschreibung für die Berechtigung zur Seitenaufnahme"
     }
 }

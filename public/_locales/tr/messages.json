@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "Bu özellik bir sonraki sürümde kullanıma sunulacaktır.",
         "description": "Tam web sayfası indirme özelliği için alt başlık."
+    },
+    "permission_pageCapture": {
+        "message": "Sayfa Yakalama",
+        "description": "Geçerli sayfayı yakalama izni"
+    },
+    "permission_pageCapture_description": {
+        "message": "Uzantının geçerli sayfanın içeriğini yakalamasına izin verir.",
+        "description": "Sayfa yakalama izni açıklaması"
     }
 }

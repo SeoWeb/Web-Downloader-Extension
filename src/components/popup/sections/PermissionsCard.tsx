@@ -1,30 +1,54 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import StaticCard from "../../ui/StaticCard"; // Import StaticCard correctly
 import { AlertTriangle, CheckCircle, KeyRound } from "lucide-react"; // Add KeyRound icon
 import PrimaryButton from "../../ui/PrimaryButton";
 import { useLanguageStore } from "../../../store/languageStore";
+import { DownloadMode } from "../../../store/downloadSettingsStore";
 
-const REQUIRED_PERMISSIONS: chrome.permissions.Permissions = {
-  permissions: ["activeTab", "scripting", "downloads", "storage"],
-};
+const BASE_PERMISSIONS: chrome.runtime.ManifestPermissions[] = [
+  "activeTab",
+  "scripting",
+  "downloads",
+  "storage",
+];
 
 interface PermissionsCardProps {
   hasPermissions: boolean;
   setHasPermissions: (set: boolean) => void;
+  downloadMode: DownloadMode;
 }
 
 export default function PermissionsCard({
   hasPermissions,
   setHasPermissions,
+  downloadMode, // Added downloadMode
 }: PermissionsCardProps) {
   const { direction, getTranslation } = useLanguageStore();
   const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Define effective permissions based on downloadMode
+  const getEffectivePermissions = (
+    mode: DownloadMode,
+  ): chrome.permissions.Permissions => {
+    const basePermissions: chrome.runtime.ManifestPermissions[] =
+      BASE_PERMISSIONS;
+    if (mode === "single_file") {
+      return { permissions: [...basePermissions, "pageCapture"] };
+    }
+    return { permissions: basePermissions };
+  };
+
+  // Memoize effectivePermissions to stabilize it for useEffect dependencies
+  const effectivePermissions = useMemo(
+    () => getEffectivePermissions(downloadMode),
+    [downloadMode],
+  );
+
   useEffect(() => {
     const checkAndProceed = async () => {
       try {
-        const granted = await chrome.permissions.contains(REQUIRED_PERMISSIONS);
+        const granted = await chrome.permissions.contains(effectivePermissions); // Use effectivePermissions
         setHasPermissions(granted);
         setError(null); // Clear previous errors
       } catch (err) {
@@ -33,13 +57,13 @@ export default function PermissionsCard({
       }
     };
     checkAndProceed();
-  }, []);
+  }, [effectivePermissions, setHasPermissions, getTranslation]); // Updated dependencies
 
   const requestPermissions = async () => {
     setIsRequesting(true);
     setError(null);
     try {
-      const granted = await chrome.permissions.request(REQUIRED_PERMISSIONS);
+      const granted = await chrome.permissions.request(effectivePermissions); // Use effectivePermissions
       setHasPermissions(granted);
       if (!granted) {
         setError(getTranslation("permission_not_granted_error"));
@@ -91,6 +115,14 @@ export default function PermissionsCard({
             label={getTranslation("permission_storage")}
             description={getTranslation("permission_storage_description")}
           />
+          {/* Conditionally render pageCapture permission */}
+          {effectivePermissions.permissions?.includes("pageCapture") && (
+            <PermissionItem
+              direction={direction}
+              label={getTranslation("permission_pageCapture")}
+              description={getTranslation("permission_pageCapture_description")}
+            />
+          )}
         </ul>
       </>
     );

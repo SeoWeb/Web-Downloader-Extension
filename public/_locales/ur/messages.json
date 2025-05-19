@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "یہ فیچر اگلے ورژن میں دستیاب ہوگا۔",
         "description": "مکمل ویب پیج ڈاؤن لوڈ فیچر کے لیے ذیلی عنوان۔"
+    },
+    "permission_pageCapture": {
+        "message": "صفحہ کیپچر",
+        "description": "موجودہ صفحہ کو کیپچر کرنے کی اجازت"
+    },
+    "permission_pageCapture_description": {
+        "message": "ایکسٹینشن کو موجودہ صفحہ کے مواد کو کیپچر کرنے کی اجازت دیتا ہے۔",
+        "description": "صفحہ کیپچر کی اجازت کے لیے تفصیل"
     }
 }

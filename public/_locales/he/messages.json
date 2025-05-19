@@ -422,5 +422,13 @@
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "תכונה זו תהיה זמינה בגרסה הבאה.",
         "description": "כותרת משנה עבור תכונת הורדת דף אינטרנט מלא."
+    },
+    "permission_pageCapture": {
+        "message": "לכידת דף",
+        "description": "הרשאה ללכוד את הדף הנוכחי"
+    },
+    "permission_pageCapture_description": {
+        "message": "מאפשר לתוסף ללכוד את תוכן הדף הנוכחי.",
+        "description": "תיאור עבור הרשאת לכידת דף"
     }
 }

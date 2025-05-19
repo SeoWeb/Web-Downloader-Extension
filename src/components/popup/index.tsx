@@ -59,6 +59,7 @@ export default function Popup() {
 
   useEffect(() => {
     setActiveCardIndex(0);
+    setHasPermissions(false);
     if (downloadMode === "single_file") {
       setCardComponents(singleFileCardComponents);
     } else if (downloadMode === "single") {
@@ -72,6 +73,7 @@ export default function Popup() {
     <PermissionsCard
       hasPermissions={hasPermissions}
       setHasPermissions={setHasPermissions}
+      downloadMode={downloadMode}
     />
   );
 
