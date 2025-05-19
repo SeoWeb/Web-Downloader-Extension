@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "Pobierz Pojedynczy Plik",
         "description": "Tekst przycisku do pobierania pojedynczego pliku"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "Pobieranie pełnej strony internetowej wkrótce",
+        "description": "Tytuł dla funkcji pobierania pełnej strony internetowej."
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "Ta funkcja będzie dostępna w następnej wersji.",
+        "description": "Podtytuł dla funkcji pobierania pełnej strony internetowej."
     }
 }

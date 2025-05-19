@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "Скачать один файл",
         "description": "Текст кнопки для загрузки одного файла"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "Скоро будет доступна загрузка полной веб-страницы",
+        "description": "Заголовок для функции загрузки полной веб-страницы."
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "Эта функция будет доступна в следующей версии.",
+        "description": "Подзаголовок для функции загрузки полной веб-страницы."
     }
 }

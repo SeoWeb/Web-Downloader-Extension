@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "Tek Dosyayı İndir",
         "description": "Tek dosya indirme için düğme metni"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "Tam web sayfası indirme yakında",
+        "description": "Tam web sayfası indirme özelliği için başlık."
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "Bu özellik bir sonraki sürümde kullanıma sunulacaktır.",
+        "description": "Tam web sayfası indirme özelliği için alt başlık."
     }
 }

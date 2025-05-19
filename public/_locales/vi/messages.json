@@ -408,11 +408,19 @@
         "description": "Mô tả cho khả năng tương thích của trình duyệt."
     },
     "single_file_download_time_notice": {
-        "message": "Xin lưu ý: Tùy thuộc vào kích thước trang, việc tải xuống có thể mất một vài giây.",
+        "message": "Xin lưu ý: Tùy thuộc vào kích thước của trang, việc tải xuống có thể mất một vài giây.",
         "description": "Thông báo về thời gian tải xuống tiềm năng cho MHTML."
     },
     "button_download_single_file": {
         "message": "Tải xuống một tệp",
         "description": "Văn bản nút để tải xuống một tệp"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "Tải xuống trang web đầy đủ sắp ra mắt",
+        "description": "Tiêu đề cho tính năng tải xuống trang web đầy đủ."
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "Tính năng này sẽ có sẵn trong phiên bản tiếp theo.",
+        "description": "Phụ đề cho tính năng tải xuống trang web đầy đủ."
     }
 }

@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "একক ফাইল ডাউনলোড করুন",
         "description": "একক ফাইল ডাউনলোডের জন্য বোতামের টেক্সট"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "শীঘ্রই সম্পূর্ণ ওয়েব পেজ ডাউনলোড",
+        "description": "পূর্ণ ওয়েব পেজ ডাউনলোড বৈশিষ্ট্যের জন্য শিরোনাম।"
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "এই বৈশিষ্ট্যটি পরবর্তী সংস্করণে উপলব্ধ হবে।",
+        "description": "পূর্ণ ওয়েব পেজ ডাউনলোড বৈশিষ্ট্যের জন্য সাবটাইটেল।"
     }
 }

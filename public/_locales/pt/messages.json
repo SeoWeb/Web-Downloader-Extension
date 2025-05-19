@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "Baixar Arquivo Único",
         "description": "Texto do botão para download de arquivo único"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "Download da página web completa em breve",
+        "description": "Título para a função de download da página web completa."
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "Esta funcionalidade estará disponível na próxima versão.",
+        "description": "Subtítulo para a função de download da página web completa."
     }
 }

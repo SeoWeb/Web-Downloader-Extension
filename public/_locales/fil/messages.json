@@ -131,6 +131,10 @@
         "message": "I-download ang Website",
         "description": "Teksto ng pindutan para sa pag-download"
     },
+    "button_download_single_file": {
+        "message": "I-download ang Isang File",
+        "description": "Teksto ng button para sa pag-download ng isang file"
+    },
     "filtering_title": {
         "message": "Pag-filter ng Nilalaman",
         "description": "Pamagat para sa seksyon ng pag-filter"
@@ -373,7 +377,7 @@
     },
     "single_file_download_intro": {
         "message": "Malapit mo nang i-download ang kasalukuyang web page bilang isang solong MHTML file (.mhtml).",
-        "description": "Panimula para sa pag-download ng isang file na MHTML."
+        "description": "Panimula sa pag-download ng isang file na MHTML."
     },
     "single_file_format_mhtml_title": {
         "message": "Format ng MHTML",
@@ -411,8 +415,12 @@
         "message": "Pakitandaan: Depende sa laki ng pahina, maaaring tumagal ng ilang sandali ang pag-download.",
         "description": "Paunawa tungkol sa potensyal na oras ng pag-download para sa MHTML."
     },
-    "button_download_single_file": {
-        "message": "I-download ang Isang File",
-        "description": "Teksto ng button para sa pag-download ng isang file"
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "Malapit nang mag-download ng buong web page",
+        "description": "Pamagat para sa tampok na pag-download ng buong web page."
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "Available ang feature na ito sa susunod na bersyon.",
+        "description": "Subtitle para sa tampok na pag-download ng buong web page."
     }
 }

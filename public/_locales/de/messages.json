@@ -131,6 +131,10 @@
         "message": "Webseite herunterladen",
         "description": "Button text for download"
     },
+    "button_download_single_file": {
+        "message": "Einzelne Datei herunterladen",
+        "description": "Schaltflächentext für den Einzeldatei-Download"
+    },
     "filtering_title": {
         "message": "Inhaltsfilterung",
         "description": "Title for filtering section"
@@ -411,8 +415,12 @@
         "message": "Bitte beachten Sie: Je nach Seitengröße kann der Download einige Momente dauern.",
         "description": "Hinweis zur potenziellen Download-Zeit für MHTML."
     },
-    "button_download_single_file": {
-        "message": "Einzelne Datei herunterladen",
-        "description": "Schaltflächentext für den Einzeldatei-Download"
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "Herunterladen der kompletten Webseite in Kürze",
+        "description": "Titel für die Funktion zum Herunterladen der kompletten Webseite."
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "Diese Funktion wird in der nächsten Version verfügbar sein.",
+        "description": "Untertitel für die Funktion zum Herunterladen der kompletten Webseite."
     }
 }

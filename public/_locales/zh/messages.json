@@ -385,11 +385,11 @@
     },
     "single_file_includes_all_title": {
         "message": "全部包含",
-        "description": "'包含所有资源'这一点的标题。"
+        "description": "“包含所有资源”这一点的标题。"
     },
     "single_file_includes_all_desc": {
         "message": "确保包含所有资源，使页面在离线状态下完全可用。",
-        "description": "'包含所有资源'这一点的描述。"
+        "description": "“包含所有资源”这一点的描述。"
     },
     "single_file_offline_viewing_title": {
         "message": "离线查看",
@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "下载单个文件",
         "description": "下载单个文件的按钮文本"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "即将推出完整网页下载",
+        "description": "完整网页下载功能的标题。"
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "此功能将在下一个版本中提供。",
+        "description": "完整网页下载功能的副标题。"
     }
 }

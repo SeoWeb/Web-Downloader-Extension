@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "एकल फ़ाइल डाउनलोड करें",
         "description": "एकल फ़ाइल डाउनलोड के लिए बटन टेक्स्ट"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "जल्द ही पूर्ण वेब पेज डाउनलोड",
+        "description": "पूर्ण वेब पेज डाउनलोड सुविधा के लिए शीर्षक।"
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "यह सुविधा अगले संस्करण में उपलब्ध होगी।",
+        "description": "पूर्ण वेब पेज डाउनलोड सुविधा के लिए उपशीर्षक।"
     }
 }

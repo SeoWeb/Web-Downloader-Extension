@@ -397,7 +397,7 @@
     },
     "single_file_offline_viewing_desc": {
         "message": "Idéal pour archiver des pages ou les consulter plus tard sans connexion Internet.",
-        "description": "Description pour l'avantage de la consultation hors ligne."
+        "description": "Description pour le bénéfice de la consultation hors ligne."
     },
     "single_file_browser_support_title": {
         "message": "Prise en charge du navigateur",
@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "Télécharger un seul fichier",
         "description": "Texte du bouton pour le téléchargement d'un seul fichier"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "Téléchargement de page Web complète prochainement",
+        "description": "Titre pour la fonction de téléchargement de page Web complète."
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "Cette fonctionnalité sera disponible dans la prochaine version.",
+        "description": "Sous-titre pour la fonction de téléchargement de page Web complète."
     }
 }

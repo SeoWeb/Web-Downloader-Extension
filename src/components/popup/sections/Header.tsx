@@ -25,7 +25,7 @@ export default function Header() {
         className={`flex items-center justify-between ${direction === "rtl" ? "flex-row-reverse" : ""}`}
       >
         <div
-          className={`flex items-center gap-2 gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}
+          className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}
         >
           <Download className="h-5 w-5" />
           <h1 className="font-bold text-lg flex items-center">
@@ -53,14 +53,14 @@ export default function Header() {
               </SelectValue>
             </SelectTrigger>
             <SelectContent
-              className="bg-white dark:bg-gray-800 w-auto mr-0 pr-0 top-0 right-0"
+              className="bg-white w-auto mr-0 pr-0 top-0 right-0"
               position="popper"
             >
               {Object.entries(languages).map(([code, _name]) => (
                 <SelectItem
                   key={code}
                   value={code}
-                  className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 py-1"
+                  className="text-gray-900 hover:bg-gray-100 py-1"
                 >
                   {getTranslation(`lang_${code}`)}
                 </SelectItem>

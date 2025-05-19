@@ -385,7 +385,7 @@
     },
     "single_file_includes_all_title": {
         "message": "سب شامل ہیں",
-        "description": "'تمام وسائل شامل ہیں' نقطہ کے لیے عنوان۔"
+        "description": "عنوان برائے 'تمام وسائل شامل ہیں'۔"
     },
     "single_file_includes_all_desc": {
         "message": "اس بات کو یقینی بناتا ہے کہ تمام وسائل شامل ہیں، جس سے صفحہ آف لائن مکمل طور پر فعال ہو جاتا ہے۔",
@@ -396,7 +396,7 @@
         "description": "آف لائن دیکھنے کے فائدے کے لیے عنوان۔"
     },
     "single_file_offline_viewing_desc": {
-        "message": "صفحات کو محفوظ کرنے یا بعد میں انٹرنیٹ کنکشن کے بغیر دیکھنے کے لیے مثالی ہے۔",
+        "message": "صفحات کو محفوظ کرنے یا بعد میں انٹرنیٹ کنکشن کے بغیر انہیں دیکھنے کے لیے مثالی ہے۔",
         "description": "آف لائن دیکھنے کے فائدے کے لیے وضاحت۔"
     },
     "single_file_browser_support_title": {
@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "ایک فائل ڈاؤن لوڈ کریں",
         "description": "ایک فائل ڈاؤن لوڈ کرنے کے لیے بٹن کا متن"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "مکمل ویب پیج ڈاؤن لوڈ جلد آرہا ہے",
+        "description": "مکمل ویب پیج ڈاؤن لوڈ فیچر کے لیے عنوان۔"
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "یہ فیچر اگلے ورژن میں دستیاب ہوگا۔",
+        "description": "مکمل ویب پیج ڈاؤن لوڈ فیچر کے لیے ذیلی عنوان۔"
     }
 }

@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "הורד קובץ יחיד",
         "description": "טקסט הכפתור להורדת קובץ יחיד"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "הורדת דף אינטרנט מלא בקרוב",
+        "description": "כותרת עבור תכונת הורדת דף אינטרנט מלא."
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "תכונה זו תהיה זמינה בגרסה הבאה.",
+        "description": "כותרת משנה עבור תכונת הורדת דף אינטרנט מלא."
     }
 }

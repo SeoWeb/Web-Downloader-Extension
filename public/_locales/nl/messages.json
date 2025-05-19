@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "Enkel bestand downloaden",
         "description": "Knoptekst voor het downloaden van één bestand"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "Downloaden van volledige webpagina binnenkort",
+        "description": "Titel voor de functie voor het downloaden van volledige webpagina's."
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "Deze functie komt beschikbaar in de volgende versie.",
+        "description": "Subtitel voor de functie voor het downloaden van volledige webpagina's."
     }
 }

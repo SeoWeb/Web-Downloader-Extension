@@ -414,5 +414,13 @@
     "button_download_single_file": {
         "message": "Unduh Satu File",
         "description": "Teks tombol untuk pengunduhan satu file"
+    },
+    "full_web_page_download_title_v2_coming_soon": {
+        "message": "Pengunduhan halaman web lengkap akan datang",
+        "description": "Judul untuk fitur pengunduhan halaman web lengkap."
+    },
+    "full_web_page_download_subtitle_v2_next_version": {
+        "message": "Fitur ini akan tersedia di versi berikutnya.",
+        "description": "Subjudul untuk fitur pengunduhan halaman web lengkap."
     }
 }
