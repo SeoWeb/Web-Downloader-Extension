@@ -1,464 +1,278 @@
 {
-    "title": {
-        "message": "वेब पेज और साइट डाउनलोडर",
-        "description": "एक्सटेंशन का शीर्षक"
-    },
-    "description": {
-        "message": "वेब पेज और साइट डाउनलोडर आपको ऑफ़लाइन देखने के लिए संपूर्ण वेबसाइटों - जिसमें सभी लिंक किए गए पृष्ठ और संसाधन शामिल हैं - डाउनलोड करने देता है।",
-        "description": "एक्सटेंशन का विवरण"
-    },
-    "help": {
-        "message": "मदद",
-        "description": "सहायता बटन टेक्स्ट"
-    },
-    "download_mode": {
-        "message": "डाउनलोड मोड",
-        "description": "डाउनलोड मोड चयन के लिए लेबल"
-    },
-    "single_download_description": {
-        "message": "सिर्फ़ वर्तमान पेज को उसके सभी एसेट के साथ डाउनलोड करें.",
-        "description": "सिंगल डाउनलोड मोड के लिए विवरण"
-    },
-    "site_download_description": {
-        "message": "पूरी साइट को डाउनलोड करें, जिसमें सभी लिंक किए गए पेज और संसाधन शामिल हैं।",
-        "description": "साइट डाउनलोड मोड के लिए विवरण"
-    },
-    "single_page": {
-        "message": "एकल पृष्ठ",
-        "description": "एकल पृष्ठ डाउनलोड मोड के लिए लेबल"
-    },
-    "whole_website": {
-        "message": "पूरी वेबसाइट",
-        "description": "पूरी वेबसाइट डाउनलोड मोड के लिए लेबल"
-    },
-    "single_file": {
-        "message": "एकल फ़ाइल",
-        "description": "एकल फ़ाइल डाउनलोड मोड के लिए लेबल"
-    },
-    "loading": {
-        "message": "लोड हो रहा है...",
-        "description": "लोडिंग संदेश"
-    },
-    "downloading": {
-        "message": "डाउनलोड हो रहा है...",
-        "description": "डाउनलोडिंग संदेश"
-    },
-    "not_downloadable": {
-        "message": "यह पेज डाउनलोड करने योग्य नहीं है",
-        "description": "संदेश जो दर्शाता है कि पेज डाउनलोड करने योग्य नहीं है"
-    },
-    "close_sidepanel_message": {
-        "message": "पहले साइडपैनल बंद करें।",
-        "description": "साइड पैनल बंद करने का संदेश"
-    },
-    "permissions_title": {
-        "message": "आवश्यक अनुमतियाँ",
-        "description": "अनुमति अनुभाग के लिए शीर्षक"
-    },
-    "permissions_message": {
-        "message": "निम्नलिखित अनुमतियाँ आवश्यक हैं",
-        "description": "अनुमति अनुभाग के लिए शीर्षक"
-    },
-    "requesting_permissions": {
-        "message": "अनुमतियाँ का अनुरोध कर रहा है...",
-        "description": "संदेश जो दर्शाता है कि अनुमतियों का अनुरोध किया जा रहा है"
-    },
-    "grant_permissions": {
-        "message": "अनुमतियाँ दें",
-        "description": "अनुमतियाँ देने के लिए बटन टेक्स्ट"
-    },
-    "permissions_granted": {
-        "message": "अनुमतियाँ दी गईं!",
-        "description": "संदेश जो दर्शाता है कि अनुमतियाँ दी गई हैं"
-    },
-    "permissions_intro": {
-        "message": "यह एक्सटेंशन को ठीक से काम करने के लिए निम्नलिखित अनुमतियों की आवश्यकता है",
-        "description": "अनुमतियों के लिए परिचय संदेश"
-    },
-    "permission_activeTab": {
-        "message": "सक्रिय टैब",
-        "description": "सक्रिय टैब तक पहुँचने की अनुमति"
-    },
-    "permission_activeTab_description": {
-        "message": "एक्सटेंशन को सक्रिय टैब तक पहुँचने की अनुमति देता है।",
-        "description": "सक्रिय टैब अनुमति के लिए विवरण"
-    },
-    "permission_scripting": {
-        "message": "स्क्रिप्टिंग",
-        "description": "स्क्रिप्टिंग का उपयोग करने की अनुमति"
-    },
-    "permission_scripting_description": {
-        "message": "सामग्री का विश्लेषण करने के लिए वर्तमान टैब में स्क्रिप्ट इंजेक्ट करें।",
-        "description": "स्क्रिप्टिंग अनुमति के लिए विवरण"
-    },
-    "permission_storage": {
-        "message": "संग्रहण",
-        "description": "संग्रहण का उपयोग करने की अनुमति"
-    },
-    "permission_storage_description": {
-        "message": "उपयोगकर्ता की प्राथमिकताओं और सेटिंग्स को संग्रहीत करें।",
-        "description": "संग्रहण अनुमति के लिए विवरण"
-    },
-    "permission_downloads": {
-        "message": "डाउनलोड",
-        "description": "डाउनलोड का उपयोग करने की अनुमति"
-    },
-    "permission_downloads_description": {
-        "message": "उपयोगकर्ता के कंप्यूटर पर फ़ाइलें डाउनलोड करें।",
-        "description": "डाउनलोड अनुमति के लिए विवरण"
-    },
-    "permission_request_error": {
-        "message": "अनुमतियों का अनुरोध करते समय एक त्रुटि हुई।",
-        "description": "अनुमति अनुरोध के लिए त्रुटि संदेश"
-    },
-    "permission_not_granted_error": {
-        "message": "अनुमतियाँ नहीं दी गईं। कृपया जारी रखने के लिए अनुमतियाँ दें।",
-        "description": "अनुमति नहीं दिए जाने के लिए त्रुटि संदेश"
-    },
-    "permission_check_error": {
-        "message": "अनुमतियों की जाँच करने में विफल। कृपया पुन: प्रयास करें।",
-        "description": "अनुमति जाँच के लिए त्रुटि संदेश"
-    },
-    "button_options": {
-        "message": "विकल्प",
-        "description": "विकल्पों के लिए बटन टेक्स्ट"
-    },
-    "button_download_page": {
-        "message": "पेज डाउनलोड करें",
-        "description": "डाउनलोड के लिए बटन टेक्स्ट"
-    },
-    "button_download_website": {
-        "message": "वेबसाइट डाउनलोड करें",
-        "description": "डाउनलोड के लिए बटन टेक्स्ट"
-    },
-    "button_download_single_file": {
-        "message": "एकल फ़ाइल डाउनलोड करें",
-        "description": "एकल फ़ाइल डाउनलोड के लिए बटन टेक्स्ट"
-    },
-    "filtering_title": {
-        "message": "सामग्री फ़िल्टरिंग",
-        "description": "फ़िल्टरिंग अनुभाग के लिए शीर्षक"
-    },
-    "filtering_label": {
-        "message": "इनके द्वारा शामिल एसेट फ़िल्टर करें",
-        "description": "फ़िल्टरिंग विकल्पों के लिए लेबल"
-    },
-    "filtering_by_type": {
-        "message": "प्रकार",
-        "description": "प्रकार के अनुसार फ़िल्टर करने के लिए लेबल"
-    },
-    "filtering_by_extension": {
-        "message": "फ़ाइल एक्सटेंशन",
-        "description": "एक्सटेंशन के अनुसार फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_image": {
-        "message": "छवि",
-        "description": "छवि द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_script": {
-        "message": "स्क्रिप्ट",
-        "description": "स्क्रिप्ट द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_stylesheet": {
-        "message": "स्टाइलशीट",
-        "description": "स्टाइलशीट द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_font": {
-        "message": "फ़ॉन्ट",
-        "description": "फ़ॉन्ट द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_html": {
-        "message": "चिह्न",
-        "description": "चिह्न द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_document": {
-        "message": "दस्तावेज़",
-        "description": "दस्तावेज़ द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_spreadsheet": {
-        "message": "स्प्रेडशीट",
-        "description": "स्प्रेडशीट द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_video": {
-        "message": "वीडियो",
-        "description": "वीडियो द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_audio": {
-        "message": "ऑडियो",
-        "description": "ऑडियो द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_archive": {
-        "message": "संग्रह",
-        "description": "संग्रह द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_json": {
-        "message": "JSON",
-        "description": "JSON द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_executable": {
-        "message": "निष्पादन योग्य",
-        "description": "निष्पादन योग्य द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_other": {
-        "message": "अन्य",
-        "description": "अन्य द्वारा फ़िल्टर करने के लिए लेबल"
-    },
-    "filter_by_jpg": {
-        "message": "jpg",
-        "description": "jpg के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_png": {
-        "message": "png",
-        "description": "png के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_gif": {
-        "message": "gif",
-        "description": "gif के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_svg": {
-        "message": "svg",
-        "description": "svg के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_webp": {
-        "message": "webp",
-        "description": "webp के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_ico": {
-        "message": "ico",
-        "description": "ico के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_js": {
-        "message": "js",
-        "description": "js के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_ts": {
-        "message": "ts",
-        "description": "ts के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_css": {
-        "message": "css",
-        "description": "css के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_scss": {
-        "message": "scss",
-        "description": "scss के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_less": {
-        "message": "less",
-        "description": "less के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_woff": {
-        "message": "woff",
-        "description": "woff के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_woff2": {
-        "message": "woff2",
-        "description": "woff2 के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_ttf": {
-        "message": "ttf",
-        "description": "ttf के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_otf": {
-        "message": "otf",
-        "description": "otf के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_eot": {
-        "message": "eot",
-        "description": "eot के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_htm": {
-        "message": "htm",
-        "description": "htm के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_xml": {
-        "message": "xml",
-        "description": "xml के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_pdf": {
-        "message": "pdf",
-        "description": "pdf के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_doc": {
-        "message": "doc",
-        "description": "doc के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_docx": {
-        "message": "docx",
-        "description": "docx के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_txt": {
-        "message": "txt",
-        "description": "txt के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_rtf": {
-        "message": "rtf",
-        "description": "rtf के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_odt": {
-        "message": "odt",
-        "description": "odt के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_mp3": {
-        "message": "mp3",
-        "description": "mp3 के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_wav": {
-        "message": "wav",
-        "description": "wav के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_ogg": {
-        "message": "ogg",
-        "description": "ogg के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_aac": {
-        "message": "aac",
-        "description": "aac के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_mp4": {
-        "message": "mp4",
-        "description": "mp4 के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_webm": {
-        "message": "webm",
-        "description": "webm के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_avi": {
-        "message": "avi",
-        "description": "avi के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_mov": {
-        "message": "mov",
-        "description": "mov के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_wmv": {
-        "message": "wmv",
-        "description": "wmv के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_mkv": {
-        "message": "mkv",
-        "description": "mkv के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_zip": {
-        "message": "zip",
-        "description": "zip के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_rar": {
-        "message": "rar",
-        "description": "rar के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_tar": {
-        "message": "tar",
-        "description": "tar के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_gz": {
-        "message": "gz",
-        "description": "gz के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_7z": {
-        "message": "7z",
-        "description": "7z के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_exe": {
-        "message": "exe",
-        "description": "exe के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_sh": {
-        "message": "sh",
-        "description": "sh के लिए फ़ाइल एक्सटेंशन"
-    },
-    "filter_by_bat": {
-        "message": "bat",
-        "description": "bat के लिए फ़ाइल एक्सटेंशन"
-    },
-    "single_file_title": {
-        "message": "डाउनलोड जानकारी",
-        "description": "एकल फ़ाइल डाउनलोड कार्ड के लिए शीर्षक।"
-    },
-    "single_file_download_intro": {
-        "message": "आप वर्तमान वेब पेज को एक एकल MHTML फ़ाइल (.mhtml) के रूप में डाउनलोड करने वाले हैं।",
-        "description": "एकल फ़ाइल MHTML डाउनलोड के लिए परिचय।"
-    },
-    "single_file_format_mhtml_title": {
-        "message": "MHTML फ़ॉर्मेट",
-        "description": "MHTML फ़ॉर्मेट स्पष्टीकरण के लिए शीर्षक।"
-    },
-    "single_file_format_mhtml_desc": {
-        "message": "MHTML (MIME HTML) सभी पेज सामग्री (HTML, CSS, JavaScript, इमेज) को एक ही फ़ाइल में सेव करता है।",
-        "description": "MHTML फ़ॉर्मेट का विवरण।"
-    },
-    "single_file_includes_all_title": {
-        "message": "सब कुछ शामिल है",
-        "description": "'सभी संसाधनों को शामिल करता है' बिंदु के लिए शीर्षक।"
-    },
-    "single_file_includes_all_desc": {
-        "message": "सुनिश्चित करता है कि सभी संसाधन शामिल हैं, जिससे पेज पूरी तरह से ऑफ़लाइन काम करता है।",
-        "description": "'सभी संसाधनों को शामिल करता है' बिंदु के लिए विवरण।"
-    },
-    "single_file_offline_viewing_title": {
-        "message": "ऑफ़लाइन देखना",
-        "description": "ऑफ़लाइन देखने के लाभ के लिए शीर्षक।"
-    },
-    "single_file_offline_viewing_desc": {
-        "message": "पेजों को संग्रहीत करने या इंटरनेट कनेक्शन के बिना बाद में देखने के लिए आदर्श।",
-        "description": "ऑफ़लाइन देखने के लाभ के लिए विवरण।"
-    },
-    "single_file_browser_support_title": {
-        "message": "ब्राउज़र समर्थन",
-        "description": "ब्राउज़र संगतता के लिए शीर्षक।"
-    },
-    "single_file_browser_support_desc": {
-        "message": "अधिकांश आधुनिक वेब ब्राउज़र .mhtml फ़ाइलों को खोल सकते हैं।",
-        "description": "ब्राउज़र संगतता के लिए विवरण।"
-    },
-    "single_file_download_time_notice": {
-        "message": "कृपया ध्यान दें: पेज के आकार के आधार पर, डाउनलोड में कुछ पल लग सकते हैं।",
-        "description": "MHTML के लिए संभावित डाउनलोड समय के बारे में सूचना।"
-    },
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    "full_web_page_download_title_v2_coming_soon": {
-        "message": "पूर्ण वेब पेज डाउनलोड जल्द ही आ रहा है",
-        "description": "पूर्ण वेब पेज डाउनलोड सुविधा के लिए शीर्षक।"
-    },
-    "full_web_page_download_subtitle_v2_next_version": {
-        "message": "यह सुविधा अगले संस्करण में उपलब्ध होगी।",
-        "description": "पूर्ण वेब पेज डाउनलोड सुविधा के लिए उपशीर्षक।"
-    },
-    "permission_pageCapture": {
-        "message": "पेज कैप्चर",
-        "description": "वर्तमान पेज को कैप्चर करने की अनुमति"
-    },
-    "permission_pageCapture_description": {
-        "message": "एक्सटेंशन को वर्तमान पेज की सामग्री को कैप्चर करने की अनुमति देता है।",
-        "description": "पेज कैप्चर अनुमति के लिए विवरण"
-    },
-    "tooltip_toggle_scroll_mode": {
-        "message": "स्वचालित और मैन्युअल पेज स्क्रॉलिंग के बीच टॉगल करें।",
-        "description": "स्क्रॉल मोड टॉगल बटन के लिए टूलटिप"
-    },
-    "text_auto_mode": {
-        "message": "ऑटो",
-        "description": "ऑटो स्क्रॉल मोड के लिए टेक्स्ट"
-    },
-    "text_manual_mode": {
-        "message": "मैनुअल",
-        "description": "मैनुअल स्क्रॉल मोड के लिए टेक्स्ट"
-    }
+  "title": {
+    "message": "वेब पेज और साइट डाउनलोडर",
+    "description": "एक्सटेंशन का शीर्षक"
+  },
+  "description": {
+    "message": "वेब पेज और साइट डाउनलोडर आपको ऑफ़लाइन देखने के लिए संपूर्ण वेबसाइटों - जिसमें सभी लिंक किए गए पृष्ठ और संसाधन शामिल हैं - डाउनलोड करने देता है।",
+    "description": "एक्सटेंशन का विवरण"
+  },
+  "help": {
+    "message": "मदद",
+    "description": "सहायता बटन टेक्स्ट"
+  },
+  "download_mode": {
+    "message": "डाउनलोड मोड",
+    "description": "डाउनलोड मोड चयन के लिए लेबल"
+  },
+  "single_download_description": {
+    "message": "सिर्फ़ वर्तमान पेज को उसके सभी एसेट के साथ डाउनलोड करें.",
+    "description": "सिंगल डाउनलोड मोड के लिए विवरण"
+  },
+  "site_download_description": {
+    "message": "पूरी साइट को डाउनलोड करें, जिसमें सभी लिंक किए गए पेज और संसाधन शामिल हैं।",
+    "description": "साइट डाउनलोड मोड के लिए विवरण"
+  },
+  "single_page": {
+    "message": "एकल पृष्ठ",
+    "description": "एकल पृष्ठ डाउनलोड मोड के लिए लेबल"
+  },
+  "whole_website": {
+    "message": "पूरी वेबसाइट",
+    "description": "पूरी वेबसाइट डाउनलोड मोड के लिए लेबल"
+  },
+  "single_file": {
+    "message": "एकल फ़ाइल",
+    "description": "एकल फ़ाइल डाउनलोड मोड के लिए लेबल"
+  },
+  "loading": {
+    "message": "लोड हो रहा है...",
+    "description": "लोडिंग संदेश"
+  },
+  "downloading": {
+    "message": "डाउनलोड हो रहा है...",
+    "description": "डाउनलोडिंग संदेश"
+  },
+  "not_downloadable": {
+    "message": "यह पेज डाउनलोड करने योग्य नहीं है",
+    "description": "संदेश जो दर्शाता है कि पेज डाउनलोड करने योग्य नहीं है"
+  },
+  "close_sidepanel_message": {
+    "message": "पहले साइडपैनल बंद करें।",
+    "description": "साइड पैनल बंद करने का संदेश"
+  },
+  "permissions_title": {
+    "message": "आवश्यक अनुमतियाँ",
+    "description": "अनुमति अनुभाग के लिए शीर्षक"
+  },
+  "permissions_message": {
+    "message": "निम्नलिखित अनुमतियाँ आवश्यक हैं",
+    "description": "अनुमति अनुभाग के लिए शीर्षक"
+  },
+  "requesting_permissions": {
+    "message": "अनुमतियाँ का अनुरोध कर रहा है...",
+    "description": "संदेश जो दर्शाता है कि अनुमतियों का अनुरोध किया जा रहा है"
+  },
+  "grant_permissions": {
+    "message": "अनुमतियाँ दें",
+    "description": "अनुमतियाँ देने के लिए बटन टेक्स्ट"
+  },
+  "permissions_granted": {
+    "message": "अनुमतियाँ दी गईं!",
+    "description": "संदेश जो दर्शाता है कि अनुमतियाँ दी गई हैं"
+  },
+  "permissions_intro": {
+    "message": "यह एक्सटेंशन को ठीक से काम करने के लिए निम्नलिखित अनुमतियों की आवश्यकता है",
+    "description": "अनुमतियों के लिए परिचय संदेश"
+  },
+  "permission_activeTab": {
+    "message": "सक्रिय टैब",
+    "description": "सक्रिय टैब तक पहुँचने की अनुमति"
+  },
+  "permission_activeTab_description": {
+    "message": "एक्सटेंशन को सक्रिय टैब तक पहुँचने की अनुमति देता है।",
+    "description": "सक्रिय टैब अनुमति के लिए विवरण"
+  },
+  "permission_scripting": {
+    "message": "स्क्रिप्टिंग",
+    "description": "स्क्रिप्टिंग का उपयोग करने की अनुमति"
+  },
+  "permission_scripting_description": {
+    "message": "सामग्री का विश्लेषण करने के लिए वर्तमान टैब में स्क्रिप्ट इंजेक्ट करें।",
+    "description": "स्क्रिप्टिंग अनुमति के लिए विवरण"
+  },
+  "permission_storage": {
+    "message": "संग्रहण",
+    "description": "संग्रहण का उपयोग करने की अनुमति"
+  },
+  "permission_storage_description": {
+    "message": "उपयोगकर्ता की प्राथमिकताओं और सेटिंग्स को संग्रहीत करें।",
+    "description": "संग्रहण अनुमति के लिए विवरण"
+  },
+  "permission_downloads": {
+    "message": "डाउनलोड",
+    "description": "डाउनलोड का उपयोग करने की अनुमति"
+  },
+  "permission_downloads_description": {
+    "message": "उपयोगकर्ता के कंप्यूटर पर फ़ाइलें डाउनलोड करें।",
+    "description": "डाउनलोड अनुमति के लिए विवरण"
+  },
+  "permission_request_error": {
+    "message": "अनुमतियों का अनुरोध करते समय एक त्रुटि हुई।",
+    "description": "अनुमति अनुरोध के लिए त्रुटि संदेश"
+  },
+  "permission_not_granted_error": {
+    "message": "अनुमतियाँ नहीं दी गईं। कृपया जारी रखने के लिए अनुमतियाँ दें।",
+    "description": "अनुमति नहीं दिए जाने के लिए त्रुटि संदेश"
+  },
+  "permission_check_error": {
+    "message": "अनुमतियों की जाँच करने में विफल। कृपया पुन: प्रयास करें।",
+    "description": "अनुमति जाँच के लिए त्रुटि संदेश"
+  },
+  "button_options": {
+    "message": "विकल्प",
+    "description": "विकल्पों के लिए बटन टेक्स्ट"
+  },
+  "button_download_page": {
+    "message": "पेज डाउनलोड करें",
+    "description": "डाउनलोड के लिए बटन टेक्स्ट"
+  },
+  "button_download_website": {
+    "message": "वेबसाइट डाउनलोड करें",
+    "description": "डाउनलोड के लिए बटन टेक्स्ट"
+  },
+  "button_download_single_file": {
+    "message": "एकल फ़ाइल डाउनलोड करें",
+    "description": "एकल फ़ाइल डाउनलोड के लिए बटन टेक्स्ट"
+  },
+  "filtering_title": {
+    "message": "सामग्री फ़िल्टरिंग",
+    "description": "फ़िल्टरिंग अनुभाग के लिए शीर्षक"
+  },
+  "filtering_label": {
+    "message": "इनके द्वारा शामिल एसेट फ़िल्टर करें",
+    "description": "फ़िल्टरिंग विकल्पों के लिए लेबल"
+  },
+  "filtering_by_type": {
+    "message": "प्रकार",
+    "description": "प्रकार के अनुसार फ़िल्टर करने के लिए लेबल"
+  },
+  "filtering_by_extension": {
+    "message": "फ़ाइल एक्सटेंशन",
+    "description": "एक्सटेंशन के अनुसार फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_image": {
+    "message": "छवि",
+    "description": "छवि द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_script": {
+    "message": "स्क्रिप्ट",
+    "description": "स्क्रिप्ट द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_stylesheet": {
+    "message": "स्टाइलशीट",
+    "description": "स्टाइलशीट द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_font": {
+    "message": "फ़ॉन्ट",
+    "description": "फ़ॉन्ट द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_markup": {
+    "message": "चिह्न",
+    "description": "चिह्न द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_document": {
+    "message": "दस्तावेज़",
+    "description": "दस्तावेज़ द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_spreadsheet": {
+    "message": "स्प्रेडशीट",
+    "description": "स्प्रेडशीट द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_video": {
+    "message": "वीडियो",
+    "description": "वीडियो द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_audio": {
+    "message": "ऑडियो",
+    "description": "ऑडियो द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_archive": {
+    "message": "संग्रह",
+    "description": "संग्रह द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_json": {
+    "message": "JSON",
+    "description": "JSON द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_executable": {
+    "message": "निष्पादन योग्य",
+    "description": "निष्पादन योग्य द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "filter_by_other": {
+    "message": "अन्य",
+    "description": "अन्य द्वारा फ़िल्टर करने के लिए लेबल"
+  },
+  "single_file_title": {
+    "message": "डाउनलोड जानकारी",
+    "description": "एकल फ़ाइल डाउनलोड कार्ड के लिए शीर्षक।"
+  },
+  "single_file_download_intro": {
+    "message": "आप वर्तमान वेब पेज को एक एकल MHTML फ़ाइल (.mhtml) के रूप में डाउनलोड करने वाले हैं।",
+    "description": "एकल फ़ाइल MHTML डाउनलोड के लिए परिचय।"
+  },
+  "single_file_format_mhtml_title": {
+    "message": "MHTML फ़ॉर्मेट",
+    "description": "MHTML फ़ॉर्मेट स्पष्टीकरण के लिए शीर्षक।"
+  },
+  "single_file_format_mhtml_desc": {
+    "message": "MHTML (MIME HTML) सभी पेज सामग्री (HTML, CSS, JavaScript, इमेज) को एक ही फ़ाइल में सेव करता है।",
+    "description": "MHTML फ़ॉर्मेट का विवरण।"
+  },
+  "single_file_includes_all_title": {
+    "message": "सब कुछ शामिल है",
+    "description": "'सभी संसाधनों को शामिल करता है' बिंदु के लिए शीर्षक।"
+  },
+  "single_file_includes_all_desc": {
+    "message": "सुनिश्चित करता है कि सभी संसाधन शामिल हैं, जिससे पेज पूरी तरह से ऑफ़लाइन काम करता है।",
+    "description": "'सभी संसाधनों को शामिल करता है' बिंदु के लिए विवरण।"
+  },
+  "single_file_offline_viewing_title": {
+    "message": "ऑफ़लाइन देखना",
+    "description": "ऑफ़लाइन देखने के लाभ के लिए शीर्षक।"
+  },
+  "single_file_offline_viewing_desc": {
+    "message": "पेजों को संग्रहीत करने या इंटरनेट कनेक्शन के बिना बाद में देखने के लिए आदर्श।",
+    "description": "ऑफ़लाइन देखने के लाभ के लिए विवरण।"
+  },
+  "single_file_browser_support_title": {
+    "message": "ब्राउज़र समर्थन",
+    "description": "ब्राउज़र संगतता के लिए शीर्षक।"
+  },
+  "single_file_browser_support_desc": {
+    "message": "अधिकांश आधुनिक वेब ब्राउज़र .mhtml फ़ाइलों को खोल सकते हैं।",
+    "description": "ब्राउज़र संगतता के लिए विवरण।"
+  },
+  "single_file_download_time_notice": {
+    "message": "कृपया ध्यान दें: पेज के आकार के आधार पर, डाउनलोड में कुछ पल लग सकते हैं।",
+    "description": "MHTML के लिए संभावित डाउनलोड समय के बारे में सूचना।"
+  },
+  "full_web_page_download_title_v2_coming_soon": {
+    "message": "पूर्ण वेब पेज डाउनलोड जल्द ही आ रहा है",
+    "description": "पूर्ण वेब पेज डाउनलोड सुविधा के लिए शीर्षक।"
+  },
+  "full_web_page_download_subtitle_v2_next_version": {
+    "message": "यह सुविधा अगले संस्करण में उपलब्ध होगी।",
+    "description": "पूर्ण वेब पेज डाउनलोड सुविधा के लिए उपशीर्षक।"
+  },
+  "permission_pageCapture": {
+    "message": "पेज कैप्चर",
+    "description": "वर्तमान पेज को कैप्चर करने की अनुमति"
+  },
+  "permission_pageCapture_description": {
+    "message": "एक्सटेंशन को वर्तमान पेज की सामग्री को कैप्चर करने की अनुमति देता है।",
+    "description": "पेज कैप्चर अनुमति के लिए विवरण"
+  },
+  "tooltip_toggle_scroll_mode": {
+    "message": "स्वचालित और मैन्युअल पेज स्क्रॉलिंग के बीच टॉगल करें।",
+    "description": "स्क्रॉल मोड टॉगल बटन के लिए टूलटिप"
+  },
+  "text_auto_mode": {
+    "message": "ऑटो",
+    "description": "ऑटो स्क्रॉल मोड के लिए टेक्स्ट"
+  },
+  "text_manual_mode": {
+    "message": "मैनुअल",
+    "description": "मैनुअल स्क्रॉल मोड के लिए टेक्स्ट"
+  }
 }

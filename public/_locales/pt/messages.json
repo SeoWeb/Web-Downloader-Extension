@@ -1,464 +1,278 @@
 {
-    "title": {
-        "message": "Web Page & Site Downloader",
-        "description": "O título da extensão"
-    },
-    "description": {
-        "message": "Web Page and Site Downloader permite que você baixe sites inteiros - incluindo todas as páginas e recursos vinculados - para visualização offline.",
-        "description": "A descrição da extensão"
-    },
-    "help": {
-        "message": "Ajuda",
-        "description": "O texto do botão de ajuda"
-    },
-    "download_mode": {
-        "message": "Modo de download",
-        "description": "O rótulo para a seleção do modo de download"
-    },
-    "single_download_description": {
-        "message": "Baixe apenas a página atual com todos os seus ativos.",
-        "description": "Descrição para o modo de download único"
-    },
-    "site_download_description": {
-        "message": "Baixe o site inteiro, incluindo todas as páginas e recursos vinculados.",
-        "description": "Descrição para o modo de download do site"
-    },
-    "single_page": {
-        "message": "Página única",
-        "description": "Rótulo para o modo de download de página única"
-    },
-    "whole_website": {
-        "message": "Site inteiro",
-        "description": "Rótulo para o modo de download do site inteiro"
-    },
-    "single_file": {
-        "message": "Arquivo único",
-        "description": "Rótulo para o modo de download de arquivo único"
-    },
-    "loading": {
-        "message": "Carregando...",
-        "description": "Mensagem de carregamento"
-    },
-    "downloading": {
-        "message": "Baixando...",
-        "description": "Mensagem de download"
-    },
-    "not_downloadable": {
-        "message": "Esta página não pode ser baixada",
-        "description": "Mensagem indicando que a página não pode ser baixada"
-    },
-    "close_sidepanel_message": {
-        "message": "Feche o painel lateral primeiro.",
-        "description": "Mensagem para fechar o painel lateral"
-    },
-    "permissions_title": {
-        "message": "Permissões necessárias",
-        "description": "Título para a seção de permissões"
-    },
-    "permissions_message": {
-        "message": "As seguintes permissões são necessárias",
-        "description": "Título para a seção de permissões"
-    },
-    "requesting_permissions": {
-        "message": "Solicitando permissões...",
-        "description": "Mensagem indicando que as permissões estão sendo solicitadas"
-    },
-    "grant_permissions": {
-        "message": "Conceder permissões",
-        "description": "Texto do botão para conceder permissões"
-    },
-    "permissions_granted": {
-        "message": "Permissões concedidas!",
-        "description": "Mensagem indicando que as permissões foram concedidas"
-    },
-    "permissions_intro": {
-        "message": "Esta extensão requer as seguintes permissões para funcionar corretamente",
-        "description": "Mensagem de introdução para permissões"
-    },
-    "permission_activeTab": {
-        "message": "Guia ativo",
-        "description": "Permissão para acessar a guia ativa"
-    },
-    "permission_activeTab_description": {
-        "message": "Permite que a extensão acesse a guia ativa.",
-        "description": "Descrição para permissão de guia ativa"
-    },
-    "permission_scripting": {
-        "message": "Scripting",
-        "description": "Permissão para usar scripting"
-    },
-    "permission_scripting_description": {
-        "message": "Injete scripts na guia atual para analisar o conteúdo.",
-        "description": "Descrição para permissão de scripting"
-    },
-    "permission_storage": {
-        "message": "Armazenamento",
-        "description": "Permissão para usar o armazenamento"
-    },
-    "permission_storage_description": {
-        "message": "Armazene as preferências e configurações do usuário.",
-        "description": "Descrição para permissão de armazenamento"
-    },
-    "permission_downloads": {
-        "message": "Downloads",
-        "description": "Permissão para usar downloads"
-    },
-    "permission_downloads_description": {
-        "message": "Baixe arquivos para o computador do usuário.",
-        "description": "Descrição para permissão de downloads"
-    },
-    "permission_request_error": {
-        "message": "Ocorreu um erro ao solicitar permissões.",
-        "description": "Mensagem de erro para solicitação de permissão"
-    },
-    "permission_not_granted_error": {
-        "message": "As permissões não foram concedidas. Conceda permissões para continuar.",
-        "description": "Mensagem de erro para permissão não concedida"
-    },
-    "permission_check_error": {
-        "message": "Falha ao verificar as permissões. Por favor, tente novamente.",
-        "description": "Mensagem de erro para verificação de permissão"
-    },
-    "button_options": {
-        "message": "Opções",
-        "description": "Texto do botão para opções"
-    },
-    "button_download_page": {
-        "message": "Baixar página",
-        "description": "Texto do botão para download"
-    },
-    "button_download_website": {
-        "message": "Baixar site",
-        "description": "Texto do botão para download"
-    },
-    "button_download_single_file": {
-        "message": "Baixar arquivo único",
-        "description": "Texto do botão para download de arquivo único"
-    },
-    "filtering_title": {
-        "message": "Filtragem de conteúdo",
-        "description": "Título para a seção de filtragem"
-    },
-    "filtering_label": {
-        "message": "Filtrar ativos incluídos por",
-        "description": "Rótulo para opções de filtragem"
-    },
-    "filtering_by_type": {
-        "message": "Tipo",
-        "description": "Rótulo para filtragem por tipo"
-    },
-    "filtering_by_extension": {
-        "message": "Extensão de arquivo",
-        "description": "Rótulo para filtragem por extensão"
-    },
-    "filter_by_image": {
-        "message": "Imagem",
-        "description": "Rótulo para filtragem por imagem"
-    },
-    "filter_by_script": {
-        "message": "Script",
-        "description": "Rótulo para filtragem por script"
-    },
-    "filter_by_stylesheet": {
-        "message": "Folha de estilo",
-        "description": "Rótulo para filtragem por folha de estilo"
-    },
-    "filter_by_font": {
-        "message": "Fonte",
-        "description": "Rótulo para filtragem por fonte"
-    },
-    "filter_by_html": {
-        "message": "Marcação",
-        "description": "Rótulo para filtragem por Marcação"
-    },
-    "filter_by_document": {
-        "message": "Documento",
-        "description": "Rótulo para filtragem por Documento"
-    },
-    "filter_by_spreadsheet": {
-        "message": "Planilha",
-        "description": "Rótulo para filtragem por Planilha"
-    },
-    "filter_by_video": {
-        "message": "Vídeo",
-        "description": "Rótulo para filtragem por Vídeo"
-    },
-    "filter_by_audio": {
-        "message": "Áudio",
-        "description": "Rótulo para filtragem por Áudio"
-    },
-    "filter_by_archive": {
-        "message": "Arquivo",
-        "description": "Rótulo para filtragem por Arquivo"
-    },
-    "filter_by_json": {
-        "message": "JSON",
-        "description": "Rótulo para filtragem por JSON"
-    },
-    "filter_by_executable": {
-        "message": "Executável",
-        "description": "Rótulo para filtragem por Executável"
-    },
-    "filter_by_other": {
-        "message": "Outro",
-        "description": "Rótulo para filtragem por Outro"
-    },
-    "filter_by_jpg": {
-        "message": "jpg",
-        "description": "Extensão de arquivo para jpg"
-    },
-    "filter_by_png": {
-        "message": "png",
-        "description": "Extensão de arquivo para png"
-    },
-    "filter_by_gif": {
-        "message": "gif",
-        "description": "Extensão de arquivo para gif"
-    },
-    "filter_by_svg": {
-        "message": "svg",
-        "description": "Extensão de arquivo para svg"
-    },
-    "filter_by_webp": {
-        "message": "webp",
-        "description": "Extensão de arquivo para webp"
-    },
-    "filter_by_ico": {
-        "message": "ico",
-        "description": "Extensão de arquivo para ico"
-    },
-    "filter_by_js": {
-        "message": "js",
-        "description": "Extensão de arquivo para js"
-    },
-    "filter_by_ts": {
-        "message": "ts",
-        "description": "Extensão de arquivo para ts"
-    },
-    "filter_by_css": {
-        "message": "css",
-        "description": "Extensão de arquivo para css"
-    },
-    "filter_by_scss": {
-        "message": "scss",
-        "description": "Extensão de arquivo para scss"
-    },
-    "filter_by_less": {
-        "message": "less",
-        "description": "Extensão de arquivo para less"
-    },
-    "filter_by_woff": {
-        "message": "woff",
-        "description": "Extensão de arquivo para woff"
-    },
-    "filter_by_woff2": {
-        "message": "woff2",
-        "description": "Extensão de arquivo para woff2"
-    },
-    "filter_by_ttf": {
-        "message": "ttf",
-        "description": "Extensão de arquivo para ttf"
-    },
-    "filter_by_otf": {
-        "message": "otf",
-        "description": "Extensão de arquivo para otf"
-    },
-    "filter_by_eot": {
-        "message": "eot",
-        "description": "Extensão de arquivo para eot"
-    },
-    "filter_by_htm": {
-        "message": "htm",
-        "description": "Extensão de arquivo para htm"
-    },
-    "filter_by_xml": {
-        "message": "xml",
-        "description": "Extensão de arquivo para xml"
-    },
-    "filter_by_pdf": {
-        "message": "pdf",
-        "description": "Extensão de arquivo para pdf"
-    },
-    "filter_by_doc": {
-        "message": "doc",
-        "description": "Extensão de arquivo para doc"
-    },
-    "filter_by_docx": {
-        "message": "docx",
-        "description": "Extensão de arquivo para docx"
-    },
-    "filter_by_txt": {
-        "message": "txt",
-        "description": "Extensão de arquivo para txt"
-    },
-    "filter_by_rtf": {
-        "message": "rtf",
-        "description": "Extensão de arquivo para rtf"
-    },
-    "filter_by_odt": {
-        "message": "odt",
-        "description": "Extensão de arquivo para odt"
-    },
-    "filter_by_mp3": {
-        "message": "mp3",
-        "description": "Extensão de arquivo para mp3"
-    },
-    "filter_by_wav": {
-        "message": "wav",
-        "description": "Extensão de arquivo para wav"
-    },
-    "filter_by_ogg": {
-        "message": "ogg",
-        "description": "Extensão de arquivo para ogg"
-    },
-    "filter_by_aac": {
-        "message": "aac",
-        "description": "Extensão de arquivo para aac"
-    },
-    "filter_by_mp4": {
-        "message": "mp4",
-        "description": "Extensão de arquivo para mp4"
-    },
-    "filter_by_webm": {
-        "message": "webm",
-        "description": "Extensão de arquivo para webm"
-    },
-    "filter_by_avi": {
-        "message": "avi",
-        "description": "Extensão de arquivo para avi"
-    },
-    "filter_by_mov": {
-        "message": "mov",
-        "description": "Extensão de arquivo para mov"
-    },
-    "filter_by_wmv": {
-        "message": "wmv",
-        "description": "Extensão de arquivo para wmv"
-    },
-    "filter_by_mkv": {
-        "message": "mkv",
-        "description": "Extensão de arquivo para mkv"
-    },
-    "filter_by_zip": {
-        "message": "zip",
-        "description": "Extensão de arquivo para zip"
-    },
-    "filter_by_rar": {
-        "message": "rar",
-        "description": "Extensão de arquivo para rar"
-    },
-    "filter_by_tar": {
-        "message": "tar",
-        "description": "Extensão de arquivo para tar"
-    },
-    "filter_by_gz": {
-        "message": "gz",
-        "description": "Extensão de arquivo para gz"
-    },
-    "filter_by_7z": {
-        "message": "7z",
-        "description": "Extensão de arquivo para 7z"
-    },
-    "filter_by_exe": {
-        "message": "exe",
-        "description": "Extensão de arquivo para exe"
-    },
-    "filter_by_sh": {
-        "message": "sh",
-        "description": "Extensão de arquivo para sh"
-    },
-    "filter_by_bat": {
-        "message": "bat",
-        "description": "Extensão de arquivo para bat"
-    },
-    "single_file_title": {
-        "message": "Informações de download",
-        "description": "Título para o cartão de download de arquivo único."
-    },
-    "single_file_download_intro": {
-        "message": "Você está prestes a baixar a página da web atual como um único arquivo MHTML (.mhtml).",
-        "description": "Introdução para download de arquivo MHTML único."
-    },
-    "single_file_format_mhtml_title": {
-        "message": "Formato MHTML",
-        "description": "Título para a explicação do formato MHTML."
-    },
-    "single_file_format_mhtml_desc": {
-        "message": "MHTML (MIME HTML) salva todo o conteúdo da página (HTML, CSS, JavaScript, imagens) em um único arquivo.",
-        "description": "Descrição do formato MHTML."
-    },
-    "single_file_includes_all_title": {
-        "message": "Tudo incluído",
-        "description": "Título para o ponto 'inclui todos os recursos'."
-    },
-    "single_file_includes_all_desc": {
-        "message": "Garante que todos os recursos sejam incluídos, tornando a página totalmente funcional offline.",
-        "description": "Descrição para o ponto 'inclui todos os recursos'."
-    },
-    "single_file_offline_viewing_title": {
-        "message": "Visualização offline",
-        "description": "Título para o benefício da visualização offline."
-    },
-    "single_file_offline_viewing_desc": {
-        "message": "Ideal para arquivar páginas ou visualizá-las mais tarde sem uma conexão com a internet.",
-        "description": "Descrição para o benefício da visualização offline."
-    },
-    "single_file_browser_support_title": {
-        "message": "Suporte do navegador",
-        "description": "Título para compatibilidade do navegador."
-    },
-    "single_file_browser_support_desc": {
-        "message": "A maioria dos navegadores da web modernos pode abrir arquivos .mhtml.",
-        "description": "Descrição para compatibilidade do navegador."
-    },
-    "single_file_download_time_notice": {
-        "message": "Observação: Dependendo do tamanho da página, o download pode demorar alguns instantes.",
-        "description": "Aviso sobre o tempo potencial de download para MHTML."
-    },
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    "full_web_page_download_title_v2_coming_soon": {
-        "message": "Download da página da web completa em breve",
-        "description": "Título para o recurso de download da página da web completa."
-    },
-    "full_web_page_download_subtitle_v2_next_version": {
-        "message": "Este recurso estará disponível na próxima versão.",
-        "description": "Subtítulo para o recurso de download da página da web completa."
-    },
-    "permission_pageCapture": {
-        "message": "Captura de página",
-        "description": "Permissão para capturar a página atual"
-    },
-    "permission_pageCapture_description": {
-        "message": "Permite que a extensão capture o conteúdo da página atual.",
-        "description": "Descrição para permissão de captura de página"
-    },
-    "tooltip_toggle_scroll_mode": {
-        "message": "Alternar entre a rolagem automática e manual da página.",
-        "description": "Dica de ferramenta para o botão de alternância do modo de rolagem"
-    },
-    "text_auto_mode": {
-        "message": "Automático",
-        "description": "Texto para o modo de rolagem automática"
-    },
-    "text_manual_mode": {
-        "message": "Manual",
-        "description": "Texto para o modo de rolagem manual"
-    }
+  "title": {
+    "message": "Web Page & Site Downloader",
+    "description": "O título da extensão"
+  },
+  "description": {
+    "message": "Web Page and Site Downloader permite que você baixe sites inteiros - incluindo todas as páginas e recursos vinculados - para visualização offline.",
+    "description": "A descrição da extensão"
+  },
+  "help": {
+    "message": "Ajuda",
+    "description": "O texto do botão de ajuda"
+  },
+  "download_mode": {
+    "message": "Modo de download",
+    "description": "O rótulo para a seleção do modo de download"
+  },
+  "single_download_description": {
+    "message": "Baixe apenas a página atual com todos os seus ativos.",
+    "description": "Descrição para o modo de download único"
+  },
+  "site_download_description": {
+    "message": "Baixe o site inteiro, incluindo todas as páginas e recursos vinculados.",
+    "description": "Descrição para o modo de download do site"
+  },
+  "single_page": {
+    "message": "Página única",
+    "description": "Rótulo para o modo de download de página única"
+  },
+  "whole_website": {
+    "message": "Site inteiro",
+    "description": "Rótulo para o modo de download do site inteiro"
+  },
+  "single_file": {
+    "message": "Arquivo único",
+    "description": "Rótulo para o modo de download de arquivo único"
+  },
+  "loading": {
+    "message": "Carregando...",
+    "description": "Mensagem de carregamento"
+  },
+  "downloading": {
+    "message": "Baixando...",
+    "description": "Mensagem de download"
+  },
+  "not_downloadable": {
+    "message": "Esta página não pode ser baixada",
+    "description": "Mensagem indicando que a página não pode ser baixada"
+  },
+  "close_sidepanel_message": {
+    "message": "Feche o painel lateral primeiro.",
+    "description": "Mensagem para fechar o painel lateral"
+  },
+  "permissions_title": {
+    "message": "Permissões necessárias",
+    "description": "Título para a seção de permissões"
+  },
+  "permissions_message": {
+    "message": "As seguintes permissões são necessárias",
+    "description": "Título para a seção de permissões"
+  },
+  "requesting_permissions": {
+    "message": "Solicitando permissões...",
+    "description": "Mensagem indicando que as permissões estão sendo solicitadas"
+  },
+  "grant_permissions": {
+    "message": "Conceder permissões",
+    "description": "Texto do botão para conceder permissões"
+  },
+  "permissions_granted": {
+    "message": "Permissões concedidas!",
+    "description": "Mensagem indicando que as permissões foram concedidas"
+  },
+  "permissions_intro": {
+    "message": "Esta extensão requer as seguintes permissões para funcionar corretamente",
+    "description": "Mensagem de introdução para permissões"
+  },
+  "permission_activeTab": {
+    "message": "Guia ativo",
+    "description": "Permissão para acessar a guia ativa"
+  },
+  "permission_activeTab_description": {
+    "message": "Permite que a extensão acesse a guia ativa.",
+    "description": "Descrição para permissão de guia ativa"
+  },
+  "permission_scripting": {
+    "message": "Scripting",
+    "description": "Permissão para usar scripting"
+  },
+  "permission_scripting_description": {
+    "message": "Injete scripts na guia atual para analisar o conteúdo.",
+    "description": "Descrição para permissão de scripting"
+  },
+  "permission_storage": {
+    "message": "Armazenamento",
+    "description": "Permissão para usar o armazenamento"
+  },
+  "permission_storage_description": {
+    "message": "Armazene as preferências e configurações do usuário.",
+    "description": "Descrição para permissão de armazenamento"
+  },
+  "permission_downloads": {
+    "message": "Downloads",
+    "description": "Permissão para usar downloads"
+  },
+  "permission_downloads_description": {
+    "message": "Baixe arquivos para o computador do usuário.",
+    "description": "Descrição para permissão de downloads"
+  },
+  "permission_request_error": {
+    "message": "Ocorreu um erro ao solicitar permissões.",
+    "description": "Mensagem de erro para solicitação de permissão"
+  },
+  "permission_not_granted_error": {
+    "message": "As permissões não foram concedidas. Conceda permissões para continuar.",
+    "description": "Mensagem de erro para permissão não concedida"
+  },
+  "permission_check_error": {
+    "message": "Falha ao verificar as permissões. Por favor, tente novamente.",
+    "description": "Mensagem de erro para verificação de permissão"
+  },
+  "button_options": {
+    "message": "Opções",
+    "description": "Texto do botão para opções"
+  },
+  "button_download_page": {
+    "message": "Baixar página",
+    "description": "Texto do botão para download"
+  },
+  "button_download_website": {
+    "message": "Baixar site",
+    "description": "Texto do botão para download"
+  },
+  "button_download_single_file": {
+    "message": "Baixar arquivo único",
+    "description": "Texto do botão para download de arquivo único"
+  },
+  "filtering_title": {
+    "message": "Filtragem de conteúdo",
+    "description": "Título para a seção de filtragem"
+  },
+  "filtering_label": {
+    "message": "Filtrar ativos incluídos por",
+    "description": "Rótulo para opções de filtragem"
+  },
+  "filtering_by_type": {
+    "message": "Tipo",
+    "description": "Rótulo para filtragem por tipo"
+  },
+  "filtering_by_extension": {
+    "message": "Extensão de arquivo",
+    "description": "Rótulo para filtragem por extensão"
+  },
+  "filter_by_image": {
+    "message": "Imagem",
+    "description": "Rótulo para filtragem por imagem"
+  },
+  "filter_by_script": {
+    "message": "Script",
+    "description": "Rótulo para filtragem por script"
+  },
+  "filter_by_stylesheet": {
+    "message": "Folha de estilo",
+    "description": "Rótulo para filtragem por folha de estilo"
+  },
+  "filter_by_font": {
+    "message": "Fonte",
+    "description": "Rótulo para filtragem por fonte"
+  },
+  "filter_by_markup": {
+    "message": "Marcação",
+    "description": "Rótulo para filtragem por Marcação"
+  },
+  "filter_by_document": {
+    "message": "Documento",
+    "description": "Rótulo para filtragem por Documento"
+  },
+  "filter_by_spreadsheet": {
+    "message": "Planilha",
+    "description": "Rótulo para filtragem por Planilha"
+  },
+  "filter_by_video": {
+    "message": "Vídeo",
+    "description": "Rótulo para filtragem por Vídeo"
+  },
+  "filter_by_audio": {
+    "message": "Áudio",
+    "description": "Rótulo para filtragem por Áudio"
+  },
+  "filter_by_archive": {
+    "message": "Arquivo",
+    "description": "Rótulo para filtragem por Arquivo"
+  },
+  "filter_by_json": {
+    "message": "JSON",
+    "description": "Rótulo para filtragem por JSON"
+  },
+  "filter_by_executable": {
+    "message": "Executável",
+    "description": "Rótulo para filtragem por Executável"
+  },
+  "filter_by_other": {
+    "message": "Outro",
+    "description": "Rótulo para filtragem por Outro"
+  },
+  "single_file_title": {
+    "message": "Informações de download",
+    "description": "Título para o cartão de download de arquivo único."
+  },
+  "single_file_download_intro": {
+    "message": "Você está prestes a baixar a página da web atual como um único arquivo MHTML (.mhtml).",
+    "description": "Introdução para download de arquivo MHTML único."
+  },
+  "single_file_format_mhtml_title": {
+    "message": "Formato MHTML",
+    "description": "Título para a explicação do formato MHTML."
+  },
+  "single_file_format_mhtml_desc": {
+    "message": "MHTML (MIME HTML) salva todo o conteúdo da página (HTML, CSS, JavaScript, imagens) em um único arquivo.",
+    "description": "Descrição do formato MHTML."
+  },
+  "single_file_includes_all_title": {
+    "message": "Tudo incluído",
+    "description": "Título para o ponto 'inclui todos os recursos'."
+  },
+  "single_file_includes_all_desc": {
+    "message": "Garante que todos os recursos sejam incluídos, tornando a página totalmente funcional offline.",
+    "description": "Descrição para o ponto 'inclui todos os recursos'."
+  },
+  "single_file_offline_viewing_title": {
+    "message": "Visualização offline",
+    "description": "Título para o benefício da visualização offline."
+  },
+  "single_file_offline_viewing_desc": {
+    "message": "Ideal para arquivar páginas ou visualizá-las mais tarde sem uma conexão com a internet.",
+    "description": "Descrição para o benefício da visualização offline."
+  },
+  "single_file_browser_support_title": {
+    "message": "Suporte do navegador",
+    "description": "Título para compatibilidade do navegador."
+  },
+  "single_file_browser_support_desc": {
+    "message": "A maioria dos navegadores da web modernos pode abrir arquivos .mhtml.",
+    "description": "Descrição para compatibilidade do navegador."
+  },
+  "single_file_download_time_notice": {
+    "message": "Observação: Dependendo do tamanho da página, o download pode demorar alguns instantes.",
+    "description": "Aviso sobre o tempo potencial de download para MHTML."
+  },
+  "full_web_page_download_title_v2_coming_soon": {
+    "message": "Download da página da web completa em breve",
+    "description": "Título para o recurso de download da página da web completa."
+  },
+  "full_web_page_download_subtitle_v2_next_version": {
+    "message": "Este recurso estará disponível na próxima versão.",
+    "description": "Subtítulo para o recurso de download da página da web completa."
+  },
+  "permission_pageCapture": {
+    "message": "Captura de página",
+    "description": "Permissão para capturar a página atual"
+  },
+  "permission_pageCapture_description": {
+    "message": "Permite que a extensão capture o conteúdo da página atual.",
+    "description": "Descrição para permissão de captura de página"
+  },
+  "tooltip_toggle_scroll_mode": {
+    "message": "Alternar entre a rolagem automática e manual da página.",
+    "description": "Dica de ferramenta para o botão de alternância do modo de rolagem"
+  },
+  "text_auto_mode": {
+    "message": "Automático",
+    "description": "Texto para o modo de rolagem automática"
+  },
+  "text_manual_mode": {
+    "message": "Manual",
+    "description": "Texto para o modo de rolagem manual"
+  }
 }

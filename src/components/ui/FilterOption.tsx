@@ -3,6 +3,7 @@ import React from "react";
 import { Checkbox } from "./checkbox";
 import { Label } from "./label";
 import { useLanguageStore } from "../../store/languageStore";
+import { useDownloadSettingsStore } from "../../store/downloadSettingsStore";
 
 interface FilterOptionProps {
   id: string;
@@ -19,7 +20,9 @@ export default function FilterOption({
   onCheckedChange,
 }: FilterOptionProps) {
   const { direction, getTranslation } = useLanguageStore();
+  const { filterMode } = useDownloadSettingsStore();
   const uniqueId = `filter-option-${id}`;
+  const translation = filterMode === 'extension' ? id : getTranslation('filter_by_' + id)
   return (
     <div className="bg-slate-50 p-1 rounded-md hover:bg-slate-100 transition-colors">
       <Label
@@ -34,7 +37,7 @@ export default function FilterOption({
           className="text-blue-600"
         />
         <span className={`flex items-center gap-1 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
-          <span>{icon}</span><span>{getTranslation('filter_by_' + id)}</span>
+          <span>{icon}</span><span>{translation}</span>
         </span>
       </Label>
     </div>

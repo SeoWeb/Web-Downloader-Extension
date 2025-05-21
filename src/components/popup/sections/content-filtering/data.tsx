@@ -60,7 +60,7 @@ export const filterGroups: FilterGroupData[] = [
     ],
   },
   {
-    id: "html",
+    id: "markup",
     label: "Markup",
     icon: <FileCode2 className="h-4 w-4 mr-1 text-slate-500" />,
     items: [

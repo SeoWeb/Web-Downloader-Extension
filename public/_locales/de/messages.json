@@ -1,464 +1,278 @@
 {
-    "title": {
-        "message": "Webseiten- & Site-Downloader",
-        "description": "Der Titel der Erweiterung"
-    },
-    "description": {
-        "message": "Mit dem Webseiten- und Site-Downloader können Sie ganze Websites – einschließlich aller verknüpften Seiten und Ressourcen – für die Offline-Anzeige herunterladen.",
-        "description": "Die Beschreibung der Erweiterung"
-    },
-    "help": {
-        "message": "Hilfe",
-        "description": "Der Text der Hilfeschaltfläche"
-    },
-    "download_mode": {
-        "message": "Download-Modus",
-        "description": "Die Bezeichnung für die Auswahl des Download-Modus"
-    },
-    "single_download_description": {
-        "message": "Laden Sie nur die aktuelle Seite mit allen ihren Assets herunter.",
-        "description": "Beschreibung für den Einzel-Download-Modus"
-    },
-    "site_download_description": {
-        "message": "Laden Sie die gesamte Site herunter, einschließlich aller verknüpften Seiten und Ressourcen.",
-        "description": "Beschreibung für den Site-Download-Modus"
-    },
-    "single_page": {
-        "message": "Einzelne Seite",
-        "description": "Bezeichnung für den Einzel-Seiten-Download-Modus"
-    },
-    "whole_website": {
-        "message": "Gesamte Website",
-        "description": "Bezeichnung für den Download-Modus der gesamten Website"
-    },
-    "single_file": {
-        "message": "Einzelne Datei",
-        "description": "Bezeichnung für den Einzel-Datei-Download-Modus"
-    },
-    "loading": {
-        "message": "Wird geladen...",
-        "description": "Lademeldung"
-    },
-    "downloading": {
-        "message": "Wird heruntergeladen...",
-        "description": "Download-Meldung"
-    },
-    "not_downloadable": {
-        "message": "Diese Seite kann nicht heruntergeladen werden",
-        "description": "Meldung, die angibt, dass die Seite nicht heruntergeladen werden kann"
-    },
-    "close_sidepanel_message": {
-        "message": "Schließen Sie zuerst das Seitenfenster.",
-        "description": "Nachricht zum Schließen des Seitenfensters"
-    },
-    "permissions_title": {
-        "message": "Erforderliche Berechtigungen",
-        "description": "Titel für den Berechtigungsabschnitt"
-    },
-    "permissions_message": {
-        "message": "Folgende Berechtigungen sind erforderlich",
-        "description": "Titel für den Berechtigungsabschnitt"
-    },
-    "requesting_permissions": {
-        "message": "Fordern Berechtigungen an...",
-        "description": "Meldung, die angibt, dass Berechtigungen angefordert werden"
-    },
-    "grant_permissions": {
-        "message": "Berechtigungen erteilen",
-        "description": "Text der Schaltfläche zum Erteilen von Berechtigungen"
-    },
-    "permissions_granted": {
-        "message": "Berechtigungen erteilt!",
-        "description": "Meldung, die angibt, dass Berechtigungen erteilt wurden"
-    },
-    "permissions_intro": {
-        "message": "Diese Erweiterung benötigt die folgenden Berechtigungen, um korrekt zu funktionieren",
-        "description": "Einführungsnachricht für Berechtigungen"
-    },
-    "permission_activeTab": {
-        "message": "Aktiver Tab",
-        "description": "Berechtigung für den Zugriff auf den aktiven Tab"
-    },
-    "permission_activeTab_description": {
-        "message": "Ermöglicht der Erweiterung den Zugriff auf den aktiven Tab.",
-        "description": "Beschreibung für die Berechtigung für den aktiven Tab"
-    },
-    "permission_scripting": {
-        "message": "Scripting",
-        "description": "Berechtigung zur Verwendung von Scripting"
-    },
-    "permission_scripting_description": {
-        "message": "Fügt Skripte in den aktuellen Tab ein, um Inhalte zu analysieren.",
-        "description": "Beschreibung für die Scripting-Berechtigung"
-    },
-    "permission_storage": {
-        "message": "Speicher",
-        "description": "Berechtigung zur Verwendung von Speicher"
-    },
-    "permission_storage_description": {
-        "message": "Speichern Sie Benutzereinstellungen und -konfigurationen.",
-        "description": "Beschreibung für die Speicherberechtigung"
-    },
-    "permission_downloads": {
-        "message": "Downloads",
-        "description": "Berechtigung zur Verwendung von Downloads"
-    },
-    "permission_downloads_description": {
-        "message": "Dateien auf den Computer des Benutzers herunterladen.",
-        "description": "Beschreibung für die Download-Berechtigung"
-    },
-    "permission_request_error": {
-        "message": "Bei der Anforderung von Berechtigungen ist ein Fehler aufgetreten.",
-        "description": "Fehlermeldung für die Berechtigungsanforderung"
-    },
-    "permission_not_granted_error": {
-        "message": "Berechtigungen wurden nicht erteilt. Bitte erteilen Sie Berechtigungen, um fortzufahren.",
-        "description": "Fehlermeldung für nicht erteilte Berechtigung"
-    },
-    "permission_check_error": {
-        "message": "Fehler beim Überprüfen der Berechtigungen. Bitte versuchen Sie es erneut.",
-        "description": "Fehlermeldung für die Berechtigungsprüfung"
-    },
-    "button_options": {
-        "message": "Optionen",
-        "description": "Schaltflächentext für Optionen"
-    },
-    "button_download_page": {
-        "message": "Seite herunterladen",
-        "description": "Schaltflächentext für Download"
-    },
-    "button_download_website": {
-        "message": "Website herunterladen",
-        "description": "Schaltflächentext für Download"
-    },
-    "button_download_single_file": {
-        "message": "Einzelne Datei herunterladen",
-        "description": "Schaltflächentext für Einzeldateidownload"
-    },
-    "filtering_title": {
-        "message": "Inhaltsfilterung",
-        "description": "Titel für den Filterabschnitt"
-    },
-    "filtering_label": {
-        "message": "Assets filtern nach",
-        "description": "Bezeichnung für Filteroptionen"
-    },
-    "filtering_by_type": {
-        "message": "Typ",
-        "description": "Bezeichnung für die Filterung nach Typ"
-    },
-    "filtering_by_extension": {
-        "message": "Dateierweiterung",
-        "description": "Bezeichnung für die Filterung nach Erweiterung"
-    },
-    "filter_by_image": {
-        "message": "Bild",
-        "description": "Bezeichnung für die Filterung nach Bild"
-    },
-    "filter_by_script": {
-        "message": "Skript",
-        "description": "Bezeichnung für die Filterung nach Skript"
-    },
-    "filter_by_stylesheet": {
-        "message": "Stylesheet",
-        "description": "Bezeichnung für die Filterung nach Stylesheet"
-    },
-    "filter_by_font": {
-        "message": "Schriftart",
-        "description": "Bezeichnung für die Filterung nach Schriftart"
-    },
-    "filter_by_html": {
-        "message": "Markup",
-        "description": "Bezeichnung für die Filterung nach Markup"
-    },
-    "filter_by_document": {
-        "message": "Dokument",
-        "description": "Bezeichnung für die Filterung nach Dokument"
-    },
-    "filter_by_spreadsheet": {
-        "message": "Tabelle",
-        "description": "Bezeichnung für die Filterung nach Tabelle"
-    },
-    "filter_by_video": {
-        "message": "Video",
-        "description": "Bezeichnung für die Filterung nach Video"
-    },
-    "filter_by_audio": {
-        "message": "Audio",
-        "description": "Bezeichnung für die Filterung nach Audio"
-    },
-    "filter_by_archive": {
-        "message": "Archiv",
-        "description": "Bezeichnung für die Filterung nach Archiv"
-    },
-    "filter_by_json": {
-        "message": "JSON",
-        "description": "Bezeichnung für die Filterung nach JSON"
-    },
-    "filter_by_executable": {
-        "message": "Ausführbar",
-        "description": "Bezeichnung für die Filterung nach Ausführbar"
-    },
-    "filter_by_other": {
-        "message": "Andere",
-        "description": "Bezeichnung für die Filterung nach Andere"
-    },
-    "filter_by_jpg": {
-        "message": "jpg",
-        "description": "Dateierweiterung für jpg"
-    },
-    "filter_by_png": {
-        "message": "png",
-        "description": "Dateierweiterung für png"
-    },
-    "filter_by_gif": {
-        "message": "gif",
-        "description": "Dateierweiterung für gif"
-    },
-    "filter_by_svg": {
-        "message": "svg",
-        "description": "Dateierweiterung für svg"
-    },
-    "filter_by_webp": {
-        "message": "webp",
-        "description": "Dateierweiterung für webp"
-    },
-    "filter_by_ico": {
-        "message": "ico",
-        "description": "Dateierweiterung für ico"
-    },
-    "filter_by_js": {
-        "message": "js",
-        "description": "Dateierweiterung für js"
-    },
-    "filter_by_ts": {
-        "message": "ts",
-        "description": "Dateierweiterung für ts"
-    },
-    "filter_by_css": {
-        "message": "css",
-        "description": "Dateierweiterung für css"
-    },
-    "filter_by_scss": {
-        "message": "scss",
-        "description": "Dateierweiterung für scss"
-    },
-    "filter_by_less": {
-        "message": "less",
-        "description": "Dateierweiterung für less"
-    },
-    "filter_by_woff": {
-        "message": "woff",
-        "description": "Dateierweiterung für woff"
-    },
-    "filter_by_woff2": {
-        "message": "woff2",
-        "description": "Dateierweiterung für woff2"
-    },
-    "filter_by_ttf": {
-        "message": "ttf",
-        "description": "Dateierweiterung für ttf"
-    },
-    "filter_by_otf": {
-        "message": "otf",
-        "description": "Dateierweiterung für otf"
-    },
-    "filter_by_eot": {
-        "message": "eot",
-        "description": "Dateierweiterung für eot"
-    },
-    "filter_by_htm": {
-        "message": "htm",
-        "description": "Dateierweiterung für htm"
-    },
-    "filter_by_xml": {
-        "message": "xml",
-        "description": "Dateierweiterung für xml"
-    },
-    "filter_by_pdf": {
-        "message": "pdf",
-        "description": "Dateierweiterung für pdf"
-    },
-    "filter_by_doc": {
-        "message": "doc",
-        "description": "Dateierweiterung für doc"
-    },
-    "filter_by_docx": {
-        "message": "docx",
-        "description": "Dateierweiterung für docx"
-    },
-    "filter_by_txt": {
-        "message": "txt",
-        "description": "Dateierweiterung für txt"
-    },
-    "filter_by_rtf": {
-        "message": "rtf",
-        "description": "Dateierweiterung für rtf"
-    },
-    "filter_by_odt": {
-        "message": "odt",
-        "description": "Dateierweiterung für odt"
-    },
-    "filter_by_mp3": {
-        "message": "mp3",
-        "description": "Dateierweiterung für mp3"
-    },
-    "filter_by_wav": {
-        "message": "wav",
-        "description": "Dateierweiterung für wav"
-    },
-    "filter_by_ogg": {
-        "message": "ogg",
-        "description": "Dateierweiterung für ogg"
-    },
-    "filter_by_aac": {
-        "message": "aac",
-        "description": "Dateierweiterung für aac"
-    },
-    "filter_by_mp4": {
-        "message": "mp4",
-        "description": "Dateierweiterung für mp4"
-    },
-    "filter_by_webm": {
-        "message": "webm",
-        "description": "Dateierweiterung für webm"
-    },
-    "filter_by_avi": {
-        "message": "avi",
-        "description": "Dateierweiterung für avi"
-    },
-    "filter_by_mov": {
-        "message": "mov",
-        "description": "Dateierweiterung für mov"
-    },
-    "filter_by_wmv": {
-        "message": "wmv",
-        "description": "Dateierweiterung für wmv"
-    },
-    "filter_by_mkv": {
-        "message": "mkv",
-        "description": "Dateierweiterung für mkv"
-    },
-    "filter_by_zip": {
-        "message": "zip",
-        "description": "Dateierweiterung für zip"
-    },
-    "filter_by_rar": {
-        "message": "rar",
-        "description": "Dateierweiterung für rar"
-    },
-    "filter_by_tar": {
-        "message": "tar",
-        "description": "Dateierweiterung für tar"
-    },
-    "filter_by_gz": {
-        "message": "gz",
-        "description": "Dateierweiterung für gz"
-    },
-    "filter_by_7z": {
-        "message": "7z",
-        "description": "Dateierweiterung für 7z"
-    },
-    "filter_by_exe": {
-        "message": "exe",
-        "description": "Dateierweiterung für exe"
-    },
-    "filter_by_sh": {
-        "message": "sh",
-        "description": "Dateierweiterung für sh"
-    },
-    "filter_by_bat": {
-        "message": "bat",
-        "description": "Dateierweiterung für bat"
-    },
-    "single_file_title": {
-        "message": "Download-Informationen",
-        "description": "Titel für die Einzeldateidownload-Karte."
-    },
-    "single_file_download_intro": {
-        "message": "Sie sind dabei, die aktuelle Webseite als einzelne MHTML-Datei (.mhtml) herunterzuladen.",
-        "description": "Einführung für den Einzeldateidownload im MHTML-Format."
-    },
-    "single_file_format_mhtml_title": {
-        "message": "MHTML-Format",
-        "description": "Titel für die Erläuterung des MHTML-Formats."
-    },
-    "single_file_format_mhtml_desc": {
-        "message": "MHTML (MIME HTML) speichert alle Seiteninhalte (HTML, CSS, JavaScript, Bilder) in einer einzigen Datei.",
-        "description": "Beschreibung des MHTML-Formats."
-    },
-    "single_file_includes_all_title": {
-        "message": "All-Inclusive",
-        "description": "Titel für den Punkt 'enthält alle Ressourcen'."
-    },
-    "single_file_includes_all_desc": {
-        "message": "Stellt sicher, dass alle Ressourcen enthalten sind, wodurch die Seite offline voll funktionsfähig ist.",
-        "description": "Beschreibung für den Punkt 'enthält alle Ressourcen'."
-    },
-    "single_file_offline_viewing_title": {
-        "message": "Offline-Anzeige",
-        "description": "Titel für den Vorteil der Offline-Anzeige."
-    },
-    "single_file_offline_viewing_desc": {
-        "message": "Ideal zum Archivieren von Seiten oder zum Anzeigen zu einem späteren Zeitpunkt ohne Internetverbindung.",
-        "description": "Beschreibung für den Vorteil der Offline-Anzeige."
-    },
-    "single_file_browser_support_title": {
-        "message": "Browser-Unterstützung",
-        "description": "Titel für die Browser-Kompatibilität."
-    },
-    "single_file_browser_support_desc": {
-        "message": "Die meisten modernen Webbrowser können .mhtml-Dateien öffnen.",
-        "description": "Beschreibung für die Browser-Kompatibilität."
-    },
-    "single_file_download_time_notice": {
-        "message": "Bitte beachten Sie: Je nach Seitengröße kann der Download einige Momente dauern.",
-        "description": "Hinweis zur potenziellen Download-Zeit für MHTML."
-    },
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    "full_web_page_download_title_v2_coming_soon": {
-        "message": "Vollständiger Webseiten-Download in Kürze verfügbar",
-        "description": "Titel für die Funktion zum Herunterladen der vollständigen Webseite."
-    },
-    "full_web_page_download_subtitle_v2_next_version": {
-        "message": "Diese Funktion wird in der nächsten Version verfügbar sein.",
-        "description": "Untertitel für die Funktion zum Herunterladen der vollständigen Webseite."
-    },
-    "permission_pageCapture": {
-        "message": "Seitenaufnahme",
-        "description": "Berechtigung zum Erfassen der aktuellen Seite"
-    },
-    "permission_pageCapture_description": {
-        "message": "Ermöglicht der Erweiterung, den Inhalt der aktuellen Seite zu erfassen.",
-        "description": "Beschreibung für die Berechtigung zur Seitenaufnahme"
-    },
-    "tooltip_toggle_scroll_mode": {
-        "message": "Zwischen automatischem und manuellem Seiten-Scrolling umschalten.",
-        "description": "Tooltip für die Schaltfläche zum Umschalten des Scrollmodus"
-    },
-    "text_auto_mode": {
-        "message": "Auto",
-        "description": "Text für den automatischen Scrollmodus"
-    },
-    "text_manual_mode": {
-        "message": "Manuell",
-        "description": "Text für den manuellen Scrollmodus"
-    }
+  "title": {
+    "message": "Webseiten- & Site-Downloader",
+    "description": "Der Titel der Erweiterung"
+  },
+  "description": {
+    "message": "Mit dem Webseiten- und Site-Downloader können Sie ganze Websites – einschließlich aller verknüpften Seiten und Ressourcen – für die Offline-Anzeige herunterladen.",
+    "description": "Die Beschreibung der Erweiterung"
+  },
+  "help": {
+    "message": "Hilfe",
+    "description": "Der Text der Hilfeschaltfläche"
+  },
+  "download_mode": {
+    "message": "Download-Modus",
+    "description": "Die Bezeichnung für die Auswahl des Download-Modus"
+  },
+  "single_download_description": {
+    "message": "Laden Sie nur die aktuelle Seite mit allen ihren Assets herunter.",
+    "description": "Beschreibung für den Einzel-Download-Modus"
+  },
+  "site_download_description": {
+    "message": "Laden Sie die gesamte Site herunter, einschließlich aller verknüpften Seiten und Ressourcen.",
+    "description": "Beschreibung für den Site-Download-Modus"
+  },
+  "single_page": {
+    "message": "Einzelne Seite",
+    "description": "Bezeichnung für den Einzel-Seiten-Download-Modus"
+  },
+  "whole_website": {
+    "message": "Gesamte Website",
+    "description": "Bezeichnung für den Download-Modus der gesamten Website"
+  },
+  "single_file": {
+    "message": "Einzelne Datei",
+    "description": "Bezeichnung für den Einzel-Datei-Download-Modus"
+  },
+  "loading": {
+    "message": "Wird geladen...",
+    "description": "Lademeldung"
+  },
+  "downloading": {
+    "message": "Wird heruntergeladen...",
+    "description": "Download-Meldung"
+  },
+  "not_downloadable": {
+    "message": "Diese Seite kann nicht heruntergeladen werden",
+    "description": "Meldung, die angibt, dass die Seite nicht heruntergeladen werden kann"
+  },
+  "close_sidepanel_message": {
+    "message": "Schließen Sie zuerst das Seitenfenster.",
+    "description": "Nachricht zum Schließen des Seitenfensters"
+  },
+  "permissions_title": {
+    "message": "Erforderliche Berechtigungen",
+    "description": "Titel für den Berechtigungsabschnitt"
+  },
+  "permissions_message": {
+    "message": "Folgende Berechtigungen sind erforderlich",
+    "description": "Titel für den Berechtigungsabschnitt"
+  },
+  "requesting_permissions": {
+    "message": "Fordern Berechtigungen an...",
+    "description": "Meldung, die angibt, dass Berechtigungen angefordert werden"
+  },
+  "grant_permissions": {
+    "message": "Berechtigungen erteilen",
+    "description": "Text der Schaltfläche zum Erteilen von Berechtigungen"
+  },
+  "permissions_granted": {
+    "message": "Berechtigungen erteilt!",
+    "description": "Meldung, die angibt, dass Berechtigungen erteilt wurden"
+  },
+  "permissions_intro": {
+    "message": "Diese Erweiterung benötigt die folgenden Berechtigungen, um korrekt zu funktionieren",
+    "description": "Einführungsnachricht für Berechtigungen"
+  },
+  "permission_activeTab": {
+    "message": "Aktiver Tab",
+    "description": "Berechtigung für den Zugriff auf den aktiven Tab"
+  },
+  "permission_activeTab_description": {
+    "message": "Ermöglicht der Erweiterung den Zugriff auf den aktiven Tab.",
+    "description": "Beschreibung für die Berechtigung für den aktiven Tab"
+  },
+  "permission_scripting": {
+    "message": "Scripting",
+    "description": "Berechtigung zur Verwendung von Scripting"
+  },
+  "permission_scripting_description": {
+    "message": "Fügt Skripte in den aktuellen Tab ein, um Inhalte zu analysieren.",
+    "description": "Beschreibung für die Scripting-Berechtigung"
+  },
+  "permission_storage": {
+    "message": "Speicher",
+    "description": "Berechtigung zur Verwendung von Speicher"
+  },
+  "permission_storage_description": {
+    "message": "Speichern Sie Benutzereinstellungen und -konfigurationen.",
+    "description": "Beschreibung für die Speicherberechtigung"
+  },
+  "permission_downloads": {
+    "message": "Downloads",
+    "description": "Berechtigung zur Verwendung von Downloads"
+  },
+  "permission_downloads_description": {
+    "message": "Dateien auf den Computer des Benutzers herunterladen.",
+    "description": "Beschreibung für die Download-Berechtigung"
+  },
+  "permission_request_error": {
+    "message": "Bei der Anforderung von Berechtigungen ist ein Fehler aufgetreten.",
+    "description": "Fehlermeldung für die Berechtigungsanforderung"
+  },
+  "permission_not_granted_error": {
+    "message": "Berechtigungen wurden nicht erteilt. Bitte erteilen Sie Berechtigungen, um fortzufahren.",
+    "description": "Fehlermeldung für nicht erteilte Berechtigung"
+  },
+  "permission_check_error": {
+    "message": "Fehler beim Überprüfen der Berechtigungen. Bitte versuchen Sie es erneut.",
+    "description": "Fehlermeldung für die Berechtigungsprüfung"
+  },
+  "button_options": {
+    "message": "Optionen",
+    "description": "Schaltflächentext für Optionen"
+  },
+  "button_download_page": {
+    "message": "Seite herunterladen",
+    "description": "Schaltflächentext für Download"
+  },
+  "button_download_website": {
+    "message": "Website herunterladen",
+    "description": "Schaltflächentext für Download"
+  },
+  "button_download_single_file": {
+    "message": "Einzelne Datei herunterladen",
+    "description": "Schaltflächentext für Einzeldateidownload"
+  },
+  "filtering_title": {
+    "message": "Inhaltsfilterung",
+    "description": "Titel für den Filterabschnitt"
+  },
+  "filtering_label": {
+    "message": "Assets filtern nach",
+    "description": "Bezeichnung für Filteroptionen"
+  },
+  "filtering_by_type": {
+    "message": "Typ",
+    "description": "Bezeichnung für die Filterung nach Typ"
+  },
+  "filtering_by_extension": {
+    "message": "Dateierweiterung",
+    "description": "Bezeichnung für die Filterung nach Erweiterung"
+  },
+  "filter_by_image": {
+    "message": "Bild",
+    "description": "Bezeichnung für die Filterung nach Bild"
+  },
+  "filter_by_script": {
+    "message": "Skript",
+    "description": "Bezeichnung für die Filterung nach Skript"
+  },
+  "filter_by_stylesheet": {
+    "message": "Stylesheet",
+    "description": "Bezeichnung für die Filterung nach Stylesheet"
+  },
+  "filter_by_font": {
+    "message": "Schriftart",
+    "description": "Bezeichnung für die Filterung nach Schriftart"
+  },
+  "filter_by_markup": {
+    "message": "Markup",
+    "description": "Bezeichnung für die Filterung nach Markup"
+  },
+  "filter_by_document": {
+    "message": "Dokument",
+    "description": "Bezeichnung für die Filterung nach Dokument"
+  },
+  "filter_by_spreadsheet": {
+    "message": "Tabelle",
+    "description": "Bezeichnung für die Filterung nach Tabelle"
+  },
+  "filter_by_video": {
+    "message": "Video",
+    "description": "Bezeichnung für die Filterung nach Video"
+  },
+  "filter_by_audio": {
+    "message": "Audio",
+    "description": "Bezeichnung für die Filterung nach Audio"
+  },
+  "filter_by_archive": {
+    "message": "Archiv",
+    "description": "Bezeichnung für die Filterung nach Archiv"
+  },
+  "filter_by_json": {
+    "message": "JSON",
+    "description": "Bezeichnung für die Filterung nach JSON"
+  },
+  "filter_by_executable": {
+    "message": "Ausführbar",
+    "description": "Bezeichnung für die Filterung nach Ausführbar"
+  },
+  "filter_by_other": {
+    "message": "Andere",
+    "description": "Bezeichnung für die Filterung nach Andere"
+  },
+  "single_file_title": {
+    "message": "Download-Informationen",
+    "description": "Titel für die Einzeldateidownload-Karte."
+  },
+  "single_file_download_intro": {
+    "message": "Sie sind dabei, die aktuelle Webseite als einzelne MHTML-Datei (.mhtml) herunterzuladen.",
+    "description": "Einführung für den Einzeldateidownload im MHTML-Format."
+  },
+  "single_file_format_mhtml_title": {
+    "message": "MHTML-Format",
+    "description": "Titel für die Erläuterung des MHTML-Formats."
+  },
+  "single_file_format_mhtml_desc": {
+    "message": "MHTML (MIME HTML) speichert alle Seiteninhalte (HTML, CSS, JavaScript, Bilder) in einer einzigen Datei.",
+    "description": "Beschreibung des MHTML-Formats."
+  },
+  "single_file_includes_all_title": {
+    "message": "All-Inclusive",
+    "description": "Titel für den Punkt 'enthält alle Ressourcen'."
+  },
+  "single_file_includes_all_desc": {
+    "message": "Stellt sicher, dass alle Ressourcen enthalten sind, wodurch die Seite offline voll funktionsfähig ist.",
+    "description": "Beschreibung für den Punkt 'enthält alle Ressourcen'."
+  },
+  "single_file_offline_viewing_title": {
+    "message": "Offline-Anzeige",
+    "description": "Titel für den Vorteil der Offline-Anzeige."
+  },
+  "single_file_offline_viewing_desc": {
+    "message": "Ideal zum Archivieren von Seiten oder zum Anzeigen zu einem späteren Zeitpunkt ohne Internetverbindung.",
+    "description": "Beschreibung für den Vorteil der Offline-Anzeige."
+  },
+  "single_file_browser_support_title": {
+    "message": "Browser-Unterstützung",
+    "description": "Titel für die Browser-Kompatibilität."
+  },
+  "single_file_browser_support_desc": {
+    "message": "Die meisten modernen Webbrowser können .mhtml-Dateien öffnen.",
+    "description": "Beschreibung für die Browser-Kompatibilität."
+  },
+  "single_file_download_time_notice": {
+    "message": "Bitte beachten Sie: Je nach Seitengröße kann der Download einige Momente dauern.",
+    "description": "Hinweis zur potenziellen Download-Zeit für MHTML."
+  },
+  "full_web_page_download_title_v2_coming_soon": {
+    "message": "Vollständiger Webseiten-Download in Kürze verfügbar",
+    "description": "Titel für die Funktion zum Herunterladen der vollständigen Webseite."
+  },
+  "full_web_page_download_subtitle_v2_next_version": {
+    "message": "Diese Funktion wird in der nächsten Version verfügbar sein.",
+    "description": "Untertitel für die Funktion zum Herunterladen der vollständigen Webseite."
+  },
+  "permission_pageCapture": {
+    "message": "Seitenaufnahme",
+    "description": "Berechtigung zum Erfassen der aktuellen Seite"
+  },
+  "permission_pageCapture_description": {
+    "message": "Ermöglicht der Erweiterung, den Inhalt der aktuellen Seite zu erfassen.",
+    "description": "Beschreibung für die Berechtigung zur Seitenaufnahme"
+  },
+  "tooltip_toggle_scroll_mode": {
+    "message": "Zwischen automatischem und manuellem Seiten-Scrolling umschalten.",
+    "description": "Tooltip für die Schaltfläche zum Umschalten des Scrollmodus"
+  },
+  "text_auto_mode": {
+    "message": "Auto",
+    "description": "Text für den automatischen Scrollmodus"
+  },
+  "text_manual_mode": {
+    "message": "Manuell",
+    "description": "Text für den manuellen Scrollmodus"
+  }
 }
