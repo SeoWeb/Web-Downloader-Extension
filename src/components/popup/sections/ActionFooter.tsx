@@ -3,6 +3,7 @@ import { Button } from "../../ui/button";
 import { Settings, Download } from "lucide-react";
 import { useDownloadSettingsStore } from "../../../store/downloadSettingsStore";
 import PrimaryButton from "../../ui/PrimaryButton";
+import ScrollModeSwitch from "../../ui/ScrollModeSwitch";
 import { openSidePanel } from "../../../background/messageActions/openSidePanel";
 import closePopup from "../../../common/chrome/closePopup";
 import useSendPortMessage from "../../../hooks/useSendPortMessage";
@@ -19,8 +20,14 @@ interface ActionFooterProps {
 export default function ActionFooter({
   isDownloadDisabled = false,
 }: ActionFooterProps) {
-  const { activeTabId, downloadMode, isSidePanelOpen, setIsSidePanelOpen } =
-    useDownloadSettingsStore();
+  const {
+    activeTabId,
+    downloadMode,
+    isSidePanelOpen,
+    scrollMode,
+    setIsSidePanelOpen,
+    setScrollMode,
+  } = useDownloadSettingsStore();
   const { sendPortMessage } = useSendPortMessage("popup");
   const { direction, getTranslation } = useLanguageStore();
 
@@ -57,7 +64,7 @@ export default function ActionFooter({
       <div
         className={`flex items-center justify-between ${direction === "rtl" ? "flex-row-reverse" : ""}`}
       >
-        <div className="flex items-center gap-4">
+        <div className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
           <Button
             variant="outline"
             size="sm"
@@ -66,17 +73,29 @@ export default function ActionFooter({
             <Settings className="h-4 w-4" /> {getTranslation("button_options")}
           </Button>
         </div>
-        <PrimaryButton
-          disabled={isDownloadDisabled || !activeTabId || isSidePanelOpen}
-          onClick={handleClick}
-        >
-          <Download className="h-5 w-5" />
-          {downloadMode === "single"
-            ? getTranslation("button_download_page")
-            : downloadMode === "single_file"
-              ? getTranslation("button_download_single_file")
-              : getTranslation("button_download_website")}
-        </PrimaryButton>
+        <div className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
+          <ScrollModeSwitch
+            scrollMode={scrollMode}
+            onCheckedChange={(checked) => {
+              setScrollMode(checked ? "auto" : "manual");
+            }}
+            autoModeText={getTranslation("text_auto_mode")}
+            manualModeText={getTranslation("text_manual_mode")}
+            tooltipText={getTranslation("tooltip_toggle_scroll_mode")}
+            direction={direction}
+          />
+          <PrimaryButton
+            disabled={isDownloadDisabled || !activeTabId || isSidePanelOpen}
+            onClick={handleClick}
+          >
+            <Download className="h-5 w-5" />
+            {downloadMode === "single"
+              ? getTranslation("button_download_page")
+              : downloadMode === "single_file"
+                ? getTranslation("button_download_single_file")
+                : getTranslation("button_download_website")}
+          </PrimaryButton>
+        </div>
       </div>
     </div>
   );

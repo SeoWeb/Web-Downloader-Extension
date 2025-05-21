@@ -1,378 +1,382 @@
 {
     "title": {
         "message": "Webpagina & Site Downloader",
-        "description": "The title of the extension"
+        "description": "De titel van de extensie"
     },
     "description": {
-        "message": "Met Webpagina en Site Downloader kunt u volledige websites downloaden—inclusief alle gekoppelde pagina's en bronnen—om offline te bekijken.",
-        "description": "The description of the extension"
+        "message": "Met Webpagina en Site Downloader kunt u hele websites downloaden, inclusief alle gekoppelde pagina's en bronnen, om offline te bekijken.",
+        "description": "De beschrijving van de extensie"
     },
     "help": {
         "message": "Help",
-        "description": "The help button text"
+        "description": "De helpknop tekst"
     },
     "download_mode": {
         "message": "Downloadmodus",
-        "description": "The label for the download mode selection"
+        "description": "Het label voor de selectie van de downloadmodus"
     },
     "single_download_description": {
-        "message": "Download alleen de huidige pagina met al zijn bestanden.",
-        "description": "Description for the single download mode"
+        "message": "Download alleen de huidige pagina met al zijn assets.",
+        "description": "Beschrijving voor de enkele downloadmodus"
     },
     "site_download_description": {
-        "message": "Download de volledige site, inclusief alle gekoppelde pagina's en bronnen.",
-        "description": "Description for the site download mode"
+        "message": "Download de hele site, inclusief alle gekoppelde pagina's en bronnen.",
+        "description": "Beschrijving voor de site downloadmodus"
     },
     "single_page": {
         "message": "Enkele pagina",
-        "description": "Label for the single page download mode"
+        "description": "Label voor de enkele pagina downloadmodus"
     },
     "whole_website": {
-        "message": "Volledige website",
-        "description": "Label for the whole website download mode"
+        "message": "Hele website",
+        "description": "Label voor de hele website downloadmodus"
     },
     "single_file": {
         "message": "Enkel bestand",
-        "description": "Label for the single file download mode"
+        "description": "Label voor de enkele bestand downloadmodus"
     },
     "loading": {
         "message": "Laden...",
-        "description": "Loading message"
+        "description": "Bericht laden"
     },
     "downloading": {
         "message": "Downloaden...",
-        "description": "Downloading message"
+        "description": "Bericht downloaden"
     },
     "not_downloadable": {
-        "message": "Deze pagina kan niet worden gedownload",
-        "description": "Message indicating that the page is not downloadable"
+        "message": "Deze pagina is niet downloadbaar",
+        "description": "Bericht dat aangeeft dat de pagina niet downloadbaar is"
     },
     "close_sidepanel_message": {
         "message": "Sluit eerst het zijpaneel.",
-        "description": "Message to close the side panel"
+        "description": "Bericht om het zijpaneel te sluiten"
     },
     "permissions_title": {
         "message": "Vereiste machtigingen",
-        "description": "Title for permissions section"
+        "description": "Titel voor de sectie machtigingen"
     },
     "permissions_message": {
         "message": "De volgende machtigingen zijn vereist",
-        "description": "Title for permissions section"
+        "description": "Titel voor de sectie machtigingen"
     },
     "requesting_permissions": {
         "message": "Machtigingen aanvragen...",
-        "description": "Message indicating that permissions are being requested"
+        "description": "Bericht dat aangeeft dat machtigingen worden aangevraagd"
     },
     "grant_permissions": {
         "message": "Machtigingen verlenen",
-        "description": "Button text to grant permissions"
+        "description": "Knoptekst om machtigingen te verlenen"
     },
     "permissions_granted": {
         "message": "Machtigingen verleend!",
-        "description": "Message indicating that permissions have been granted"
+        "description": "Bericht dat aangeeft dat machtigingen zijn verleend"
     },
     "permissions_intro": {
         "message": "Deze extensie vereist de volgende machtigingen om correct te functioneren",
-        "description": "Introduction message for permissions"
+        "description": "Introductiebericht voor machtigingen"
     },
     "permission_activeTab": {
-        "message": "Actief tabblad",
-        "description": "Permission to access the active tab"
+        "message": "Actieve Tab",
+        "description": "Machtiging om de actieve tab te openen"
     },
     "permission_activeTab_description": {
-        "message": "Staat de extensie toe om toegang te krijgen tot het actieve tabblad.",
-        "description": "Description for active tab permission"
+        "message": "Hiermee kan de extensie de actieve tab openen.",
+        "description": "Beschrijving voor actieve tab machtiging"
     },
     "permission_scripting": {
         "message": "Scripting",
-        "description": "Permission to use scripting"
+        "description": "Machtiging om scripting te gebruiken"
     },
     "permission_scripting_description": {
-        "message": "Injecteer scripts in het huidige tabblad om inhoud te analyseren.",
-        "description": "Description for scripting permission"
+        "message": "Injecteer scripts in de huidige tab om inhoud te analyseren.",
+        "description": "Beschrijving voor scripting machtiging"
     },
     "permission_storage": {
         "message": "Opslag",
-        "description": "Permission to use storage"
+        "description": "Machtiging om opslag te gebruiken"
     },
     "permission_storage_description": {
-        "message": "Sla gebruikersvoorkeuren en -instellingen op.",
-        "description": "Description for storage permission"
+        "message": "Sla gebruikersvoorkeuren en instellingen op.",
+        "description": "Beschrijving voor opslagmachtiging"
     },
     "permission_downloads": {
         "message": "Downloads",
-        "description": "Permission to use downloads"
+        "description": "Machtiging om downloads te gebruiken"
     },
     "permission_downloads_description": {
         "message": "Download bestanden naar de computer van de gebruiker.",
-        "description": "Description for downloads permission"
+        "description": "Beschrijving voor downloads machtiging"
     },
     "permission_request_error": {
         "message": "Er is een fout opgetreden bij het aanvragen van machtigingen.",
-        "description": "Error message for permission request"
+        "description": "Foutmelding voor machtigingsverzoek"
     },
     "permission_not_granted_error": {
         "message": "Machtigingen zijn niet verleend. Verleen machtigingen om door te gaan.",
-        "description": "Error message for permission not granted"
+        "description": "Foutmelding voor machtiging niet verleend"
     },
     "permission_check_error": {
         "message": "Kan machtigingen niet controleren. Probeer het opnieuw.",
-        "description": "Error message for permission check"
+        "description": "Foutmelding voor machtigingscontrole"
     },
     "button_options": {
         "message": "Opties",
-        "description": "Button text for options"
+        "description": "Knoptekst voor opties"
     },
     "button_download_page": {
         "message": "Pagina downloaden",
-        "description": "Button text for download"
+        "description": "Knoptekst voor downloaden"
     },
     "button_download_website": {
         "message": "Website downloaden",
-        "description": "Button text for download"
+        "description": "Knoptekst voor downloaden"
+    },
+    "button_download_single_file": {
+        "message": "Enkel bestand downloaden",
+        "description": "Knoptekst voor enkel bestand downloaden"
     },
     "filtering_title": {
         "message": "Inhoud filteren",
-        "description": "Title for filtering section"
+        "description": "Titel voor de filtersectie"
     },
     "filtering_label": {
-        "message": "Filter opgenomen activa op",
-        "description": "Label for filtering options"
+        "message": "Inbegrepen assets filteren op",
+        "description": "Label voor filteropties"
     },
     "filtering_by_type": {
         "message": "Type",
-        "description": "Label for filtering by type"
+        "description": "Label voor filteren op type"
     },
     "filtering_by_extension": {
         "message": "Bestandsextensie",
-        "description": "Label for filtering by extension"
+        "description": "Label voor filteren op extensie"
     },
     "filter_by_image": {
         "message": "Afbeelding",
-        "description": "Label for filtering by image"
+        "description": "Label voor filteren op afbeelding"
     },
     "filter_by_script": {
         "message": "Script",
-        "description": "Label for filtering by script"
+        "description": "Label voor filteren op script"
     },
     "filter_by_stylesheet": {
         "message": "Stylesheet",
-        "description": "Label for filtering by stylesheet"
+        "description": "Label voor filteren op stylesheet"
     },
     "filter_by_font": {
         "message": "Lettertype",
-        "description": "Label for filtering by font"
+        "description": "Label voor filteren op lettertype"
     },
     "filter_by_html": {
         "message": "Markup",
-        "description": "Label for filtering by Markup"
+        "description": "Label voor filteren op Markup"
     },
     "filter_by_document": {
         "message": "Document",
-        "description": "Label for filtering by Document"
+        "description": "Label voor filteren op Document"
     },
     "filter_by_spreadsheet": {
         "message": "Spreadsheet",
-        "description": "Label for filtering by Spreadsheet"
+        "description": "Label voor filteren op Spreadsheet"
     },
     "filter_by_video": {
         "message": "Video",
-        "description": "Label for filtering by Video"
+        "description": "Label voor filteren op Video"
     },
     "filter_by_audio": {
         "message": "Audio",
-        "description": "Label for filtering by Audio"
+        "description": "Label voor filteren op Audio"
     },
     "filter_by_archive": {
         "message": "Archief",
-        "description": "Label for filtering by Archive"
+        "description": "Label voor filteren op Archief"
     },
     "filter_by_json": {
         "message": "JSON",
-        "description": "Label for filtering by JSON"
+        "description": "Label voor filteren op JSON"
     },
     "filter_by_executable": {
-        "message": "Uitvoerbaar bestand",
-        "description": "Label for filtering by Executable"
+        "message": "Uitvoerbaar",
+        "description": "Label voor filteren op Uitvoerbaar"
     },
     "filter_by_other": {
-        "message": "Overig",
-        "description": "Label for filtering by Other"
+        "message": "Anders",
+        "description": "Label voor filteren op Anders"
     },
     "filter_by_jpg": {
         "message": "jpg",
-        "description": "File extension for jpg"
+        "description": "Bestandsextensie voor jpg"
     },
     "filter_by_png": {
         "message": "png",
-        "description": "File extension for png"
+        "description": "Bestandsextensie voor png"
     },
     "filter_by_gif": {
         "message": "gif",
-        "description": "File extension for gif"
+        "description": "Bestandsextensie voor gif"
     },
     "filter_by_svg": {
         "message": "svg",
-        "description": "File extension for svg"
+        "description": "Bestandsextensie voor svg"
     },
     "filter_by_webp": {
         "message": "webp",
-        "description": "File extension for webp"
+        "description": "Bestandsextensie voor webp"
     },
     "filter_by_ico": {
         "message": "ico",
-        "description": "File extension for ico"
+        "description": "Bestandsextensie voor ico"
     },
     "filter_by_js": {
         "message": "js",
-        "description": "File extension for js"
+        "description": "Bestandsextensie voor js"
     },
     "filter_by_ts": {
         "message": "ts",
-        "description": "File extension for ts"
+        "description": "Bestandsextensie voor ts"
     },
     "filter_by_css": {
         "message": "css",
-        "description": "File extension for css"
+        "description": "Bestandsextensie voor css"
     },
     "filter_by_scss": {
         "message": "scss",
-        "description": "File extension for scss"
+        "description": "Bestandsextensie voor scss"
     },
     "filter_by_less": {
         "message": "less",
-        "description": "File extension for less"
+        "description": "Bestandsextensie voor less"
     },
     "filter_by_woff": {
         "message": "woff",
-        "description": "File extension for woff"
+        "description": "Bestandsextensie voor woff"
     },
     "filter_by_woff2": {
         "message": "woff2",
-        "description": "File extension for woff2"
+        "description": "Bestandsextensie voor woff2"
     },
     "filter_by_ttf": {
         "message": "ttf",
-        "description": "File extension for ttf"
+        "description": "Bestandsextensie voor ttf"
     },
     "filter_by_otf": {
         "message": "otf",
-        "description": "File extension for otf"
+        "description": "Bestandsextensie voor otf"
     },
     "filter_by_eot": {
         "message": "eot",
-        "description": "File extension for eot"
+        "description": "Bestandsextensie voor eot"
     },
     "filter_by_htm": {
         "message": "htm",
-        "description": "File extension for htm"
+        "description": "Bestandsextensie voor htm"
     },
     "filter_by_xml": {
         "message": "xml",
-        "description": "File extension for xml"
+        "description": "Bestandsextensie voor xml"
     },
     "filter_by_pdf": {
         "message": "pdf",
-        "description": "File extension for pdf"
+        "description": "Bestandsextensie voor pdf"
     },
     "filter_by_doc": {
         "message": "doc",
-        "description": "File extension for doc"
+        "description": "Bestandsextensie voor doc"
     },
     "filter_by_docx": {
         "message": "docx",
-        "description": "File extension for docx"
+        "description": "Bestandsextensie voor docx"
     },
     "filter_by_txt": {
         "message": "txt",
-        "description": "File extension for txt"
+        "description": "Bestandsextensie voor txt"
     },
     "filter_by_rtf": {
         "message": "rtf",
-        "description": "File extension for rtf"
+        "description": "Bestandsextensie voor rtf"
     },
     "filter_by_odt": {
         "message": "odt",
-        "description": "File extension for odt"
+        "description": "Bestandsextensie voor odt"
     },
     "filter_by_mp3": {
         "message": "mp3",
-        "description": "File extension for mp3"
+        "description": "Bestandsextensie voor mp3"
     },
     "filter_by_wav": {
         "message": "wav",
-        "description": "File extension for wav"
+        "description": "Bestandsextensie voor wav"
     },
     "filter_by_ogg": {
         "message": "ogg",
-        "description": "File extension for ogg"
+        "description": "Bestandsextensie voor ogg"
     },
     "filter_by_aac": {
         "message": "aac",
-        "description": "File extension for aac"
+        "description": "Bestandsextensie voor aac"
     },
     "filter_by_mp4": {
         "message": "mp4",
-        "description": "File extension for mp4"
+        "description": "Bestandsextensie voor mp4"
     },
     "filter_by_webm": {
         "message": "webm",
-        "description": "File extension for webm"
+        "description": "Bestandsextensie voor webm"
     },
     "filter_by_avi": {
         "message": "avi",
-        "description": "File extension for avi"
+        "description": "Bestandsextensie voor avi"
     },
     "filter_by_mov": {
         "message": "mov",
-        "description": "File extension for mov"
+        "description": "Bestandsextensie voor mov"
     },
     "filter_by_wmv": {
         "message": "wmv",
-        "description": "File extension for wmv"
+        "description": "Bestandsextensie voor wmv"
     },
     "filter_by_mkv": {
         "message": "mkv",
-        "description": "File extension for mkv"
+        "description": "Bestandsextensie voor mkv"
     },
     "filter_by_zip": {
         "message": "zip",
-        "description": "File extension for zip"
+        "description": "Bestandsextensie voor zip"
     },
     "filter_by_rar": {
         "message": "rar",
-        "description": "File extension for rar"
+        "description": "Bestandsextensie voor rar"
     },
     "filter_by_tar": {
         "message": "tar",
-        "description": "File extension for tar"
+        "description": "Bestandsextensie voor tar"
     },
     "filter_by_gz": {
         "message": "gz",
-        "description": "File extension for gz"
+        "description": "Bestandsextensie voor gz"
     },
     "filter_by_7z": {
         "message": "7z",
-        "description": "File extension for 7z"
+        "description": "Bestandsextensie voor 7z"
     },
     "filter_by_exe": {
         "message": "exe",
-        "description": "File extension for exe"
+        "description": "Bestandsextensie voor exe"
     },
     "filter_by_sh": {
         "message": "sh",
-        "description": "File extension for sh"
+        "description": "Bestandsextensie voor sh"
     },
     "filter_by_bat": {
         "message": "bat",
-        "description": "File extension for bat"
+        "description": "Bestandsextensie voor bat"
     },
     "single_file_title": {
-        "message": "Bestandsdownload informatie",
-        "description": "Titel voor de kaart voor het downloaden van één bestand."
+        "message": "Download informatie",
+        "description": "Titel voor de downloadkaart voor één bestand."
     },
     "single_file_download_intro": {
-        "message": "U staat op het punt de huidige webpagina te downloaden als een enkel MHTML-bestand (.mhtml).",
+        "message": "U staat op het punt de huidige webpagina te downloaden als één MHTML-bestand (.mhtml).",
         "description": "Introductie voor het downloaden van één MHTML-bestand."
     },
     "single_file_format_mhtml_title": {
@@ -388,7 +392,7 @@
         "description": "Titel voor het punt 'bevat alle bronnen'."
     },
     "single_file_includes_all_desc": {
-        "message": "Zorgt ervoor dat alle bronnen zijn opgenomen, waardoor de pagina volledig functioneel is in de offline modus.",
+        "message": "Zorgt ervoor dat alle bronnen zijn opgenomen, waardoor de pagina volledig functioneel is offline.",
         "description": "Beschrijving voor het punt 'bevat alle bronnen'."
     },
     "single_file_offline_viewing_title": {
@@ -396,7 +400,7 @@
         "description": "Titel voor het voordeel van offline bekijken."
     },
     "single_file_offline_viewing_desc": {
-        "message": "Ideaal voor het archiveren van pagina's of het bekijken ervan op een later tijdstip zonder internetverbinding.",
+        "message": "Ideaal voor het archiveren van pagina's of om ze later te bekijken zonder internetverbinding.",
         "description": "Beschrijving voor het voordeel van offline bekijken."
     },
     "single_file_browser_support_title": {
@@ -408,27 +412,107 @@
         "description": "Beschrijving voor browsercompatibiliteit."
     },
     "single_file_download_time_notice": {
-        "message": "Let op: Afhankelijk van de paginagrootte kan het downloaden even duren.",
-        "description": "Kennisgeving over de potentiële downloadtijd voor MHTML."
+        "message": "Let op: afhankelijk van de paginagrootte kan het downloaden even duren.",
+        "description": "Opmerking over de potentiële downloadtijd voor MHTML."
     },
-    "button_download_single_file": {
-        "message": "Enkel bestand downloaden",
-        "description": "Knoptekst voor het downloaden van één bestand"
+    "lang_en": {
+        "message": "Engels",
+        "description": "De taal van de extensie"
+    },
+    "lang_hi": {
+        "message": "Hindi",
+        "description": "De taal van de extensie"
+    },
+    "lang_vi": {
+        "message": "Vietnamees",
+        "description": "De taal van de extensie"
+    },
+    "lang_pl": {
+        "message": "Pools",
+        "description": "De taal van de extensie"
+    },
+    "lang_fil": {
+        "message": "Filipino",
+        "description": "De taal van de extensie"
+    },
+    "lang_ur": {
+        "message": "Urdu",
+        "description": "De taal van de extensie"
+    },
+    "lang_he": {
+        "message": "Hebreeuws",
+        "description": "De taal van de extensie"
+    },
+    "lang_tr": {
+        "message": "Turks",
+        "description": "De taal van de extensie"
+    },
+    "lang_es": {
+        "message": "Spaans",
+        "description": "De taal van de extensie"
+    },
+    "lang_ru": {
+        "message": "Russisch",
+        "description": "De taal van de extensie"
+    },
+    "lang_pt": {
+        "message": "Portugees",
+        "description": "De taal van de extensie"
+    },
+    "lang_it": {
+        "message": "Italiaans",
+        "description": "De taal van de extensie"
+    },
+    "lang_de": {
+        "message": "Duits",
+        "description": "De taal van de extensie"
+    },
+    "lang_fr": {
+        "message": "Frans",
+        "description": "De taal van de extensie"
+    },
+    "lang_zh": {
+        "message": "Chinees",
+        "description": "De taal van de extensie"
+    },
+    "lang_nl": {
+        "message": "Nederlands",
+        "description": "De taal van de extensie"
+    },
+    "lang_id": {
+        "message": "Bahasa Indonesia",
+        "description": "De taal van de extensie"
+    },
+    "lang_bn": {
+        "message": "Bengaals",
+        "description": "De taal van de extensie"
     },
     "full_web_page_download_title_v2_coming_soon": {
-        "message": "Downloaden van volledige webpagina binnenkort",
+        "message": "Downloaden van volledige webpagina binnenkort beschikbaar",
         "description": "Titel voor de functie voor het downloaden van volledige webpagina's."
     },
     "full_web_page_download_subtitle_v2_next_version": {
-        "message": "Deze functie komt beschikbaar in de volgende versie.",
+        "message": "Deze functie zal beschikbaar zijn in de volgende versie.",
         "description": "Subtitel voor de functie voor het downloaden van volledige webpagina's."
     },
     "permission_pageCapture": {
         "message": "Pagina vastleggen",
-        "description": "Toestemming om de huidige pagina vast te leggen"
+        "description": "Machtiging om de huidige pagina vast te leggen"
     },
     "permission_pageCapture_description": {
-        "message": "Staat de extensie toe om de inhoud van de huidige pagina vast te leggen.",
-        "description": "Beschrijving voor de toestemming voor pagina vastleggen"
+        "message": "Hiermee kan de extensie de inhoud van de huidige pagina vastleggen.",
+        "description": "Beschrijving voor pagina vastleggen machtiging"
+    },
+    "tooltip_toggle_scroll_mode": {
+        "message": "Wissel tussen automatisch en handmatig scrollen van de pagina.",
+        "description": "Tooltip voor de wisselknop voor de scrollmodus"
+    },
+    "text_auto_mode": {
+        "message": "Auto",
+        "description": "Tekst voor de automatische scrollmodus"
+    },
+    "text_manual_mode": {
+        "message": "Handmatig",
+        "description": "Tekst voor de handmatige scrollmodus"
     }
 }

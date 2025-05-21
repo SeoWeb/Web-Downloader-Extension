@@ -1,378 +1,382 @@
 {
     "title": {
-        "message": "Web Page & Site Downloader",
-        "description": "The title of the extension"
+        "message": "网页和网站下载器",
+        "description": "扩展程序的标题"
     },
     "description": {
-        "message": "Web Page and Site Downloader lets you download entire websites—including all linked pages and resources—for offline viewing.",
-        "description": "The description of the extension"
+        "message": "网页和网站下载器允许您下载整个网站 - 包括所有链接的页面和资源 - 以供离线查看。",
+        "description": "扩展程序的描述"
     },
     "help": {
-        "message": "Help",
-        "description": "The help button text"
+        "message": "帮助",
+        "description": "帮助按钮文本"
     },
     "download_mode": {
-        "message": "Download Mode",
-        "description": "The label for the download mode selection"
+        "message": "下载模式",
+        "description": "下载模式选择的标签"
     },
     "single_download_description": {
-        "message": "Download just the current page with all its assets.",
-        "description": "Description for the single download mode"
+        "message": "仅下载当前页面及其所有资源。",
+        "description": "单次下载模式的描述"
     },
     "site_download_description": {
-        "message": "Download the entire site, including all linked pages and resources.",
-        "description": "Description for the site download mode"
+        "message": "下载整个网站，包括所有链接的页面和资源。",
+        "description": "网站下载模式的描述"
     },
     "single_page": {
-        "message": "Single Page",
-        "description": "Label for the single page download mode"
+        "message": "单页",
+        "description": "单页下载模式的标签"
     },
     "whole_website": {
-        "message": "Whole Website",
-        "description": "Label for the whole website download mode"
+        "message": "整个网站",
+        "description": "整个网站下载模式的标签"
     },
     "single_file": {
-        "message": "Single File",
-        "description": "Label for the single file download mode"
+        "message": "单个文件",
+        "description": "单个文件下载模式的标签"
     },
     "loading": {
-        "message": "Loading...",
-        "description": "Loading message"
+        "message": "正在加载...",
+        "description": "加载消息"
     },
     "downloading": {
-        "message": "Downloading...",
-        "description": "Downloading message"
+        "message": "正在下载...",
+        "description": "下载消息"
     },
     "not_downloadable": {
-        "message": "This page is not downloadable",
-        "description": "Message indicating that the page is not downloadable"
+        "message": "此页面不可下载",
+        "description": "指示页面不可下载的消息"
     },
     "close_sidepanel_message": {
-        "message": "Close sidepanel first.",
-        "description": "Message to close the side panel"
+        "message": "请先关闭侧面板。",
+        "description": "关闭侧面板的消息"
     },
     "permissions_title": {
-        "message": "Required Permissions",
-        "description": "Title for permissions section"
+        "message": "所需权限",
+        "description": "权限部分的标题"
     },
     "permissions_message": {
-        "message": "Following permissions are required",
-        "description": "Title for permissions section"
+        "message": "需要以下权限",
+        "description": "权限部分的标题"
     },
     "requesting_permissions": {
-        "message": "Requesting permissions...",
-        "description": "Message indicating that permissions are being requested"
+        "message": "正在请求权限...",
+        "description": "指示正在请求权限的消息"
     },
     "grant_permissions": {
-        "message": "Grant Permissions",
-        "description": "Button text to grant permissions"
+        "message": "授予权限",
+        "description": "授予权限的按钮文本"
     },
     "permissions_granted": {
-        "message": "Permissions Granted!",
-        "description": "Message indicating that permissions have been granted"
+        "message": "权限已授予！",
+        "description": "指示已授予权限的消息"
     },
     "permissions_intro": {
-        "message": "This extension requires the following permissions to function correctly",
-        "description": "Introduction message for permissions"
+        "message": "此扩展程序需要以下权限才能正常运行",
+        "description": "权限的介绍性消息"
     },
     "permission_activeTab": {
-        "message": "Active Tab",
-        "description": "Permission to access the active tab"
+        "message": "活动标签页",
+        "description": "访问活动标签页的权限"
     },
     "permission_activeTab_description": {
-        "message": "Allows the extension to access the active tab.",
-        "description": "Description for active tab permission"
+        "message": "允许扩展程序访问活动标签页。",
+        "description": "活动标签页权限的描述"
     },
     "permission_scripting": {
-        "message": "Scripting",
-        "description": "Permission to use scripting"
+        "message": "脚本",
+        "description": "使用脚本的权限"
     },
     "permission_scripting_description": {
-        "message": "Inject scripts into the current tab to analyze content.",
-        "description": "Description for scripting permission"
+        "message": "将脚本注入当前标签页以分析内容。",
+        "description": "脚本权限的描述"
     },
     "permission_storage": {
-        "message": "Storage",
-        "description": "Permission to use storage"
+        "message": "存储",
+        "description": "使用存储的权限"
     },
     "permission_storage_description": {
-        "message": "Store user preferences and settings.",
-        "description": "Description for storage permission"
+        "message": "存储用户偏好和设置。",
+        "description": "存储权限的描述"
     },
     "permission_downloads": {
-        "message": "Downloads",
-        "description": "Permission to use downloads"
+        "message": "下载",
+        "description": "使用下载的权限"
     },
     "permission_downloads_description": {
-        "message": "Download files to the user's computer.",
-        "description": "Description for downloads permission"
+        "message": "将文件下载到用户的计算机。",
+        "description": "下载权限的描述"
     },
     "permission_request_error": {
-        "message": "An error occurred while requesting permissions.",
-        "description": "Error message for permission request"
+        "message": "请求权限时发生错误。",
+        "description": "权限请求的错误消息"
     },
     "permission_not_granted_error": {
-        "message": "Permissions were not granted. Please grant permissions to continue.",
-        "description": "Error message for permission not granted"
+        "message": "未授予权限。 请授予权限以继续。",
+        "description": "未授予权限的错误消息"
     },
     "permission_check_error": {
-        "message": "Failed to check permissions. Please try again.",
-        "description": "Error message for permission check"
+        "message": "无法检查权限。 请再试一次。",
+        "description": "权限检查的错误消息"
     },
     "button_options": {
-        "message": "Options",
-        "description": "Button text for options"
+        "message": "选项",
+        "description": "选项的按钮文本"
     },
     "button_download_page": {
-        "message": "Download Page",
-        "description": "Button text for download"
+        "message": "下载页面",
+        "description": "下载的按钮文本"
     },
     "button_download_website": {
-        "message": "Download Website",
-        "description": "Button text for download"
+        "message": "下载网站",
+        "description": "下载的按钮文本"
+    },
+    "button_download_single_file": {
+        "message": "下载单个文件",
+        "description": "下载单个文件的按钮文本"
     },
     "filtering_title": {
-        "message": "Content Filtering",
-        "description": "Title for filtering section"
+        "message": "内容过滤",
+        "description": "过滤部分的标题"
     },
     "filtering_label": {
-        "message": "Filter Included Assets By",
-        "description": "Label for filtering options"
+        "message": "按以下方式过滤包含的资产",
+        "description": "过滤选项的标签"
     },
     "filtering_by_type": {
-        "message": "Type",
-        "description": "Label for filtering by type"
+        "message": "类型",
+        "description": "按类型过滤的标签"
     },
     "filtering_by_extension": {
-        "message": "File Extension",
-        "description": "Label for filtering by extension"
+        "message": "文件扩展名",
+        "description": "按扩展名过滤的标签"
     },
     "filter_by_image": {
-        "message": "Image",
-        "description": "Label for filtering by image"
+        "message": "图片",
+        "description": "按图片过滤的标签"
     },
     "filter_by_script": {
-        "message": "Script",
-        "description": "Label for filtering by script"
+        "message": "脚本",
+        "description": "按脚本过滤的标签"
     },
     "filter_by_stylesheet": {
-        "message": "Stylesheet",
-        "description": "Label for filtering by stylesheet"
+        "message": "样式表",
+        "description": "按样式表过滤的标签"
     },
     "filter_by_font": {
-        "message": "Font",
-        "description": "Label for filtering by font"
+        "message": "字体",
+        "description": "按字体过滤的标签"
     },
     "filter_by_html": {
-        "message": "Markup",
-        "description": "Label for filtering by Markup"
+        "message": "标记",
+        "description": "按标记过滤的标签"
     },
     "filter_by_document": {
-        "message": "Document",
-        "description": "Label for filtering by Document"
+        "message": "文档",
+        "description": "按文档过滤的标签"
     },
     "filter_by_spreadsheet": {
-        "message": "Spreadsheet",
-        "description": "Label for filtering by Spreadsheet"
+        "message": "电子表格",
+        "description": "按电子表格过滤的标签"
     },
     "filter_by_video": {
-        "message": "Video",
-        "description": "Label for filtering by Video"
+        "message": "视频",
+        "description": "按视频过滤的标签"
     },
     "filter_by_audio": {
-        "message": "Audio",
-        "description": "Label for filtering by Audio"
+        "message": "音频",
+        "description": "按音频过滤的标签"
     },
     "filter_by_archive": {
-        "message": "Archive",
-        "description": "Label for filtering by Archive"
+        "message": "存档",
+        "description": "按存档过滤的标签"
     },
     "filter_by_json": {
         "message": "JSON",
-        "description": "Label for filtering by JSON"
+        "description": "按 JSON 过滤的标签"
     },
     "filter_by_executable": {
-        "message": "Executable",
-        "description": "Label for filtering by Executable"
+        "message": "可执行",
+        "description": "按可执行文件过滤的标签"
     },
     "filter_by_other": {
-        "message": "Other",
-        "description": "Label for filtering by Other"
+        "message": "其他",
+        "description": "按其他过滤的标签"
     },
     "filter_by_jpg": {
         "message": "jpg",
-        "description": "File extension for jpg"
+        "description": "jpg 的文件扩展名"
     },
     "filter_by_png": {
         "message": "png",
-        "description": "File extension for png"
+        "description": "png 的文件扩展名"
     },
     "filter_by_gif": {
         "message": "gif",
-        "description": "File extension for gif"
+        "description": "gif 的文件扩展名"
     },
     "filter_by_svg": {
         "message": "svg",
-        "description": "File extension for svg"
+        "description": "svg 的文件扩展名"
     },
     "filter_by_webp": {
         "message": "webp",
-        "description": "File extension for webp"
+        "description": "webp 的文件扩展名"
     },
     "filter_by_ico": {
         "message": "ico",
-        "description": "File extension for ico"
+        "description": "ico 的文件扩展名"
     },
     "filter_by_js": {
         "message": "js",
-        "description": "File extension for js"
+        "description": "js 的文件扩展名"
     },
     "filter_by_ts": {
         "message": "ts",
-        "description": "File extension for ts"
+        "description": "ts 的文件扩展名"
     },
     "filter_by_css": {
         "message": "css",
-        "description": "File extension for css"
+        "description": "css 的文件扩展名"
     },
     "filter_by_scss": {
         "message": "scss",
-        "description": "File extension for scss"
+        "description": "scss 的文件扩展名"
     },
     "filter_by_less": {
         "message": "less",
-        "description": "File extension for less"
+        "description": "less 的文件扩展名"
     },
     "filter_by_woff": {
         "message": "woff",
-        "description": "File extension for woff"
+        "description": "woff 的文件扩展名"
     },
     "filter_by_woff2": {
         "message": "woff2",
-        "description": "File extension for woff2"
+        "description": "woff2 的文件扩展名"
     },
     "filter_by_ttf": {
         "message": "ttf",
-        "description": "File extension for ttf"
+        "description": "ttf 的文件扩展名"
     },
     "filter_by_otf": {
         "message": "otf",
-        "description": "File extension for otf"
+        "description": "otf 的文件扩展名"
     },
     "filter_by_eot": {
         "message": "eot",
-        "description": "File extension for eot"
+        "description": "eot 的文件扩展名"
     },
     "filter_by_htm": {
         "message": "htm",
-        "description": "File extension for htm"
+        "description": "htm 的文件扩展名"
     },
     "filter_by_xml": {
         "message": "xml",
-        "description": "File extension for xml"
+        "description": "xml 的文件扩展名"
     },
     "filter_by_pdf": {
         "message": "pdf",
-        "description": "File extension for pdf"
+        "description": "pdf 的文件扩展名"
     },
     "filter_by_doc": {
         "message": "doc",
-        "description": "File extension for doc"
+        "description": "doc 的文件扩展名"
     },
     "filter_by_docx": {
         "message": "docx",
-        "description": "File extension for docx"
+        "description": "docx 的文件扩展名"
     },
     "filter_by_txt": {
         "message": "txt",
-        "description": "File extension for txt"
+        "description": "txt 的文件扩展名"
     },
     "filter_by_rtf": {
         "message": "rtf",
-        "description": "File extension for rtf"
+        "description": "rtf 的文件扩展名"
     },
     "filter_by_odt": {
         "message": "odt",
-        "description": "File extension for odt"
+        "description": "odt 的文件扩展名"
     },
     "filter_by_mp3": {
         "message": "mp3",
-        "description": "File extension for mp3"
+        "description": "mp3 的文件扩展名"
     },
     "filter_by_wav": {
         "message": "wav",
-        "description": "File extension for wav"
+        "description": "wav 的文件扩展名"
     },
     "filter_by_ogg": {
         "message": "ogg",
-        "description": "File extension for ogg"
+        "description": "ogg 的文件扩展名"
     },
     "filter_by_aac": {
         "message": "aac",
-        "description": "File extension for aac"
+        "description": "aac 的文件扩展名"
     },
     "filter_by_mp4": {
         "message": "mp4",
-        "description": "File extension for mp4"
+        "description": "mp4 的文件扩展名"
     },
     "filter_by_webm": {
         "message": "webm",
-        "description": "File extension for webm"
+        "description": "webm 的文件扩展名"
     },
     "filter_by_avi": {
         "message": "avi",
-        "description": "File extension for avi"
+        "description": "avi 的文件扩展名"
     },
     "filter_by_mov": {
         "message": "mov",
-        "description": "File extension for mov"
+        "description": "mov 的文件扩展名"
     },
     "filter_by_wmv": {
         "message": "wmv",
-        "description": "File extension for wmv"
+        "description": "wmv 的文件扩展名"
     },
     "filter_by_mkv": {
         "message": "mkv",
-        "description": "File extension for mkv"
+        "description": "mkv 的文件扩展名"
     },
     "filter_by_zip": {
         "message": "zip",
-        "description": "File extension for zip"
+        "description": "zip 的文件扩展名"
     },
     "filter_by_rar": {
         "message": "rar",
-        "description": "File extension for rar"
+        "description": "rar 的文件扩展名"
     },
     "filter_by_tar": {
         "message": "tar",
-        "description": "File extension for tar"
+        "description": "tar 的文件扩展名"
     },
     "filter_by_gz": {
         "message": "gz",
-        "description": "File extension for gz"
+        "description": "gz 的文件扩展名"
     },
     "filter_by_7z": {
         "message": "7z",
-        "description": "File extension for 7z"
+        "description": "7z 的文件扩展名"
     },
     "filter_by_exe": {
         "message": "exe",
-        "description": "File extension for exe"
+        "description": "exe 的文件扩展名"
     },
     "filter_by_sh": {
         "message": "sh",
-        "description": "File extension for sh"
+        "description": "sh 的文件扩展名"
     },
     "filter_by_bat": {
         "message": "bat",
-        "description": "File extension for bat"
+        "description": "bat 的文件扩展名"
     },
     "single_file_title": {
-        "message": "文件下载信息",
+        "message": "下载信息",
         "description": "单个文件下载卡的标题。"
     },
     "single_file_download_intro": {
-        "message": "您即将下载当前网页，并将其保存为单个 MHTML 文件 (.mhtml)。",
+        "message": "您即将下载当前网页作为单个 MHTML 文件 (.mhtml)。",
         "description": "单个文件 MHTML 下载的介绍。"
     },
     "single_file_format_mhtml_title": {
@@ -385,38 +389,106 @@
     },
     "single_file_includes_all_title": {
         "message": "全部包含",
-        "description": "“包含所有资源”这一点的标题。"
+        "description": "“包含所有资源”点的标题。"
     },
     "single_file_includes_all_desc": {
-        "message": "确保包含所有资源，使页面在离线状态下完全可用。",
-        "description": "“包含所有资源”这一点的描述。"
+        "message": "确保包含所有资源，使页面完全脱机运行。",
+        "description": "“包含所有资源”点的描述。"
     },
     "single_file_offline_viewing_title": {
         "message": "离线查看",
-        "description": "离线查看优势的标题。"
+        "description": "离线查看的好处的标题。"
     },
     "single_file_offline_viewing_desc": {
-        "message": "非常适合存档页面或稍后在没有互联网连接的情况下查看。",
-        "description": "离线查看优势的描述。"
+        "message": "非常适合存档页面或稍后在没有互联网连接的情况下查看它们。",
+        "description": "离线查看的好处的描述。"
     },
     "single_file_browser_support_title": {
         "message": "浏览器支持",
         "description": "浏览器兼容性的标题。"
     },
     "single_file_browser_support_desc": {
-        "message": "大多数现代网络浏览器都可以打开 .mhtml 文件。",
+        "message": "大多数现代 Web 浏览器都可以打开 .mhtml 文件。",
         "description": "浏览器兼容性的描述。"
     },
     "single_file_download_time_notice": {
         "message": "请注意：根据页面大小，下载可能需要几秒钟。",
         "description": "关于 MHTML 的潜在下载时间的通知。"
     },
-    "button_download_single_file": {
-        "message": "下载单个文件",
-        "description": "下载单个文件的按钮文本"
+    "lang_en": {
+        "message": "英语",
+        "description": "扩展程序的语言"
+    },
+    "lang_hi": {
+        "message": "印地语",
+        "description": "扩展程序的语言"
+    },
+    "lang_vi": {
+        "message": "越南语",
+        "description": "扩展程序的语言"
+    },
+    "lang_pl": {
+        "message": "波兰语",
+        "description": "扩展程序的语言"
+    },
+    "lang_fil": {
+        "message": "菲律宾语",
+        "description": "扩展程序的语言"
+    },
+    "lang_ur": {
+        "message": "乌尔都语",
+        "description": "扩展程序的语言"
+    },
+    "lang_he": {
+        "message": "希伯来语",
+        "description": "扩展程序的语言"
+    },
+    "lang_tr": {
+        "message": "土耳其语",
+        "description": "扩展程序的语言"
+    },
+    "lang_es": {
+        "message": "西班牙语",
+        "description": "扩展程序的语言"
+    },
+    "lang_ru": {
+        "message": "俄语",
+        "description": "扩展程序的语言"
+    },
+    "lang_pt": {
+        "message": "葡萄牙语",
+        "description": "扩展程序的语言"
+    },
+    "lang_it": {
+        "message": "意大利语",
+        "description": "扩展程序的语言"
+    },
+    "lang_de": {
+        "message": "德语",
+        "description": "扩展程序的语言"
+    },
+    "lang_fr": {
+        "message": "法语",
+        "description": "扩展程序的语言"
+    },
+    "lang_zh": {
+        "message": "中文",
+        "description": "扩展程序的语言"
+    },
+    "lang_nl": {
+        "message": "荷兰语",
+        "description": "扩展程序的语言"
+    },
+    "lang_id": {
+        "message": "印度尼西亚语",
+        "description": "扩展程序的语言"
+    },
+    "lang_bn": {
+        "message": "孟加拉语",
+        "description": "扩展程序的语言"
     },
     "full_web_page_download_title_v2_coming_soon": {
-        "message": "即将推出完整网页下载",
+        "message": "完整网页下载即将推出",
         "description": "完整网页下载功能的标题。"
     },
     "full_web_page_download_subtitle_v2_next_version": {
@@ -425,10 +497,22 @@
     },
     "permission_pageCapture": {
         "message": "页面捕获",
-        "description": "访问当前页面的权限"
+        "description": "捕获当前页面的权限"
     },
     "permission_pageCapture_description": {
-        "message": "允许扩展程序访问当前页面的内容。",
+        "message": "允许扩展程序捕获当前页面的内容。",
         "description": "页面捕获权限的描述"
+    },
+    "tooltip_toggle_scroll_mode": {
+        "message": "在自动和手动页面滚动之间切换。",
+        "description": "滚动模式切换按钮的工具提示"
+    },
+    "text_auto_mode": {
+        "message": "自动",
+        "description": "自动滚动模式的文本"
+    },
+    "text_manual_mode": {
+        "message": "手动",
+        "description": "手动滚动模式的文本"
     }
 }

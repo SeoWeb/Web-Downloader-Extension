@@ -502,5 +502,17 @@
     "permission_pageCapture_description": {
         "message": "Allows the extension to capture the content of the current page.",
         "description": "Description for page capture permission"
+    },
+    "tooltip_toggle_scroll_mode": {
+        "message": "Toggle between automatic and manual page scrolling.",
+        "description": "Tooltip for the scroll mode toggle button"
+    },
+    "text_auto_mode": {
+        "message": "Auto",
+        "description": "Text for auto scroll mode"
+    },
+    "text_manual_mode": {
+        "message": "Manual",
+        "description": "Text for manual scroll mode"
     }
 }

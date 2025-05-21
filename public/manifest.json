@@ -10,7 +10,7 @@
   },
   "default_locale": "en",
   "permissions": ["sidePanel"],
-  "optional_permissions": ["activeTab", "storage", "scripting", "downloads", "pageCapture"],
+  "optional_permissions": ["activeTab", "storage", "scripting", "downloads"],
   "optional_host_permissions": ["<all_urls>"],
   "background": {
     "type": "module",

@@ -1,379 +1,383 @@
 {
     "title": {
-        "message": "Загрузчик веб-страниц и сайтов",
-        "description": "The title of the extension"
+        "message": "Web Page & Site Downloader",
+        "description": "Заголовок расширения"
     },
     "description": {
-        "message": "Загрузчик веб-страниц и сайтов позволяет загружать целые веб-сайты, включая все связанные страницы и ресурсы, для просмотра в автономном режиме.",
-        "description": "The description of the extension"
+        "message": "Web Page and Site Downloader позволяет загружать целые веб-сайты, включая все связанные страницы и ресурсы, для просмотра в автономном режиме.",
+        "description": "Описание расширения"
     },
     "help": {
         "message": "Помощь",
-        "description": "The help button text"
+        "description": "Текст кнопки помощи"
     },
     "download_mode": {
         "message": "Режим загрузки",
-        "description": "The label for the download mode selection"
+        "description": "Метка для выбора режима загрузки"
     },
     "single_download_description": {
-        "message": "Загрузить только текущую страницу со всеми ее ресурсами.",
-        "description": "Description for the single download mode"
+        "message": "Загрузите только текущую страницу со всеми ее ресурсами.",
+        "description": "Описание для режима одиночной загрузки"
     },
     "site_download_description": {
-        "message": "Загрузить весь сайт, включая все связанные страницы и ресурсы.",
-        "description": "Description for the site download mode"
+        "message": "Загрузите весь сайт, включая все связанные страницы и ресурсы.",
+        "description": "Описание для режима загрузки сайта"
     },
     "single_page": {
         "message": "Одна страница",
-        "description": "Label for the single page download mode"
+        "description": "Метка для режима загрузки одной страницы"
     },
     "whole_website": {
-        "message": "Весь сайт",
-        "description": "Label for the whole website download mode"
+        "message": "Весь веб-сайт",
+        "description": "Метка для режима загрузки всего веб-сайта"
     },
     "single_file": {
         "message": "Один файл",
-        "description": "Label for the single file download mode"
+        "description": "Метка для режима загрузки одного файла"
     },
     "loading": {
         "message": "Загрузка...",
-        "description": "Loading message"
+        "description": "Сообщение о загрузке"
     },
     "downloading": {
-        "message": "Скачивание...",
-        "description": "Downloading message"
+        "message": "Загрузка...",
+        "description": "Сообщение о загрузке"
     },
     "not_downloadable": {
-        "message": "Эту страницу нельзя загрузить",
-        "description": "Message indicating that the page is not downloadable"
+        "message": "Эта страница не может быть загружена",
+        "description": "Сообщение, указывающее, что страница не может быть загружена"
     },
     "close_sidepanel_message": {
         "message": "Сначала закройте боковую панель.",
-        "description": "Message to close the side panel"
+        "description": "Сообщение для закрытия боковой панели"
     },
     "permissions_title": {
-        "message": "Требуемые разрешения",
-        "description": "Title for permissions section"
+        "message": "Необходимые разрешения",
+        "description": "Заголовок для раздела разрешений"
     },
     "permissions_message": {
         "message": "Требуются следующие разрешения",
-        "description": "Title for permissions section"
+        "description": "Заголовок для раздела разрешений"
     },
     "requesting_permissions": {
         "message": "Запрос разрешений...",
-        "description": "Message indicating that permissions are being requested"
+        "description": "Сообщение, указывающее, что запрашиваются разрешения"
     },
     "grant_permissions": {
         "message": "Предоставить разрешения",
-        "description": "Button text to grant permissions"
+        "description": "Текст кнопки для предоставления разрешений"
     },
     "permissions_granted": {
         "message": "Разрешения предоставлены!",
-        "description": "Message indicating that permissions have been granted"
+        "description": "Сообщение, указывающее, что разрешения были предоставлены"
     },
     "permissions_intro": {
-        "message": "Этому расширению требуются следующие разрешения для корректной работы",
-        "description": "Introduction message for permissions"
+        "message": "Для правильной работы этому расширению требуются следующие разрешения",
+        "description": "Вступительное сообщение для разрешений"
     },
     "permission_activeTab": {
         "message": "Активная вкладка",
-        "description": "Permission to access the active tab"
+        "description": "Разрешение на доступ к активной вкладке"
     },
     "permission_activeTab_description": {
         "message": "Позволяет расширению получать доступ к активной вкладке.",
-        "description": "Description for active tab permission"
+        "description": "Описание разрешения активной вкладки"
     },
     "permission_scripting": {
-        "message": "Скрипты",
-        "description": "Permission to use scripting"
+        "message": "Скриптинг",
+        "description": "Разрешение на использование скриптов"
     },
     "permission_scripting_description": {
-        "message": "Внедрять скрипты в текущую вкладку для анализа содержимого.",
-        "description": "Description for scripting permission"
+        "message": "Внедряйте скрипты в текущую вкладку для анализа контента.",
+        "description": "Описание разрешения на скриптинг"
     },
     "permission_storage": {
         "message": "Хранилище",
-        "description": "Permission to use storage"
+        "description": "Разрешение на использование хранилища"
     },
     "permission_storage_description": {
-        "message": "Хранить пользовательские предпочтения и настройки.",
-        "description": "Description for storage permission"
+        "message": "Храните пользовательские настройки и параметры.",
+        "description": "Описание разрешения на хранение"
     },
     "permission_downloads": {
         "message": "Загрузки",
-        "description": "Permission to use downloads"
+        "description": "Разрешение на использование загрузок"
     },
     "permission_downloads_description": {
-        "message": "Загружать файлы на компьютер пользователя.",
-        "description": "Description for downloads permission"
+        "message": "Загружайте файлы на компьютер пользователя.",
+        "description": "Описание разрешения на загрузку"
     },
     "permission_request_error": {
-        "message": "Произошла ошибка при запросе разрешений.",
-        "description": "Error message for permission request"
+        "message": "При запросе разрешений произошла ошибка.",
+        "description": "Сообщение об ошибке для запроса разрешений"
     },
     "permission_not_granted_error": {
-        "message": "Разрешения не были предоставлены. Пожалуйста, предоставьте разрешения для продолжения.",
-        "description": "Error message for permission not granted"
+        "message": "Разрешения не были предоставлены. Предоставьте разрешения, чтобы продолжить.",
+        "description": "Сообщение об ошибке для не предоставленного разрешения"
     },
     "permission_check_error": {
         "message": "Не удалось проверить разрешения. Пожалуйста, попробуйте еще раз.",
-        "description": "Error message for permission check"
+        "description": "Сообщение об ошибке для проверки разрешений"
     },
     "button_options": {
         "message": "Настройки",
-        "description": "Button text for options"
+        "description": "Текст кнопки для настроек"
     },
     "button_download_page": {
-        "message": "Скачать страницу",
-        "description": "Button text for download"
+        "message": "Загрузить страницу",
+        "description": "Текст кнопки для загрузки"
     },
     "button_download_website": {
-        "message": "Скачать сайт",
-        "description": "Button text for download"
+        "message": "Загрузить сайт",
+        "description": "Текст кнопки для загрузки"
+    },
+    "button_download_single_file": {
+        "message": "Загрузить один файл",
+        "description": "Текст кнопки для загрузки одного файла"
     },
     "filtering_title": {
-        "message": "Фильтрация содержимого",
-        "description": "Title for filtering section"
+        "message": "Фильтрация контента",
+        "description": "Заголовок для раздела фильтрации"
     },
     "filtering_label": {
-        "message": "Фильтр включенных ресурсов",
-        "description": "Label for filtering options"
+        "message": "Фильтровать включенные ресурсы по",
+        "description": "Метка для параметров фильтрации"
     },
     "filtering_by_type": {
-        "message": "Типу",
-        "description": "Label for filtering by type"
+        "message": "Тип",
+        "description": "Метка для фильтрации по типу"
     },
     "filtering_by_extension": {
-        "message": "Расширению файла",
-        "description": "Label for filtering by extension"
+        "message": "Расширение файла",
+        "description": "Метка для фильтрации по расширению"
     },
     "filter_by_image": {
         "message": "Изображение",
-        "description": "Label for filtering by image"
+        "description": "Метка для фильтрации по изображению"
     },
     "filter_by_script": {
         "message": "Скрипт",
-        "description": "Label for filtering by script"
+        "description": "Метка для фильтрации по скрипту"
     },
     "filter_by_stylesheet": {
         "message": "Таблица стилей",
-        "description": "Label for filtering by stylesheet"
+        "description": "Метка для фильтрации по таблице стилей"
     },
     "filter_by_font": {
         "message": "Шрифт",
-        "description": "Label for filtering by font"
+        "description": "Метка для фильтрации по шрифту"
     },
     "filter_by_html": {
         "message": "Разметка",
-        "description": "Label for filtering by Markup"
+        "description": "Метка для фильтрации по разметке"
     },
     "filter_by_document": {
         "message": "Документ",
-        "description": "Label for filtering by Document"
+        "description": "Метка для фильтрации по документу"
     },
     "filter_by_spreadsheet": {
         "message": "Электронная таблица",
-        "description": "Label for filtering by Spreadsheet"
+        "description": "Метка для фильтрации по электронной таблице"
     },
     "filter_by_video": {
         "message": "Видео",
-        "description": "Label for filtering by Video"
+        "description": "Метка для фильтрации по видео"
     },
     "filter_by_audio": {
         "message": "Аудио",
-        "description": "Label for filtering by Audio"
+        "description": "Метка для фильтрации по аудио"
     },
     "filter_by_archive": {
         "message": "Архив",
-        "description": "Label for filtering by Archive"
+        "description": "Метка для фильтрации по архиву"
     },
     "filter_by_json": {
         "message": "JSON",
-        "description": "Label for filtering by JSON"
+        "description": "Метка для фильтрации по JSON"
     },
     "filter_by_executable": {
-        "message": "Исполняемый файл",
-        "description": "Label for filtering by Executable"
+        "message": "Исполняемый",
+        "description": "Метка для фильтрации по исполняемому"
     },
     "filter_by_other": {
         "message": "Другое",
-        "description": "Label for filtering by Other"
+        "description": "Метка для фильтрации по другое"
     },
     "filter_by_jpg": {
         "message": "jpg",
-        "description": "File extension for jpg"
+        "description": "Расширение файла для jpg"
     },
     "filter_by_png": {
         "message": "png",
-        "description": "File extension for png"
+        "description": "Расширение файла для png"
     },
     "filter_by_gif": {
         "message": "gif",
-        "description": "File extension for gif"
+        "description": "Расширение файла для gif"
     },
     "filter_by_svg": {
         "message": "svg",
-        "description": "File extension for svg"
+        "description": "Расширение файла для svg"
     },
     "filter_by_webp": {
         "message": "webp",
-        "description": "File extension for webp"
+        "description": "Расширение файла для webp"
     },
     "filter_by_ico": {
         "message": "ico",
-        "description": "File extension for ico"
+        "description": "Расширение файла для ico"
     },
     "filter_by_js": {
         "message": "js",
-        "description": "File extension for js"
+        "description": "Расширение файла для js"
     },
     "filter_by_ts": {
         "message": "ts",
-        "description": "File extension for ts"
+        "description": "Расширение файла для ts"
     },
     "filter_by_css": {
         "message": "css",
-        "description": "File extension for css"
+        "description": "Расширение файла для css"
     },
     "filter_by_scss": {
         "message": "scss",
-        "description": "File extension for scss"
+        "description": "Расширение файла для scss"
     },
     "filter_by_less": {
         "message": "less",
-        "description": "File extension for less"
+        "description": "Расширение файла для less"
     },
     "filter_by_woff": {
         "message": "woff",
-        "description": "File extension for woff"
+        "description": "Расширение файла для woff"
     },
     "filter_by_woff2": {
         "message": "woff2",
-        "description": "File extension for woff2"
+        "description": "Расширение файла для woff2"
     },
     "filter_by_ttf": {
         "message": "ttf",
-        "description": "File extension for ttf"
+        "description": "Расширение файла для ttf"
     },
     "filter_by_otf": {
         "message": "otf",
-        "description": "File extension for otf"
+        "description": "Расширение файла для otf"
     },
     "filter_by_eot": {
         "message": "eot",
-        "description": "File extension for eot"
+        "description": "Расширение файла для eot"
     },
     "filter_by_htm": {
         "message": "htm",
-        "description": "File extension for htm"
+        "description": "Расширение файла для htm"
     },
     "filter_by_xml": {
         "message": "xml",
-        "description": "File extension for xml"
+        "description": "Расширение файла для xml"
     },
     "filter_by_pdf": {
         "message": "pdf",
-        "description": "File extension for pdf"
+        "description": "Расширение файла для pdf"
     },
     "filter_by_doc": {
         "message": "doc",
-        "description": "File extension for doc"
+        "description": "Расширение файла для doc"
     },
     "filter_by_docx": {
         "message": "docx",
-        "description": "File extension for docx"
+        "description": "Расширение файла для docx"
     },
     "filter_by_txt": {
         "message": "txt",
-        "description": "File extension for txt"
+        "description": "Расширение файла для txt"
     },
     "filter_by_rtf": {
         "message": "rtf",
-        "description": "File extension for rtf"
+        "description": "Расширение файла для rtf"
     },
     "filter_by_odt": {
         "message": "odt",
-        "description": "File extension for odt"
+        "description": "Расширение файла для odt"
     },
     "filter_by_mp3": {
         "message": "mp3",
-        "description": "File extension for mp3"
+        "description": "Расширение файла для mp3"
     },
     "filter_by_wav": {
         "message": "wav",
-        "description": "File extension for wav"
+        "description": "Расширение файла для wav"
     },
     "filter_by_ogg": {
         "message": "ogg",
-        "description": "File extension for ogg"
+        "description": "Расширение файла для ogg"
     },
     "filter_by_aac": {
         "message": "aac",
-        "description": "File extension for aac"
+        "description": "Расширение файла для aac"
     },
     "filter_by_mp4": {
         "message": "mp4",
-        "description": "File extension for mp4"
+        "description": "Расширение файла для mp4"
     },
     "filter_by_webm": {
         "message": "webm",
-        "description": "File extension for webm"
+        "description": "Расширение файла для webm"
     },
     "filter_by_avi": {
         "message": "avi",
-        "description": "File extension for avi"
+        "description": "Расширение файла для avi"
     },
     "filter_by_mov": {
         "message": "mov",
-        "description": "File extension for mov"
+        "description": "Расширение файла для mov"
     },
     "filter_by_wmv": {
         "message": "wmv",
-        "description": "File extension for wmv"
+        "description": "Расширение файла для wmv"
     },
     "filter_by_mkv": {
         "message": "mkv",
-        "description": "File extension for mkv"
+        "description": "Расширение файла для mkv"
     },
     "filter_by_zip": {
         "message": "zip",
-        "description": "File extension for zip"
+        "description": "Расширение файла для zip"
     },
     "filter_by_rar": {
         "message": "rar",
-        "description": "File extension for rar"
+        "description": "Расширение файла для rar"
     },
     "filter_by_tar": {
         "message": "tar",
-        "description": "File extension for tar"
+        "description": "Расширение файла для tar"
     },
     "filter_by_gz": {
         "message": "gz",
-        "description": "File extension for gz"
+        "description": "Расширение файла для gz"
     },
     "filter_by_7z": {
         "message": "7z",
-        "description": "File extension for 7z"
+        "description": "Расширение файла для 7z"
     },
     "filter_by_exe": {
         "message": "exe",
-        "description": "File extension for exe"
+        "description": "Расширение файла для exe"
     },
     "filter_by_sh": {
         "message": "sh",
-        "description": "File extension for sh"
+        "description": "Расширение файла для sh"
     },
     "filter_by_bat": {
         "message": "bat",
-        "description": "File extension for bat"
+        "description": "Расширение файла для bat"
     },
     "single_file_title": {
-        "message": "Информация о загрузке файла",
+        "message": "Информация о загрузке",
         "description": "Заголовок для карточки загрузки одного файла."
     },
     "single_file_download_intro": {
         "message": "Вы собираетесь загрузить текущую веб-страницу в виде одного файла MHTML (.mhtml).",
-        "description": "Введение в загрузку одного файла MHTML."
+        "description": "Введение для загрузки одного файла MHTML."
     },
     "single_file_format_mhtml_title": {
         "message": "Формат MHTML",
@@ -385,18 +389,18 @@
     },
     "single_file_includes_all_title": {
         "message": "Все включено",
-        "description": "Заголовок для пункта 'включает все ресурсы'."
+        "description": "Заголовок для пункта «включает все ресурсы»."
     },
     "single_file_includes_all_desc": {
         "message": "Гарантирует включение всех ресурсов, делая страницу полностью функциональной в автономном режиме.",
-        "description": "Описание для пункта 'включает все ресурсы'."
+        "description": "Описание для пункта «включает все ресурсы»."
     },
     "single_file_offline_viewing_title": {
         "message": "Просмотр в автономном режиме",
         "description": "Заголовок для преимущества просмотра в автономном режиме."
     },
     "single_file_offline_viewing_desc": {
-        "message": "Идеально подходит для архивирования страниц или просмотра их позже без подключения к интернету.",
+        "message": "Идеально подходит для архивирования страниц или просмотра их позже без подключения к Интернету.",
         "description": "Описание для преимущества просмотра в автономном режиме."
     },
     "single_file_browser_support_title": {
@@ -408,15 +412,83 @@
         "description": "Описание для совместимости браузера."
     },
     "single_file_download_time_notice": {
-        "message": "Обратите внимание: в зависимости от размера страницы загрузка может занять несколько секунд.",
-        "description": "Уведомление о потенциальном времени загрузки для MHTML."
+        "message": "Обратите внимание: в зависимости от размера страницы загрузка может занять несколько мгновений.",
+        "description": "Уведомление о возможном времени загрузки для MHTML."
     },
-    "button_download_single_file": {
-        "message": "Скачать один файл",
-        "description": "Текст кнопки для загрузки одного файла"
+    "lang_en": {
+        "message": "Английский",
+        "description": "Язык расширения"
+    },
+    "lang_hi": {
+        "message": "Hindi",
+        "description": "Язык расширения"
+    },
+    "lang_vi": {
+        "message": "Вьетнамский",
+        "description": "Язык расширения"
+    },
+    "lang_pl": {
+        "message": "Польский",
+        "description": "Язык расширения"
+    },
+    "lang_fil": {
+        "message": "Филиппинский",
+        "description": "Язык расширения"
+    },
+    "lang_ur": {
+        "message": "Урду",
+        "description": "Язык расширения"
+    },
+    "lang_he": {
+        "message": "Иврит",
+        "description": "Язык расширения"
+    },
+    "lang_tr": {
+        "message": "Турецкий",
+        "description": "Язык расширения"
+    },
+    "lang_es": {
+        "message": "Испанский",
+        "description": "Язык расширения"
+    },
+    "lang_ru": {
+        "message": "Русский",
+        "description": "Язык расширения"
+    },
+    "lang_pt": {
+        "message": "Португальский",
+        "description": "Язык расширения"
+    },
+    "lang_it": {
+        "message": "Итальянский",
+        "description": "Язык расширения"
+    },
+    "lang_de": {
+        "message": "Немецкий",
+        "description": "Язык расширения"
+    },
+    "lang_fr": {
+        "message": "Французский",
+        "description": "Язык расширения"
+    },
+    "lang_zh": {
+        "message": "Китайский",
+        "description": "Язык расширения"
+    },
+    "lang_nl": {
+        "message": "Голландский",
+        "description": "Язык расширения"
+    },
+    "lang_id": {
+        "message": "Индонезийский",
+        "description": "Язык расширения"
+    },
+    "lang_bn": {
+        "message": "Бенгальский",
+        "description": "Язык расширения"
     },
     "full_web_page_download_title_v2_coming_soon": {
-        "message": "Скоро будет доступна загрузка полной веб-страницы",
+        "message": "Скоро появится загрузка полной веб-страницы",
         "description": "Заголовок для функции загрузки полной веб-страницы."
     },
     "full_web_page_download_subtitle_v2_next_version": {
@@ -430,5 +502,17 @@
     "permission_pageCapture_description": {
         "message": "Позволяет расширению захватывать содержимое текущей страницы.",
         "description": "Описание разрешения на захват страницы"
+    },
+    "tooltip_toggle_scroll_mode": {
+        "message": "Переключение между автоматической и ручной прокруткой страницы.",
+        "description": "Подсказка для кнопки переключения режима прокрутки"
+    },
+    "text_auto_mode": {
+        "message": "Авто",
+        "description": "Текст для режима автоматической прокрутки"
+    },
+    "text_manual_mode": {
+        "message": "Вручную",
+        "description": "Текст для режима ручной прокрутки"
     }
 }

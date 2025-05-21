@@ -1,403 +1,407 @@
 {
     "title": {
-        "message": "ویب صفحہ اور سائٹ ڈاؤنلوڈر",
-        "description": "The title of the extension"
+        "message": "ویب پیج اور سائٹ ڈاؤنلوڈر",
+        "description": "ایکسٹینشن کا عنوان"
     },
     "description": {
-        "message": "ویب پیج اور سائٹ ڈاؤنلوڈر آپ کو آف لائن دیکھنے کے لیے پوری ویب سائٹس بشمول تمام لنک شدہ صفحات اور وسائل ڈاؤن لوڈ کرنے دیتا ہے۔",
-        "description": "The description of the extension"
+        "message": "ویب پیج اور سائٹ ڈاؤنلوڈر آپ کو آف لائن دیکھنے کے لیے پورے ویب سائٹس کو ڈاؤن لوڈ کرنے کی اجازت دیتا ہے - بشمول تمام منسلک صفحات اور وسائل۔",
+        "description": "ایکسٹینشن کی تفصیل"
     },
     "help": {
         "message": "مدد",
-        "description": "The help button"
+        "description": "مدد بٹن کا متن"
     },
     "download_mode": {
         "message": "ڈاؤن لوڈ موڈ",
-        "description": "The label for the download mode selection"
+        "description": "ڈاؤن لوڈ موڈ کے انتخاب کے لیے لیبل"
     },
     "single_download_description": {
-        "message": "اس کے تمام اثاثوں کے ساتھ صرف موجودہ صفحہ ڈاؤن لوڈ کریں۔",
-        "description": "Description for the single download mode"
+        "message": "صرف موجودہ صفحہ کو اس کے تمام اثاثوں کے ساتھ ڈاؤن لوڈ کریں۔",
+        "description": "سنگل ڈاؤن لوڈ موڈ کے لیے تفصیل"
     },
     "site_download_description": {
-        "message": "تمام لنک شدہ صفحات اور وسائل سمیت پوری سائٹ ڈاؤن لوڈ کریں۔",
-        "description": "Description for the site download mode"
+        "message": "پوری سائٹ کو ڈاؤن لوڈ کریں، بشمول تمام منسلک صفحات اور وسائل۔",
+        "description": "سائٹ ڈاؤن لوڈ موڈ کے لیے تفصیل"
     },
     "single_page": {
         "message": "ایک صفحہ",
-        "description": "Label for the single page download mode"
+        "description": "سنگل پیج ڈاؤن لوڈ موڈ کے لیے لیبل"
     },
     "whole_website": {
-        "message": "پوری ویب سائٹ",
-        "description": "Label for the whole website download mode"
+        "message": "مکمل ویب سائٹ",
+        "description": "مکمل ویب سائٹ ڈاؤن لوڈ موڈ کے لیے لیبل"
     },
     "single_file": {
         "message": "ایک فائل",
-        "description": "Label for the single file download mode"
+        "description": "سنگل فائل ڈاؤن لوڈ موڈ کے لیے لیبل"
     },
     "loading": {
-        "message": "لوڈ ہو رہا ہے۔۔۔",
-        "description": "Loading message"
+        "message": "لوڈ ہو رہا ہے...",
+        "description": "لوڈنگ پیغام"
     },
     "downloading": {
-        "message": "ڈاؤن لوڈ ہو رہا ہے۔۔۔",
-        "description": "Downloading message"
+        "message": "ڈاؤن لوڈ ہو رہا ہے...",
+        "description": "ڈاؤن لوڈنگ پیغام"
     },
     "not_downloadable": {
-        "message": "یہ صفحہ ڈاؤن لوڈ کے قابل نہیں ہے۔",
-        "description": "Message indicating that the page is not downloadable"
+        "message": "یہ صفحہ ڈاؤن لوڈ کے قابل نہیں ہے",
+        "description": "پیغام جو اس بات کی نشاندہی کرتا ہے کہ صفحہ ڈاؤن لوڈ کے قابل نہیں ہے"
     },
     "close_sidepanel_message": {
-        "message": "پہلے سائڈ پینل بند کریں۔",
-        "description": "Message to close the side panel"
+        "message": "پہلے سائیڈ پینل کو بند کریں۔",
+        "description": "سائیڈ پینل کو بند کرنے کا پیغام"
     },
     "permissions_title": {
         "message": "مطلوبہ اجازتیں",
-        "description": "Title for permissions section"
+        "description": "اجازتوں کے سیکشن کا عنوان"
     },
     "permissions_message": {
-        "message": "درج ذیل اجازتوں کی ضرورت ہے",
-        "description": "Title for permissions section"
+        "message": "مندرجہ ذیل اجازتوں کی ضرورت ہے",
+        "description": "اجازتوں کے سیکشن کا عنوان"
     },
     "requesting_permissions": {
-        "message": "اجازتیں طلب کی جا رہی ہیں۔۔۔",
-        "description": "Message indicating that permissions are being requested"
+        "message": "اجازتوں کی درخواست کر رہا ہے...",
+        "description": "پیغام جو اس بات کی نشاندہی کرتا ہے کہ اجازتوں کی درخواست کی جا رہی ہے"
     },
     "grant_permissions": {
         "message": "اجازتیں دیں",
-        "description": "Button text to grant permissions"
+        "description": "اجازتیں دینے کے لیے بٹن کا متن"
     },
     "permissions_granted": {
-        "message": "اجازتیں مل گئیں!",
-        "description": "Message indicating that permissions have been granted"
+        "message": "اجازتیں دی گئیں!",
+        "description": "پیغام جو اس بات کی نشاندہی کرتا ہے کہ اجازتیں دی گئی ہیں"
     },
     "permissions_intro": {
         "message": "اس ایکسٹینشن کو صحیح طریقے سے کام کرنے کے لیے درج ذیل اجازتوں کی ضرورت ہے",
-        "description": "Introduction message for permissions"
+        "description": "اجازتوں کے لیے تعارفی پیغام"
     },
     "permission_activeTab": {
         "message": "فعال ٹیب",
-        "description": "Permission to access the active tab"
+        "description": "فعال ٹیب تک رسائی کی اجازت"
     },
     "permission_activeTab_description": {
         "message": "ایکسٹینشن کو فعال ٹیب تک رسائی کی اجازت دیتا ہے۔",
-        "description": "Description for active tab permission"
+        "description": "فعال ٹیب کی اجازت کے لیے تفصیل"
     },
     "permission_scripting": {
         "message": "اسکرپٹنگ",
-        "description": "Permission to use scripting"
+        "description": "اسکرپٹنگ استعمال کرنے کی اجازت"
     },
     "permission_scripting_description": {
-        "message": "مواد کا تجزیہ کرنے کے لیے موجودہ ٹیب میں اسکرپٹ انجیکٹ کریں۔",
-        "description": "Description for scripting permission"
+        "message": "مواد کا تجزیہ کرنے کے لیے موجودہ ٹیب میں اسکرپٹ داخل کریں۔",
+        "description": "اسکرپٹنگ کی اجازت کے لیے تفصیل"
     },
     "permission_storage": {
         "message": "اسٹوریج",
-        "description": "Permission to use storage"
+        "description": "اسٹوریج استعمال کرنے کی اجازت"
     },
     "permission_storage_description": {
-        "message": "صارف کی ترجیحات اور ترتیبات کو اسٹور کریں۔",
-        "description": "Description for storage permission"
+        "message": "صارف کی ترجیحات اور ترتیبات کو محفوظ کریں۔",
+        "description": "اسٹوریج کی اجازت کے لیے تفصیل"
     },
     "permission_downloads": {
         "message": "ڈاؤن لوڈز",
-        "description": "Permission to use downloads"
+        "description": "ڈاؤن لوڈز استعمال کرنے کی اجازت"
     },
     "permission_downloads_description": {
         "message": "صارف کے کمپیوٹر پر فائلیں ڈاؤن لوڈ کریں۔",
-        "description": "Description for downloads permission"
+        "description": "ڈاؤن لوڈز کی اجازت کے لیے تفصیل"
     },
     "permission_request_error": {
-        "message": "اجازتیں طلب کرنے کے دوران ایک خرابی پیش آگئی۔",
-        "description": "Error message for permission request"
+        "message": "اجازتوں کی درخواست کرتے وقت ایک خرابی پیش آئی۔",
+        "description": "اجازت کی درخواست کے لیے خرابی کا پیغام"
     },
     "permission_not_granted_error": {
         "message": "اجازتیں نہیں دی گئیں۔ براہ کرم جاری رکھنے کے لیے اجازتیں دیں۔",
-        "description": "Error message for permission not granted"
+        "description": "اجازت نہ دینے کے لیے خرابی کا پیغام"
     },
     "permission_check_error": {
-        "message": "اجازتیں چیک کرنے میں ناکام۔ براہ کرم دوبارہ کوشش کریں.",
-        "description": "Error message for permission check"
+        "message": "اجازتوں کی جانچ کرنے میں ناکام۔ براہ کرم دوبارہ کوشش کریں۔",
+        "description": "اجازت کی جانچ کے لیے خرابی کا پیغام"
     },
     "button_options": {
         "message": "اختیارات",
-        "description": "Button text for options"
+        "description": "اختیارات کے لیے بٹن کا متن"
     },
     "button_download_page": {
         "message": "صفحہ ڈاؤن لوڈ کریں",
-        "description": "Button text for download"
+        "description": "ڈاؤن لوڈ کے لیے بٹن کا متن"
     },
     "button_download_website": {
         "message": "ویب سائٹ ڈاؤن لوڈ کریں",
-        "description": "Button text for download"
+        "description": "ڈاؤن لوڈ کے لیے بٹن کا متن"
+    },
+    "button_download_single_file": {
+        "message": "ایک فائل ڈاؤن لوڈ کریں",
+        "description": "ایک فائل ڈاؤن لوڈ کے لیے بٹن کا متن"
     },
     "filtering_title": {
         "message": "مواد کی فلٹرنگ",
-        "description": "Title for filtering section"
+        "description": "فلٹرنگ سیکشن کے لیے عنوان"
     },
     "filtering_label": {
-        "message": "شامل اثاثوں کو فلٹر کریں بذریعہ",
-        "description": "Label for filtering options"
+        "message": "شامل کردہ اثاثوں کو فلٹر کریں",
+        "description": "فلٹرنگ کے اختیارات کے لیے لیبل"
     },
     "filtering_by_type": {
         "message": "قسم",
-        "description": "Label for filtering by type"
+        "description": "قسم کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filtering_by_extension": {
         "message": "فائل ایکسٹینشن",
-        "description": "Label for filtering by extension"
+        "description": "ایکسٹینشن کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_image": {
         "message": "تصویر",
-        "description": "Label for filtering by image"
+        "description": "تصویر کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_script": {
         "message": "اسکرپٹ",
-        "description": "Label for filtering by script"
+        "description": "اسکرپٹ کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_stylesheet": {
         "message": "اسٹائل شیٹ",
-        "description": "Label for filtering by stylesheet"
+        "description": "اسٹائل شیٹ کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_font": {
         "message": "فونٹ",
-        "description": "Label for filtering by font"
+        "description": "فونٹ کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_html": {
         "message": "مارک اپ",
-        "description": "Label for filtering by Markup"
+        "description": "مارک اپ کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_document": {
         "message": "دستاویز",
-        "description": "Label for filtering by Document"
+        "description": "دستاویز کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_spreadsheet": {
-        "message": "اسپریڈ شیٹ",
-        "description": "Label for filtering by Spreadsheet"
+        "message": "اسپریڈشیٹ",
+        "description": "اسپریڈشیٹ کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_video": {
         "message": "ویڈیو",
-        "description": "Label for filtering by Video"
+        "description": "ویڈیو کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_audio": {
         "message": "آڈیو",
-        "description": "Label for filtering by Audio"
+        "description": "آڈیو کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_archive": {
         "message": "آرکائیو",
-        "description": "Label for filtering by Archive"
+        "description": "آرکائیو کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_json": {
         "message": "JSON",
-        "description": "Label for filtering by JSON"
+        "description": "JSON کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_executable": {
         "message": "قابل عمل",
-        "description": "Label for filtering by Executable"
+        "description": "قابل عمل کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_other": {
         "message": "دیگر",
-        "description": "Label for filtering by Other"
+        "description": "دیگر کے لحاظ سے فلٹر کرنے کے لیے لیبل"
     },
     "filter_by_jpg": {
         "message": "jpg",
-        "description": "File extension for jpg"
+        "description": "jpg کے لیے فائل ایکسٹینشن"
     },
     "filter_by_png": {
         "message": "png",
-        "description": "File extension for png"
+        "description": "png کے لیے فائل ایکسٹینشن"
     },
     "filter_by_gif": {
         "message": "gif",
-        "description": "File extension for gif"
+        "description": "gif کے لیے فائل ایکسٹینشن"
     },
     "filter_by_svg": {
         "message": "svg",
-        "description": "File extension for svg"
+        "description": "svg کے لیے فائل ایکسٹینشن"
     },
     "filter_by_webp": {
         "message": "webp",
-        "description": "File extension for webp"
+        "description": "webp کے لیے فائل ایکسٹینشن"
     },
     "filter_by_ico": {
         "message": "ico",
-        "description": "File extension for ico"
+        "description": "ico کے لیے فائل ایکسٹینشن"
     },
     "filter_by_js": {
         "message": "js",
-        "description": "File extension for js"
+        "description": "js کے لیے فائل ایکسٹینشن"
     },
     "filter_by_ts": {
         "message": "ts",
-        "description": "File extension for ts"
+        "description": "ts کے لیے فائل ایکسٹینشن"
     },
     "filter_by_css": {
         "message": "css",
-        "description": "File extension for css"
+        "description": "css کے لیے فائل ایکسٹینشن"
     },
     "filter_by_scss": {
         "message": "scss",
-        "description": "File extension for scss"
+        "description": "scss کے لیے فائل ایکسٹینشن"
     },
     "filter_by_less": {
         "message": "less",
-        "description": "File extension for less"
+        "description": "less کے لیے فائل ایکسٹینشن"
     },
     "filter_by_woff": {
         "message": "woff",
-        "description": "File extension for woff"
+        "description": "woff کے لیے فائل ایکسٹینشن"
     },
     "filter_by_woff2": {
         "message": "woff2",
-        "description": "File extension for woff2"
+        "description": "woff2 کے لیے فائل ایکسٹینشن"
     },
     "filter_by_ttf": {
         "message": "ttf",
-        "description": "File extension for ttf"
+        "description": "ttf کے لیے فائل ایکسٹینشن"
     },
     "filter_by_otf": {
         "message": "otf",
-        "description": "File extension for otf"
+        "description": "otf کے لیے فائل ایکسٹینشن"
     },
     "filter_by_eot": {
         "message": "eot",
-        "description": "File extension for eot"
+        "description": "eot کے لیے فائل ایکسٹینشن"
     },
     "filter_by_htm": {
         "message": "htm",
-        "description": "File extension for htm"
+        "description": "htm کے لیے فائل ایکسٹینشن"
     },
     "filter_by_xml": {
         "message": "xml",
-        "description": "File extension for xml"
+        "description": "xml کے لیے فائل ایکسٹینشن"
     },
     "filter_by_pdf": {
         "message": "pdf",
-        "description": "File extension for pdf"
+        "description": "pdf کے لیے فائل ایکسٹینشن"
     },
     "filter_by_doc": {
         "message": "doc",
-        "description": "File extension for doc"
+        "description": "doc کے لیے فائل ایکسٹینشن"
     },
     "filter_by_docx": {
         "message": "docx",
-        "description": "File extension for docx"
+        "description": "docx کے لیے فائل ایکسٹینشن"
     },
     "filter_by_txt": {
         "message": "txt",
-        "description": "File extension for txt"
+        "description": "txt کے لیے فائل ایکسٹینشن"
     },
     "filter_by_rtf": {
         "message": "rtf",
-        "description": "File extension for rtf"
+        "description": "rtf کے لیے فائل ایکسٹینشن"
     },
     "filter_by_odt": {
         "message": "odt",
-        "description": "File extension for odt"
+        "description": "odt کے لیے فائل ایکسٹینشن"
     },
     "filter_by_mp3": {
         "message": "mp3",
-        "description": "File extension for mp3"
+        "description": "mp3 کے لیے فائل ایکسٹینشن"
     },
     "filter_by_wav": {
         "message": "wav",
-        "description": "File extension for wav"
+        "description": "wav کے لیے فائل ایکسٹینشن"
     },
     "filter_by_ogg": {
         "message": "ogg",
-        "description": "File extension for ogg"
+        "description": "ogg کے لیے فائل ایکسٹینشن"
     },
     "filter_by_aac": {
         "message": "aac",
-        "description": "File extension for aac"
+        "description": "aac کے لیے فائل ایکسٹینشن"
     },
     "filter_by_mp4": {
         "message": "mp4",
-        "description": "File extension for mp4"
+        "description": "mp4 کے لیے فائل ایکسٹینشن"
     },
     "filter_by_webm": {
         "message": "webm",
-        "description": "File extension for webm"
+        "description": "webm کے لیے فائل ایکسٹینشن"
     },
     "filter_by_avi": {
         "message": "avi",
-        "description": "File extension for avi"
+        "description": "avi کے لیے فائل ایکسٹینشن"
     },
     "filter_by_mov": {
         "message": "mov",
-        "description": "File extension for mov"
+        "description": "mov کے لیے فائل ایکسٹینشن"
     },
     "filter_by_wmv": {
         "message": "wmv",
-        "description": "File extension for wmv"
+        "description": "wmv کے لیے فائل ایکسٹینشن"
     },
     "filter_by_mkv": {
         "message": "mkv",
-        "description": "File extension for mkv"
+        "description": "mkv کے لیے فائل ایکسٹینشن"
     },
     "filter_by_zip": {
         "message": "zip",
-        "description": "File extension for zip"
+        "description": "zip کے لیے فائل ایکسٹینشن"
     },
     "filter_by_rar": {
         "message": "rar",
-        "description": "File extension for rar"
+        "description": "rar کے لیے فائل ایکسٹینشن"
     },
     "filter_by_tar": {
         "message": "tar",
-        "description": "File extension for tar"
+        "description": "tar کے لیے فائل ایکسٹینشن"
     },
     "filter_by_gz": {
         "message": "gz",
-        "description": "File extension for gz"
+        "description": "gz کے لیے فائل ایکسٹینشن"
     },
     "filter_by_7z": {
         "message": "7z",
-        "description": "File extension for 7z"
+        "description": "7z کے لیے فائل ایکسٹینشن"
     },
     "filter_by_exe": {
         "message": "exe",
-        "description": "File extension for exe"
+        "description": "exe کے لیے فائل ایکسٹینشن"
     },
     "filter_by_sh": {
         "message": "sh",
-        "description": "File extension for sh"
+        "description": "sh کے لیے فائل ایکسٹینشن"
     },
     "filter_by_bat": {
         "message": "bat",
-        "description": "File extension for bat"
+        "description": "bat کے لیے فائل ایکسٹینشن"
     },
     "single_file_title": {
-        "message": "فائل ڈاؤن لوڈ کی معلومات",
-        "description": "ایک فائل ڈاؤن لوڈ کارڈ کے لیے عنوان۔"
+        "message": "ڈاؤن لوڈ کی معلومات",
+        "description": "سنگل فائل ڈاؤن لوڈ کارڈ کے لیے عنوان۔"
     },
     "single_file_download_intro": {
         "message": "آپ موجودہ ویب پیج کو ایک واحد MHTML فائل (.mhtml) کے طور پر ڈاؤن لوڈ کرنے والے ہیں۔",
-        "description": "ایک فائل MHTML ڈاؤن لوڈ کرنے کا تعارف۔"
+        "description": "سنگل فائل MHTML ڈاؤن لوڈ کے لیے تعارف۔"
     },
     "single_file_format_mhtml_title": {
         "message": "MHTML فارمیٹ",
         "description": "MHTML فارمیٹ کی وضاحت کے لیے عنوان۔"
     },
     "single_file_format_mhtml_desc": {
-        "message": "MHTML (MIME HTML) ایک ہی فائل میں تمام صفحہ مواد (HTML, CSS, JavaScript, تصاویر) کو محفوظ کرتا ہے۔",
-        "description": "MHTML فارمیٹ کی وضاحت۔"
+        "message": "MHTML (MIME HTML) تمام صفحہ مواد (HTML, CSS, JavaScript, تصاویر) کو ایک ہی فائل میں محفوظ کرتا ہے۔",
+        "description": "MHTML فارمیٹ کی تفصیل۔"
     },
     "single_file_includes_all_title": {
-        "message": "سب شامل ہیں",
-        "description": "عنوان برائے 'تمام وسائل شامل ہیں'۔"
+        "message": "سبھی شامل ہیں",
+        "description": "'تمام وسائل شامل ہیں' نقطہ کے لیے عنوان۔"
     },
     "single_file_includes_all_desc": {
         "message": "اس بات کو یقینی بناتا ہے کہ تمام وسائل شامل ہیں، جس سے صفحہ آف لائن مکمل طور پر فعال ہو جاتا ہے۔",
-        "description": "'تمام وسائل شامل ہیں' نقطہ کے لیے وضاحت۔"
+        "description": "'تمام وسائل شامل ہیں' نقطہ کے لیے تفصیل۔"
     },
     "single_file_offline_viewing_title": {
         "message": "آف لائن دیکھنا",
         "description": "آف لائن دیکھنے کے فائدے کے لیے عنوان۔"
     },
     "single_file_offline_viewing_desc": {
-        "message": "صفحات کو محفوظ کرنے یا بعد میں انٹرنیٹ کنکشن کے بغیر انہیں دیکھنے کے لیے مثالی ہے۔",
-        "description": "آف لائن دیکھنے کے فائدے کے لیے وضاحت۔"
+        "message": "صفحات کو محفوظ کرنے یا انٹرنیٹ کنکشن کے بغیر بعد میں دیکھنے کے لیے مثالی ہے۔",
+        "description": "آف لائن دیکھنے کے فائدے کے لیے تفصیل۔"
     },
     "single_file_browser_support_title": {
         "message": "براؤزر سپورٹ",
@@ -405,22 +409,90 @@
     },
     "single_file_browser_support_desc": {
         "message": "زیادہ تر جدید ویب براؤزر .mhtml فائلوں کو کھول سکتے ہیں۔",
-        "description": "براؤزر مطابقت کے لیے وضاحت۔"
+        "description": "براؤزر مطابقت کے لیے تفصیل۔"
     },
     "single_file_download_time_notice": {
-        "message": "براہ کرم نوٹ کریں: صفحہ کے سائز پر منحصر ہے، ڈاؤن لوڈ ہونے میں کچھ لمحے لگ سکتے ہیں۔",
-        "description": "MHTML کے لیے ممکنہ ڈاؤن لوڈ کے وقت کے بارے میں نوٹس۔"
+        "message": "براہ کرم نوٹ کریں: صفحہ کے سائز پر منحصر ہے، ڈاؤن لوڈ میں کچھ لمحے لگ سکتے ہیں۔",
+        "description": "MHTML کے لیے ممکنہ ڈاؤن لوڈ کے وقت کے بارے میں اطلاع۔"
     },
-    "button_download_single_file": {
-        "message": "ایک فائل ڈاؤن لوڈ کریں",
-        "description": "ایک فائل ڈاؤن لوڈ کرنے کے لیے بٹن کا متن"
+    "lang_en": {
+        "message": "انگریزی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_hi": {
+        "message": "ہندی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_vi": {
+        "message": "ویتنامی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_pl": {
+        "message": "پولش",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_fil": {
+        "message": "فلپینو",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_ur": {
+        "message": "اردو",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_he": {
+        "message": "عبرانی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_tr": {
+        "message": "ترکی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_es": {
+        "message": "ہسپانوی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_ru": {
+        "message": "روسی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_pt": {
+        "message": "پرتگالی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_it": {
+        "message": "اطالوی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_de": {
+        "message": "جرمن",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_fr": {
+        "message": "فرانسیسی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_zh": {
+        "message": "چینی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_nl": {
+        "message": "ڈچ",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_id": {
+        "message": "انڈونیشیائی",
+        "description": "ایکسٹینشن کی زبان"
+    },
+    "lang_bn": {
+        "message": "بنگالی",
+        "description": "ایکسٹینشن کی زبان"
     },
     "full_web_page_download_title_v2_coming_soon": {
         "message": "مکمل ویب پیج ڈاؤن لوڈ جلد آرہا ہے",
         "description": "مکمل ویب پیج ڈاؤن لوڈ فیچر کے لیے عنوان۔"
     },
     "full_web_page_download_subtitle_v2_next_version": {
-        "message": "یہ فیچر اگلے ورژن میں دستیاب ہوگا۔",
+        "message": "یہ فیچر اگلی ورژن میں دستیاب ہوگا۔",
         "description": "مکمل ویب پیج ڈاؤن لوڈ فیچر کے لیے ذیلی عنوان۔"
     },
     "permission_pageCapture": {
@@ -430,5 +502,17 @@
     "permission_pageCapture_description": {
         "message": "ایکسٹینشن کو موجودہ صفحہ کے مواد کو کیپچر کرنے کی اجازت دیتا ہے۔",
         "description": "صفحہ کیپچر کی اجازت کے لیے تفصیل"
+    },
+    "tooltip_toggle_scroll_mode": {
+        "message": "صفحہ کی خودکار اور دستی سکرولنگ کے درمیان ٹوگل کریں۔",
+        "description": "اسکرول موڈ ٹوگل بٹن کے لیے ٹول ٹپ"
+    },
+    "text_auto_mode": {
+        "message": "خودکار",
+        "description": "خودکار سکرول موڈ کے لیے متن"
+    },
+    "text_manual_mode": {
+        "message": "دستی",
+        "description": "دستی سکرول موڈ کے لیے متن"
     }
 }

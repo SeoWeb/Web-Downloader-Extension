@@ -5,12 +5,14 @@ import { chromeStorage } from '../common/chrome/storage';
 
 export type FilterMode = "type" | "extension";
 export type DownloadMode = "single_file" | "single" | "website";
+export type ScrollMode = "auto" | "manual";
 
 interface DownloadSettingsState {
   filterMode: FilterMode;
   selectedAssetTypes: string[];
   selectedExtensions: string[];
   downloadMode: DownloadMode;
+  scrollMode: ScrollMode; // Added scrollMode
   activeTabId: number | null | undefined;
   isSidePanelOpen: boolean;
   setFilterMode: (mode: FilterMode) => void;
@@ -19,6 +21,7 @@ interface DownloadSettingsState {
   setSelectedExtensions: (extensions: string[]) => void;
   toggleExtension: (extId: string) => void;
   setDownloadMode: (mode: DownloadMode) => void;
+  setScrollMode: (mode: ScrollMode) => void; // Added setScrollMode
   setActiveTabId: (id: number | null) => void;
   setIsSidePanelOpen: (is: boolean) => void;
 }
@@ -41,6 +44,7 @@ export const useDownloadSettingsStore = create<DownloadSettingsState>()(
         "html",
       ],
       downloadMode: "single",
+      scrollMode: "auto", // Added scrollMode with default "auto"
       activeTabId: undefined,
       isSidePanelOpen: false,
       setFilterMode: (mode) => set({ filterMode: mode }),
@@ -60,8 +64,9 @@ export const useDownloadSettingsStore = create<DownloadSettingsState>()(
             : [...state.selectedExtensions, extId],
         })),
       setDownloadMode: (mode) => set({ downloadMode: mode }),
+      setScrollMode: (mode) => set({ scrollMode: mode }), // Added setScrollMode
       setActiveTabId: (id) => set({ activeTabId: id }),
-      setIsSidePanelOpen: (is) => set({ isSidePanelOpen: is })
+      setIsSidePanelOpen: (is) => set({ isSidePanelOpen: is }),
     }),
     {
       name: 'download-settings-storage', // unique name

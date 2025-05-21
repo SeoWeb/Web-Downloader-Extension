@@ -1,9 +1,7 @@
-// src/components/popup/index.tsx
 import { useEffect, useState } from "react";
 import LeftMenu from "./sections/LeftMenu";
 import Header from "./sections/Header";
 import PermissionsCard from "./sections/PermissionsCard";
-// import DownloadConfigCard from "./sections/DownloadConfigCard";
 import ContentFilteringCard from "./sections/ContentFilteringCard";
 import ActionFooter from "./sections/ActionFooter";
 import { getActiveTab } from "../../common/chrome";

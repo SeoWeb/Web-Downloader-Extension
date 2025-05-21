@@ -1,379 +1,383 @@
 {
     "title": {
         "message": "Pengunduh Halaman Web & Situs",
-        "description": "The title of the extension"
+        "description": "Judul ekstensi"
     },
     "description": {
         "message": "Pengunduh Halaman Web dan Situs memungkinkan Anda mengunduh seluruh situs web—termasuk semua halaman dan sumber daya yang tertaut—untuk dilihat secara offline.",
-        "description": "The description of the extension"
+        "description": "Deskripsi ekstensi"
     },
     "help": {
         "message": "Bantuan",
-        "description": "The help button text"
+        "description": "Teks tombol bantuan"
     },
     "download_mode": {
         "message": "Mode Unduh",
-        "description": "The label for the download mode selection"
+        "description": "Label untuk pemilihan mode unduh"
     },
     "single_download_description": {
-        "message": "Unduh hanya halaman saat ini beserta semua asetnya.",
-        "description": "Description for the single download mode"
+        "message": "Unduh hanya halaman saat ini dengan semua asetnya.",
+        "description": "Deskripsi untuk mode unduh tunggal"
     },
     "site_download_description": {
         "message": "Unduh seluruh situs, termasuk semua halaman dan sumber daya yang tertaut.",
-        "description": "Description for the site download mode"
+        "description": "Deskripsi untuk mode unduh situs"
     },
     "single_page": {
         "message": "Halaman Tunggal",
-        "description": "Label for the single page download mode"
+        "description": "Label untuk mode unduh halaman tunggal"
     },
     "whole_website": {
         "message": "Seluruh Situs Web",
-        "description": "Label for the whole website download mode"
+        "description": "Label untuk mode unduh seluruh situs web"
     },
     "single_file": {
         "message": "File Tunggal",
-        "description": "Label for the single file download mode"
+        "description": "Label untuk mode unduh file tunggal"
     },
     "loading": {
         "message": "Memuat...",
-        "description": "Loading message"
+        "description": "Pesan memuat"
     },
     "downloading": {
         "message": "Mengunduh...",
-        "description": "Downloading message"
+        "description": "Pesan mengunduh"
     },
     "not_downloadable": {
         "message": "Halaman ini tidak dapat diunduh",
-        "description": "Message indicating that the page is not downloadable"
+        "description": "Pesan yang menunjukkan bahwa halaman tidak dapat diunduh"
     },
     "close_sidepanel_message": {
         "message": "Tutup panel samping terlebih dahulu.",
-        "description": "Message to close the side panel"
+        "description": "Pesan untuk menutup panel samping"
     },
     "permissions_title": {
         "message": "Izin yang Diperlukan",
-        "description": "Title for permissions section"
+        "description": "Judul untuk bagian izin"
     },
     "permissions_message": {
         "message": "Izin berikut diperlukan",
-        "description": "Title for permissions section"
+        "description": "Judul untuk bagian izin"
     },
     "requesting_permissions": {
         "message": "Meminta izin...",
-        "description": "Message indicating that permissions are being requested"
+        "description": "Pesan yang menunjukkan bahwa izin sedang diminta"
     },
     "grant_permissions": {
         "message": "Berikan Izin",
-        "description": "Button text to grant permissions"
+        "description": "Teks tombol untuk memberikan izin"
     },
     "permissions_granted": {
         "message": "Izin Diberikan!",
-        "description": "Message indicating that permissions have been granted"
+        "description": "Pesan yang menunjukkan bahwa izin telah diberikan"
     },
     "permissions_intro": {
-        "message": "Ekstensi ini memerlukan izin berikut untuk berfungsi dengan benar",
-        "description": "Introduction message for permissions"
+        "message": "Ekstensi ini memerlukan izin berikut agar berfungsi dengan benar",
+        "description": "Pesan pengantar untuk izin"
     },
     "permission_activeTab": {
         "message": "Tab Aktif",
-        "description": "Permission to access the active tab"
+        "description": "Izin untuk mengakses tab aktif"
     },
     "permission_activeTab_description": {
-        "message": "Izinkan ekstensi untuk mengakses tab aktif.",
-        "description": "Description for active tab permission"
+        "message": "Memungkinkan ekstensi untuk mengakses tab aktif.",
+        "description": "Deskripsi untuk izin tab aktif"
     },
     "permission_scripting": {
-        "message": "Skrip",
-        "description": "Permission to use scripting"
+        "message": "Penulisan skrip",
+        "description": "Izin untuk menggunakan penulisan skrip"
     },
     "permission_scripting_description": {
         "message": "Suntikkan skrip ke tab saat ini untuk menganalisis konten.",
-        "description": "Description for scripting permission"
+        "description": "Deskripsi untuk izin penulisan skrip"
     },
     "permission_storage": {
         "message": "Penyimpanan",
-        "description": "Permission to use storage"
+        "description": "Izin untuk menggunakan penyimpanan"
     },
     "permission_storage_description": {
         "message": "Simpan preferensi dan pengaturan pengguna.",
-        "description": "Description for storage permission"
+        "description": "Deskripsi untuk izin penyimpanan"
     },
     "permission_downloads": {
         "message": "Unduhan",
-        "description": "Permission to use downloads"
+        "description": "Izin untuk menggunakan unduhan"
     },
     "permission_downloads_description": {
         "message": "Unduh file ke komputer pengguna.",
-        "description": "Description for downloads permission"
+        "description": "Deskripsi untuk izin unduhan"
     },
     "permission_request_error": {
         "message": "Terjadi kesalahan saat meminta izin.",
-        "description": "Error message for permission request"
+        "description": "Pesan kesalahan untuk permintaan izin"
     },
     "permission_not_granted_error": {
-        "message": "Izin tidak diberikan. Harap berikan izin untuk melanjutkan.",
-        "description": "Error message for permission not granted"
+        "message": "Izin tidak diberikan. Berikan izin untuk melanjutkan.",
+        "description": "Pesan kesalahan untuk izin yang tidak diberikan"
     },
     "permission_check_error": {
         "message": "Gagal memeriksa izin. Silakan coba lagi.",
-        "description": "Error message for permission check"
+        "description": "Pesan kesalahan untuk pemeriksaan izin"
     },
     "button_options": {
         "message": "Opsi",
-        "description": "Button text for options"
+        "description": "Teks tombol untuk opsi"
     },
     "button_download_page": {
         "message": "Unduh Halaman",
-        "description": "Button text for download"
+        "description": "Teks tombol untuk mengunduh"
     },
     "button_download_website": {
         "message": "Unduh Situs Web",
-        "description": "Button text for download"
+        "description": "Teks tombol untuk mengunduh"
+    },
+    "button_download_single_file": {
+        "message": "Unduh File Tunggal",
+        "description": "Teks tombol untuk mengunduh satu file"
     },
     "filtering_title": {
         "message": "Penyaringan Konten",
-        "description": "Title for filtering section"
+        "description": "Judul untuk bagian penyaringan"
     },
     "filtering_label": {
-        "message": "Filter Aset yang Disertakan Berdasarkan",
-        "description": "Label for filtering options"
+        "message": "Saring Aset yang Disertakan Berdasarkan",
+        "description": "Label untuk opsi penyaringan"
     },
     "filtering_by_type": {
-        "message": "Jenis",
-        "description": "Label for filtering by type"
+        "message": "Tipe",
+        "description": "Label untuk penyaringan berdasarkan tipe"
     },
     "filtering_by_extension": {
         "message": "Ekstensi File",
-        "description": "Label for filtering by extension"
+        "description": "Label untuk penyaringan berdasarkan ekstensi"
     },
     "filter_by_image": {
         "message": "Gambar",
-        "description": "Label for filtering by image"
+        "description": "Label untuk penyaringan berdasarkan gambar"
     },
     "filter_by_script": {
         "message": "Skrip",
-        "description": "Label for filtering by script"
+        "description": "Label untuk penyaringan berdasarkan skrip"
     },
     "filter_by_stylesheet": {
-        "message": "Stylesheet",
-        "description": "Label for filtering by stylesheet"
+        "message": "Lembar Gaya",
+        "description": "Label untuk penyaringan berdasarkan lembar gaya"
     },
     "filter_by_font": {
         "message": "Font",
-        "description": "Label for filtering by font"
+        "description": "Label untuk penyaringan berdasarkan font"
     },
     "filter_by_html": {
         "message": "Markup",
-        "description": "Label for filtering by Markup"
+        "description": "Label untuk penyaringan berdasarkan Markup"
     },
     "filter_by_document": {
         "message": "Dokumen",
-        "description": "Label for filtering by Document"
+        "description": "Label untuk penyaringan berdasarkan Dokumen"
     },
     "filter_by_spreadsheet": {
         "message": "Spreadsheet",
-        "description": "Label for filtering by Spreadsheet"
+        "description": "Label untuk penyaringan berdasarkan Spreadsheet"
     },
     "filter_by_video": {
         "message": "Video",
-        "description": "Label for filtering by Video"
+        "description": "Label untuk penyaringan berdasarkan Video"
     },
     "filter_by_audio": {
         "message": "Audio",
-        "description": "Label for filtering by Audio"
+        "description": "Label untuk penyaringan berdasarkan Audio"
     },
     "filter_by_archive": {
         "message": "Arsip",
-        "description": "Label for filtering by Archive"
+        "description": "Label untuk penyaringan berdasarkan Arsip"
     },
     "filter_by_json": {
         "message": "JSON",
-        "description": "Label for filtering by JSON"
+        "description": "Label untuk penyaringan berdasarkan JSON"
     },
     "filter_by_executable": {
-        "message": "Dapat Dieksekusi",
-        "description": "Label for filtering by Executable"
+        "message": "Executable",
+        "description": "Label untuk penyaringan berdasarkan Executable"
     },
     "filter_by_other": {
         "message": "Lainnya",
-        "description": "Label for filtering by Other"
+        "description": "Label untuk penyaringan berdasarkan Lainnya"
     },
     "filter_by_jpg": {
         "message": "jpg",
-        "description": "File extension for jpg"
+        "description": "Ekstensi file untuk jpg"
     },
     "filter_by_png": {
         "message": "png",
-        "description": "File extension for png"
+        "description": "Ekstensi file untuk png"
     },
     "filter_by_gif": {
         "message": "gif",
-        "description": "File extension for gif"
+        "description": "Ekstensi file untuk gif"
     },
     "filter_by_svg": {
         "message": "svg",
-        "description": "File extension for svg"
+        "description": "Ekstensi file untuk svg"
     },
     "filter_by_webp": {
         "message": "webp",
-        "description": "File extension for webp"
+        "description": "Ekstensi file untuk webp"
     },
     "filter_by_ico": {
         "message": "ico",
-        "description": "File extension for ico"
+        "description": "Ekstensi file untuk ico"
     },
     "filter_by_js": {
         "message": "js",
-        "description": "File extension for js"
+        "description": "Ekstensi file untuk js"
     },
     "filter_by_ts": {
         "message": "ts",
-        "description": "File extension for ts"
+        "description": "Ekstensi file untuk ts"
     },
     "filter_by_css": {
         "message": "css",
-        "description": "File extension for css"
+        "description": "Ekstensi file untuk css"
     },
     "filter_by_scss": {
         "message": "scss",
-        "description": "File extension for scss"
+        "description": "Ekstensi file untuk scss"
     },
     "filter_by_less": {
         "message": "less",
-        "description": "File extension for less"
+        "description": "Ekstensi file untuk less"
     },
     "filter_by_woff": {
         "message": "woff",
-        "description": "File extension for woff"
+        "description": "Ekstensi file untuk woff"
     },
     "filter_by_woff2": {
         "message": "woff2",
-        "description": "File extension for woff2"
+        "description": "Ekstensi file untuk woff2"
     },
     "filter_by_ttf": {
         "message": "ttf",
-        "description": "File extension for ttf"
+        "description": "Ekstensi file untuk ttf"
     },
     "filter_by_otf": {
         "message": "otf",
-        "description": "File extension for otf"
+        "description": "Ekstensi file untuk otf"
     },
     "filter_by_eot": {
         "message": "eot",
-        "description": "File extension for eot"
+        "description": "Ekstensi file untuk eot"
     },
     "filter_by_htm": {
         "message": "htm",
-        "description": "File extension for htm"
+        "description": "Ekstensi file untuk htm"
     },
     "filter_by_xml": {
         "message": "xml",
-        "description": "File extension for xml"
+        "description": "Ekstensi file untuk xml"
     },
     "filter_by_pdf": {
         "message": "pdf",
-        "description": "File extension for pdf"
+        "description": "Ekstensi file untuk pdf"
     },
     "filter_by_doc": {
         "message": "doc",
-        "description": "File extension for doc"
+        "description": "Ekstensi file untuk doc"
     },
     "filter_by_docx": {
         "message": "docx",
-        "description": "File extension for docx"
+        "description": "Ekstensi file untuk docx"
     },
     "filter_by_txt": {
         "message": "txt",
-        "description": "File extension for txt"
+        "description": "Ekstensi file untuk txt"
     },
     "filter_by_rtf": {
         "message": "rtf",
-        "description": "File extension for rtf"
+        "description": "Ekstensi file untuk rtf"
     },
     "filter_by_odt": {
         "message": "odt",
-        "description": "File extension for odt"
+        "description": "Ekstensi file untuk odt"
     },
     "filter_by_mp3": {
         "message": "mp3",
-        "description": "File extension for mp3"
+        "description": "Ekstensi file untuk mp3"
     },
     "filter_by_wav": {
         "message": "wav",
-        "description": "File extension for wav"
+        "description": "Ekstensi file untuk wav"
     },
     "filter_by_ogg": {
         "message": "ogg",
-        "description": "File extension for ogg"
+        "description": "Ekstensi file untuk ogg"
     },
     "filter_by_aac": {
         "message": "aac",
-        "description": "File extension for aac"
+        "description": "Ekstensi file untuk aac"
     },
     "filter_by_mp4": {
         "message": "mp4",
-        "description": "File extension for mp4"
+        "description": "Ekstensi file untuk mp4"
     },
     "filter_by_webm": {
         "message": "webm",
-        "description": "File extension for webm"
+        "description": "Ekstensi file untuk webm"
     },
     "filter_by_avi": {
         "message": "avi",
-        "description": "File extension for avi"
+        "description": "Ekstensi file untuk avi"
     },
     "filter_by_mov": {
         "message": "mov",
-        "description": "File extension for mov"
+        "description": "Ekstensi file untuk mov"
     },
     "filter_by_wmv": {
         "message": "wmv",
-        "description": "File extension for wmv"
+        "description": "Ekstensi file untuk wmv"
     },
     "filter_by_mkv": {
         "message": "mkv",
-        "description": "File extension for mkv"
+        "description": "Ekstensi file untuk mkv"
     },
     "filter_by_zip": {
         "message": "zip",
-        "description": "File extension for zip"
+        "description": "Ekstensi file untuk zip"
     },
     "filter_by_rar": {
         "message": "rar",
-        "description": "File extension for rar"
+        "description": "Ekstensi file untuk rar"
     },
     "filter_by_tar": {
         "message": "tar",
-        "description": "File extension for tar"
+        "description": "Ekstensi file untuk tar"
     },
     "filter_by_gz": {
         "message": "gz",
-        "description": "File extension for gz"
+        "description": "Ekstensi file untuk gz"
     },
     "filter_by_7z": {
         "message": "7z",
-        "description": "File extension for 7z"
+        "description": "Ekstensi file untuk 7z"
     },
     "filter_by_exe": {
         "message": "exe",
-        "description": "File extension for exe"
+        "description": "Ekstensi file untuk exe"
     },
     "filter_by_sh": {
         "message": "sh",
-        "description": "File extension for sh"
+        "description": "Ekstensi file untuk sh"
     },
     "filter_by_bat": {
         "message": "bat",
-        "description": "File extension for bat"
+        "description": "Ekstensi file untuk bat"
     },
     "single_file_title": {
-        "message": "Informasi Unduhan File",
+        "message": "Informasi Unduhan",
         "description": "Judul untuk kartu unduhan satu file."
     },
     "single_file_download_intro": {
         "message": "Anda akan mengunduh halaman web saat ini sebagai satu file MHTML (.mhtml).",
-        "description": "Pendahuluan untuk pengunduhan satu file MHTML."
+        "description": "Pendahuluan untuk unduhan MHTML satu file."
     },
     "single_file_format_mhtml_title": {
         "message": "Format MHTML",
@@ -392,12 +396,12 @@
         "description": "Deskripsi untuk poin 'termasuk semua sumber daya'."
     },
     "single_file_offline_viewing_title": {
-        "message": "Tampilan Offline",
-        "description": "Judul untuk manfaat tampilan offline."
+        "message": "Penayangan Offline",
+        "description": "Judul untuk manfaat penayangan offline."
     },
     "single_file_offline_viewing_desc": {
         "message": "Ideal untuk mengarsipkan halaman atau melihatnya nanti tanpa koneksi internet.",
-        "description": "Deskripsi untuk manfaat tampilan offline."
+        "description": "Deskripsi untuk manfaat penayangan offline."
     },
     "single_file_browser_support_title": {
         "message": "Dukungan Browser",
@@ -411,17 +415,85 @@
         "message": "Harap dicatat: Tergantung pada ukuran halaman, pengunduhan mungkin memerlukan beberapa saat.",
         "description": "Pemberitahuan tentang potensi waktu pengunduhan untuk MHTML."
     },
-    "button_download_single_file": {
-        "message": "Unduh Satu File",
-        "description": "Teks tombol untuk pengunduhan satu file"
+    "lang_en": {
+        "message": "Inggris",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_hi": {
+        "message": "Hindi",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_vi": {
+        "message": "Vietnam",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_pl": {
+        "message": "Polandia",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_fil": {
+        "message": "Filipino",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_ur": {
+        "message": "Urdu",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_he": {
+        "message": "Ibrani",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_tr": {
+        "message": "Turki",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_es": {
+        "message": "Spanyol",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_ru": {
+        "message": "Rusia",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_pt": {
+        "message": "Portugis",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_it": {
+        "message": "Italia",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_de": {
+        "message": "Jerman",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_fr": {
+        "message": "Prancis",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_zh": {
+        "message": "Tionghoa",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_nl": {
+        "message": "Belanda",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_id": {
+        "message": "Bahasa Indonesia",
+        "description": "Bahasa ekstensi"
+    },
+    "lang_bn": {
+        "message": "Bengali",
+        "description": "Bahasa ekstensi"
     },
     "full_web_page_download_title_v2_coming_soon": {
-        "message": "Pengunduhan halaman web lengkap akan datang",
-        "description": "Judul untuk fitur pengunduhan halaman web lengkap."
+        "message": "Unduh Halaman Web Penuh Segera Hadir",
+        "description": "Judul untuk fitur unduh halaman web penuh."
     },
     "full_web_page_download_subtitle_v2_next_version": {
         "message": "Fitur ini akan tersedia di versi berikutnya.",
-        "description": "Subjudul untuk fitur pengunduhan halaman web lengkap."
+        "description": "Subjudul untuk fitur unduh halaman web penuh."
     },
     "permission_pageCapture": {
         "message": "Pengambilan Halaman",
@@ -430,5 +502,17 @@
     "permission_pageCapture_description": {
         "message": "Memungkinkan ekstensi untuk mengambil konten halaman saat ini.",
         "description": "Deskripsi untuk izin pengambilan halaman"
+    },
+    "tooltip_toggle_scroll_mode": {
+        "message": "Beralih antara pengguliran halaman otomatis dan manual.",
+        "description": "Tooltip untuk tombol pengalih mode gulir"
+    },
+    "text_auto_mode": {
+        "message": "Otomatis",
+        "description": "Teks untuk mode gulir otomatis"
+    },
+    "text_manual_mode": {
+        "message": "Manual",
+        "description": "Teks untuk mode gulir manual"
     }
 }
