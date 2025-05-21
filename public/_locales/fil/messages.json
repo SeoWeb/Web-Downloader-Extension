@@ -415,78 +415,24 @@
         "message": "Pakitandaan: Depende sa laki ng pahina, maaaring tumagal ng ilang sandali ang pag-download.",
         "description": "Pansin tungkol sa potensyal na oras ng pag-download para sa MHTML."
     },
-    "lang_en": {
-        "message": "Ingles",
-        "description": "Ang wika ng extension"
-    },
-    "lang_hi": {
-        "message": "Hindi",
-        "description": "Ang wika ng extension"
-    },
-    "lang_vi": {
-        "message": "Vietnamese",
-        "description": "Ang wika ng extension"
-    },
-    "lang_pl": {
-        "message": "Polish",
-        "description": "Ang wika ng extension"
-    },
-    "lang_fil": {
-        "message": "Filipino",
-        "description": "Ang wika ng extension"
-    },
-    "lang_ur": {
-        "message": "Urdu",
-        "description": "Ang wika ng extension"
-    },
-    "lang_he": {
-        "message": "Hebrew",
-        "description": "Ang wika ng extension"
-    },
-    "lang_tr": {
-        "message": "Turkish",
-        "description": "Ang wika ng extension"
-    },
-    "lang_es": {
-        "message": "Español",
-        "description": "Ang wika ng extension"
-    },
-    "lang_ru": {
-        "message": "Ruso",
-        "description": "Ang wika ng extension"
-    },
-    "lang_pt": {
-        "message": "Portuges",
-        "description": "Ang wika ng extension"
-    },
-    "lang_it": {
-        "message": "Italyano",
-        "description": "Ang wika ng extension"
-    },
-    "lang_de": {
-        "message": "Aleman",
-        "description": "Ang wika ng extension"
-    },
-    "lang_fr": {
-        "message": "Pranses",
-        "description": "Ang wika ng extension"
-    },
-    "lang_zh": {
-        "message": "Tsino",
-        "description": "Ang wika ng extension"
-    },
-    "lang_nl": {
-        "message": "Olandes",
-        "description": "Ang wika ng extension"
-    },
-    "lang_id": {
-        "message": "Bahasa Indonesia",
-        "description": "Ang wika ng extension"
-    },
-    "lang_bn": {
-        "message": "Bengali",
-        "description": "Ang wika ng extension"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "Malapit nang mag-download ng Buong Web Page",
         "description": "Pamagat para sa tampok na pag-download ng buong web page."

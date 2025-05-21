@@ -415,78 +415,24 @@
         "message": "Xin lưu ý: Tùy thuộc vào kích thước trang, quá trình tải xuống có thể mất một vài giây.",
         "description": "Thông báo về thời gian tải xuống tiềm năng cho MHTML."
     },
-    "lang_en": {
-        "message": "Tiếng Anh",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_hi": {
-        "message": "Tiếng Hindi",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_vi": {
-        "message": "Tiếng Việt",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_pl": {
-        "message": "Tiếng Ba Lan",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_fil": {
-        "message": "Tiếng Filipino",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_ur": {
-        "message": "Tiếng Urdu",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_he": {
-        "message": "Tiếng Hebrew",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_tr": {
-        "message": "Tiếng Thổ Nhĩ Kỳ",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_es": {
-        "message": "Tiếng Tây Ban Nha",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_ru": {
-        "message": "Tiếng Nga",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_pt": {
-        "message": "Tiếng Bồ Đào Nha",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_it": {
-        "message": "Tiếng Ý",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_de": {
-        "message": "Tiếng Đức",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_fr": {
-        "message": "Tiếng Pháp",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_zh": {
-        "message": "Tiếng Trung",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_nl": {
-        "message": "Tiếng Hà Lan",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_id": {
-        "message": "Tiếng Indonesia",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
-    "lang_bn": {
-        "message": "Tiếng Bengali",
-        "description": "Ngôn ngữ của tiện ích mở rộng"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "Tải xuống Trang Web Đầy Đủ Sắp Ra Mắt",
         "description": "Tiêu đề cho tính năng tải xuống trang web đầy đủ."

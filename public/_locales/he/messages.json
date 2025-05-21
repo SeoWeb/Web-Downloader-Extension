@@ -415,78 +415,24 @@
         "message": "שימו לב: בהתאם לגודל הדף, ההורדה עשויה לארוך מספר רגעים.",
         "description": "הודעה על זמן הורדה פוטנציאלי עבור MHTML."
     },
-    "lang_en": {
-        "message": "אנגלית",
-        "description": "השפה של התוסף"
-    },
-    "lang_hi": {
-        "message": "הינדית",
-        "description": "השפה של התוסף"
-    },
-    "lang_vi": {
-        "message": "וייטנאמית",
-        "description": "השפה של התוסף"
-    },
-    "lang_pl": {
-        "message": "פולנית",
-        "description": "השפה של התוסף"
-    },
-    "lang_fil": {
-        "message": "פיליפינית",
-        "description": "השפה של התוסף"
-    },
-    "lang_ur": {
-        "message": "אורדו",
-        "description": "השפה של התוסף"
-    },
-    "lang_he": {
-        "message": "עברית",
-        "description": "השפה של התוסף"
-    },
-    "lang_tr": {
-        "message": "טורקית",
-        "description": "השפה של התוסף"
-    },
-    "lang_es": {
-        "message": "ספרדית",
-        "description": "השפה של התוסף"
-    },
-    "lang_ru": {
-        "message": "רוסית",
-        "description": "השפה של התוסף"
-    },
-    "lang_pt": {
-        "message": "פורטוגזית",
-        "description": "השפה של התוסף"
-    },
-    "lang_it": {
-        "message": "איטלקית",
-        "description": "השפה של התוסף"
-    },
-    "lang_de": {
-        "message": "גרמנית",
-        "description": "השפה של התוסף"
-    },
-    "lang_fr": {
-        "message": "צרפתית",
-        "description": "השפה של התוסף"
-    },
-    "lang_zh": {
-        "message": "סינית",
-        "description": "השפה של התוסף"
-    },
-    "lang_nl": {
-        "message": "הולנדית",
-        "description": "השפה של התוסף"
-    },
-    "lang_id": {
-        "message": "אינדונזית",
-        "description": "השפה של התוסף"
-    },
-    "lang_bn": {
-        "message": "בנגלית",
-        "description": "השפה של התוסף"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "הורדת דף אינטרנט מלא בקרוב",
         "description": "כותרת עבור תכונת הורדת דף אינטרנט מלא."

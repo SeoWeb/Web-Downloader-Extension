@@ -415,78 +415,24 @@
         "message": "Обратите внимание: в зависимости от размера страницы загрузка может занять несколько мгновений.",
         "description": "Уведомление о возможном времени загрузки для MHTML."
     },
-    "lang_en": {
-        "message": "Английский",
-        "description": "Язык расширения"
-    },
-    "lang_hi": {
-        "message": "Hindi",
-        "description": "Язык расширения"
-    },
-    "lang_vi": {
-        "message": "Вьетнамский",
-        "description": "Язык расширения"
-    },
-    "lang_pl": {
-        "message": "Польский",
-        "description": "Язык расширения"
-    },
-    "lang_fil": {
-        "message": "Филиппинский",
-        "description": "Язык расширения"
-    },
-    "lang_ur": {
-        "message": "Урду",
-        "description": "Язык расширения"
-    },
-    "lang_he": {
-        "message": "Иврит",
-        "description": "Язык расширения"
-    },
-    "lang_tr": {
-        "message": "Турецкий",
-        "description": "Язык расширения"
-    },
-    "lang_es": {
-        "message": "Испанский",
-        "description": "Язык расширения"
-    },
-    "lang_ru": {
-        "message": "Русский",
-        "description": "Язык расширения"
-    },
-    "lang_pt": {
-        "message": "Португальский",
-        "description": "Язык расширения"
-    },
-    "lang_it": {
-        "message": "Итальянский",
-        "description": "Язык расширения"
-    },
-    "lang_de": {
-        "message": "Немецкий",
-        "description": "Язык расширения"
-    },
-    "lang_fr": {
-        "message": "Французский",
-        "description": "Язык расширения"
-    },
-    "lang_zh": {
-        "message": "Китайский",
-        "description": "Язык расширения"
-    },
-    "lang_nl": {
-        "message": "Голландский",
-        "description": "Язык расширения"
-    },
-    "lang_id": {
-        "message": "Индонезийский",
-        "description": "Язык расширения"
-    },
-    "lang_bn": {
-        "message": "Бенгальский",
-        "description": "Язык расширения"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "Скоро появится загрузка полной веб-страницы",
         "description": "Заголовок для функции загрузки полной веб-страницы."

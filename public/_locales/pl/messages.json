@@ -415,78 +415,24 @@
         "message": "Uwaga: W zależności od rozmiaru strony pobieranie może zająć kilka chwil.",
         "description": "Informacja o potencjalnym czasie pobierania dla MHTML."
     },
-    "lang_en": {
-        "message": "Angielski",
-        "description": "Język rozszerzenia"
-    },
-    "lang_hi": {
-        "message": "Hindi",
-        "description": "Język rozszerzenia"
-    },
-    "lang_vi": {
-        "message": "Wietnamski",
-        "description": "Język rozszerzenia"
-    },
-    "lang_pl": {
-        "message": "Polski",
-        "description": "Język rozszerzenia"
-    },
-    "lang_fil": {
-        "message": "Filipiński",
-        "description": "Język rozszerzenia"
-    },
-    "lang_ur": {
-        "message": "Urdu",
-        "description": "Język rozszerzenia"
-    },
-    "lang_he": {
-        "message": "Hebrajski",
-        "description": "Język rozszerzenia"
-    },
-    "lang_tr": {
-        "message": "Turecki",
-        "description": "Język rozszerzenia"
-    },
-    "lang_es": {
-        "message": "Hiszpański",
-        "description": "Język rozszerzenia"
-    },
-    "lang_ru": {
-        "message": "Rosyjski",
-        "description": "Język rozszerzenia"
-    },
-    "lang_pt": {
-        "message": "Portugalski",
-        "description": "Język rozszerzenia"
-    },
-    "lang_it": {
-        "message": "Włoski",
-        "description": "Język rozszerzenia"
-    },
-    "lang_de": {
-        "message": "Niemiecki",
-        "description": "Język rozszerzenia"
-    },
-    "lang_fr": {
-        "message": "Francuski",
-        "description": "Język rozszerzenia"
-    },
-    "lang_zh": {
-        "message": "Chiński",
-        "description": "Język rozszerzenia"
-    },
-    "lang_nl": {
-        "message": "Holenderski",
-        "description": "Język rozszerzenia"
-    },
-    "lang_id": {
-        "message": "Indonezyjski",
-        "description": "Język rozszerzenia"
-    },
-    "lang_bn": {
-        "message": "Bengalski",
-        "description": "Język rozszerzenia"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "Pobieranie pełnej strony internetowej już wkrótce",
         "description": "Tytuł dla funkcji pobierania pełnej strony internetowej."

@@ -415,78 +415,24 @@
         "message": "Observação: Dependendo do tamanho da página, o download pode demorar alguns instantes.",
         "description": "Aviso sobre o tempo potencial de download para MHTML."
     },
-    "lang_en": {
-        "message": "Inglês",
-        "description": "A língua da extensão"
-    },
-    "lang_hi": {
-        "message": "Hindi",
-        "description": "A língua da extensão"
-    },
-    "lang_vi": {
-        "message": "Vietnamita",
-        "description": "A língua da extensão"
-    },
-    "lang_pl": {
-        "message": "Polonês",
-        "description": "A língua da extensão"
-    },
-    "lang_fil": {
-        "message": "Filipino",
-        "description": "A língua da extensão"
-    },
-    "lang_ur": {
-        "message": "Urdu",
-        "description": "A língua da extensão"
-    },
-    "lang_he": {
-        "message": "Hebraico",
-        "description": "A língua da extensão"
-    },
-    "lang_tr": {
-        "message": "Turco",
-        "description": "A língua da extensão"
-    },
-    "lang_es": {
-        "message": "Espanhol",
-        "description": "A língua da extensão"
-    },
-    "lang_ru": {
-        "message": "Russo",
-        "description": "A língua da extensão"
-    },
-    "lang_pt": {
-        "message": "Português",
-        "description": "A língua da extensão"
-    },
-    "lang_it": {
-        "message": "Italiano",
-        "description": "A língua da extensão"
-    },
-    "lang_de": {
-        "message": "Alemão",
-        "description": "A língua da extensão"
-    },
-    "lang_fr": {
-        "message": "Francês",
-        "description": "A língua da extensão"
-    },
-    "lang_zh": {
-        "message": "Chinês",
-        "description": "A língua da extensão"
-    },
-    "lang_nl": {
-        "message": "Holandês",
-        "description": "A língua da extensão"
-    },
-    "lang_id": {
-        "message": "Indonésio",
-        "description": "A língua da extensão"
-    },
-    "lang_bn": {
-        "message": "Bengali",
-        "description": "A língua da extensão"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "Download da página da web completa em breve",
         "description": "Título para o recurso de download da página da web completa."

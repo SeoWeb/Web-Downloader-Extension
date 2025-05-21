@@ -415,78 +415,24 @@
         "message": "অনুগ্রহ করে মনে রাখবেন: পৃষ্ঠার আকারের উপর নির্ভর করে, ডাউনলোড হতে কয়েক মুহূর্ত সময় লাগতে পারে।",
         "description": "MHTML এর জন্য সম্ভাব্য ডাউনলোড সময় সম্পর্কে বিজ্ঞপ্তি।"
     },
-    "lang_en": {
-        "message": "ইংরেজি",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_hi": {
-        "message": "হিন্দি",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_vi": {
-        "message": "ভিয়েতনামী",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_pl": {
-        "message": "পোলিশ",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_fil": {
-        "message": "ফিলিপিনো",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_ur": {
-        "message": "উর্দু",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_he": {
-        "message": "হিব্রু",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_tr": {
-        "message": "তুর্কি",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_es": {
-        "message": "স্প্যানিশ",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_ru": {
-        "message": "রাশিয়ান",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_pt": {
-        "message": "পর্তুগিজ",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_it": {
-        "message": "ইতালীয়",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_de": {
-        "message": "জার্মান",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_fr": {
-        "message": "ফরাসি",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_zh": {
-        "message": "চীনা",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_nl": {
-        "message": "ডাচ",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_id": {
-        "message": "ইন্দোনেশীয়",
-        "description": "এক্সটেনশনের ভাষা"
-    },
-    "lang_bn": {
-        "message": "বাংলা",
-        "description": "এক্সটেনশনের ভাষা"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "পূর্ণ ওয়েব পেজ ডাউনলোড শীঘ্রই আসছে",
         "description": "পূর্ণ ওয়েব পেজ ডাউনলোড বৈশিষ্ট্যের জন্য শিরোনাম।"

@@ -415,78 +415,24 @@
         "message": "请注意：根据页面大小，下载可能需要几秒钟。",
         "description": "关于 MHTML 的潜在下载时间的通知。"
     },
-    "lang_en": {
-        "message": "英语",
-        "description": "扩展程序的语言"
-    },
-    "lang_hi": {
-        "message": "印地语",
-        "description": "扩展程序的语言"
-    },
-    "lang_vi": {
-        "message": "越南语",
-        "description": "扩展程序的语言"
-    },
-    "lang_pl": {
-        "message": "波兰语",
-        "description": "扩展程序的语言"
-    },
-    "lang_fil": {
-        "message": "菲律宾语",
-        "description": "扩展程序的语言"
-    },
-    "lang_ur": {
-        "message": "乌尔都语",
-        "description": "扩展程序的语言"
-    },
-    "lang_he": {
-        "message": "希伯来语",
-        "description": "扩展程序的语言"
-    },
-    "lang_tr": {
-        "message": "土耳其语",
-        "description": "扩展程序的语言"
-    },
-    "lang_es": {
-        "message": "西班牙语",
-        "description": "扩展程序的语言"
-    },
-    "lang_ru": {
-        "message": "俄语",
-        "description": "扩展程序的语言"
-    },
-    "lang_pt": {
-        "message": "葡萄牙语",
-        "description": "扩展程序的语言"
-    },
-    "lang_it": {
-        "message": "意大利语",
-        "description": "扩展程序的语言"
-    },
-    "lang_de": {
-        "message": "德语",
-        "description": "扩展程序的语言"
-    },
-    "lang_fr": {
-        "message": "法语",
-        "description": "扩展程序的语言"
-    },
-    "lang_zh": {
-        "message": "中文",
-        "description": "扩展程序的语言"
-    },
-    "lang_nl": {
-        "message": "荷兰语",
-        "description": "扩展程序的语言"
-    },
-    "lang_id": {
-        "message": "印度尼西亚语",
-        "description": "扩展程序的语言"
-    },
-    "lang_bn": {
-        "message": "孟加拉语",
-        "description": "扩展程序的语言"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "完整网页下载即将推出",
         "description": "完整网页下载功能的标题。"

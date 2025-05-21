@@ -415,78 +415,24 @@
         "message": "Nota: a seconda delle dimensioni della pagina, il download potrebbe richiedere alcuni istanti.",
         "description": "Avviso sul potenziale tempo di download per MHTML."
     },
-    "lang_en": {
-        "message": "Inglese",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_hi": {
-        "message": "Hindi",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_vi": {
-        "message": "Vietnamita",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_pl": {
-        "message": "Polacco",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_fil": {
-        "message": "Filippino",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_ur": {
-        "message": "Urdu",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_he": {
-        "message": "Ebraico",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_tr": {
-        "message": "Turco",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_es": {
-        "message": "Spagnolo",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_ru": {
-        "message": "Russo",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_pt": {
-        "message": "Portoghese",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_it": {
-        "message": "Italiano",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_de": {
-        "message": "Tedesco",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_fr": {
-        "message": "Francese",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_zh": {
-        "message": "Cinese",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_nl": {
-        "message": "Olandese",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_id": {
-        "message": "Bahasa Indonesia",
-        "description": "La lingua dell'estensione"
-    },
-    "lang_bn": {
-        "message": "Bengali",
-        "description": "La lingua dell'estensione"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "Download pagina Web completa in arrivo",
         "description": "Titolo per la funzionalità di download della pagina Web completa."

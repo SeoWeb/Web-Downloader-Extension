@@ -415,78 +415,24 @@
         "message": "براہ کرم نوٹ کریں: صفحہ کے سائز پر منحصر ہے، ڈاؤن لوڈ میں کچھ لمحے لگ سکتے ہیں۔",
         "description": "MHTML کے لیے ممکنہ ڈاؤن لوڈ کے وقت کے بارے میں اطلاع۔"
     },
-    "lang_en": {
-        "message": "انگریزی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_hi": {
-        "message": "ہندی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_vi": {
-        "message": "ویتنامی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_pl": {
-        "message": "پولش",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_fil": {
-        "message": "فلپینو",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_ur": {
-        "message": "اردو",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_he": {
-        "message": "عبرانی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_tr": {
-        "message": "ترکی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_es": {
-        "message": "ہسپانوی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_ru": {
-        "message": "روسی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_pt": {
-        "message": "پرتگالی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_it": {
-        "message": "اطالوی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_de": {
-        "message": "جرمن",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_fr": {
-        "message": "فرانسیسی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_zh": {
-        "message": "چینی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_nl": {
-        "message": "ڈچ",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_id": {
-        "message": "انڈونیشیائی",
-        "description": "ایکسٹینشن کی زبان"
-    },
-    "lang_bn": {
-        "message": "بنگالی",
-        "description": "ایکسٹینشن کی زبان"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "مکمل ویب پیج ڈاؤن لوڈ جلد آرہا ہے",
         "description": "مکمل ویب پیج ڈاؤن لوڈ فیچر کے لیے عنوان۔"

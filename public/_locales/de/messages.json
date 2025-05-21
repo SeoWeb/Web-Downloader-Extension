@@ -415,78 +415,24 @@
         "message": "Bitte beachten Sie: Je nach Seitengröße kann der Download einige Momente dauern.",
         "description": "Hinweis zur potenziellen Download-Zeit für MHTML."
     },
-    "lang_en": {
-        "message": "Englisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_hi": {
-        "message": "Hindi",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_vi": {
-        "message": "Vietnamesisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_pl": {
-        "message": "Polnisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_fil": {
-        "message": "Filipino",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_ur": {
-        "message": "Urdu",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_he": {
-        "message": "Hebräisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_tr": {
-        "message": "Türkisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_es": {
-        "message": "Spanisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_ru": {
-        "message": "Russisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_pt": {
-        "message": "Portugiesisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_it": {
-        "message": "Italienisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_de": {
-        "message": "Deutsch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_fr": {
-        "message": "Französisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_zh": {
-        "message": "Chinesisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_nl": {
-        "message": "Niederländisch",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_id": {
-        "message": "Bahasa Indonesia",
-        "description": "Die Sprache der Erweiterung"
-    },
-    "lang_bn": {
-        "message": "Bengalisch",
-        "description": "Die Sprache der Erweiterung"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "Vollständiger Webseiten-Download in Kürze verfügbar",
         "description": "Titel für die Funktion zum Herunterladen der vollständigen Webseite."

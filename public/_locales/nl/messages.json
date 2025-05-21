@@ -415,78 +415,24 @@
         "message": "Let op: afhankelijk van de paginagrootte kan het downloaden even duren.",
         "description": "Opmerking over de potentiële downloadtijd voor MHTML."
     },
-    "lang_en": {
-        "message": "Engels",
-        "description": "De taal van de extensie"
-    },
-    "lang_hi": {
-        "message": "Hindi",
-        "description": "De taal van de extensie"
-    },
-    "lang_vi": {
-        "message": "Vietnamees",
-        "description": "De taal van de extensie"
-    },
-    "lang_pl": {
-        "message": "Pools",
-        "description": "De taal van de extensie"
-    },
-    "lang_fil": {
-        "message": "Filipino",
-        "description": "De taal van de extensie"
-    },
-    "lang_ur": {
-        "message": "Urdu",
-        "description": "De taal van de extensie"
-    },
-    "lang_he": {
-        "message": "Hebreeuws",
-        "description": "De taal van de extensie"
-    },
-    "lang_tr": {
-        "message": "Turks",
-        "description": "De taal van de extensie"
-    },
-    "lang_es": {
-        "message": "Spaans",
-        "description": "De taal van de extensie"
-    },
-    "lang_ru": {
-        "message": "Russisch",
-        "description": "De taal van de extensie"
-    },
-    "lang_pt": {
-        "message": "Portugees",
-        "description": "De taal van de extensie"
-    },
-    "lang_it": {
-        "message": "Italiaans",
-        "description": "De taal van de extensie"
-    },
-    "lang_de": {
-        "message": "Duits",
-        "description": "De taal van de extensie"
-    },
-    "lang_fr": {
-        "message": "Frans",
-        "description": "De taal van de extensie"
-    },
-    "lang_zh": {
-        "message": "Chinees",
-        "description": "De taal van de extensie"
-    },
-    "lang_nl": {
-        "message": "Nederlands",
-        "description": "De taal van de extensie"
-    },
-    "lang_id": {
-        "message": "Bahasa Indonesia",
-        "description": "De taal van de extensie"
-    },
-    "lang_bn": {
-        "message": "Bengaals",
-        "description": "De taal van de extensie"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "Downloaden van volledige webpagina binnenkort beschikbaar",
         "description": "Titel voor de functie voor het downloaden van volledige webpagina's."

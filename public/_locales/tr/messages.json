@@ -415,78 +415,24 @@
         "message": "Lütfen unutmayın: Sayfa boyutuna bağlı olarak, indirme birkaç saniye sürebilir.",
         "description": "MHTML için potansiyel indirme süresi hakkında bildirim."
     },
-    "lang_en": {
-        "message": "İngilizce",
-        "description": "Uzantının dili"
-    },
-    "lang_hi": {
-        "message": "Hintçe",
-        "description": "Uzantının dili"
-    },
-    "lang_vi": {
-        "message": "Vietnamca",
-        "description": "Uzantının dili"
-    },
-    "lang_pl": {
-        "message": "Lehçe",
-        "description": "Uzantının dili"
-    },
-    "lang_fil": {
-        "message": "Filipino",
-        "description": "Uzantının dili"
-    },
-    "lang_ur": {
-        "message": "Urduca",
-        "description": "Uzantının dili"
-    },
-    "lang_he": {
-        "message": "İbranice",
-        "description": "Uzantının dili"
-    },
-    "lang_tr": {
-        "message": "Türkçe",
-        "description": "Uzantının dili"
-    },
-    "lang_es": {
-        "message": "İspanyolca",
-        "description": "Uzantının dili"
-    },
-    "lang_ru": {
-        "message": "Rusça",
-        "description": "Uzantının dili"
-    },
-    "lang_pt": {
-        "message": "Portekizce",
-        "description": "Uzantının dili"
-    },
-    "lang_it": {
-        "message": "İtalyanca",
-        "description": "Uzantının dili"
-    },
-    "lang_de": {
-        "message": "Almanca",
-        "description": "Uzantının dili"
-    },
-    "lang_fr": {
-        "message": "Fransızca",
-        "description": "Uzantının dili"
-    },
-    "lang_zh": {
-        "message": "Çince",
-        "description": "Uzantının dili"
-    },
-    "lang_nl": {
-        "message": "Hollandaca",
-        "description": "Uzantının dili"
-    },
-    "lang_id": {
-        "message": "Endonezyaca",
-        "description": "Uzantının dili"
-    },
-    "lang_bn": {
-        "message": "Bengalce",
-        "description": "Uzantının dili"
-    },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "full_web_page_download_title_v2_coming_soon": {
         "message": "Tam Web Sayfası İndirme Yakında",
         "description": "Tam web sayfası indirme özelliği için başlık."
