@@ -20,7 +20,7 @@ interface LanguageState {
 
 const getDirection = (langCode: LanguageCode): LanguageDirection => {
   // Add more RTL languages here if needed
-  if (langCode === "ur" || langCode === "he") {
+  if (langCode === "ur" || langCode === "he" || langCode === 'ar' || langCode === 'fa' || langCode === 'pnb') {
     return "rtl";
   }
   return "ltr";

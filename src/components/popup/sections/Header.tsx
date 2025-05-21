@@ -1,24 +1,12 @@
 // src/components/popup/sections/Header.tsx
 import { Button } from "../../ui/button";
-import { Download, HelpCircle, Globe } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../ui/select";
+import { Download, HelpCircle } from "lucide-react";
 import { useLanguageStore } from "../../../store/languageStore";
-import { LanguageCode, languages } from "../../../common/chrome/getTranslation";
 import LanguageSelect from "./LanguageSelect";
 
 export default function Header() {
-  const { direction, currentLanguage, setLanguage, getTranslation } =
+  const { direction, getTranslation } =
     useLanguageStore();
-
-  const handleLanguageChange = (value: string) => {
-    setLanguage(value as LanguageCode);
-  };
 
   return (
     <header className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-1 shadow-md">

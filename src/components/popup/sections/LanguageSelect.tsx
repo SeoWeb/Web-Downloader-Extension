@@ -42,6 +42,7 @@ export default function LanguageSelect() {
           <SelectItem
             key={code}
             value={code}
+            currentValue={currentLanguage}
             className="text-gray-900 hover:bg-gray-100 py-1"
           >
             {getTranslation(

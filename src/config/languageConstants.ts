@@ -21,7 +21,7 @@ export const LANG_NL = "Nederlands";        // 25 million speakers
 export const LANG_HE = "עברית";              // 5 million speakers
 
 // TODO: add new languages
-export const LANG_PA = "ਪੰਜਾਬੀ";              // 150 million speakers
+export const LANG_PNB = "ਪੰਜਾਬੀ";              // 150 million speakers
 export const LANG_JA = "日本語";             // 123 million speakers
 export const LANG_AR = "العربية";           // 84 million speakers
 export const LANG_MR = "मराठी";               // 83 million speakers

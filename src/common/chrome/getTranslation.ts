@@ -17,7 +17,7 @@ export const languages: Record<string, string> = {
   fil: "Filipino",
   nl: "Dutch",
   he: "Hebrew",
-  pa: 'pa',
+  pnb: 'pnb',
   ja: 'ja',
   ar: 'ar',
   mr: 'mr',

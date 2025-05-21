@@ -26,23 +26,26 @@ SelectTrigger.displayName = SelectPrimitives.Trigger.displayName;
 const SelectValue = SelectPrimitives.Value;
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitives.Item>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitives.Item>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof SelectPrimitives.Item> & { currentValue?: string }
+>(({ className, children, currentValue, ...props }, ref) => {
   const { direction } = useLanguageStore();
   const isRtl = direction === 'rtl';
   const justifyContent = isRtl ? 'flex-row-reverse' : '';
+  const isSelected = props.value === currentValue;
   return (
     <SelectPrimitives.Item
       ref={ref}
       className={cn(
-        'relative cursor-default select-none py-2 px-2 text-sm outline-none data-[disabled]:opacity-70 data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground flex items-center justify-start justify-items-start gap-1',
+        'relative cursor-default select-none py-2 px-2 text-sm outline-none flex items-center justify-start justify-items-start gap-1',
         justifyContent,
+        'data-[disabled]:opacity-70 data-[state=checked]:bg-blue-100',
+        isSelected ? 'bg-blue-100' : 'bg-transparent',
         className
       )}
       {...props}
     >
-      <Check className="h-4 w-4" />
-      {children}
+      <Check className={cn("h-4 w-4", isSelected ? "text-blue-600" : 'text-neutral-300')} />
+        {children}
     </SelectPrimitives.Item>
   )
 });
