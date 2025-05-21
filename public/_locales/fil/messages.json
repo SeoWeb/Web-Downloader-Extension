@@ -1,39 +1,39 @@
 {
   "title": {
     "message": "Web Page & Site Downloader",
-    "description": "Ang pamagat ng extension"
+    "description": "The title of the extension"
   },
   "description": {
     "message": "Hinahayaan ka ng Web Page at Site Downloader na mag-download ng buong website—kabilang ang lahat ng naka-link na mga pahina at mapagkukunan—para sa pagtingin offline.",
-    "description": "Ang paglalarawan ng extension"
+    "description": "The description of the extension"
   },
   "help": {
     "message": "Tulong",
-    "description": "Ang teksto ng pindutan ng tulong"
+    "description": "The help button text"
   },
   "download_mode": {
     "message": "Mode ng Pag-download",
-    "description": "Ang label para sa pagpili ng mode ng pag-download"
+    "description": "The label for the download mode selection"
   },
   "single_download_description": {
     "message": "I-download lamang ang kasalukuyang pahina kasama ang lahat ng mga asset nito.",
-    "description": "Paglalarawan para sa single download mode"
+    "description": "Description for the single download mode"
   },
   "site_download_description": {
     "message": "I-download ang buong site, kasama ang lahat ng naka-link na mga pahina at mapagkukunan.",
-    "description": "Paglalarawan para sa site download mode"
+    "description": "Description for the site download mode"
   },
   "single_page": {
     "message": "Isang Pahina",
-    "description": "Label para sa single page download mode"
+    "description": "Label for the single page download mode"
   },
   "whole_website": {
     "message": "Buong Website",
-    "description": "Label para sa whole website download mode"
+    "description": "Label for the whole website download mode"
   },
   "single_file": {
     "message": "Isang File",
-    "description": "Label para sa single file download mode"
+    "description": "Label for the single file download mode"
   },
   "loading": {
     "message": "Naglo-load...",
@@ -45,234 +45,234 @@
   },
   "not_downloadable": {
     "message": "Ang pahinang ito ay hindi mada-download",
-    "description": "Mensahe na nagpapahiwatig na ang pahina ay hindi mada-download"
+    "description": "Message indicating that the page is not downloadable"
   },
   "close_sidepanel_message": {
     "message": "Isara muna ang sidepanel.",
-    "description": "Mensahe upang isara ang side panel"
+    "description": "Message to close the side panel"
   },
   "permissions_title": {
     "message": "Mga Kinakailangang Pahintulot",
-    "description": "Pamagat para sa seksyon ng mga pahintulot"
+    "description": "Title for permissions section"
   },
   "permissions_message": {
     "message": "Kailangan ang mga sumusunod na pahintulot",
-    "description": "Pamagat para sa seksyon ng mga pahintulot"
+    "description": "Title for permissions section"
   },
   "requesting_permissions": {
     "message": "Humihiling ng mga pahintulot...",
-    "description": "Mensahe na nagpapahiwatig na humihiling ng mga pahintulot"
+    "description": "Message indicating that permissions are being requested"
   },
   "grant_permissions": {
     "message": "Magbigay ng Pahintulot",
-    "description": "Teksto ng button upang magbigay ng pahintulot"
+    "description": "Button text to grant permissions"
   },
   "permissions_granted": {
     "message": "Mga Pahintulot na Ibinigay!",
-    "description": "Mensahe na nagpapahiwatig na ang mga pahintulot ay ibinigay"
+    "description": "Message indicating that permissions have been granted"
   },
   "permissions_intro": {
     "message": "Ang extension na ito ay nangangailangan ng mga sumusunod na pahintulot upang gumana nang tama",
-    "description": "Panimulang mensahe para sa mga pahintulot"
+    "description": "Introduction message for permissions"
   },
   "permission_activeTab": {
     "message": "Aktibong Tab",
-    "description": "Pahintulot na ma-access ang aktibong tab"
+    "description": "Permission to access the active tab"
   },
   "permission_activeTab_description": {
     "message": "Pinapayagan ang extension na ma-access ang aktibong tab.",
-    "description": "Paglalarawan para sa pahintulot ng aktibong tab"
+    "description": "Description for active tab permission"
   },
   "permission_scripting": {
     "message": "Scripting",
-    "description": "Pahintulot na gumamit ng scripting"
+    "description": "Permission to use scripting"
   },
   "permission_scripting_description": {
     "message": "Mag-inject ng mga script sa kasalukuyang tab upang suriin ang nilalaman.",
-    "description": "Paglalarawan para sa pahintulot sa scripting"
+    "description": "Description for scripting permission"
   },
   "permission_storage": {
     "message": "Imbakan",
-    "description": "Pahintulot na gumamit ng imbakan"
+    "description": "Permission to use storage"
   },
   "permission_storage_description": {
     "message": "Mag-imbak ng mga kagustuhan at setting ng user.",
-    "description": "Paglalarawan para sa pahintulot sa imbakan"
+    "description": "Description for storage permission"
   },
   "permission_downloads": {
     "message": "Mga Download",
-    "description": "Pahintulot na gumamit ng mga download"
+    "description": "Permission to use downloads"
   },
   "permission_downloads_description": {
     "message": "Mag-download ng mga file sa computer ng user.",
-    "description": "Paglalarawan para sa pahintulot sa pag-download"
+    "description": "Description for downloads permission"
   },
   "permission_request_error": {
     "message": "May naganap na error habang humihiling ng mga pahintulot.",
-    "description": "Error message para sa kahilingan ng pahintulot"
+    "description": "Error message for permission request"
   },
   "permission_not_granted_error": {
     "message": "Ang mga pahintulot ay hindi ibinigay. Mangyaring magbigay ng mga pahintulot upang magpatuloy.",
-    "description": "Error message para sa pahintulot na hindi ibinigay"
+    "description": "Error message for permission not granted"
   },
   "permission_check_error": {
     "message": "Nabigo na suriin ang mga pahintulot. Mangyaring subukan muli.",
-    "description": "Error message para sa pagsusuri ng pahintulot"
+    "description": "Error message for permission check"
   },
   "button_options": {
     "message": "Mga Opsyon",
-    "description": "Teksto ng button para sa mga opsyon"
+    "description": "Button text for options"
   },
   "button_download_page": {
     "message": "I-download ang Pahina",
-    "description": "Teksto ng button para sa pag-download"
+    "description": "Button text for download"
   },
   "button_download_website": {
     "message": "I-download ang Website",
-    "description": "Teksto ng button para sa pag-download"
+    "description": "Button text for download"
   },
   "button_download_single_file": {
     "message": "I-download ang Isang File",
-    "description": "Teksto ng button para sa pag-download ng isang file"
+    "description": "Button text for single file download"
   },
   "filtering_title": {
     "message": "Pag-filter ng Nilalaman",
-    "description": "Pamagat para sa seksyon ng pag-filter"
+    "description": "Title for filtering section"
   },
   "filtering_label": {
     "message": "I-filter ang mga Kasamang Asset Ayon sa",
-    "description": "Label para sa mga opsyon sa pag-filter"
+    "description": "Label for filtering options"
   },
   "filtering_by_type": {
     "message": "Uri",
-    "description": "Label para sa pag-filter ayon sa uri"
+    "description": "Label for filtering by type"
   },
   "filtering_by_extension": {
     "message": "Extension ng File",
-    "description": "Label para sa pag-filter ayon sa extension"
+    "description": "Label for filtering by extension"
   },
   "filter_by_image": {
     "message": "Larawan",
-    "description": "Label para sa pag-filter ayon sa larawan"
+    "description": "Label for filtering by image"
   },
   "filter_by_script": {
     "message": "Script",
-    "description": "Label para sa pag-filter ayon sa script"
+    "description": "Label for filtering by script"
   },
   "filter_by_stylesheet": {
     "message": "Stylesheet",
-    "description": "Label para sa pag-filter ayon sa stylesheet"
+    "description": "Label for filtering by stylesheet"
   },
   "filter_by_font": {
     "message": "Font",
-    "description": "Label para sa pag-filter ayon sa font"
+    "description": "Label for filtering by font"
   },
   "filter_by_markup": {
     "message": "Markup",
-    "description": "Label para sa pag-filter ayon sa Markup"
+    "description": "Label for filtering by Markup"
   },
   "filter_by_document": {
     "message": "Dokumento",
-    "description": "Label para sa pag-filter ayon sa Dokumento"
+    "description": "Label for filtering by Document"
   },
   "filter_by_spreadsheet": {
     "message": "Spreadsheet",
-    "description": "Label para sa pag-filter ayon sa Spreadsheet"
+    "description": "Label for filtering by Spreadsheet"
   },
   "filter_by_video": {
     "message": "Video",
-    "description": "Label para sa pag-filter ayon sa Video"
+    "description": "Label for filtering by Video"
   },
   "filter_by_audio": {
     "message": "Audio",
-    "description": "Label para sa pag-filter ayon sa Audio"
+    "description": "Label for filtering by Audio"
   },
   "filter_by_archive": {
     "message": "Archive",
-    "description": "Label para sa pag-filter ayon sa Archive"
+    "description": "Label for filtering by Archive"
   },
   "filter_by_json": {
     "message": "JSON",
-    "description": "Label para sa pag-filter ayon sa JSON"
+    "description": "Label for filtering by JSON"
   },
   "filter_by_executable": {
     "message": "Executable",
-    "description": "Label para sa pag-filter ayon sa Executable"
+    "description": "Label for filtering by Executable"
   },
   "filter_by_other": {
     "message": "Iba pa",
-    "description": "Label para sa pag-filter ayon sa Iba pa"
+    "description": "Label for filtering by Other"
   },
   "single_file_title": {
     "message": "Impormasyon sa Pag-download",
-    "description": "Pamagat para sa card ng pag-download ng isang file."
+    "description": "Title for the single file download card."
   },
   "single_file_download_intro": {
     "message": "Malapit mo nang i-download ang kasalukuyang web page bilang isang solong MHTML file (.mhtml).",
-    "description": "Panimula para sa pag-download ng isang file na MHTML."
+    "description": "Introduction for single file MHTML download."
   },
   "single_file_format_mhtml_title": {
     "message": "Format ng MHTML",
-    "description": "Pamagat para sa paliwanag ng format ng MHTML."
+    "description": "Title for MHTML format explanation."
   },
   "single_file_format_mhtml_desc": {
     "message": "Sine-save ng MHTML (MIME HTML) ang lahat ng nilalaman ng pahina (HTML, CSS, JavaScript, mga larawan) sa isang solong file.",
-    "description": "Paglalarawan ng format ng MHTML."
+    "description": "Description of MHTML format."
   },
   "single_file_includes_all_title": {
     "message": "Lahat-Lahat",
-    "description": "Pamagat para sa 'kasama ang lahat ng mga mapagkukunan' na punto."
+    "description": "Title for 'includes all resources' point."
   },
   "single_file_includes_all_desc": {
     "message": "Tinitiyak na kasama ang lahat ng mga mapagkukunan, na ginagawang ganap na gumagana ang pahina offline.",
-    "description": "Paglalarawan para sa 'kasama ang lahat ng mga mapagkukunan' na punto."
+    "description": "Description for 'includes all resources' point."
   },
   "single_file_offline_viewing_title": {
     "message": "Pagtingin Offline",
-    "description": "Pamagat para sa benepisyo ng pagtingin offline."
+    "description": "Title for offline viewing benefit."
   },
   "single_file_offline_viewing_desc": {
     "message": "Mainam para sa pag-archive ng mga pahina o pagtingin sa mga ito sa ibang pagkakataon nang walang koneksyon sa internet.",
-    "description": "Paglalarawan para sa benepisyo ng pagtingin offline."
+    "description": "Description for offline viewing benefit."
   },
   "single_file_browser_support_title": {
     "message": "Suporta sa Browser",
-    "description": "Pamagat para sa pagiging tugma sa browser."
+    "description": "Title for browser compatibility."
   },
   "single_file_browser_support_desc": {
     "message": "Karamihan sa mga modernong web browser ay maaaring magbukas ng mga .mhtml file.",
-    "description": "Paglalarawan para sa pagiging tugma sa browser."
+    "description": "Description for browser compatibility."
   },
   "single_file_download_time_notice": {
     "message": "Pakitandaan: Depende sa laki ng pahina, maaaring tumagal ng ilang sandali ang pag-download.",
-    "description": "Pansin tungkol sa potensyal na oras ng pag-download para sa MHTML."
+    "description": "Notice about potential download time for MHTML."
   },
   "full_web_page_download_title_v2_coming_soon": {
     "message": "Malapit nang mag-download ng Buong Web Page",
-    "description": "Pamagat para sa tampok na pag-download ng buong web page."
+    "description": "Title for the full web page download feature."
   },
   "full_web_page_download_subtitle_v2_next_version": {
     "message": "Available ang feature na ito sa susunod na bersyon.",
-    "description": "Subtitle para sa tampok na pag-download ng buong web page."
+    "description": "Subtitle for the full web page download feature."
   },
   "permission_pageCapture": {
     "message": "Pagkuha ng Pahina",
-    "description": "Pahintulot na makuha ang kasalukuyang pahina"
+    "description": "Permission to capture the current page"
   },
   "permission_pageCapture_description": {
     "message": "Pinapayagan ang extension na makuha ang nilalaman ng kasalukuyang pahina.",
-    "description": "Paglalarawan para sa pahintulot sa pagkuha ng pahina"
+    "description": "Description for page capture permission"
   },
   "tooltip_toggle_scroll_mode": {
     "message": "I-toggle sa pagitan ng awtomatiko at manu-manong pag-scroll ng pahina.",
-    "description": "Tooltip para sa pindutan ng toggle ng scroll mode"
+    "description": "Tooltip for the scroll mode toggle button"
   },
   "text_auto_mode": {
     "message": "Awtomatiko",
-    "description": "Teksto para sa awtomatikong scroll mode"
+    "description": "Text for auto scroll mode"
   },
   "text_manual_mode": {
     "message": "Manu-mano",
-    "description": "Teksto para sa manual scroll mode"
+    "description": "Text for manual scroll mode"
   }
 }

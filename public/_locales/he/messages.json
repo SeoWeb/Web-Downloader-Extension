@@ -1,278 +1,278 @@
 {
   "title": {
     "message": "Web Page & Site Downloader",
-    "description": "הכותרת של התוסף"
+    "description": "The title of the extension"
   },
   "description": {
     "message": "Web Page and Site Downloader מאפשר לך להוריד אתרי אינטרנט שלמים - כולל את כל הדפים והמשאבים המקושרים - לצפייה במצב לא מקוון.",
-    "description": "התיאור של התוסף"
+    "description": "The description of the extension"
   },
   "help": {
     "message": "עזרה",
-    "description": "טקסט לחצן העזרה"
+    "description": "The help button text"
   },
   "download_mode": {
     "message": "מצב הורדה",
-    "description": "התווית לבחירת מצב ההורדה"
+    "description": "The label for the download mode selection"
   },
   "single_download_description": {
     "message": "הורד רק את הדף הנוכחי עם כל הנכסים שלו.",
-    "description": "תיאור עבור מצב הורדה יחיד"
+    "description": "Description for the single download mode"
   },
   "site_download_description": {
     "message": "הורד את כל האתר, כולל את כל הדפים והמשאבים המקושרים.",
-    "description": "תיאור עבור מצב הורדת אתר"
+    "description": "Description for the site download mode"
   },
   "single_page": {
     "message": "דף יחיד",
-    "description": "תווית עבור מצב הורדת דף יחיד"
+    "description": "Label for the single page download mode"
   },
   "whole_website": {
     "message": "אתר אינטרנט שלם",
-    "description": "תווית עבור מצב הורדת אתר אינטרנט שלם"
+    "description": "Label for the whole website download mode"
   },
   "single_file": {
     "message": "קובץ יחיד",
-    "description": "תווית עבור מצב הורדת קובץ יחיד"
+    "description": "Label for the single file download mode"
   },
   "loading": {
     "message": "טוען...",
-    "description": "הודעת טעינה"
+    "description": "Loading message"
   },
   "downloading": {
     "message": "מוריד...",
-    "description": "הודעת הורדה"
+    "description": "Downloading message"
   },
   "not_downloadable": {
     "message": "דף זה אינו ניתן להורדה",
-    "description": "הודעה המציינת כי לא ניתן להוריד את הדף"
+    "description": "Message indicating that the page is not downloadable"
   },
   "close_sidepanel_message": {
     "message": "סגור תחילה את לוח הצד.",
-    "description": "הודעה לסגירת לוח הצד"
+    "description": "Message to close the side panel"
   },
   "permissions_title": {
     "message": "הרשאות נדרשות",
-    "description": "כותרת עבור קטע ההרשאות"
+    "description": "Title for permissions section"
   },
   "permissions_message": {
     "message": "ההרשאות הבאות נדרשות",
-    "description": "כותרת עבור קטע ההרשאות"
+    "description": "Title for permissions section"
   },
   "requesting_permissions": {
     "message": "מבקש הרשאות...",
-    "description": "הודעה המציינת כי מבוקשות הרשאות"
+    "description": "Message indicating that permissions are being requested"
   },
   "grant_permissions": {
     "message": "תן הרשאות",
-    "description": "טקסט לחצן להענקת הרשאות"
+    "description": "Button text to grant permissions"
   },
   "permissions_granted": {
     "message": "ההרשאות הוענקו!",
-    "description": "הודעה המציינת כי ההרשאות הוענקו"
+    "description": "Message indicating that permissions have been granted"
   },
   "permissions_intro": {
     "message": "תוסף זה דורש את ההרשאות הבאות כדי לתפקד כראוי",
-    "description": "הודעת מבוא להרשאות"
+    "description": "Introduction message for permissions"
   },
   "permission_activeTab": {
     "message": "לשונית פעילה",
-    "description": "הרשאה לגשת ללשונית הפעילה"
+    "description": "Permission to access the active tab"
   },
   "permission_activeTab_description": {
     "message": "מאפשר לתוסף לגשת ללשונית הפעילה.",
-    "description": "תיאור עבור הרשאת לשונית פעילה"
+    "description": "Description for active tab permission"
   },
   "permission_scripting": {
     "message": "Scripting",
-    "description": "הרשאה להשתמש ב-scripting"
+    "description": "Permission to use scripting"
   },
   "permission_scripting_description": {
     "message": "הזרק סקריפטים ללשונית הנוכחית כדי לנתח תוכן.",
-    "description": "תיאור עבור הרשאת scripting"
+    "description": "Description for scripting permission"
   },
   "permission_storage": {
     "message": "אחסון",
-    "description": "הרשאה להשתמש באחסון"
+    "description": "Permission to use storage"
   },
   "permission_storage_description": {
     "message": "אחסן העדפות והגדרות משתמש.",
-    "description": "תיאור עבור הרשאת אחסון"
+    "description": "Description for storage permission"
   },
   "permission_downloads": {
     "message": "הורדות",
-    "description": "הרשאה להשתמש בהורדות"
+    "description": "Permission to use downloads"
   },
   "permission_downloads_description": {
     "message": "הורד קבצים למחשב של המשתמש.",
-    "description": "תיאור עבור הרשאת הורדות"
+    "description": "Description for downloads permission"
   },
   "permission_request_error": {
     "message": "אירעה שגיאה בעת בקשת הרשאות.",
-    "description": "הודעת שגיאה עבור בקשת הרשאה"
+    "description": "Error message for permission request"
   },
   "permission_not_granted_error": {
     "message": "ההרשאות לא הוענקו. אנא הענק הרשאות כדי להמשיך.",
-    "description": "הודעת שגיאה עבור הרשאה שלא הוענקה"
+    "description": "Error message for permission not granted"
   },
   "permission_check_error": {
     "message": "הבדיקה של ההרשאות נכשלה. אנא נסה שוב.",
-    "description": "הודעת שגיאה עבור בדיקת הרשאות"
+    "description": "Error message for permission check"
   },
   "button_options": {
     "message": "אפשרויות",
-    "description": "טקסט לחצן עבור אפשרויות"
+    "description": "Button text for options"
   },
   "button_download_page": {
     "message": "הורד דף",
-    "description": "טקסט לחצן עבור הורדה"
+    "description": "Button text for download"
   },
   "button_download_website": {
     "message": "הורד אתר",
-    "description": "טקסט לחצן עבור הורדה"
+    "description": "Button text for download"
   },
   "button_download_single_file": {
     "message": "הורד קובץ יחיד",
-    "description": "טקסט לחצן עבור הורדת קובץ יחיד"
+    "description": "Button text for single file download"
   },
   "filtering_title": {
     "message": "סינון תוכן",
-    "description": "כותרת עבור קטע סינון"
+    "description": "Title for filtering section"
   },
   "filtering_label": {
     "message": "סנן נכסים כלולים לפי",
-    "description": "תווית עבור אפשרויות סינון"
+    "description": "Label for filtering options"
   },
   "filtering_by_type": {
     "message": "סוג",
-    "description": "תווית עבור סינון לפי סוג"
+    "description": "Label for filtering by type"
   },
   "filtering_by_extension": {
     "message": "סיומת קובץ",
-    "description": "תווית עבור סינון לפי סיומת"
+    "description": "Label for filtering by extension"
   },
   "filter_by_image": {
     "message": "תמונה",
-    "description": "תווית עבור סינון לפי תמונה"
+    "description": "Label for filtering by image"
   },
   "filter_by_script": {
     "message": "סקריפט",
-    "description": "תווית עבור סינון לפי סקריפט"
+    "description": "Label for filtering by script"
   },
   "filter_by_stylesheet": {
     "message": "גיליון סגנונות",
-    "description": "תווית עבור סינון לפי גיליון סגנונות"
+    "description": "Label for filtering by stylesheet"
   },
   "filter_by_font": {
     "message": "גופן",
-    "description": "תווית עבור סינון לפי גופן"
+    "description": "Label for filtering by font"
   },
   "filter_by_markup": {
     "message": "סימון",
-    "description": "תווית עבור סינון לפי סימון"
+    "description": "Label for filtering by Markup"
   },
   "filter_by_document": {
     "message": "מסמך",
-    "description": "תווית עבור סינון לפי מסמך"
+    "description": "Label for filtering by Document"
   },
   "filter_by_spreadsheet": {
     "message": "גיליון אלקטרוני",
-    "description": "תווית עבור סינון לפי גיליון אלקטרוני"
+    "description": "Label for filtering by Spreadsheet"
   },
   "filter_by_video": {
     "message": "וידאו",
-    "description": "תווית עבור סינון לפי וידאו"
+    "description": "Label for filtering by Video"
   },
   "filter_by_audio": {
     "message": "אודיו",
-    "description": "תווית עבור סינון לפי אודיו"
+    "description": "Label for filtering by Audio"
   },
   "filter_by_archive": {
     "message": "ארכיון",
-    "description": "תווית עבור סינון לפי ארכיון"
+    "description": "Label for filtering by Archive"
   },
   "filter_by_json": {
     "message": "JSON",
-    "description": "תווית עבור סינון לפי JSON"
+    "description": "Label for filtering by JSON"
   },
   "filter_by_executable": {
     "message": "ניתן להפעלה",
-    "description": "תווית עבור סינון לפי ניתן להפעלה"
+    "description": "Label for filtering by Executable"
   },
   "filter_by_other": {
     "message": "אחר",
-    "description": "תווית עבור סינון לפי אחר"
+    "description": "Label for filtering by Other"
   },
   "single_file_title": {
     "message": "מידע על הורדה",
-    "description": "כותרת עבור כרטיס הורדת קובץ יחיד."
+    "description": "Title for the single file download card."
   },
   "single_file_download_intro": {
     "message": "אתה עומד להוריד את דף האינטרנט הנוכחי כקובץ MHTML יחיד (.mhtml).",
-    "description": "מבוא להורדת קובץ MHTML יחיד."
+    "description": "Introduction for single file MHTML download."
   },
   "single_file_format_mhtml_title": {
     "message": "פורמט MHTML",
-    "description": "כותרת להסבר על פורמט MHTML."
+    "description": "Title for MHTML format explanation."
   },
   "single_file_format_mhtml_desc": {
     "message": "MHTML (MIME HTML) שומר את כל תוכן הדף (HTML, CSS, JavaScript, תמונות) בקובץ יחיד.",
-    "description": "תיאור של פורמט MHTML."
+    "description": "Description of MHTML format."
   },
   "single_file_includes_all_title": {
     "message": "הכל כלול",
-    "description": "כותרת עבור הנקודה 'כולל את כל המשאבים'."
+    "description": "Title for 'includes all resources' point."
   },
   "single_file_includes_all_desc": {
     "message": "מבטיח שכל המשאבים כלולים, מה שהופך את הדף לפונקציונלי לחלוטין במצב לא מקוון.",
-    "description": "תיאור עבור הנקודה 'כולל את כל המשאבים'."
+    "description": "Description for 'includes all resources' point."
   },
   "single_file_offline_viewing_title": {
     "message": "צפייה במצב לא מקוון",
-    "description": "כותרת עבור היתרון של צפייה במצב לא מקוון."
+    "description": "Title for offline viewing benefit."
   },
   "single_file_offline_viewing_desc": {
     "message": "אידיאלי לארכיון דפים או לצפייה בהם במועד מאוחר יותר ללא חיבור לאינטרנט.",
-    "description": "תיאור עבור היתרון של צפייה במצב לא מקוון."
+    "description": "Description for offline viewing benefit."
   },
   "single_file_browser_support_title": {
     "message": "תמיכת דפדפן",
-    "description": "כותרת עבור תאימות דפדפן."
+    "description": "Title for browser compatibility."
   },
   "single_file_browser_support_desc": {
     "message": "רוב דפדפני האינטרנט המודרניים יכולים לפתוח קבצי .mhtml.",
-    "description": "תיאור עבור תאימות דפדפן."
+    "description": "Description for browser compatibility."
   },
   "single_file_download_time_notice": {
     "message": "שימו לב: בהתאם לגודל הדף, ההורדה עשויה לארוך מספר רגעים.",
-    "description": "הודעה על זמן הורדה פוטנציאלי עבור MHTML."
+    "description": "Notice about potential download time for MHTML."
   },
   "full_web_page_download_title_v2_coming_soon": {
     "message": "הורדת דף אינטרנט מלא בקרוב",
-    "description": "כותרת עבור תכונת הורדת דף אינטרנט מלא."
+    "description": "Title for the full web page download feature."
   },
   "full_web_page_download_subtitle_v2_next_version": {
     "message": "תכונה זו תהיה זמינה בגרסה הבאה.",
-    "description": "כותרת משנה עבור תכונת הורדת דף אינטרנט מלא."
+    "description": "Subtitle for the full web page download feature."
   },
   "permission_pageCapture": {
     "message": "לכידת דף",
-    "description": "הרשאה ללכוד את הדף הנוכחי"
+    "description": "Permission to capture the current page"
   },
   "permission_pageCapture_description": {
     "message": "מאפשר לתוסף ללכוד את תוכן הדף הנוכחי.",
-    "description": "תיאור עבור הרשאת לכידת דף"
+    "description": "Description for page capture permission"
   },
   "tooltip_toggle_scroll_mode": {
     "message": "החלף בין גלילה אוטומטית לידנית של הדף.",
-    "description": "כלי עזר עבור לחצן החלפת מצב גלילה"
+    "description": "Tooltip for the scroll mode toggle button"
   },
   "text_auto_mode": {
     "message": "אוטומטי",
-    "description": "טקסט עבור מצב גלילה אוטומטי"
+    "description": "Text for auto scroll mode"
   },
   "text_manual_mode": {
     "message": "ידני",
-    "description": "טקסט עבור מצב גלילה ידני"
+    "description": "Text for manual scroll mode"
   }
 }

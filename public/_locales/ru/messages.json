@@ -1,278 +1,278 @@
 {
   "title": {
     "message": "Web Page & Site Downloader",
-    "description": "Заголовок расширения"
+    "description": "The title of the extension"
   },
   "description": {
     "message": "Web Page and Site Downloader позволяет загружать целые веб-сайты, включая все связанные страницы и ресурсы, для просмотра в автономном режиме.",
-    "description": "Описание расширения"
+    "description": "The description of the extension"
   },
   "help": {
     "message": "Помощь",
-    "description": "Текст кнопки помощи"
+    "description": "The help button text"
   },
   "download_mode": {
     "message": "Режим загрузки",
-    "description": "Метка для выбора режима загрузки"
+    "description": "The label for the download mode selection"
   },
   "single_download_description": {
     "message": "Загрузите только текущую страницу со всеми ее ресурсами.",
-    "description": "Описание для режима одиночной загрузки"
+    "description": "Description for the single download mode"
   },
   "site_download_description": {
     "message": "Загрузите весь сайт, включая все связанные страницы и ресурсы.",
-    "description": "Описание для режима загрузки сайта"
+    "description": "Description for the site download mode"
   },
   "single_page": {
     "message": "Одна страница",
-    "description": "Метка для режима загрузки одной страницы"
+    "description": "Label for the single page download mode"
   },
   "whole_website": {
     "message": "Весь веб-сайт",
-    "description": "Метка для режима загрузки всего веб-сайта"
+    "description": "Label for the whole website download mode"
   },
   "single_file": {
     "message": "Один файл",
-    "description": "Метка для режима загрузки одного файла"
+    "description": "Label for the single file download mode"
   },
   "loading": {
     "message": "Загрузка...",
-    "description": "Сообщение о загрузке"
+    "description": "Loading message"
   },
   "downloading": {
     "message": "Загрузка...",
-    "description": "Сообщение о загрузке"
+    "description": "Downloading message"
   },
   "not_downloadable": {
     "message": "Эта страница не может быть загружена",
-    "description": "Сообщение, указывающее, что страница не может быть загружена"
+    "description": "Message indicating that the page is not downloadable"
   },
   "close_sidepanel_message": {
     "message": "Сначала закройте боковую панель.",
-    "description": "Сообщение для закрытия боковой панели"
+    "description": "Message to close the side panel"
   },
   "permissions_title": {
     "message": "Необходимые разрешения",
-    "description": "Заголовок для раздела разрешений"
+    "description": "Title for permissions section"
   },
   "permissions_message": {
     "message": "Требуются следующие разрешения",
-    "description": "Заголовок для раздела разрешений"
+    "description": "Title for permissions section"
   },
   "requesting_permissions": {
     "message": "Запрос разрешений...",
-    "description": "Сообщение, указывающее, что запрашиваются разрешения"
+    "description": "Message indicating that permissions are being requested"
   },
   "grant_permissions": {
     "message": "Предоставить разрешения",
-    "description": "Текст кнопки для предоставления разрешений"
+    "description": "Button text to grant permissions"
   },
   "permissions_granted": {
     "message": "Разрешения предоставлены!",
-    "description": "Сообщение, указывающее, что разрешения были предоставлены"
+    "description": "Message indicating that permissions have been granted"
   },
   "permissions_intro": {
     "message": "Для правильной работы этому расширению требуются следующие разрешения",
-    "description": "Вступительное сообщение для разрешений"
+    "description": "Introduction message for permissions"
   },
   "permission_activeTab": {
     "message": "Активная вкладка",
-    "description": "Разрешение на доступ к активной вкладке"
+    "description": "Permission to access the active tab"
   },
   "permission_activeTab_description": {
     "message": "Позволяет расширению получать доступ к активной вкладке.",
-    "description": "Описание разрешения активной вкладки"
+    "description": "Description for active tab permission"
   },
   "permission_scripting": {
     "message": "Скриптинг",
-    "description": "Разрешение на использование скриптов"
+    "description": "Permission to use scripting"
   },
   "permission_scripting_description": {
     "message": "Внедряйте скрипты в текущую вкладку для анализа контента.",
-    "description": "Описание разрешения на скриптинг"
+    "description": "Description for scripting permission"
   },
   "permission_storage": {
     "message": "Хранилище",
-    "description": "Разрешение на использование хранилища"
+    "description": "Permission to use storage"
   },
   "permission_storage_description": {
     "message": "Храните пользовательские настройки и параметры.",
-    "description": "Описание разрешения на хранение"
+    "description": "Description for storage permission"
   },
   "permission_downloads": {
     "message": "Загрузки",
-    "description": "Разрешение на использование загрузок"
+    "description": "Permission to use downloads"
   },
   "permission_downloads_description": {
     "message": "Загружайте файлы на компьютер пользователя.",
-    "description": "Описание разрешения на загрузку"
+    "description": "Description for downloads permission"
   },
   "permission_request_error": {
     "message": "При запросе разрешений произошла ошибка.",
-    "description": "Сообщение об ошибке для запроса разрешений"
+    "description": "Error message for permission request"
   },
   "permission_not_granted_error": {
     "message": "Разрешения не были предоставлены. Предоставьте разрешения, чтобы продолжить.",
-    "description": "Сообщение об ошибке для не предоставленного разрешения"
+    "description": "Error message for permission not granted"
   },
   "permission_check_error": {
     "message": "Не удалось проверить разрешения. Пожалуйста, попробуйте еще раз.",
-    "description": "Сообщение об ошибке для проверки разрешений"
+    "description": "Error message for permission check"
   },
   "button_options": {
     "message": "Настройки",
-    "description": "Текст кнопки для настроек"
+    "description": "Button text for options"
   },
   "button_download_page": {
     "message": "Загрузить страницу",
-    "description": "Текст кнопки для загрузки"
+    "description": "Button text for download"
   },
   "button_download_website": {
     "message": "Загрузить сайт",
-    "description": "Текст кнопки для загрузки"
+    "description": "Button text for download"
   },
   "button_download_single_file": {
     "message": "Загрузить один файл",
-    "description": "Текст кнопки для загрузки одного файла"
+    "description": "Button text for single file download"
   },
   "filtering_title": {
     "message": "Фильтрация контента",
-    "description": "Заголовок для раздела фильтрации"
+    "description": "Title for filtering section"
   },
   "filtering_label": {
     "message": "Фильтровать включенные ресурсы по",
-    "description": "Метка для параметров фильтрации"
+    "description": "Label for filtering options"
   },
   "filtering_by_type": {
     "message": "Тип",
-    "description": "Метка для фильтрации по типу"
+    "description": "Label for filtering by type"
   },
   "filtering_by_extension": {
     "message": "Расширение файла",
-    "description": "Метка для фильтрации по расширению"
+    "description": "Label for filtering by extension"
   },
   "filter_by_image": {
     "message": "Изображение",
-    "description": "Метка для фильтрации по изображению"
+    "description": "Label for filtering by image"
   },
   "filter_by_script": {
     "message": "Скрипт",
-    "description": "Метка для фильтрации по скрипту"
+    "description": "Label for filtering by script"
   },
   "filter_by_stylesheet": {
     "message": "Таблица стилей",
-    "description": "Метка для фильтрации по таблице стилей"
+    "description": "Label for filtering by stylesheet"
   },
   "filter_by_font": {
     "message": "Шрифт",
-    "description": "Метка для фильтрации по шрифту"
+    "description": "Label for filtering by font"
   },
   "filter_by_markup": {
     "message": "Разметка",
-    "description": "Метка для фильтрации по разметке"
+    "description": "Label for filtering by Markup"
   },
   "filter_by_document": {
     "message": "Документ",
-    "description": "Метка для фильтрации по документу"
+    "description": "Label for filtering by Document"
   },
   "filter_by_spreadsheet": {
     "message": "Электронная таблица",
-    "description": "Метка для фильтрации по электронной таблице"
+    "description": "Label for filtering by Spreadsheet"
   },
   "filter_by_video": {
     "message": "Видео",
-    "description": "Метка для фильтрации по видео"
+    "description": "Label for filtering by Video"
   },
   "filter_by_audio": {
     "message": "Аудио",
-    "description": "Метка для фильтрации по аудио"
+    "description": "Label for filtering by Audio"
   },
   "filter_by_archive": {
     "message": "Архив",
-    "description": "Метка для фильтрации по архиву"
+    "description": "Label for filtering by Archive"
   },
   "filter_by_json": {
     "message": "JSON",
-    "description": "Метка для фильтрации по JSON"
+    "description": "Label for filtering by JSON"
   },
   "filter_by_executable": {
     "message": "Исполняемый",
-    "description": "Метка для фильтрации по исполняемому"
+    "description": "Label for filtering by Executable"
   },
   "filter_by_other": {
     "message": "Другое",
-    "description": "Метка для фильтрации по другое"
+    "description": "Label for filtering by Other"
   },
   "single_file_title": {
     "message": "Информация о загрузке",
-    "description": "Заголовок для карточки загрузки одного файла."
+    "description": "Title for the single file download card."
   },
   "single_file_download_intro": {
     "message": "Вы собираетесь загрузить текущую веб-страницу в виде одного файла MHTML (.mhtml).",
-    "description": "Введение для загрузки одного файла MHTML."
+    "description": "Introduction for single file MHTML download."
   },
   "single_file_format_mhtml_title": {
     "message": "Формат MHTML",
-    "description": "Заголовок для объяснения формата MHTML."
+    "description": "Title for MHTML format explanation."
   },
   "single_file_format_mhtml_desc": {
     "message": "MHTML (MIME HTML) сохраняет все содержимое страницы (HTML, CSS, JavaScript, изображения) в одном файле.",
-    "description": "Описание формата MHTML."
+    "description": "Description of MHTML format."
   },
   "single_file_includes_all_title": {
     "message": "Все включено",
-    "description": "Заголовок для пункта «включает все ресурсы»."
+    "description": "Title for 'includes all resources' point."
   },
   "single_file_includes_all_desc": {
     "message": "Гарантирует включение всех ресурсов, делая страницу полностью функциональной в автономном режиме.",
-    "description": "Описание для пункта «включает все ресурсы»."
+    "description": "Description for 'includes all resources' point."
   },
   "single_file_offline_viewing_title": {
     "message": "Просмотр в автономном режиме",
-    "description": "Заголовок для преимущества просмотра в автономном режиме."
+    "description": "Title for offline viewing benefit."
   },
   "single_file_offline_viewing_desc": {
     "message": "Идеально подходит для архивирования страниц или просмотра их позже без подключения к Интернету.",
-    "description": "Описание для преимущества просмотра в автономном режиме."
+    "description": "Description for offline viewing benefit."
   },
   "single_file_browser_support_title": {
     "message": "Поддержка браузера",
-    "description": "Заголовок для совместимости браузера."
+    "description": "Title for browser compatibility."
   },
   "single_file_browser_support_desc": {
     "message": "Большинство современных веб-браузеров могут открывать файлы .mhtml.",
-    "description": "Описание для совместимости браузера."
+    "description": "Description for browser compatibility."
   },
   "single_file_download_time_notice": {
     "message": "Обратите внимание: в зависимости от размера страницы загрузка может занять несколько мгновений.",
-    "description": "Уведомление о возможном времени загрузки для MHTML."
+    "description": "Notice about potential download time for MHTML."
   },
   "full_web_page_download_title_v2_coming_soon": {
     "message": "Скоро появится загрузка полной веб-страницы",
-    "description": "Заголовок для функции загрузки полной веб-страницы."
+    "description": "Title for the full web page download feature."
   },
   "full_web_page_download_subtitle_v2_next_version": {
     "message": "Эта функция будет доступна в следующей версии.",
-    "description": "Подзаголовок для функции загрузки полной веб-страницы."
+    "description": "Subtitle for the full web page download feature."
   },
   "permission_pageCapture": {
     "message": "Захват страницы",
-    "description": "Разрешение на захват текущей страницы"
+    "description": "Permission to capture the current page"
   },
   "permission_pageCapture_description": {
     "message": "Позволяет расширению захватывать содержимое текущей страницы.",
-    "description": "Описание разрешения на захват страницы"
+    "description": "Description for page capture permission"
   },
   "tooltip_toggle_scroll_mode": {
     "message": "Переключение между автоматической и ручной прокруткой страницы.",
-    "description": "Подсказка для кнопки переключения режима прокрутки"
+    "description": "Tooltip for the scroll mode toggle button"
   },
   "text_auto_mode": {
     "message": "Авто",
-    "description": "Текст для режима автоматической прокрутки"
+    "description": "Text for auto scroll mode"
   },
   "text_manual_mode": {
     "message": "Вручную",
-    "description": "Текст для режима ручной прокрутки"
+    "description": "Text for manual scroll mode"
   }
 }

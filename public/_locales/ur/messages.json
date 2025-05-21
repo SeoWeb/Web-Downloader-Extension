@@ -1,263 +1,263 @@
 {
   "title": {
     "message": "ویب پیج اور سائٹ ڈاؤنلوڈر",
-    "description": "ایکسٹینشن کا عنوان"
+    "description": "The title of the extension"
   },
   "description": {
     "message": "ویب پیج اور سائٹ ڈاؤنلوڈر آپ کو آف لائن دیکھنے کے لیے پورے ویب سائٹس کو ڈاؤن لوڈ کرنے کی اجازت دیتا ہے - بشمول تمام منسلک صفحات اور وسائل۔",
-    "description": "ایکسٹینشن کی تفصیل"
+    "description": "The description of the extension"
   },
   "help": {
     "message": "مدد",
-    "description": "مدد بٹن کا متن"
+    "description": "The help button text"
   },
   "download_mode": {
     "message": "ڈاؤن لوڈ موڈ",
-    "description": "ڈاؤن لوڈ موڈ کے انتخاب کے لیے لیبل"
+    "description": "The label for the download mode selection"
   },
   "single_download_description": {
     "message": "صرف موجودہ صفحہ کو اس کے تمام اثاثوں کے ساتھ ڈاؤن لوڈ کریں۔",
-    "description": "سنگل ڈاؤن لوڈ موڈ کے لیے تفصیل"
+    "description": "Description for the single download mode"
   },
   "site_download_description": {
     "message": "پوری سائٹ کو ڈاؤن لوڈ کریں، بشمول تمام منسلک صفحات اور وسائل۔",
-    "description": "سائٹ ڈاؤن لوڈ موڈ کے لیے تفصیل"
+    "description": "Description for the site download mode"
   },
   "single_page": {
     "message": "ایک صفحہ",
-    "description": "سنگل پیج ڈاؤن لوڈ موڈ کے لیے لیبل"
+    "description": "Label for the single page download mode"
   },
   "whole_website": {
     "message": "مکمل ویب سائٹ",
-    "description": "مکمل ویب سائٹ ڈاؤن لوڈ موڈ کے لیے لیبل"
+    "description": "Label for the whole website download mode"
   },
   "single_file": {
     "message": "ایک فائل",
-    "description": "سنگل فائل ڈاؤن لوڈ موڈ کے لیے لیبل"
+    "description": "Label for the single file download mode"
   },
   "loading": {
     "message": "لوڈ ہو رہا ہے...",
-    "description": "لوڈنگ پیغام"
+    "description": "Loading message"
   },
   "downloading": {
     "message": "ڈاؤن لوڈ ہو رہا ہے...",
-    "description": "ڈاؤن لوڈنگ پیغام"
+    "description": "Downloading message"
   },
   "not_downloadable": {
     "message": "یہ صفحہ ڈاؤن لوڈ کے قابل نہیں ہے",
-    "description": "پیغام جو اس بات کی نشاندہی کرتا ہے کہ صفحہ ڈاؤن لوڈ کے قابل نہیں ہے"
+    "description": "Message indicating that the page is not downloadable"
   },
   "close_sidepanel_message": {
     "message": "پہلے سائیڈ پینل کو بند کریں۔",
-    "description": "سائیڈ پینل کو بند کرنے کا پیغام"
+    "description": "Message to close the side panel"
   },
   "permissions_title": {
     "message": "مطلوبہ اجازتیں",
-    "description": "اجازتوں کے سیکشن کا عنوان"
+    "description": "Title for permissions section"
   },
   "permissions_message": {
     "message": "مندرجہ ذیل اجازتوں کی ضرورت ہے",
-    "description": "اجازتوں کے سیکشن کا عنوان"
+    "description": "Title for permissions section"
   },
   "requesting_permissions": {
     "message": "اجازتوں کی درخواست کر رہا ہے...",
-    "description": "پیغام جو اس بات کی نشاندہی کرتا ہے کہ اجازتوں کی درخواست کی جا رہی ہے"
+    "description": "Message indicating that permissions are being requested"
   },
   "grant_permissions": {
     "message": "اجازتیں دیں",
-    "description": "اجازتیں دینے کے لیے بٹن کا متن"
+    "description": "Button text to grant permissions"
   },
   "permissions_granted": {
     "message": "اجازتیں دی گئیں!",
-    "description": "پیغام جو اس بات کی نشاندہی کرتا ہے کہ اجازتیں دی گئی ہیں"
+    "description": "Message indicating that permissions have been granted"
   },
   "permissions_intro": {
     "message": "اس ایکسٹینشن کو صحیح طریقے سے کام کرنے کے لیے درج ذیل اجازتوں کی ضرورت ہے",
-    "description": "اجازتوں کے لیے تعارفی پیغام"
+    "description": "Introduction message for permissions"
   },
   "permission_activeTab": {
     "message": "فعال ٹیب",
-    "description": "فعال ٹیب تک رسائی کی اجازت"
+    "description": "Permission to access the active tab"
   },
   "permission_activeTab_description": {
     "message": "ایکسٹینشن کو فعال ٹیب تک رسائی کی اجازت دیتا ہے۔",
-    "description": "فعال ٹیب کی اجازت کے لیے تفصیل"
+    "description": "Description for active tab permission"
   },
   "permission_scripting": {
     "message": "اسکرپٹنگ",
-    "description": "اسکرپٹنگ استعمال کرنے کی اجازت"
+    "description": "Permission to use scripting"
   },
   "permission_scripting_description": {
     "message": "مواد کا تجزیہ کرنے کے لیے موجودہ ٹیب میں اسکرپٹ داخل کریں۔",
-    "description": "اسکرپٹنگ کی اجازت کے لیے تفصیل"
+    "description": "Description for scripting permission"
   },
   "permission_storage": {
     "message": "اسٹوریج",
-    "description": "اسٹوریج استعمال کرنے کی اجازت"
+    "description": "Permission to use storage"
   },
   "permission_storage_description": {
     "message": "صارف کی ترجیحات اور ترتیبات کو محفوظ کریں۔",
-    "description": "اسٹوریج کی اجازت کے لیے تفصیل"
+    "description": "Description for storage permission"
   },
   "permission_downloads": {
     "message": "ڈاؤن لوڈز",
-    "description": "ڈاؤن لوڈز استعمال کرنے کی اجازت"
+    "description": "Permission to use downloads"
   },
   "permission_downloads_description": {
     "message": "صارف کے کمپیوٹر پر فائلیں ڈاؤن لوڈ کریں۔",
-    "description": "ڈاؤن لوڈز کی اجازت کے لیے تفصیل"
+    "description": "Description for downloads permission"
   },
   "permission_request_error": {
     "message": "اجازتوں کی درخواست کرتے وقت ایک خرابی پیش آئی۔",
-    "description": "اجازت کی درخواست کے لیے خرابی کا پیغام"
+    "description": "Error message for permission request"
   },
   "permission_not_granted_error": {
     "message": "اجازتیں نہیں دی گئیں۔ براہ کرم جاری رکھنے کے لیے اجازتیں دیں۔",
-    "description": "اجازت نہ دینے کے لیے خرابی کا پیغام"
+    "description": "Error message for permission not granted"
   },
   "permission_check_error": {
     "message": "اجازتوں کی جانچ کرنے میں ناکام۔ براہ کرم دوبارہ کوشش کریں۔",
-    "description": "اجازت کی جانچ کے لیے خرابی کا پیغام"
+    "description": "Error message for permission check"
   },
   "button_options": {
     "message": "اختیارات",
-    "description": "اختیارات کے لیے بٹن کا متن"
+    "description": "Button text for options"
   },
   "button_download_page": {
     "message": "صفحہ ڈاؤن لوڈ کریں",
-    "description": "ڈاؤن لوڈ کے لیے بٹن کا متن"
+    "description": "Button text for download"
   },
   "button_download_website": {
     "message": "ویب سائٹ ڈاؤن لوڈ کریں",
-    "description": "ڈاؤن لوڈ کے لیے بٹن کا متن"
+    "description": "Button text for download"
   },
   "button_download_single_file": {
     "message": "ایک فائل ڈاؤن لوڈ کریں",
-    "description": "ایک فائل ڈاؤن لوڈ کے لیے بٹن کا متن"
+    "description": "Button text for single file download"
   },
   "filtering_title": {
     "message": "مواد کی فلٹرنگ",
-    "description": "فلٹرنگ سیکشن کے لیے عنوان"
+    "description": "Title for filtering section"
   },
   "filtering_label": {
     "message": "شامل کردہ اثاثوں کو فلٹر کریں",
-    "description": "فلٹرنگ کے اختیارات کے لیے لیبل"
+    "description": "Label for filtering options"
   },
   "filtering_by_type": {
     "message": "قسم",
-    "description": "قسم کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by type"
   },
   "filtering_by_extension": {
     "message": "فائل ایکسٹینشن",
-    "description": "ایکسٹینشن کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by extension"
   },
   "filter_by_image": {
     "message": "تصویر",
-    "description": "تصویر کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by image"
   },
   "filter_by_script": {
     "message": "اسکرپٹ",
-    "description": "اسکرپٹ کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by script"
   },
   "filter_by_stylesheet": {
     "message": "اسٹائل شیٹ",
-    "description": "اسٹائل شیٹ کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by stylesheet"
   },
   "filter_by_font": {
     "message": "فونٹ",
-    "description": "فونٹ کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by font"
   },
   "filter_by_markup": {
     "message": "مارک اپ",
-    "description": "مارک اپ کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by Markup"
   },
   "filter_by_document": {
     "message": "دستاویز",
-    "description": "دستاویز کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by Document"
   },
   "filter_by_spreadsheet": {
     "message": "اسپریڈشیٹ",
-    "description": "اسپریڈشیٹ کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by Spreadsheet"
   },
   "filter_by_video": {
     "message": "ویڈیو",
-    "description": "ویڈیو کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by Video"
   },
   "filter_by_audio": {
     "message": "آڈیو",
-    "description": "آڈیو کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by Audio"
   },
   "filter_by_archive": {
     "message": "آرکائیو",
-    "description": "آرکائیو کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by Archive"
   },
   "filter_by_json": {
     "message": "JSON",
-    "description": "JSON کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by JSON"
   },
   "filter_by_executable": {
     "message": "قابل عمل",
-    "description": "قابل عمل کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by Executable"
   },
   "filter_by_other": {
     "message": "دیگر",
-    "description": "دیگر کے لحاظ سے فلٹر کرنے کے لیے لیبل"
+    "description": "Label for filtering by Other"
   },
   "single_file_title": {
     "message": "ڈاؤن لوڈ کی معلومات",
-    "description": "سنگل فائل ڈاؤن لوڈ کارڈ کے لیے عنوان۔"
+    "description": "Title for the single file download card."
   },
   "single_file_download_intro": {
     "message": "آپ موجودہ ویب پیج کو ایک واحد MHTML فائل (.mhtml) کے طور پر ڈاؤن لوڈ کرنے والے ہیں۔",
-    "description": "سنگل فائل MHTML ڈاؤن لوڈ کے لیے تعارف۔"
+    "description": "Introduction for single file MHTML download."
   },
   "single_file_format_mhtml_title": {
     "message": "MHTML فارمیٹ",
-    "description": "MHTML فارمیٹ کی وضاحت کے لیے عنوان۔"
+    "description": "Title for MHTML format explanation."
   },
   "single_file_format_mhtml_desc": {
     "message": "MHTML (MIME HTML) تمام صفحہ مواد (HTML, CSS, JavaScript, تصاویر) کو ایک ہی فائل میں محفوظ کرتا ہے۔",
-    "description": "MHTML فارمیٹ کی تفصیل۔"
+    "description": "Description of MHTML format."
   },
   "single_file_includes_all_title": {
     "message": "سبھی شامل ہیں",
-    "description": "'تمام وسائل شامل ہیں' نقطہ کے لیے عنوان۔"
+    "description": "Title for 'includes all resources' point."
   },
   "single_file_includes_all_desc": {
     "message": "اس بات کو یقینی بناتا ہے کہ تمام وسائل شامل ہیں، جس سے صفحہ آف لائن مکمل طور پر فعال ہو جاتا ہے۔",
-    "description": "'تمام وسائل شامل ہیں' نقطہ کے لیے تفصیل۔"
+    "description": "Description for 'includes all resources' point."
   },
   "single_file_offline_viewing_title": {
     "message": "آف لائن دیکھنا",
-    "description": "آف لائن دیکھنے کے فائدے کے لیے عنوان۔"
+    "description": "Title for offline viewing benefit."
   },
   "single_file_offline_viewing_desc": {
     "message": "صفحات کو محفوظ کرنے یا انٹرنیٹ کنکشن کے بغیر بعد میں دیکھنے کے لیے مثالی ہے۔",
-    "description": "آف لائن دیکھنے کے فائدے کے لیے تفصیل۔"
+    "description": "Description for offline viewing benefit."
   },
   "single_file_browser_support_title": {
     "message": "براؤزر سپورٹ",
-    "description": "براؤزر مطابقت کے لیے عنوان۔"
+    "description": "Title for browser compatibility."
   },
   "single_file_browser_support_desc": {
     "message": "زیادہ تر جدید ویب براؤزر .mhtml فائلوں کو کھول سکتے ہیں۔",
-    "description": "براؤزر مطابقت کے لیے تفصیل۔"
+    "description": "Description for browser compatibility."
   },
   "single_file_download_time_notice": {
     "message": "براہ کرم نوٹ کریں: صفحہ کے سائز پر منحصر ہے، ڈاؤن لوڈ میں کچھ لمحے لگ سکتے ہیں۔",
-    "description": "MHTML کے لیے ممکنہ ڈاؤن لوڈ کے وقت کے بارے میں اطلاع۔"
+    "description": "Notice about potential download time for MHTML."
   },
   "full_web_page_download_title_v2_coming_soon": {
     "message": "مکمل ویب پیج ڈاؤن لوڈ جلد آرہا ہے",
-    "description": "مکمل ویب پیج ڈاؤن لوڈ فیچر کے لیے عنوان۔"
+    "description": "Title for the full web page download feature."
   },
   "full_web_page_download_subtitle_v2_next_version": {
     "message": "یہ فیچر اگلی ورژن میں دستیاب ہوگا۔",
-    "description": "مکمل ویب پیج ڈاؤن لوڈ فیچر کے لیے ذیلی عنوان۔"
+    "description": "Subtitle for the full web page download feature."
   },
   "permission_pageCapture": {
     "message": "صفحہ کیپچر",
-    "description": "موجودہ صفحہ کو کیپچر کرنے کی اجازت"
+    "description": "Permission to capture the current page"
   },
   "permission_pageCapture_description": {
     "message": "ایکسٹینشن کو موجودہ صفحہ کے مواد کو کیپچر کرنے کی اجازت دیتا ہے۔",
@@ -265,7 +265,7 @@
   },
   "tooltip_toggle_scroll_mode": {
     "message": "صفحہ کی خودکار اور دستی سکرولنگ کے درمیان ٹوگل کریں۔",
-    "description": "اسکرول موڈ ٹوگل بٹن کے لیے ٹول ٹپ"
+    "description": "Tooltip for the scroll mode toggle button"
   },
   "text_auto_mode": {
     "message": "خودکار",

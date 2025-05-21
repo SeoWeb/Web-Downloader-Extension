@@ -1,278 +1,278 @@
 {
   "title": {
     "message": "ওয়েব পেজ ও সাইট ডাউনলোডার",
-    "description": "এক্সটেনশনটির শিরোনাম"
+    "description": "The title of the extension"
   },
   "description": {
     "message": "ওয়েব পেজ এবং সাইট ডাউনলোডার আপনাকে অফলাইন দেখার জন্য সম্পূর্ণ ওয়েবসাইটগুলি ডাউনলোড করতে দেয় - যার মধ্যে সমস্ত লিঙ্কযুক্ত পৃষ্ঠা এবং সংস্থান অন্তর্ভুক্ত রয়েছে।",
-    "description": "এক্সটেনশনটির বর্ণনা"
+    "description": "The description of the extension"
   },
   "help": {
     "message": "সাহায্য",
-    "description": "সাহায্য বোতামের টেক্সট"
+    "description": "The help button text"
   },
   "download_mode": {
     "message": "ডাউনলোড মোড",
-    "description": "ডাউনলোড মোড নির্বাচনের জন্য লেবেল"
+    "description": "The label for the download mode selection"
   },
   "single_download_description": {
     "message": "শুধুমাত্র বর্তমান পৃষ্ঠাটি তার সমস্ত সম্পদ সহ ডাউনলোড করুন।",
-    "description": "একক ডাউনলোড মোডের জন্য বর্ণনা"
+    "description": "Description for the single download mode"
   },
   "site_download_description": {
     "message": "পুরো সাইটটি ডাউনলোড করুন, যার মধ্যে সমস্ত লিঙ্কযুক্ত পৃষ্ঠা এবং সংস্থান অন্তর্ভুক্ত রয়েছে।",
-    "description": "সাইট ডাউনলোড মোডের জন্য বর্ণনা"
+    "description": "Description for the site download mode"
   },
   "single_page": {
     "message": "একক পৃষ্ঠা",
-    "description": "একক পৃষ্ঠা ডাউনলোড মোডের জন্য লেবেল"
+    "description": "Label for the single page download mode"
   },
   "whole_website": {
     "message": "পুরো ওয়েবসাইট",
-    "description": "পুরো ওয়েবসাইট ডাউনলোড মোডের জন্য লেবেল"
+    "description": "Label for the whole website download mode"
   },
   "single_file": {
     "message": "একক ফাইল",
-    "description": "একক ফাইল ডাউনলোড মোডের জন্য লেবেল"
+    "description": "Label for the single file download mode"
   },
   "loading": {
     "message": "লোড হচ্ছে...",
-    "description": "লোডিং বার্তা"
+    "description": "Loading message"
   },
   "downloading": {
     "message": "ডাউনলোড হচ্ছে...",
-    "description": "ডাউনলোডিং বার্তা"
+    "description": "Downloading message"
   },
   "not_downloadable": {
     "message": "এই পৃষ্ঠাটি ডাউনলোডযোগ্য নয়",
-    "description": "বার্তা যা নির্দেশ করে যে পৃষ্ঠাটি ডাউনলোডযোগ্য নয়"
+    "description": "Message indicating that the page is not downloadable"
   },
   "close_sidepanel_message": {
     "message": "প্রথমে সাইডপ্যানেলটি বন্ধ করুন।",
-    "description": "সাইড প্যানেল বন্ধ করার বার্তা"
+    "description": "Message to close the side panel"
   },
   "permissions_title": {
     "message": "প্রয়োজনীয় অনুমতি",
-    "description": "অনুমতি বিভাগের জন্য শিরোনাম"
+    "description": "Title for permissions section"
   },
   "permissions_message": {
     "message": "নিম্নলিখিত অনুমতি প্রয়োজন",
-    "description": "অনুমতি বিভাগের জন্য শিরোনাম"
+    "description": "Title for permissions section"
   },
   "requesting_permissions": {
     "message": "অনুমতিগুলির জন্য অনুরোধ করা হচ্ছে...",
-    "description": "বার্তা যা নির্দেশ করে যে অনুমতিগুলির জন্য অনুরোধ করা হচ্ছে"
+    "description": "Message indicating that permissions are being requested"
   },
   "grant_permissions": {
     "message": "অনুমতি দিন",
-    "description": "অনুমতি দেওয়ার জন্য বোতামের পাঠ্য"
+    "description": "Button text to grant permissions"
   },
   "permissions_granted": {
     "message": "অনুমতি দেওয়া হয়েছে!",
-    "description": "বার্তা যা নির্দেশ করে যে অনুমতি দেওয়া হয়েছে"
+    "description": "Message indicating that permissions have been granted"
   },
   "permissions_intro": {
     "message": "এই এক্সটেনশনটির সঠিকভাবে কাজ করার জন্য নিম্নলিখিত অনুমতিগুলির প্রয়োজন",
-    "description": "অনুমতিগুলির জন্য পরিচিতিমূলক বার্তা"
+    "description": "Introduction message for permissions"
   },
   "permission_activeTab": {
     "message": "সক্রিয় ট্যাব",
-    "description": "সক্রিয় ট্যাবে অ্যাক্সেস করার অনুমতি"
+    "description": "Permission to access the active tab"
   },
   "permission_activeTab_description": {
     "message": "এক্সটেনশনটিকে সক্রিয় ট্যাবে অ্যাক্সেস করার অনুমতি দেয়।",
-    "description": "সক্রিয় ট্যাব অনুমতির জন্য বর্ণনা"
+    "description": "Description for active tab permission"
   },
   "permission_scripting": {
     "message": "স্ক্রিপ্টিং",
-    "description": "স্ক্রিপ্টিং ব্যবহারের অনুমতি"
+    "description": "Permission to use scripting"
   },
   "permission_scripting_description": {
     "message": "বিষয়বস্তু বিশ্লেষণ করতে বর্তমান ট্যাবে স্ক্রিপ্ট ইনজেক্ট করুন।",
-    "description": "স্ক্রিপ্টিং অনুমতির জন্য বর্ণনা"
+    "description": "Description for scripting permission"
   },
   "permission_storage": {
     "message": "সংগ্রহস্থল",
-    "description": "সংগ্রহস্থল ব্যবহারের অনুমতি"
+    "description": "Permission to use storage"
   },
   "permission_storage_description": {
     "message": "ব্যবহারকারীর পছন্দ এবং সেটিংস সংরক্ষণ করুন।",
-    "description": "সংগ্রহস্থল অনুমতির জন্য বর্ণনা"
+    "description": "Description for storage permission"
   },
   "permission_downloads": {
     "message": "ডাউনলোড",
-    "description": "ডাউনলোড ব্যবহারের অনুমতি"
+    "description": "Permission to use downloads"
   },
   "permission_downloads_description": {
     "message": "ব্যবহারকারীর কম্পিউটারে ফাইল ডাউনলোড করুন।",
-    "description": "ডাউনলোড অনুমতির জন্য বর্ণনা"
+    "description": "Description for downloads permission"
   },
   "permission_request_error": {
     "message": "অনুমতি চাওয়ার সময় একটি ত্রুটি ঘটেছে।",
-    "description": "অনুমতি অনুরোধের জন্য ত্রুটি বার্তা"
+    "description": "Error message for permission request"
   },
   "permission_not_granted_error": {
     "message": "অনুমতি দেওয়া হয়নি। চালিয়ে যেতে অনুমতি দিন।",
-    "description": "অনুমতি না দেওয়ার জন্য ত্রুটি বার্তা"
+    "description": "Error message for permission not granted"
   },
   "permission_check_error": {
     "message": "অনুমতি পরীক্ষা করতে ব্যর্থ হয়েছে। আবার চেষ্টা করুন।",
-    "description": "অনুমতি পরীক্ষার জন্য ত্রুটি বার্তা"
+    "description": "Error message for permission check"
   },
   "button_options": {
     "message": "অপশন",
-    "description": "অপশনগুলির জন্য বোতামের পাঠ্য"
+    "description": "Button text for options"
   },
   "button_download_page": {
     "message": "পৃষ্ঠা ডাউনলোড করুন",
-    "description": "ডাউনলোডের জন্য বোতামের পাঠ্য"
+    "description": "Button text for download"
   },
   "button_download_website": {
     "message": "ওয়েবসাইট ডাউনলোড করুন",
-    "description": "ডাউনলোডের জন্য বোতামের পাঠ্য"
+    "description": "Button text for download"
   },
   "button_download_single_file": {
     "message": "একক ফাইল ডাউনলোড করুন",
-    "description": "একক ফাইল ডাউনলোডের জন্য বোতামের পাঠ্য"
+    "description": "Button text for single file download"
   },
   "filtering_title": {
     "message": "বিষয়বস্তু ফিল্টারিং",
-    "description": "ফিল্টারিং বিভাগের জন্য শিরোনাম"
+    "description": "Title for filtering section"
   },
   "filtering_label": {
     "message": "অন্তর্ভুক্ত সম্পদগুলি ফিল্টার করুন",
-    "description": "ফিল্টারিং বিকল্পগুলির জন্য লেবেল"
+    "description": "Label for filtering options"
   },
   "filtering_by_type": {
     "message": "ধরন",
-    "description": "ধরন অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by type"
   },
   "filtering_by_extension": {
     "message": "ফাইল এক্সটেনশন",
-    "description": "এক্সটেনশন অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by extension"
   },
   "filter_by_image": {
     "message": "ছবি",
-    "description": "ছবি অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by image"
   },
   "filter_by_script": {
     "message": "স্ক্রিপ্ট",
-    "description": "স্ক্রিপ্ট অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by script"
   },
   "filter_by_stylesheet": {
     "message": "স্টাইলশীট",
-    "description": "স্টাইলশীট অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by stylesheet"
   },
   "filter_by_font": {
     "message": "ফন্ট",
-    "description": "ফন্ট অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by font"
   },
   "filter_by_markup": {
     "message": "মার্কআপ",
-    "description": "মার্কআপ অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by Markup"
   },
   "filter_by_document": {
     "message": "ডকুমেন্ট",
-    "description": "ডকুমেন্ট অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by Document"
   },
   "filter_by_spreadsheet": {
     "message": "স্প্রেডশীট",
-    "description": "স্প্রেডশীট অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by Spreadsheet"
   },
   "filter_by_video": {
     "message": "ভিডিও",
-    "description": "ভিডিও অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by Video"
   },
   "filter_by_audio": {
     "message": "অডিও",
-    "description": "অডিও অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by Audio"
   },
   "filter_by_archive": {
     "message": "আর্কাইভ",
-    "description": "আর্কাইভ অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by Archive"
   },
   "filter_by_json": {
     "message": "জসন",
-    "description": "Bezeichnung für die Filterung nach JSON"
+    "description": "Label for filtering by JSON"
   },
   "filter_by_executable": {
     "message": "এক্সিকিউটেবল",
-    "description": "এক্সিকিউটেবল অনুসারে ফিল্টার করার জন্য লেবেল"
+    "description": "Label for filtering by Executable"
   },
   "filter_by_other": {
     "message": "অন্যান্য",
-    "description": "Bezeichnung für die Filterung nach Andere"
+    "description": "Label for filtering by Other"
   },
   "single_file_title": {
     "message": "ডাউনলোড তথ্য",
-    "description": "একক ফাইল ডাউনলোড কার্ডের জন্য শিরোনাম।"
+    "description": "Title for the single file download card."
   },
   "single_file_download_intro": {
     "message": "আপনি বর্তমান ওয়েব পৃষ্ঠাটি একটি একক MHTML ফাইল (.mhtml) হিসাবে ডাউনলোড করতে চলেছেন।",
-    "description": "একক ফাইল MHTML ডাউনলোডের জন্য পরিচিতি।"
+    "description": "Introduction for single file MHTML download."
   },
   "single_file_format_mhtml_title": {
     "message": "MHTML ফরম্যাট",
-    "description": "MHTML ফরম্যাট ব্যাখ্যার জন্য শিরোনাম।"
+    "description": "Title for MHTML format explanation."
   },
   "single_file_format_mhtml_desc": {
     "message": "MHTML (MIME HTML) সমস্ত পৃষ্ঠা সামগ্রী (HTML, CSS, জাভাস্ক্রিপ্ট, ছবি) একটি একক ফাইলে সংরক্ষণ করে।",
-    "description": "MHTML ফরম্যাটের বর্ণনা।"
+    "description": "Description of MHTML format."
   },
   "single_file_includes_all_title": {
     "message": "সব অন্তর্ভুক্ত",
-    "description": "'সমস্ত রিসোর্স অন্তর্ভুক্ত' বিন্দুর জন্য শিরোনাম।"
+    "description": "Title for 'includes all resources' point."
   },
   "single_file_includes_all_desc": {
     "message": "নিশ্চিত করে যে সমস্ত রিসোর্স অন্তর্ভুক্ত করা হয়েছে, যা পৃষ্ঠাটিকে অফলাইনে সম্পূর্ণরূপে কার্যকরী করে তোলে।",
-    "description": "'সমস্ত রিসোর্স অন্তর্ভুক্ত' বিন্দুর জন্য বর্ণনা।"
+    "description": "Description for 'includes all resources' point."
   },
   "single_file_offline_viewing_title": {
     "message": "অফলাইন দেখা",
-    "description": "অফলাইন দেখার সুবিধার জন্য শিরোনাম।"
+    "description": "Title for offline viewing benefit."
   },
   "single_file_offline_viewing_desc": {
     "message": "পৃষ্ঠাগুলি সংরক্ষণাগারভুক্ত করতে বা ইন্টারনেট সংযোগ ছাড়াই পরে দেখতে আদর্শ।",
-    "description": "অফলাইন দেখার সুবিধার জন্য বর্ণনা।"
+    "description": "Description for offline viewing benefit."
   },
   "single_file_browser_support_title": {
     "message": "ব্রাউজার সমর্থন",
-    "description": "ব্রাউজার সামঞ্জস্যের জন্য শিরোনাম।"
+    "description": "Title for browser compatibility."
   },
   "single_file_browser_support_desc": {
     "message": "বেশিরভাগ আধুনিক ওয়েব ব্রাউজার .mhtml ফাইল খুলতে পারে।",
-    "description": "ব্রাউজার সামঞ্জস্যের জন্য বর্ণনা।"
+    "description": "Description for browser compatibility."
   },
   "single_file_download_time_notice": {
     "message": "অনুগ্রহ করে মনে রাখবেন: পৃষ্ঠার আকারের উপর নির্ভর করে, ডাউনলোড হতে কয়েক মুহূর্ত সময় লাগতে পারে।",
-    "description": "MHTML এর জন্য সম্ভাব্য ডাউনলোড সময় সম্পর্কে বিজ্ঞপ্তি।"
+    "description": "Notice about potential download time for MHTML."
   },
   "full_web_page_download_title_v2_coming_soon": {
     "message": "পূর্ণ ওয়েব পেজ ডাউনলোড শীঘ্রই আসছে",
-    "description": "পূর্ণ ওয়েব পেজ ডাউনলোড বৈশিষ্ট্যের জন্য শিরোনাম।"
+    "description": "Title for the full web page download feature."
   },
   "full_web_page_download_subtitle_v2_next_version": {
     "message": "এই বৈশিষ্ট্যটি পরবর্তী সংস্করণে উপলব্ধ হবে।",
-    "description": "পূর্ণ ওয়েব পেজ ডাউনলোড বৈশিষ্ট্যের জন্য উপশিরোনাম।"
+    "description": "Subtitle for the full web page download feature."
   },
   "permission_pageCapture": {
     "message": "পৃষ্ঠা ক্যাপচার",
-    "description": "বর্তমান পৃষ্ঠা ক্যাপচার করার অনুমতি"
+    "description": "Permission to capture the current page"
   },
   "permission_pageCapture_description": {
     "message": "এক্সটেনশনটিকে বর্তমান পৃষ্ঠার বিষয়বস্তু ক্যাপচার করার অনুমতি দেয়।",
-    "description": "পৃষ্ঠা ক্যাপচার অনুমতির জন্য বর্ণনা"
+    "description": "Description for page capture permission"
   },
   "tooltip_toggle_scroll_mode": {
     "message": "স্বয়ংক্রিয় এবং ম্যানুয়াল পৃষ্ঠা স্ক্রোলিংয়ের মধ্যে টগল করুন।",
-    "description": "স্ক্রোল মোড টগল বোতামের জন্য টুলটিপ"
+    "description": "Tooltip for the scroll mode toggle button"
   },
   "text_auto_mode": {
     "message": "স্বয়ংক্রিয়",
-    "description": "স্বয়ংক্রিয় স্ক্রোল মোডের জন্য পাঠ্য"
+    "description": "Text for auto scroll mode"
   },
   "text_manual_mode": {
     "message": "ম্যানুয়াল",
-    "description": "ম্যানুয়াল স্ক্রোল মোডের জন্য পাঠ্য"
+    "description": "Text for manual scroll mode"
   }
 }

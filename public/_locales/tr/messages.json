@@ -1,278 +1,278 @@
 {
   "title": {
     "message": "Web Sayfası ve Site İndirici",
-    "description": "Eklentinin başlığı"
+    "description": "The title of the extension"
   },
   "description": {
     "message": "Web Sayfası ve Site İndirici, çevrimdışı görüntüleme için tüm bağlantılı sayfalar ve kaynaklar dahil olmak üzere tüm web sitelerini indirmenizi sağlar.",
-    "description": "Eklentinin açıklaması"
+    "description": "The description of the extension"
   },
   "help": {
     "message": "Yardım",
-    "description": "Yardım butonu metni"
+    "description": "The help button text"
   },
   "download_mode": {
     "message": "İndirme Modu",
-    "description": "İndirme modu seçimi için etiket"
+    "description": "The label for the download mode selection"
   },
   "single_download_description": {
     "message": "Yalnızca geçerli sayfayı tüm varlıklarıyla indirin.",
-    "description": "Tek indirme modu için açıklama"
+    "description": "Description for the single download mode"
   },
   "site_download_description": {
     "message": "Tüm bağlantılı sayfalar ve kaynaklar dahil olmak üzere tüm siteyi indirin.",
-    "description": "Site indirme modu için açıklama"
+    "description": "Description for the site download mode"
   },
   "single_page": {
     "message": "Tek Sayfa",
-    "description": "Tek sayfa indirme modu için etiket"
+    "description": "Label for the single page download mode"
   },
   "whole_website": {
     "message": "Tüm Web Sitesi",
-    "description": "Tüm web sitesi indirme modu için etiket"
+    "description": "Label for the whole website download mode"
   },
   "single_file": {
     "message": "Tek Dosya",
-    "description": "Tek dosya indirme modu için etiket"
+    "description": "Label for the single file download mode"
   },
   "loading": {
     "message": "Yükleniyor...",
-    "description": "Yükleme mesajı"
+    "description": "Loading message"
   },
   "downloading": {
     "message": "İndiriliyor...",
-    "description": "İndirme mesajı"
+    "description": "Downloading message"
   },
   "not_downloadable": {
     "message": "Bu sayfa indirilemez",
-    "description": "Sayfanın indirilemez olduğunu belirten mesaj"
+    "description": "Message indicating that the page is not downloadable"
   },
   "close_sidepanel_message": {
     "message": "Önce yan paneli kapatın.",
-    "description": "Yan paneli kapatma mesajı"
+    "description": "Message to close the side panel"
   },
   "permissions_title": {
     "message": "Gerekli İzinler",
-    "description": "İzinler bölümü için başlık"
+    "description": "Title for permissions section"
   },
   "permissions_message": {
     "message": "Aşağıdaki izinler gereklidir",
-    "description": "İzinler bölümü için başlık"
+    "description": "Title for permissions section"
   },
   "requesting_permissions": {
     "message": "İzinler isteniyor...",
-    "description": "İzinlerin istendiğini belirten mesaj"
+    "description": "Message indicating that permissions are being requested"
   },
   "grant_permissions": {
     "message": "İzinleri Ver",
-    "description": "İzinleri vermek için buton metni"
+    "description": "Button text to grant permissions"
   },
   "permissions_granted": {
     "message": "İzinler Verildi!",
-    "description": "İzinlerin verildiğini belirten mesaj"
+    "description": "Message indicating that permissions have been granted"
   },
   "permissions_intro": {
     "message": "Bu uzantı, düzgün çalışması için aşağıdaki izinleri gerektirir",
-    "description": "İzinler için giriş mesajı"
+    "description": "Introduction message for permissions"
   },
   "permission_activeTab": {
     "message": "Etkin Sekme",
-    "description": "Etkin sekmeye erişim izni"
+    "description": "Permission to access the active tab"
   },
   "permission_activeTab_description": {
     "message": "Uzantının etkin sekmeye erişmesini sağlar.",
-    "description": "Etkin sekme izni açıklaması"
+    "description": "Description for active tab permission"
   },
   "permission_scripting": {
     "message": "Betik",
-    "description": "Betik kullanma izni"
+    "description": "Permission to use scripting"
   },
   "permission_scripting_description": {
     "message": "İçeriği analiz etmek için geçerli sekmeye komut dosyaları ekleyin.",
-    "description": "Betik izni açıklaması"
+    "description": "Description for scripting permission"
   },
   "permission_storage": {
     "message": "Depolama",
-    "description": "Depolama kullanma izni"
+    "description": "Permission to use storage"
   },
   "permission_storage_description": {
     "message": "Kullanıcı tercihlerini ve ayarlarını saklayın.",
-    "description": "Depolama izni açıklaması"
+    "description": "Description for storage permission"
   },
   "permission_downloads": {
     "message": "İndirmeler",
-    "description": "İndirmeleri kullanma izni"
+    "description": "Permission to use downloads"
   },
   "permission_downloads_description": {
     "message": "Dosyaları kullanıcının bilgisayarına indirin.",
-    "description": "İndirmeler izni açıklaması"
+    "description": "Description for downloads permission"
   },
   "permission_request_error": {
     "message": "İzinler istenirken bir hata oluştu.",
-    "description": "İzin isteği için hata mesajı"
+    "description": "Error message for permission request"
   },
   "permission_not_granted_error": {
     "message": "İzinler verilmedi. Lütfen devam etmek için izinleri verin.",
-    "description": "İzin verilmedi hatası için hata mesajı"
+    "description": "Error message for permission not granted"
   },
   "permission_check_error": {
     "message": "İzinler kontrol edilemedi. Lütfen tekrar deneyin.",
-    "description": "İzin kontrolü için hata mesajı"
+    "description": "Error message for permission check"
   },
   "button_options": {
     "message": "Seçenekler",
-    "description": "Seçenekler için buton metni"
+    "description": "Button text for options"
   },
   "button_download_page": {
     "message": "Sayfayı İndir",
-    "description": "İndirme için buton metni"
+    "description": "Button text for download"
   },
   "button_download_website": {
     "message": "Web Sitesini İndir",
-    "description": "İndirme için buton metni"
+    "description": "Button text for download"
   },
   "button_download_single_file": {
     "message": "Tek Dosyayı İndir",
-    "description": "Tek dosya indirme için buton metni"
+    "description": "Button text for single file download"
   },
   "filtering_title": {
     "message": "İçerik Filtreleme",
-    "description": "Filtreleme bölümü için başlık"
+    "description": "Title for filtering section"
   },
   "filtering_label": {
     "message": "Dahil Edilen Varlıkları Filtrele",
-    "description": "Filtreleme seçenekleri için etiket"
+    "description": "Label for filtering options"
   },
   "filtering_by_type": {
     "message": "Tür",
-    "description": "Türe göre filtreleme için etiket"
+    "description": "Label for filtering by type"
   },
   "filtering_by_extension": {
     "message": "Dosya Uzantısı",
-    "description": "Uzantıya göre filtreleme için etiket"
+    "description": "Label for filtering by extension"
   },
   "filter_by_image": {
     "message": "Resim",
-    "description": "Resme göre filtreleme için etiket"
+    "description": "Label for filtering by image"
   },
   "filter_by_script": {
     "message": "Komut Dosyası",
-    "description": "Komut dosyasına göre filtreleme için etiket"
+    "description": "Label for filtering by script"
   },
   "filter_by_stylesheet": {
     "message": "Stil Sayfası",
-    "description": "Stil sayfasına göre filtreleme için etiket"
+    "description": "Label for filtering by stylesheet"
   },
   "filter_by_font": {
     "message": "Yazı Tipi",
-    "description": "Yazı tipine göre filtreleme için etiket"
+    "description": "Label for filtering by font"
   },
   "filter_by_markup": {
     "message": "İşaretleme",
-    "description": "İşaretlemeye göre filtreleme için etiket"
+    "description": "Label for filtering by Markup"
   },
   "filter_by_document": {
     "message": "Belge",
-    "description": "Belgeye göre filtreleme için etiket"
+    "description": "Label for filtering by Document"
   },
   "filter_by_spreadsheet": {
     "message": "Elektronik Tablo",
-    "description": "Elektronik tabloya göre filtreleme için etiket"
+    "description": "Label for filtering by Spreadsheet"
   },
   "filter_by_video": {
     "message": "Video",
-    "description": "Videoya göre filtreleme için etiket"
+    "description": "Label for filtering by Video"
   },
   "filter_by_audio": {
     "message": "Ses",
-    "description": "Sese göre filtreleme için etiket"
+    "description": "Label for filtering by Audio"
   },
   "filter_by_archive": {
     "message": "Arşiv",
-    "description": "Arşive göre filtreleme için etiket"
+    "description": "Label for filtering by Archive"
   },
   "filter_by_json": {
     "message": "JSON",
-    "description": "JSON'a göre filtreleme için etiket"
+    "description": "Label for filtering by JSON"
   },
   "filter_by_executable": {
     "message": "Çalıştırılabilir",
-    "description": "Çalıştırılabilir dosyaya göre filtreleme için etiket"
+    "description": "Label for filtering by Executable"
   },
   "filter_by_other": {
     "message": "Diğer",
-    "description": "Diğerine göre filtreleme için etiket"
+    "description": "Label for filtering by Other"
   },
   "single_file_title": {
     "message": "İndirme Bilgileri",
-    "description": "Tek dosya indirme kartı için başlık."
+    "description": "Title for the single file download card."
   },
   "single_file_download_intro": {
     "message": "Geçerli web sayfasını tek bir MHTML dosyası (.mhtml) olarak indirmek üzeresiniz.",
-    "description": "Tek MHTML dosyası indirme için giriş."
+    "description": "Introduction for single file MHTML download."
   },
   "single_file_format_mhtml_title": {
     "message": "MHTML Formatı",
-    "description": "MHTML formatı açıklaması için başlık."
+    "description": "Title for MHTML format explanation."
   },
   "single_file_format_mhtml_desc": {
     "message": "MHTML (MIME HTML), tüm sayfa içeriğini (HTML, CSS, JavaScript, resimler) tek bir dosyada kaydeder.",
-    "description": "MHTML formatının açıklaması."
+    "description": "Description of MHTML format."
   },
   "single_file_includes_all_title": {
     "message": "Her Şey Dahil",
-    "description": "'Tüm kaynakları içerir' noktası için başlık."
+    "description": "Title for 'includes all resources' point."
   },
   "single_file_includes_all_desc": {
     "message": "Tüm kaynakların dahil edilmesini sağlar ve sayfayı çevrimdışı olarak tamamen işlevsel hale getirir.",
-    "description": "'Tüm kaynakları içerir' noktası için açıklama."
+    "description": "Description for 'includes all resources' point."
   },
   "single_file_offline_viewing_title": {
     "message": "Çevrimdışı Görüntüleme",
-    "description": "Çevrimdışı görüntülemenin faydası için başlık."
+    "description": "Title for offline viewing benefit."
   },
   "single_file_offline_viewing_desc": {
     "message": "Sayfaları arşivlemek veya daha sonra internet bağlantısı olmadan görüntülemek için idealdir.",
-    "description": "Çevrimdışı görüntülemenin faydası için açıklama."
+    "description": "Description for offline viewing benefit."
   },
   "single_file_browser_support_title": {
     "message": "Tarayıcı Desteği",
-    "description": "Tarayıcı uyumluluğu için başlık."
+    "description": "Title for browser compatibility."
   },
   "single_file_browser_support_desc": {
     "message": "Çoğu modern web tarayıcısı .mhtml dosyalarını açabilir.",
-    "description": "Tarayıcı uyumluluğu için açıklama."
+    "description": "Description for browser compatibility."
   },
   "single_file_download_time_notice": {
     "message": "Lütfen unutmayın: Sayfa boyutuna bağlı olarak, indirme birkaç saniye sürebilir.",
-    "description": "MHTML için potansiyel indirme süresi hakkında bildirim."
+    "description": "Notice about potential download time for MHTML."
   },
   "full_web_page_download_title_v2_coming_soon": {
     "message": "Tam Web Sayfası İndirme Yakında",
-    "description": "Tam web sayfası indirme özelliği için başlık."
+    "description": "Title for the full web page download feature."
   },
   "full_web_page_download_subtitle_v2_next_version": {
     "message": "Bu özellik bir sonraki sürümde kullanıma sunulacaktır.",
-    "description": "Tam web sayfası indirme özelliği için alt başlık."
+    "description": "Subtitle for the full web page download feature."
   },
   "permission_pageCapture": {
     "message": "Sayfa Yakalama",
-    "description": "Geçerli sayfayı yakalama izni"
+    "description": "Permission to capture the current page"
   },
   "permission_pageCapture_description": {
     "message": "Uzantının geçerli sayfanın içeriğini yakalamasına izin verir.",
-    "description": "Sayfa yakalama izni açıklaması"
+    "description": "Description for page capture permission"
   },
   "tooltip_toggle_scroll_mode": {
     "message": "Sayfanın otomatik ve manuel kaydırması arasında geçiş yapın.",
-    "description": "Kaydırma modu geçiş düğmesi için araç ipucu"
+    "description": "Tooltip for the scroll mode toggle button"
   },
   "text_auto_mode": {
     "message": "Otomatik",
-    "description": "Otomatik kaydırma modu için metin"
+    "description": "Text for auto scroll mode"
   },
   "text_manual_mode": {
     "message": "Manuel",
-    "description": "Manuel kaydırma modu için metin"
+    "description": "Text for manual scroll mode"
   }
 }

@@ -1,278 +1,278 @@
 {
   "title": {
     "message": "Web Page & Site Downloader",
-    "description": "Tytuł rozszerzenia"
+    "description": "The title of the extension"
   },
   "description": {
     "message": "Web Page and Site Downloader umożliwia pobieranie całych stron internetowych - w tym wszystkich połączonych stron i zasobów - do przeglądania offline.",
-    "description": "Opis rozszerzenia"
+    "description": "The description of the extension"
   },
   "help": {
     "message": "Pomoc",
-    "description": "Tekst przycisku pomocy"
+    "description": "The help button text"
   },
   "download_mode": {
     "message": "Tryb pobierania",
-    "description": "Etykieta dla wyboru trybu pobierania"
+    "description": "The label for the download mode selection"
   },
   "single_download_description": {
     "message": "Pobierz tylko bieżącą stronę ze wszystkimi jej zasobami.",
-    "description": "Opis dla trybu pobierania pojedynczego"
+    "description": "Description for the single download mode"
   },
   "site_download_description": {
     "message": "Pobierz całą witrynę, w tym wszystkie połączone strony i zasoby.",
-    "description": "Opis dla trybu pobierania witryny"
+    "description": "Description for the site download mode"
   },
   "single_page": {
     "message": "Pojedyncza strona",
-    "description": "Etykieta dla trybu pobierania pojedynczej strony"
+    "description": "Label for the single page download mode"
   },
   "whole_website": {
     "message": "Cała strona internetowa",
-    "description": "Etykieta dla trybu pobierania całej strony internetowej"
+    "description": "Label for the whole website download mode"
   },
   "single_file": {
     "message": "Pojedynczy plik",
-    "description": "Etykieta dla trybu pobierania pojedynczego pliku"
+    "description": "Label for the single file download mode"
   },
   "loading": {
     "message": "Ładowanie...",
-    "description": "Wiadomość o ładowaniu"
+    "description": "Loading message"
   },
   "downloading": {
     "message": "Pobieranie...",
-    "description": "Wiadomość o pobieraniu"
+    "description": "Downloading message"
   },
   "not_downloadable": {
     "message": "Ta strona nie jest do pobrania",
-    "description": "Wiadomość wskazująca, że strona nie jest do pobrania"
+    "description": "Message indicating that the page is not downloadable"
   },
   "close_sidepanel_message": {
     "message": "Najpierw zamknij panel boczny.",
-    "description": "Wiadomość o zamknięciu panelu bocznego"
+    "description": "Message to close the side panel"
   },
   "permissions_title": {
     "message": "Wymagane uprawnienia",
-    "description": "Tytuł dla sekcji uprawnień"
+    "description": "Title for permissions section"
   },
   "permissions_message": {
     "message": "Wymagane są następujące uprawnienia",
-    "description": "Tytuł dla sekcji uprawnień"
+    "description": "Title for permissions section"
   },
   "requesting_permissions": {
     "message": "Żądanie uprawnień...",
-    "description": "Wiadomość wskazująca, że żądane są uprawnienia"
+    "description": "Message indicating that permissions are being requested"
   },
   "grant_permissions": {
     "message": "Udziel uprawnień",
-    "description": "Tekst przycisku, aby udzielić uprawnień"
+    "description": "Button text to grant permissions"
   },
   "permissions_granted": {
     "message": "Uprawnienia przyznane!",
-    "description": "Wiadomość wskazująca, że uprawnienia zostały przyznane"
+    "description": "Message indicating that permissions have been granted"
   },
   "permissions_intro": {
     "message": "To rozszerzenie wymaga następujących uprawnień do prawidłowego działania",
-    "description": "Wiadomość wprowadzająca dla uprawnień"
+    "description": "Introduction message for permissions"
   },
   "permission_activeTab": {
     "message": "Aktywna karta",
-    "description": "Uprawnienie do dostępu do aktywnej karty"
+    "description": "Permission to access the active tab"
   },
   "permission_activeTab_description": {
     "message": "Umożliwia rozszerzeniu dostęp do aktywnej karty.",
-    "description": "Opis uprawnienia aktywnej karty"
+    "description": "Description for active tab permission"
   },
   "permission_scripting": {
     "message": "Skrypty",
-    "description": "Uprawnienie do używania skryptów"
+    "description": "Permission to use scripting"
   },
   "permission_scripting_description": {
     "message": "Wstrzyknij skrypty do bieżącej karty, aby przeanalizować zawartość.",
-    "description": "Opis uprawnienia do skryptów"
+    "description": "Description for scripting permission"
   },
   "permission_storage": {
     "message": "Przechowywanie",
-    "description": "Uprawnienie do używania pamięci"
+    "description": "Permission to use storage"
   },
   "permission_storage_description": {
     "message": "Przechowuj preferencje i ustawienia użytkownika.",
-    "description": "Opis uprawnienia do przechowywania"
+    "description": "Description for storage permission"
   },
   "permission_downloads": {
     "message": "Pobrane pliki",
-    "description": "Uprawnienie do używania pobierania"
+    "description": "Permission to use downloads"
   },
   "permission_downloads_description": {
     "message": "Pobierz pliki na komputer użytkownika.",
-    "description": "Opis uprawnienia do pobierania"
+    "description": "Description for downloads permission"
   },
   "permission_request_error": {
     "message": "Wystąpił błąd podczas żądania uprawnień.",
-    "description": "Komunikat o błędzie dla żądania uprawnień"
+    "description": "Error message for permission request"
   },
   "permission_not_granted_error": {
     "message": "Uprawnienia nie zostały przyznane. Udziel uprawnień, aby kontynuować.",
-    "description": "Komunikat o błędzie dla nieprzyznanego uprawnienia"
+    "description": "Error message for permission not granted"
   },
   "permission_check_error": {
     "message": "Nie udało się sprawdzić uprawnień. Spróbuj ponownie.",
-    "description": "Komunikat o błędzie dla sprawdzenia uprawnień"
+    "description": "Error message for permission check"
   },
   "button_options": {
     "message": "Opcje",
-    "description": "Tekst przycisku dla opcji"
+    "description": "Button text for options"
   },
   "button_download_page": {
     "message": "Pobierz stronę",
-    "description": "Tekst przycisku do pobrania"
+    "description": "Button text for download"
   },
   "button_download_website": {
     "message": "Pobierz stronę internetową",
-    "description": "Tekst przycisku do pobrania"
+    "description": "Button text for download"
   },
   "button_download_single_file": {
     "message": "Pobierz pojedynczy plik",
-    "description": "Tekst przycisku do pobrania pojedynczego pliku"
+    "description": "Button text for single file download"
   },
   "filtering_title": {
     "message": "Filtrowanie zawartości",
-    "description": "Tytuł dla sekcji filtrowania"
+    "description": "Title for filtering section"
   },
   "filtering_label": {
     "message": "Filtruj uwzględnione zasoby według",
-    "description": "Etykieta dla opcji filtrowania"
+    "description": "Label for filtering options"
   },
   "filtering_by_type": {
     "message": "Typ",
-    "description": "Etykieta dla filtrowania według typu"
+    "description": "Label for filtering by type"
   },
   "filtering_by_extension": {
     "message": "Rozszerzenie pliku",
-    "description": "Etykieta dla filtrowania według rozszerzenia"
+    "description": "Label for filtering by extension"
   },
   "filter_by_image": {
     "message": "Obraz",
-    "description": "Etykieta dla filtrowania według obrazu"
+    "description": "Label for filtering by image"
   },
   "filter_by_script": {
     "message": "Skrypt",
-    "description": "Etykieta dla filtrowania według skryptu"
+    "description": "Label for filtering by script"
   },
   "filter_by_stylesheet": {
     "message": "Arkusz stylów",
-    "description": "Etykieta dla filtrowania według arkusza stylów"
+    "description": "Label for filtering by stylesheet"
   },
   "filter_by_font": {
     "message": "Czcionka",
-    "description": "Etykieta dla filtrowania według czcionki"
+    "description": "Label for filtering by font"
   },
   "filter_by_markup": {
     "message": "Znaczniki",
-    "description": "Etykieta dla filtrowania według znaczników"
+    "description": "Label for filtering by Markup"
   },
   "filter_by_document": {
     "message": "Dokument",
-    "description": "Etykieta dla filtrowania według dokumentu"
+    "description": "Label for filtering by Document"
   },
   "filter_by_spreadsheet": {
     "message": "Arkusz kalkulacyjny",
-    "description": "Etykieta dla filtrowania według arkusza kalkulacyjnego"
+    "description": "Label for filtering by Spreadsheet"
   },
   "filter_by_video": {
     "message": "Wideo",
-    "description": "Etykieta dla filtrowania według wideo"
+    "description": "Label for filtering by Video"
   },
   "filter_by_audio": {
     "message": "Audio",
-    "description": "Etykieta dla filtrowania według audio"
+    "description": "Label for filtering by Audio"
   },
   "filter_by_archive": {
     "message": "Archiwum",
-    "description": "Etykieta dla filtrowania według archiwum"
+    "description": "Label for filtering by Archive"
   },
   "filter_by_json": {
     "message": "JSON",
-    "description": "Etykieta dla filtrowania według JSON"
+    "description": "Label for filtering by JSON"
   },
   "filter_by_executable": {
     "message": "Plik wykonywalny",
-    "description": "Etykieta dla filtrowania według pliku wykonywalnego"
+    "description": "Label for filtering by Executable"
   },
   "filter_by_other": {
     "message": "Inne",
-    "description": "Etykieta dla filtrowania według inne"
+    "description": "Label for filtering by Other"
   },
   "single_file_title": {
     "message": "Informacje o pobieraniu",
-    "description": "Tytuł dla karty pobierania pojedynczego pliku."
+    "description": "Title for the single file download card."
   },
   "single_file_download_intro": {
     "message": "Zamierzasz pobrać bieżącą stronę internetową jako pojedynczy plik MHTML (.mhtml).",
-    "description": "Wprowadzenie do pobierania pojedynczego pliku MHTML."
+    "description": "Introduction for single file MHTML download."
   },
   "single_file_format_mhtml_title": {
     "message": "Format MHTML",
-    "description": "Tytuł dla wyjaśnienia formatu MHTML."
+    "description": "Title for MHTML format explanation."
   },
   "single_file_format_mhtml_desc": {
     "message": "MHTML (MIME HTML) zapisuje całą zawartość strony (HTML, CSS, JavaScript, obrazy) w jednym pliku.",
-    "description": "Opis formatu MHTML."
+    "description": "Description of MHTML format."
   },
   "single_file_includes_all_title": {
     "message": "Wszystko w zestawie",
-    "description": "Tytuł dla punktu „zawiera wszystkie zasoby”."
+    "description": "Title for 'includes all resources' point."
   },
   "single_file_includes_all_desc": {
     "message": "Zapewnia uwzględnienie wszystkich zasobów, dzięki czemu strona jest w pełni funkcjonalna w trybie offline.",
-    "description": "Opis dla punktu „zawiera wszystkie zasoby”."
+    "description": "Description for 'includes all resources' point."
   },
   "single_file_offline_viewing_title": {
     "message": "Wyświetlanie offline",
-    "description": "Tytuł dla korzyści z przeglądania offline."
+    "description": "Title for offline viewing benefit."
   },
   "single_file_offline_viewing_desc": {
     "message": "Idealny do archiwizowania stron lub przeglądania ich później bez połączenia z Internetem.",
-    "description": "Opis dla korzyści z przeglądania offline."
+    "description": "Description for offline viewing benefit."
   },
   "single_file_browser_support_title": {
     "message": "Obsługa przeglądarki",
-    "description": "Tytuł dla zgodności przeglądarki."
+    "description": "Title for browser compatibility."
   },
   "single_file_browser_support_desc": {
     "message": "Większość nowoczesnych przeglądarek internetowych może otwierać pliki .mhtml.",
-    "description": "Opis dla zgodności przeglądarki."
+    "description": "Description for browser compatibility."
   },
   "single_file_download_time_notice": {
     "message": "Uwaga: W zależności od rozmiaru strony pobieranie może zająć kilka chwil.",
-    "description": "Informacja o potencjalnym czasie pobierania dla MHTML."
+    "description": "Notice about potential download time for MHTML."
   },
   "full_web_page_download_title_v2_coming_soon": {
     "message": "Pobieranie pełnej strony internetowej już wkrótce",
-    "description": "Tytuł dla funkcji pobierania pełnej strony internetowej."
+    "description": "Title for the full web page download feature."
   },
   "full_web_page_download_subtitle_v2_next_version": {
     "message": "Ta funkcja będzie dostępna w następnej wersji.",
-    "description": "Podtytuł dla funkcji pobierania pełnej strony internetowej."
+    "description": "Subtitle for the full web page download feature."
   },
   "permission_pageCapture": {
     "message": "Przechwytywanie strony",
-    "description": "Uprawnienie do przechwytywania bieżącej strony"
+    "description": "Permission to capture the current page"
   },
   "permission_pageCapture_description": {
     "message": "Umożliwia rozszerzeniu przechwytywanie zawartości bieżącej strony.",
-    "description": "Opis uprawnienia do przechwytywania strony"
+    "description": "Description for page capture permission"
   },
   "tooltip_toggle_scroll_mode": {
     "message": "Przełączanie między automatycznym i ręcznym przewijaniem strony.",
-    "description": "Etykieta dla przycisku przełączania trybu przewijania"
+    "description": "Tooltip for the scroll mode toggle button"
   },
   "text_auto_mode": {
     "message": "Auto",
-    "description": "Tekst dla trybu automatycznego przewijania"
+    "description": "Text for auto scroll mode"
   },
   "text_manual_mode": {
     "message": "Ręcznie",
-    "description": "Tekst dla trybu ręcznego przewijania"
+    "description": "Text for manual scroll mode"
   }
 }
