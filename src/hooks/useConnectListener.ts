@@ -25,22 +25,39 @@ const updateStore = async (
   return;
 };
 
-export function useConnectListener(sender: MessageSender) {
+export function useConnectListener(
+  sender: MessageSender,
+  listener?: (message: Message, port: chrome.runtime.Port) => void,
+) {
   const { port, setPort } = useConnectPortStore();
   const { setIsDownloading } = useDownloadStatusStore();
 
   useEffect(() => {
-    setPort(chrome.runtime.connect({ name: sender }));
-  }, [sender]);
+    const newPort = chrome.runtime.connect({ name: sender });
+    setPort(newPort);
+    // Optional: Clean up the port on component unmount, though store might handle it
+    return () => {
+      if (newPort) {
+        try {
+          newPort.disconnect();
+        } catch (error) {
+          // ignore error - port already disconnected
+        }
+      }
+      setPort(null); // Clear port from store on disconnect
+    };
+  }, [sender, setPort]);
 
   useEffect(() => {
-    const callback = async (
+    const internalCallback = async (
       message: Message,
-      port: chrome.runtime.Port,
+      p: chrome.runtime.Port, // Renamed to avoid conflict with 'port' from outer scope
     ): Promise<void> => {
+      // Internal handling
       switch (message.action) {
         case MESSAGE_UPDATE_STORE:
-          return await updateStore(message.target, port);
+          await updateStore(message.target, p);
+          break;
         case MESSAGE_START_DOWNLOAD:
           setIsDownloading(true);
           break;
@@ -50,22 +67,28 @@ export function useConnectListener(sender: MessageSender) {
           break;
       }
 
-      return;
+      // Call the external listener if provided
+      if (listener) {
+        listener(message, p);
+      }
     };
 
     if (port) {
-      port.onMessage.addListener(callback);
+      port.onMessage.addListener(internalCallback);
     }
 
     return () => {
       if (port) {
-        port.onMessage.removeListener(callback);
-        port.disconnect();
+        try {
+          port.onMessage.removeListener(internalCallback);
+        } catch (error) {
+          // ignore error
+        }
       }
     };
-  }, [port]);
+  }, [port, listener, setIsDownloading]); // Added listener and setIsDownloading to dependency array
 
   return {
-    port,
+    port, // Still returning port, though direct use might be less common now
   };
 }
