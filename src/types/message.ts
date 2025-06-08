@@ -3,7 +3,10 @@ export type MessageAction =
   | "sendSocketMessage"
   | "startDownload"
   | "scrollPageDown"
-  | "doneScrollingDown";
+  | "doneScrollingDown"
+  | "downloadDone"
+  | "downloadAssets"
+  | "simulateDownloadDone";
 export type MessageTarget = "background" | "sidepanel" | "popup";
 export type MessageSender = "background" | "sidepanel" | "popup";
 
@@ -12,6 +15,9 @@ export const MESSAGE_SEND_SOCKET_MESSAGE: MessageAction = "sendSocketMessage";
 export const MESSAGE_START_DOWNLOAD: MessageAction = "startDownload";
 export const MESSAGE_SCROLL_PAGE_DOWN: MessageAction = "scrollPageDown";
 export const MESSAGE_DONE_SCROLLING_DOWN: MessageAction = 'doneScrollingDown';
+export const MESSAGE_DOWNLOAD_DONE: MessageAction = "downloadDone";
+export const MESSAGE_DOWNLOAD_ASSETS: MessageAction = "downloadAssets";
+export const MESSAGE_SIMULATE_DOWNLOAD_DONE: MessageAction = "simulateDownloadDone";
 
 export const MESSAGE_BACKGROUND: MessageSender = "background";
 export const MESSAGE_SIDEPANEL: MessageSender = "sidepanel";
@@ -28,11 +34,17 @@ export interface MessageData {
   data?: any;
 }
 
+export interface AssetData {
+  [groupName: string]: string[]; // e.g., { "images": ["url1", "url2"], "fonts": ["url3"] }
+}
+
 export interface Message {
   action: MessageAction;
   target: MessageTarget;
   sender: MessageSender;
-  data?: MessageData;
+  data?: any; // Keep for existing actions
+  assets?: AssetData; // For downloadDone
+  assetUrls?: string[]; // For downloadAssets
 }
 
 export interface ResponseMessage {
