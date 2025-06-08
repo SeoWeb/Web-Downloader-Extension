@@ -51,6 +51,10 @@
     "message": "Tutup panel samping terlebih dahulu.",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "Tutup Panel Samping",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "Izin yang Diperlukan",
     "description": "Title for permissions section"

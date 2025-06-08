@@ -51,6 +51,10 @@
     "message": "סגור תחילה את לוח הצד.",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "סגור לוח צד",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "הרשאות נדרשות",
     "description": "Title for permissions section"

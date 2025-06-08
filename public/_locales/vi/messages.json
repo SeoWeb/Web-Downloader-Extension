@@ -51,6 +51,10 @@
     "message": "Đóng bảng điều khiển bên trước.",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "Đóng bảng điều khiển bên",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "Quyền được yêu cầu",
     "description": "Title for permissions section"

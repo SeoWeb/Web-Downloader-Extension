@@ -51,6 +51,10 @@
     "message": "Fermez d'abord le panneau latéral.",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "Fermer le panneau latéral",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "Autorisations requises",
     "description": "Title for permissions section"

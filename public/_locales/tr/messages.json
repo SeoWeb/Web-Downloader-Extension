@@ -51,6 +51,10 @@
     "message": "Önce yan paneli kapatın.",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "Yan Paneli Kapat",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "Gerekli İzinler",
     "description": "Title for permissions section"

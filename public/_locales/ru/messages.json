@@ -51,6 +51,10 @@
     "message": "Сначала закройте боковую панель.",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "Закрыть боковую панель",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "Необходимые разрешения",
     "description": "Title for permissions section"

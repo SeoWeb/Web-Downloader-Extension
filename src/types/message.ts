@@ -17,11 +17,22 @@ export const MESSAGE_BACKGROUND: MessageSender = "background";
 export const MESSAGE_SIDEPANEL: MessageSender = "sidepanel";
 export const MESSAGE_POPUP: MessageSender = "popup";
 
+export type MessageDataAction =
+  | "addHtmlChunk"
+  | "htmlChunksDone"
+  | "submitHtml"
+  | "htmlDone";
+
+export interface MessageData {
+  action: MessageDataAction;
+  data?: any;
+}
+
 export interface Message {
   action: MessageAction;
   target: MessageTarget;
   sender: MessageSender;
-  data?: any;
+  data?: MessageData;
 }
 
 export interface ResponseMessage {

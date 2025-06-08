@@ -13,9 +13,16 @@ export const sendSocketMessage = async (message: Message): Promise<SocketRespons
 
   if (message.data && message.data.action && message.data.data) {
     return new Promise<SocketResponse>((resolve) => {
-      socket.emit(message.data.action, message.data.data, (response: SocketResponse) => {
-        resolve(response)
-      });
+      if (message.data && message.data.action && message.data.data) {
+        socket.emit(message.data.action, message.data.data, (response: SocketResponse) => {
+          resolve(response)
+        });
+      } else {
+        resolve({
+          success: false,
+          message: 'Invalid message data'
+        });
+      }
     })
   }
 

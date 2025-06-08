@@ -51,6 +51,10 @@
     "message": "প্রথমে সাইডপ্যানেলটি বন্ধ করুন।",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "সাইড প্যানেল বন্ধ করুন",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "প্রয়োজনীয় অনুমতি",
     "description": "Title for permissions section"

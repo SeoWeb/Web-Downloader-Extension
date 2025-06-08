@@ -51,6 +51,10 @@
     "message": "Sluit eerst het zijpaneel.",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "Zijpaneel sluiten",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "Vereiste machtigingen",
     "description": "Title for permissions section"

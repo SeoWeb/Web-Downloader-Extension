@@ -51,6 +51,10 @@
     "message": "Schließen Sie zuerst das Seitenfenster.",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "Seitenfenster schließen",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "Erforderliche Berechtigungen",
     "description": "Title for permissions section"

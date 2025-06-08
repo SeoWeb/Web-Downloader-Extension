@@ -51,6 +51,10 @@
     "message": "请先关闭侧面板。",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "关闭侧面板",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "所需权限",
     "description": "Title for permissions section"

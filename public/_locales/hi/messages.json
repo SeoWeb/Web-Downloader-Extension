@@ -51,6 +51,10 @@
     "message": "पहले साइडपैनल बंद करें।",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "साइड पैनल बंद करें",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "आवश्यक अनुमतियाँ",
     "description": "Title for permissions section"

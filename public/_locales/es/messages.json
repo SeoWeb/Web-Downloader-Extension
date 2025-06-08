@@ -51,6 +51,10 @@
     "message": "Cierre primero el panel lateral.",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "Cerrar panel lateral",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "Permisos requeridos",
     "description": "Title for permissions section"

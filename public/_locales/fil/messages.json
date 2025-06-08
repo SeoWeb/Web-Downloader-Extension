@@ -51,6 +51,10 @@
     "message": "Isara muna ang sidepanel.",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "Isara ang Side Panel",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "Mga Kinakailangang Pahintulot",
     "description": "Title for permissions section"

@@ -13,6 +13,7 @@ import { useLanguageStore } from "../../store/languageStore";
 import SingleFileCard from "./sections/SingleFileCard";
 import { ContentFilteringCardProps } from "./sections/content-filtering/types";
 import WebsiteCard from "./sections/websiteCard";
+import { Button } from "../ui/button";
 
 const singlePageCardComponents = [
   ContentFilteringCard,
@@ -30,7 +31,7 @@ export default function Popup() {
   const [activeCardIndex, setActiveCardIndex] = useState(1);
   const [hasPermissions, setHasPermissions] = useState<boolean>(false);
   const [cardComponents, setCardComponents] = useState<React.FC<ContentFilteringCardProps>[]>(singlePageCardComponents);
-  const { activeTabId, isSidePanelOpen, downloadMode, setActiveTabId } = useDownloadSettingsStore();
+  const { activeTabId, isSidePanelOpen, downloadMode, setActiveTabId, setIsSidePanelOpen } = useDownloadSettingsStore();
   const { isDownloading } = useDownloadStatusStore();
 
   const handleNext = () => {
@@ -66,6 +67,25 @@ export default function Popup() {
       setCardComponents(websiteCardComponents);
     }
   }, [downloadMode]);
+
+  const handleCloseSidePanel = async () => {
+    try {
+      const tab = await getActiveTab();
+      if (tab?.id) {
+        // Disable the sidepanel for the current tab
+        await chrome.sidePanel.setOptions({
+          tabId: tab.id,
+          enabled: false,
+        });
+      }
+      // Update the store to reflect that sidepanel is closed
+      setIsSidePanelOpen(false);
+    } catch (error) {
+      console.error('Error closing sidepanel:', error);
+      // Still update the store even if Chrome API fails
+      setIsSidePanelOpen(false);
+    }
+  };
 
   const renderPermissonsCard = () => (
     <PermissionsCard
@@ -114,7 +134,18 @@ export default function Popup() {
   }
 
   if (isSidePanelOpen) {
-    return renderLayout(<p>{getTranslation('close_sidepanel_message')}</p>);
+    return renderLayout(
+      <div className="flex flex-col items-center justify-center space-y-4 p-6">
+        <p className="text-center text-gray-600">{getTranslation('close_sidepanel_message')}</p>
+        <Button
+          onClick={handleCloseSidePanel}
+          variant="primary"
+          size="default"
+        >
+          {getTranslation('close_sidepanel')}
+        </Button>
+      </div>
+    );
   }
 
   return renderLayout(renderActiveCarcComponent());

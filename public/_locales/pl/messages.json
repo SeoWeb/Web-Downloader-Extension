@@ -51,6 +51,10 @@
     "message": "Najpierw zamknij panel boczny.",
     "description": "Message to close the side panel"
   },
+  "close_sidepanel": {
+    "message": "Zamknij panel boczny",
+    "description": "Button text to close the side panel"
+  },
   "permissions_title": {
     "message": "Wymagane uprawnienia",
     "description": "Title for permissions section"

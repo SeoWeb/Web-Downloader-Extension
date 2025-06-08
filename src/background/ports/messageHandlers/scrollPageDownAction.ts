@@ -8,6 +8,7 @@ import {
   MESSAGE_SIDEPANEL,
 } from "../../../types/message";
 import { closeSocketConnection } from "../../connection";
+import { sendHtmlDoneMessage } from "./sendHtmlToServer";
 
 async function getActiveTab() {
   const tabId = await chromeStorage.getItemValue(
@@ -33,6 +34,8 @@ export const scrollPageDownAction = async (
     } else {
       console.log("tab not found");
     }
+
+    await sendHtmlDoneMessage();
 
     // TODO: more steps are comming do not close connection yet
     await closeSocketConnection();
