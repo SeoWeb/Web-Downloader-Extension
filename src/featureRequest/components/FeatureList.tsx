@@ -45,7 +45,8 @@ function VotingComponent({ feature, userId, onVote }: VotingComponentProps) {
   };
 
   const handleVote = async (voteType: 'up' | 'down') => {
-    if (!userId || !onVote || isVoting) return;
+    // Prevent voting if user has already voted
+    if (!userId || !onVote || isVoting || votes.userVote) return;
     
     setIsVoting(true);
     setLastVoteType(voteType);
@@ -75,7 +76,7 @@ function VotingComponent({ feature, userId, onVote }: VotingComponentProps) {
     const baseClass = "flex items-center space-x-1 px-2 py-1 rounded-md text-sm transition-colors";
     const isUserVote = votes.userVote === voteType;
     const isCurrentlyVoting = isVoting && lastVoteType === voteType;
-    const isDisabled = !userId || isVoting;
+    const isDisabled = !userId || isVoting || !!votes.userVote;
     
     let colorClass = '';
     if (voteType === 'up') {
@@ -108,9 +109,15 @@ function VotingComponent({ feature, userId, onVote }: VotingComponentProps) {
       {/* Upvote Button */}
       <button
         onClick={() => handleVote('up')}
-        disabled={!userId || isVoting}
+        disabled={!userId || isVoting || !!votes.userVote}
         className={getVoteButtonClass('up')}
-        title={userId ? 'Upvote this feature' : 'Login required to vote'}
+        title={
+          !userId
+            ? 'Login required to vote'
+            : votes.userVote
+              ? 'You have already voted on this feature'
+              : 'Upvote this feature'
+        }
       >
         {isVoting && lastVoteType === 'up' ? (
           <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -128,9 +135,15 @@ function VotingComponent({ feature, userId, onVote }: VotingComponentProps) {
       {/* Downvote Button */}
       <button
         onClick={() => handleVote('down')}
-        disabled={!userId || isVoting}
+        disabled={!userId || isVoting || !!votes.userVote}
         className={getVoteButtonClass('down')}
-        title={userId ? 'Downvote this feature' : 'Login required to vote'}
+        title={
+          !userId
+            ? 'Login required to vote'
+            : votes.userVote
+              ? 'You have already voted on this feature'
+              : 'Downvote this feature'
+        }
       >
         {isVoting && lastVoteType === 'down' ? (
           <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
