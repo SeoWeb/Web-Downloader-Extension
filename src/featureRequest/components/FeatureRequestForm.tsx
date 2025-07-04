@@ -89,7 +89,35 @@ export function FeatureRequestForm({ userId, onSubmit, submitting }: FeatureRequ
 
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-900">📝 Submit New Feature Request</h2>
+      {/* Magical Header Section */}
+      <div className="relative group mb-6">
+        {/* Magical glow background */}
+        <div className="absolute -inset-2 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-1000 animate-pulse"></div>
+        
+        {/* Header content */}
+        <div className="relative bg-gradient-to-r from-purple-50 via-pink-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
+          <div className="flex items-center justify-center space-x-3">
+            <span className="text-3xl animate-bounce">✨</span>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 bg-clip-text text-transparent">
+              Submit New Feature Request
+            </h2>
+            <span className="text-3xl animate-bounce" style={{ animationDelay: '0.5s' }}>🌟</span>
+          </div>
+          
+          {/* Floating sparkles */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-2 left-8 w-1 h-1 bg-purple-400 rounded-full animate-ping opacity-75"></div>
+            <div className="absolute top-6 right-12 w-1 h-1 bg-pink-400 rounded-full animate-pulse opacity-75" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute bottom-3 left-16 w-1 h-1 bg-blue-400 rounded-full animate-bounce opacity-75" style={{ animationDelay: '1.5s' }}></div>
+            <div className="absolute bottom-6 right-6 w-1 h-1 bg-yellow-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '2s' }}></div>
+          </div>
+          
+          {/* Magical subtitle */}
+          <p className="text-center text-purple-700 font-medium mt-2 text-sm">
+            ✨ Transform your ideas into reality ✨
+          </p>
+        </div>
+      </div>
       
       {success && (
         <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
@@ -186,13 +214,46 @@ export function FeatureRequestForm({ userId, onSubmit, submitting }: FeatureRequ
           </div>
         </div>
 
-        <Button
-          type="submit"
-          disabled={submitting}
-          className="w-full"
-        >
-          {submitting ? 'Submitting...' : 'Submit Feature Request'}
-        </Button>
+        {/* Magical Submit Button */}
+        <div className="relative group">
+          {/* Magical glow background */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 rounded-lg blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+          
+          <button
+            type="submit"
+            disabled={submitting}
+            className={`
+              relative w-full px-6 py-4 rounded-lg font-semibold text-white
+              bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500
+              hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600
+              transform transition-all duration-300 ease-out
+              hover:scale-105 shadow-lg hover:shadow-2xl
+              focus:outline-none focus:ring-4 focus:ring-purple-300 focus:ring-opacity-50
+              disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+              overflow-hidden
+            `}
+          >
+            {/* Shimmer effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 hover:opacity-20 transform -skew-x-12 -translate-x-full hover:translate-x-full transition-transform duration-1000"></div>
+            
+            {/* Button content */}
+            <div className="relative flex items-center justify-center space-x-3">
+              {submitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span className="text-lg font-bold tracking-wide">Casting Your Wish...</span>
+                  <span className="text-xl animate-pulse">✨</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-xl">🚀</span>
+                  <span className="text-lg font-bold tracking-wide">Submit Feature Request</span>
+                  <span className="text-xl">✨</span>
+                </>
+              )}
+            </div>
+          </button>
+        </div>
       </form>
     </div>
   );

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Button } from '../../components/Button';
 import { FeatureRequest } from '../utils/api';
 
 interface GeneratedFormPreviewProps {
@@ -202,22 +201,46 @@ export function GeneratedFormPreview({
         </div>
 
         <div className="flex space-x-3 pt-4">
-          {/* <Button
-            type="button"
-            variant="outline"
-            onClick={onRegenerate}
-            disabled={submitting || isRegenerating}
-            className="flex-1"
-          >
-            {isRegenerating ? 'Regenerating...' : '🔄 Regenerate with AI'}
-          </Button> */}
-          <Button
-            type="submit"
-            disabled={submitting || isRegenerating}
-            className="flex-1"
-          >
-            {submitting ? 'Submitting...' : '📤 Submit Request'}
-          </Button>
+          {/* Magical Submit Button */}
+          <div className="relative group flex-1">
+            {/* Magical glow background */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 rounded-lg blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+            
+            <button
+              type="submit"
+              disabled={submitting || isRegenerating}
+              className={`
+                relative w-full px-6 py-4 rounded-lg font-semibold text-white
+                bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500
+                hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600
+                transform transition-all duration-300 ease-out
+                hover:scale-105 shadow-lg hover:shadow-2xl
+                focus:outline-none focus:ring-4 focus:ring-purple-300 focus:ring-opacity-50
+                disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+                overflow-hidden
+              `}
+            >
+              {/* Shimmer effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 hover:opacity-20 transform -skew-x-12 -translate-x-full hover:translate-x-full transition-transform duration-1000"></div>
+              
+              {/* Button content */}
+              <div className="relative flex items-center justify-center space-x-3">
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span className="text-lg font-bold tracking-wide">Casting Your Wish...</span>
+                    <span className="text-xl animate-pulse">✨</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xl">📤</span>
+                    <span className="text-lg font-bold tracking-wide">Submit Request</span>
+                    <span className="text-xl">✨</span>
+                  </>
+                )}
+              </div>
+            </button>
+          </div>
         </div>
       </form>
     </div>
