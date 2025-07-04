@@ -59,22 +59,35 @@ export function useFeatureRequests() {
     }
   }, [fetchFeatures]);
 
-  const submitVote = useCallback(async (voteRequest: VoteRequest): Promise<boolean> => {
+  const submitVote = useCallback(async (voteRequest: VoteRequest, forceRefresh: boolean = false): Promise<boolean> => {
     try {
       setError(null);
       const result = await voteFeature(voteRequest);
       
       if (result && result.success) {
-        // Update the local features state with new vote data
-        setFeatures(prevFeatures =>
-          prevFeatures.map(feature =>
-            feature.id === voteRequest.featureId
-              ? { ...feature, votes: result.votes }
-              : feature
-          )
-        );
+        console.log('Vote successful, updating local state with:', result.votes);
+        
+        if (forceRefresh) {
+          // Refresh the entire list to ensure consistency with server
+          console.log('Force refreshing feature list after vote');
+          await fetchFeatures();
+        } else {
+          // Update the local features state with new vote data
+          setFeatures(prevFeatures => {
+            const updatedFeatures = prevFeatures.map(feature =>
+              feature.id === voteRequest.featureId
+                ? { ...feature, votes: result.votes }
+                : feature
+            );
+            
+            console.log('Updated features state after vote');
+            return updatedFeatures;
+          });
+        }
+        
         return true;
       } else {
+        console.error('Vote failed:', result);
         setError('Failed to submit vote');
         return false;
       }
@@ -83,7 +96,7 @@ export function useFeatureRequests() {
       setError('Failed to submit vote');
       return false;
     }
-  }, []);
+  }, [fetchFeatures]);
 
   const clearError = useCallback(() => {
     setError(null);

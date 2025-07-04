@@ -110,7 +110,9 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
             📝 Submit New Feature Request
           </h2>
           <p className="text-gray-600 mb-4">
-            Describe your feature idea and why you need it. Our AI will help structure your request.
+            Describe your feature idea or problem and why you need it.
+            <br />
+            Our artificial intelligence will help you structure your request.
           </p>
           
           <div className="space-y-4">
@@ -152,7 +154,7 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
             </div>
           </div>
 
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          {/* <div className="mt-6 p-4 bg-blue-50 rounded-lg">
             <h3 className="font-medium text-blue-900 mb-2">💡 How it works:</h3>
             <ul className="text-sm text-blue-800 space-y-1">
               <li>• Describe your feature idea in natural language</li>
@@ -160,7 +162,7 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
               <li>• Review and edit the structured form</li>
               <li>• Submit your polished feature request</li>
             </ul>
-          </div>
+          </div> */}
         </div>
       )}
 

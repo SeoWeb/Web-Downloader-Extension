@@ -48,7 +48,8 @@ function FeatureRequestPage() {
     if (!userId) {
       return false;
     }
-    return await submitVote(voteRequest);
+    // Use forceRefresh=true to ensure the list is always up-to-date after voting
+    return await submitVote(voteRequest, true);
   };
 
   if (userIdLoading) {

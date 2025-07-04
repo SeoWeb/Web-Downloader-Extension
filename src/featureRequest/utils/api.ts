@@ -145,6 +145,8 @@ export function validateFeatureRequest(featureRequest: Partial<FeatureRequest>):
  */
 export async function voteFeature(voteRequest: VoteRequest): Promise<VoteResponse | null> {
   try {
+    console.log('Submitting vote:', voteRequest);
+    
     const response = await fetch(API_URLS.VOTE_FEATURE, {
       method: 'POST',
       headers: {
@@ -158,11 +160,30 @@ export async function voteFeature(voteRequest: VoteRequest): Promise<VoteRespons
     });
 
     if (!response.ok) {
-      console.error('Failed to submit vote:', response.statusText);
+      console.error('Failed to submit vote:', response.status, response.statusText);
       return null;
     }
 
     const data: VoteResponse = await response.json();
+    console.log('Vote response received:', data);
+    
+    // Validate the response structure
+    if (!data || typeof data.success !== 'boolean') {
+      console.error('Invalid vote response structure:', data);
+      return null;
+    }
+    
+    // Ensure votes object has required properties
+    if (data.success && data.votes) {
+      data.votes = {
+        upvotes: data.votes.upvotes || 0,
+        downvotes: data.votes.downvotes || 0,
+        totalVotes: data.votes.totalVotes || 0,
+        averageVote: data.votes.averageVote || 0,
+        userVote: data.votes.userVote || null,
+      };
+    }
+    
     return data;
   } catch (error) {
     console.error('Error submitting vote:', error);

@@ -27,6 +27,7 @@ export function MainContent({
   return (
     <>
       <Heading />
+      <FeatureRequestButton />
       <Actions messages={messages} />
 
       {!!tabId &&
@@ -40,7 +41,6 @@ export function MainContent({
           </div>
         )}
       
-      <FeatureRequestButton />
     </>
   );
 }

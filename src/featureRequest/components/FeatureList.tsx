@@ -34,6 +34,7 @@ interface VotingComponentProps {
 
 function VotingComponent({ feature, userId, onVote }: VotingComponentProps) {
   const [isVoting, setIsVoting] = useState(false);
+  const [lastVoteType, setLastVoteType] = useState<'up' | 'down' | null>(null);
   
   const votes = feature.votes || {
     upvotes: 0,
@@ -47,32 +48,59 @@ function VotingComponent({ feature, userId, onVote }: VotingComponentProps) {
     if (!userId || !onVote || isVoting) return;
     
     setIsVoting(true);
+    setLastVoteType(voteType);
+    
     try {
-      await onVote({
+      const success = await onVote({
         featureId: feature.id,
         userId,
         vote: voteType
       });
+      
+      if (success) {
+        console.log('Vote submitted successfully for feature:', feature.id);
+        // The list will be refreshed automatically by the parent component
+      } else {
+        console.error('Failed to submit vote for feature:', feature.id);
+      }
     } catch (error) {
       console.error('Error voting:', error);
     } finally {
       setIsVoting(false);
+      setLastVoteType(null);
     }
   };
 
   const getVoteButtonClass = (voteType: 'up' | 'down') => {
     const baseClass = "flex items-center space-x-1 px-2 py-1 rounded-md text-sm transition-colors";
     const isUserVote = votes.userVote === voteType;
+    const isCurrentlyVoting = isVoting && lastVoteType === voteType;
+    const isDisabled = !userId || isVoting;
     
+    let colorClass = '';
     if (voteType === 'up') {
-      return `${baseClass} ${isUserVote
-        ? 'bg-green-100 text-green-700 border border-green-300'
-        : 'text-gray-600 hover:bg-green-50 hover:text-green-600'}`;
+      if (isCurrentlyVoting) {
+        colorClass = 'bg-green-200 text-green-800 border border-green-400';
+      } else if (isUserVote) {
+        colorClass = 'bg-green-100 text-green-700 border border-green-300';
+      } else if (isDisabled) {
+        colorClass = 'text-gray-400 cursor-not-allowed';
+      } else {
+        colorClass = 'text-gray-600 hover:bg-green-50 hover:text-green-600';
+      }
     } else {
-      return `${baseClass} ${isUserVote
-        ? 'bg-red-100 text-red-700 border border-red-300'
-        : 'text-gray-600 hover:bg-red-50 hover:text-red-600'}`;
+      if (isCurrentlyVoting) {
+        colorClass = 'bg-red-200 text-red-800 border border-red-400';
+      } else if (isUserVote) {
+        colorClass = 'bg-red-100 text-red-700 border border-red-300';
+      } else if (isDisabled) {
+        colorClass = 'text-gray-400 cursor-not-allowed';
+      } else {
+        colorClass = 'text-gray-600 hover:bg-red-50 hover:text-red-600';
+      }
     }
+    
+    return `${baseClass} ${colorClass}`;
   };
 
   return (
@@ -84,9 +112,16 @@ function VotingComponent({ feature, userId, onVote }: VotingComponentProps) {
         className={getVoteButtonClass('up')}
         title={userId ? 'Upvote this feature' : 'Login required to vote'}
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-        </svg>
+        {isVoting && lastVoteType === 'up' ? (
+          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        ) : (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+          </svg>
+        )}
         <span>{votes.upvotes}</span>
       </button>
 
@@ -97,9 +132,16 @@ function VotingComponent({ feature, userId, onVote }: VotingComponentProps) {
         className={getVoteButtonClass('down')}
         title={userId ? 'Downvote this feature' : 'Login required to vote'}
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        {isVoting && lastVoteType === 'down' ? (
+          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        ) : (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        )}
         <span>{votes.downvotes}</span>
       </button>
 
