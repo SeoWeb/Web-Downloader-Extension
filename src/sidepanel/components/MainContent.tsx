@@ -2,6 +2,7 @@ import React from "react";
 import { MessageAction, messageActions } from "../../common/message";
 import Heading from "../../components/Heading";
 import Actions from "../../components/Actions";
+import { FeatureRequestButton } from "../../components/FeatureRequestButton";
 import { ScrollingResponse } from "../hooks/useScrapingDownloader";
 
 const Filter = React.lazy(() => import("../../components/Filter"));
@@ -38,6 +39,8 @@ export function MainContent({
             </React.Suspense>
           </div>
         )}
+      
+      <FeatureRequestButton />
     </>
   );
 }

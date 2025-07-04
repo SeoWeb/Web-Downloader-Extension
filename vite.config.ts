@@ -23,11 +23,22 @@ export default defineConfig({
     rollupOptions: {
       input: {
         sidePanel: resolve(__dirname, "sidePanel.html"),
+        featureRequest: resolve(__dirname, "featureRequest.html"),
         background: resolve(__dirname, "background.js"),
       },
       output: {
-        chunkFileNames: "[name].[hash].js",
-        assetFileNames: "[name].[hash].[ext]",
+        chunkFileNames: (chunkInfo) => {
+          const name = chunkInfo.name || 'chunk';
+          // Ensure chunk names don't start with underscore
+          const safeName = name.startsWith('_') ? name.substring(1) : name;
+          return `${safeName}.[hash].js`;
+        },
+        assetFileNames: (assetInfo) => {
+          const name = assetInfo.name || 'asset';
+          // Ensure asset names don't start with underscore
+          const safeName = name.startsWith('_') ? name.substring(1) : name;
+          return `${safeName}.[hash].[ext]`;
+        },
         entryFileNames: "[name].js",
         dir: "dist",
       },
