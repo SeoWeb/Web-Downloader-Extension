@@ -42,12 +42,12 @@ export function GeneratedFormPreview({
 
     if (!generatedData.useCase?.trim()) {
       newErrors.useCase = 'Use case is required';
-    } else if (generatedData.useCase.length > 500) {
-      newErrors.useCase = 'Use case must be 500 characters or less';
+    } else if (generatedData.useCase.length > 1000) {
+      newErrors.useCase = 'Use case must be 1000 characters or less';
     }
 
-    if (generatedData.proposedSolution && generatedData.proposedSolution.length > 500) {
-      newErrors.proposedSolution = 'Proposed solution must be 500 characters or less';
+    if (generatedData.proposedSolution && generatedData.proposedSolution.length > 1000) {
+      newErrors.proposedSolution = 'Proposed solution must be 1000 characters or less';
     }
 
     setErrors(newErrors);
@@ -169,12 +169,12 @@ export function GeneratedFormPreview({
               errors.useCase ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="What problem does this feature solve? How would you use it?"
-            maxLength={500}
+            maxLength={1000}
             disabled={submitting || isRegenerating}
           />
           <div className="flex justify-between mt-1">
             {errors.useCase && <span className="text-red-500 text-sm">{errors.useCase}</span>}
-            <span className="text-gray-400 text-sm ml-auto">{(generatedData.useCase || '').length}/500</span>
+            <span className="text-gray-400 text-sm ml-auto">{(generatedData.useCase || '').length}/1000</span>
           </div>
         </div>
 
@@ -191,12 +191,12 @@ export function GeneratedFormPreview({
               errors.proposedSolution ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="How do you think this feature should work?"
-            maxLength={500}
+            maxLength={1000}
             disabled={submitting || isRegenerating}
           />
           <div className="flex justify-between mt-1">
             {errors.proposedSolution && <span className="text-red-500 text-sm">{errors.proposedSolution}</span>}
-            <span className="text-gray-400 text-sm ml-auto">{(generatedData.proposedSolution || '').length}/500</span>
+            <span className="text-gray-400 text-sm ml-auto">{(generatedData.proposedSolution || '').length}/1000</span>
           </div>
         </div>
 
