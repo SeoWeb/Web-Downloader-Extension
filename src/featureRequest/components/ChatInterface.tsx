@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Button } from '../../components/Button';
 import { ConversationMessage } from './ConversationMessage';
 import { ConversationManager } from '../utils/conversationManager';
 
