@@ -1,23 +1,67 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
 import react from "@vitejs/plugin-react-swc";
-import { viteZip } from "vite-plugin-zip-file";
 import tailwindcss from "@tailwindcss/vite";
+import { writeFileSync, readdirSync, statSync, readFileSync } from "fs";
+import { join } from "path";
+import JSZip from "jszip";
 
 import manifest from "./public/manifest.json";
 const version = manifest.version;
+
+// Custom plugin to zip dist contents
+function zipDistContents() {
+  return {
+    name: 'zip-dist-contents',
+    writeBundle() {
+      const distPath = resolve(__dirname, "dist");
+      const zipPath = resolve(__dirname, "zip");
+      const zipName = `web-page-downloader${version}.zip`;
+      
+      const zip = new JSZip();
+      
+      function addFilesToZip(dirPath: string, zipFolder: JSZip) {
+        const items = readdirSync(dirPath);
+        
+        for (const item of items) {
+          const itemPath = join(dirPath, item);
+          const stat = statSync(itemPath);
+          
+          if (stat.isDirectory()) {
+            const folder = zipFolder.folder(item);
+            if (folder) {
+              addFilesToZip(itemPath, folder);
+            }
+          } else {
+            const content = readFileSync(itemPath);
+            zipFolder.file(item, content);
+          }
+        }
+      }
+      
+      addFilesToZip(distPath, zip);
+      
+      zip.generateAsync({ type: "nodebuffer" }).then((content) => {
+        // Ensure zip directory exists
+        try {
+          readdirSync(zipPath);
+        } catch {
+          require("fs").mkdirSync(zipPath, { recursive: true });
+        }
+        
+        writeFileSync(join(zipPath, zipName), content);
+        console.log(`✅ Created ${zipName} with dist contents`);
+      });
+    }
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    viteZip({
-      folderPath: resolve(__dirname, "dist"),
-      outPath: resolve(__dirname, "zip"),
-      zipName: "web-page-downloader" + version + ".zip",
-      enabled: true,
-    }),
+    zipDistContents(),
   ],
   build: {
     rollupOptions: {

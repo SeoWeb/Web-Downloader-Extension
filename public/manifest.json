@@ -4,7 +4,7 @@
   "description": "Web Page Downloader allows you to download and save entire web pages, including linked resources, for offline viewing.",
   "version": "2.4",
   "action": {
-    "default_icon": "./icons/128x128.png",
+    "default_icon": "icons/128x128.png",
     "default_title": "Web Page Downloader"
   },
   "permissions": ["activeTab", "tabs", "scripting", "sidePanel", "downloads"],
@@ -15,12 +15,12 @@
     "service_worker": "background.js"
   },
   "icons": {
-    "16": "./icons/16x16.png",
-    "32": "./icons/32x32.png",
-    "48": "./icons/48x48.png",
-    "64": "./icons/64x64.png",
-    "96": "./icons/96x96.png",
-    "128": "./icons/128x128.png",
-    "256": "./icons/256x256.png"
+    "16": "icons/16x16.png",
+    "32": "icons/32x32.png",
+    "48": "icons/48x48.png",
+    "64": "icons/64x64.png",
+    "96": "icons/96x96.png",
+    "128": "icons/128x128.png",
+    "256": "icons/256x256.png"
   }
 }
