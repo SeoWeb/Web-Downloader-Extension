@@ -45,13 +45,9 @@ export default function Filter({
       try {
         const cleanUrl = cleanWebsiteUrl(tabUrl);
         await trackDownload(userId, cleanUrl, downloadOptions);
-        console.log('Analytics data sent successfully for download');
       } catch (error) {
-        console.error('Failed to send analytics data:', error);
         // Continue with download even if analytics fails
       }
-    } else {
-      console.warn('Cannot send analytics: missing userId or tabUrl', { userId, tabUrl });
     }
 
     // Start the download process

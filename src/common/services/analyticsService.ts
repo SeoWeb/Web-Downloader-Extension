@@ -57,14 +57,11 @@ export async function sendAnalytics(payload: AnalyticsPayload): Promise<boolean>
     });
 
     if (!response.ok) {
-      console.error('Analytics request failed:', response.status, response.statusText);
       return false;
     }
 
-    console.log('Analytics data sent successfully');
     return true;
   } catch (error) {
-    console.error('Error sending analytics data:', error);
     return false;
   }
 }
@@ -96,7 +93,6 @@ export function cleanWebsiteUrl(url: string): string {
     const urlObj = new URL(url);
     return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
   } catch (error) {
-    console.error('Error parsing URL for analytics:', error);
     return url;
   }
 }
