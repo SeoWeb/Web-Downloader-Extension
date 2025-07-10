@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Checkbox } from "./Checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Button } from "./Button";
 import { trackDownload, cleanWebsiteUrl } from "../common/services/analyticsService";
+import { useFilterOptions, useDownloadOptions, useStorageStatus } from "../hooks/useFilterOptions";
+import { StoragePermissionBanner } from "./StoragePermissionBanner";
+import { hasStoragePermission } from "../background/userIdManager";
 
 export default function Filter({
   download,
@@ -21,25 +24,45 @@ export default function Filter({
   userId: number | null;
   tabUrl: string;
 }) {
-  const [downloadHTML, setDownloadHTML] = useState(true);
-  const [downloadImages, setDownloadImages] = useState(true);
-  const [downloadLinks, setDownloadLinks] = useState(false);
-  const [downloadAssets, setDownloadAssets] = useState(true);
-  const [downloadContentAsText, setDownloadContentAsText] = useState(false);
-  const [downloadDocuments, setDownloadDocuments] = useState(true);
-  const [singleFile, setSingleFile] = useState(false);
+  const [showPermissionBanner, setShowPermissionBanner] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
-  const handleDownload = async () => {
-    const downloadOptions = {
-      downloadHTML,
-      downloadImages,
-      downloadLinks,
-      downloadAssets,
-      downloadContentAsText,
-      downloadDocuments,
-      singleFile,
+  const {
+    options,
+    isLoading,
+    setDownloadHTML,
+    setDownloadImages,
+    setDownloadLinks,
+    setDownloadAssets,
+    setDownloadContentAsText,
+    setDownloadDocuments,
+    setSingleFile,
+  } = useFilterOptions();
+
+  const downloadOptions = useDownloadOptions();
+  const { isLoadingFromStorage } = useStorageStatus();
+
+  // Check storage permission on mount
+  useEffect(() => {
+    const checkPermission = async () => {
+      try {
+        const permission = await hasStoragePermission();
+        setHasPermission(permission);
+        
+        // Show banner if permission is not granted and we haven't shown it before
+        if (!permission && !localStorage.getItem('storage-banner-dismissed')) {
+          setShowPermissionBanner(true);
+        }
+      } catch (error) {
+        console.error('Error checking storage permission:', error);
+        setHasPermission(false);
+      }
     };
 
+    checkPermission();
+  }, []);
+
+  const handleDownload = async () => {
     // Send analytics data immediately when download starts (before scraping begins)
     if (userId && tabUrl) {
       try {
@@ -54,34 +77,117 @@ export default function Filter({
     download(downloadOptions);
   };
 
-  if (
-    (!!downloadHTML ||
-      !!downloadImages ||
-      !!downloadLinks ||
-      !!downloadAssets ||
-      !!downloadContentAsText ||
-      !!downloadDocuments) &&
-    !!singleFile
-  ) {
-    setSingleFile(false);
-  }
+  const handleDownloadHTMLChange = (checked: CheckedState) => {
+    const isChecked = !!checked;
+    
+    // If unchecking HTML and no other content is selected, enable text content
+    if (!isChecked && 
+        !options.downloadImages && 
+        !options.downloadLinks && 
+        !options.downloadAssets && 
+        !options.downloadContentAsText && 
+        !options.downloadDocuments) {
+      setDownloadContentAsText(true);
+    }
+    
+    setDownloadHTML(isChecked);
+    
+    // If enabling HTML, also enable images and assets
+    if (isChecked) {
+      setDownloadImages(true);
+      setDownloadAssets(true);
+    } else {
+      // If disabling HTML, also disable assets and links
+      setDownloadAssets(false);
+      setDownloadLinks(false);
+    }
+  };
 
-  if (
-    !downloadHTML &&
-    !downloadImages &&
-    !downloadLinks &&
-    !downloadAssets &&
-    !downloadContentAsText &&
-    !downloadDocuments &&
-    !singleFile
-  ) {
-    setDownloadHTML(true);
-    setDownloadImages(true);
-    setDownloadAssets(true);
+  const handleSingleFileChange = (checked: CheckedState) => {
+    const isChecked = !!checked;
+    
+    if (isChecked) {
+      // If enabling single file, disable all other options
+      setDownloadHTML(false);
+      setDownloadImages(false);
+      setDownloadLinks(false);
+      setDownloadAssets(false);
+      setDownloadContentAsText(false);
+      setDownloadDocuments(false);
+    }
+    
+    setSingleFile(isChecked);
+  };
+
+  const handleDownloadLinksChange = (checked: CheckedState) => {
+    setDownloadLinks(!!checked);
+  };
+
+  const handlePermissionGranted = () => {
+    setHasPermission(true);
+    setShowPermissionBanner(false);
+    // Trigger re-initialization of the store
+    window.location.reload();
+  };
+
+  const handlePermissionDenied = () => {
+    setShowPermissionBanner(false);
+    localStorage.setItem('storage-banner-dismissed', 'true');
+  };
+
+  // Show loading state while initializing from storage
+  if (isLoading || isLoadingFromStorage) {
+    return (
+      <div className="p-4 bg-white rounded-lg shadow-md">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded mb-4"></div>
+          <div className="space-y-4">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="flex items-center space-x-2">
+                <div className="h-4 w-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded flex-1"></div>
+              </div>
+            ))}
+          </div>
+          <div className="h-10 bg-gray-200 rounded mt-4"></div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
+      {/* Storage Permission Banner */}
+      {showPermissionBanner && (
+        <StoragePermissionBanner
+          onPermissionGranted={handlePermissionGranted}
+          onPermissionDenied={handlePermissionDenied}
+        />
+      )}
+      
+      {/* Storage Status Indicator */}
+      {hasPermission === false && !showPermissionBanner && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+          <div className="flex items-center">
+            <svg
+              className="h-4 w-4 text-yellow-400 mr-2"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span className="text-sm text-yellow-800">
+              Filter preferences won't be saved without storage permission
+            </span>
+          </div>
+        </div>
+      )}
+
       <h3 className="text-lg font-bold mb-4">
         Filter out what you want to download
       </h3>
@@ -89,27 +195,8 @@ export default function Filter({
         <div className="flex items-center space-x-2">
           <Checkbox
             id="downloadHTML"
-            checked={downloadHTML}
-            onCheckedChange={(checked: CheckedState) => {
-              if (
-                !checked &&
-                !downloadImages &&
-                !downloadLinks &&
-                !downloadAssets &&
-                !downloadContentAsText &&
-                !downloadDocuments
-              ) {
-                setDownloadContentAsText(true);
-              }
-              setDownloadHTML(!!checked);
-              if (!!checked) {
-                setDownloadImages(true);
-                setDownloadAssets(true);
-              } else {
-                setDownloadAssets(false);
-                setDownloadLinks(false);
-              }
-            }}
+            checked={options.downloadHTML}
+            onCheckedChange={handleDownloadHTMLChange}
           />
           <label
             htmlFor="downloadHTML"
@@ -118,10 +205,11 @@ export default function Filter({
             Download HTML
           </label>
         </div>
+        
         <div className="flex items-center space-x-2">
           <Checkbox
             id="downloadImages"
-            checked={downloadImages}
+            checked={options.downloadImages}
             onCheckedChange={(checked: CheckedState) =>
               setDownloadImages(!!checked)
             }
@@ -133,13 +221,12 @@ export default function Filter({
             Download images
           </label>
         </div>
+        
         <div className="flex items-center space-x-2">
           <Checkbox
             id="downloadLinks"
-            checked={downloadLinks}
-            onCheckedChange={(checked: CheckedState) =>
-              setDownloadLinks(!!checked)
-            }
+            checked={options.downloadLinks}
+            onCheckedChange={handleDownloadLinksChange}
           />
           <label
             htmlFor="downloadLinks"
@@ -148,7 +235,8 @@ export default function Filter({
             Download links (saved as html files)
           </label>
         </div>
-        {downloadLinks && (
+        
+        {options.downloadLinks && (
           <div
             className={`bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4`}
             role="alert"
@@ -159,9 +247,7 @@ export default function Filter({
               file can be significantly larger.
             </span>
             <button
-              onClick={() => {
-                setDownloadLinks(false);
-              }}
+              onClick={() => setDownloadLinks(false)}
               className="absolute top-0 bottom-0 right-0 px-4 py-3"
             >
               <span className="sr-only">Dismiss</span>
@@ -182,10 +268,11 @@ export default function Filter({
             </button>
           </div>
         )}
+        
         <div className="flex items-center space-x-2">
           <Checkbox
             id="downloadAssets"
-            checked={downloadAssets}
+            checked={options.downloadAssets}
             onCheckedChange={(checked: CheckedState) =>
               setDownloadAssets(!!checked)
             }
@@ -197,10 +284,11 @@ export default function Filter({
             Download assets (css, js)
           </label>
         </div>
+        
         <div className="flex items-center space-x-2">
           <Checkbox
             id="downloadDocuments"
-            checked={downloadDocuments}
+            checked={options.downloadDocuments}
             onCheckedChange={(checked: CheckedState) =>
               setDownloadDocuments(!!checked)
             }
@@ -212,10 +300,11 @@ export default function Filter({
             Download documents (pdf, doc, etc.)
           </label>
         </div>
+        
         <div className="flex items-center space-x-2">
           <Checkbox
             id="downloadContentAsText"
-            checked={downloadContentAsText}
+            checked={options.downloadContentAsText}
             onCheckedChange={(checked: CheckedState) =>
               setDownloadContentAsText(!!checked)
             }
@@ -227,21 +316,12 @@ export default function Filter({
             Download content as text
           </label>
         </div>
+        
         <div className="flex items-center space-x-2">
           <Checkbox
             id="singleFile"
-            checked={singleFile}
-            onCheckedChange={(checked: CheckedState) => {
-              if (!!checked) {
-                setDownloadHTML(false);
-                setDownloadImages(false);
-                setDownloadLinks(false);
-                setDownloadAssets(false);
-                setDownloadContentAsText(false);
-                setDownloadDocuments(false);
-              }
-              setSingleFile(!!checked);
-            }}
+            checked={options.singleFile}
+            onCheckedChange={handleSingleFileChange}
           />
           <label
             htmlFor="singleFile"
@@ -251,6 +331,7 @@ export default function Filter({
           </label>
         </div>
       </div>
+      
       <Button className="mt-4" onClick={handleDownload}>
         Start download
       </Button>
