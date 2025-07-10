@@ -2,9 +2,12 @@ import { useState } from "react";
 import { Checkbox } from "./Checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Button } from "./Button";
+import { trackDownload, cleanWebsiteUrl } from "../common/services/analyticsService";
 
 export default function Filter({
   download,
+  userId,
+  tabUrl,
 }: {
   download: (options: {
     downloadHTML: boolean;
@@ -15,6 +18,8 @@ export default function Filter({
     downloadDocuments: boolean;
     singleFile: boolean;
   }) => void;
+  userId: number | null;
+  tabUrl: string;
 }) {
   const [downloadHTML, setDownloadHTML] = useState(true);
   const [downloadImages, setDownloadImages] = useState(true);
@@ -24,8 +29,8 @@ export default function Filter({
   const [downloadDocuments, setDownloadDocuments] = useState(true);
   const [singleFile, setSingleFile] = useState(false);
 
-  const handleDownload = () => {
-    download({
+  const handleDownload = async () => {
+    const downloadOptions = {
       downloadHTML,
       downloadImages,
       downloadLinks,
@@ -33,7 +38,24 @@ export default function Filter({
       downloadContentAsText,
       downloadDocuments,
       singleFile,
-    });
+    };
+
+    // Send analytics data immediately when download starts (before scraping begins)
+    if (userId && tabUrl) {
+      try {
+        const cleanUrl = cleanWebsiteUrl(tabUrl);
+        await trackDownload(userId, cleanUrl, downloadOptions);
+        console.log('Analytics data sent successfully for download');
+      } catch (error) {
+        console.error('Failed to send analytics data:', error);
+        // Continue with download even if analytics fails
+      }
+    } else {
+      console.warn('Cannot send analytics: missing userId or tabUrl', { userId, tabUrl });
+    }
+
+    // Start the download process
+    download(downloadOptions);
   };
 
   if (

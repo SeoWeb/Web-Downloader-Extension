@@ -20,6 +20,8 @@ export const API_ENDPOINTS = {
   
   // AI analysis
   AI_FEATURE_ANALYSIS: 'c713c0fb-a7e7-4693-b954-180ce35cf416',
+
+  ANALYTICS: 'ee46e968-d6f8-49b8-8705-c222f0ab63d8'
 } as const;
 
 // Full URL builders for convenience
@@ -29,6 +31,7 @@ export const API_URLS = {
   GET_FEATURE_REQUESTS: `${API_BASE_URL}/${API_ENDPOINTS.GET_FEATURE_REQUESTS}`,
   VOTE_FEATURE: `${API_BASE_URL}/${API_ENDPOINTS.VOTE_FEATURE}`,
   AI_FEATURE_ANALYSIS: `${API_BASE_URL}/${API_ENDPOINTS.AI_FEATURE_ANALYSIS}`,
+  ANALYTICS: `${API_BASE_URL}/${API_ENDPOINTS.ANALYTICS}`,
 } as const;
 
 // Type definitions for endpoint keys

@@ -8,6 +8,8 @@ import { DownloadComplete } from "./sidepanel/components/DownloadComplete";
 import { useActiveTabInfo } from "./sidepanel/hooks/useActiveTabInfo"; // Added hook import
 import { useMessageListener } from "./sidepanel/hooks/useMessageListener"; // Added hook import
 import { useScrapingDownloader } from "./sidepanel/hooks/useScrapingDownloader"; // Added hook import
+import { useGlobalUserId } from "./common/hooks/useGlobalUserId";
+import { GlobalPermissionRequest } from "./common/components/GlobalPermissionRequest";
 
 interface Options {
   downloadHTML: boolean;
@@ -52,6 +54,16 @@ export default function SidePanel() {
     downloadDocuments: boolean;
     singleFile: boolean;
   } | null>(null);
+
+  // Use the global user ID hook
+  const {
+    userId,
+    loading: userIdLoading,
+    error: userIdError,
+    hasPermission,
+    permissionRequesting,
+    requestPermission
+  } = useGlobalUserId();
 
   // Use the custom hooks
   useActiveTabInfo({ setTabId, setTabUrl, setMessages });
@@ -133,6 +145,28 @@ export default function SidePanel() {
     );
   }
 
+  // Show permission request if user doesn't have storage permission
+  if (!hasPermission && !userIdLoading) {
+    return (
+      <div className="p-6">
+        <GlobalPermissionRequest
+          onRequestPermission={requestPermission}
+          requesting={permissionRequesting}
+          error={userIdError}
+        />
+      </div>
+    );
+  }
+
+  // Show loading state while checking permissions/user ID
+  if (userIdLoading) {
+    return (
+      <div className="p-6 text-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <MainContent
@@ -142,6 +176,8 @@ export default function SidePanel() {
         action={action}
         downloadResponse={downloadResponse}
         onClickStartDownload={onClickStartDownload}
+        userId={userId}
+        tabUrl={tabUrl}
       />
       <DownloadStatus
         tabId={tabId}
