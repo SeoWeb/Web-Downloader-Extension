@@ -3,71 +3,137 @@ import { fetchUrl, fixFilename } from "./urlUtils";
 import { convertHtml } from "./htmlUtils";
 
 export async function addIndexHtml(inputHtml: string, zip: JSZip, tabUrl: string) {
-  const html = convertHtml(inputHtml, tabUrl);
-  const blob = new Blob([html], { type: "text/html" });
-  zip.file("index.html", blob);
+  try {
+    const html = convertHtml(inputHtml, tabUrl);
+    const blob = new Blob([html], { type: "text/html" });
+    zip.file("index.html", blob);
+  } catch (error) {
+    console.error('Error creating index.html:', error);
+    throw new Error('Failed to create index.html');
+  }
 }
 
 export async function addContentText(text: string, zip: JSZip) {
-  const blob = new Blob([text], { type: "text/plain" });
-  zip.file("content.txt", blob);
+  try {
+    const blob = new Blob([text], { type: "text/plain" });
+    zip.file("content.txt", blob);
+  } catch (error) {
+    console.error('Error creating content.txt:', error);
+    throw new Error('Failed to create content.txt');
+  }
 }
 
 export async function addCssFiles(
-  csss: string[], 
-  zip: JSZip, 
-  tabUrl: string, 
+  csss: string[],
+  zip: JSZip,
+  tabUrl: string,
   sendMessage: (message: string) => void
 ) {
   if (!csss?.length) return;
 
   const zstyles = zip.folder("styles") || zip;
   const count = csss.length;
+  let successCount = 0;
+  let failCount = 0;
   
   for (let i = 0; i < count; i++) {
     const css = csss[i];
     sendMessage(`Downloading CSS files: ${i+1}/${count}`);
-    if (!css) continue;
+    if (!css) {
+      failCount++;
+      continue;
+    }
 
-    const u = new URL(css.startsWith("http") ? css : tabUrl);
-    const baseUrl = u.origin + "/";
-    const response = await fetchUrl(css, baseUrl);
-    if (!response) continue;
+    try {
+      const u = new URL(css.startsWith("http") ? css : tabUrl);
+      const baseUrl = u.origin;
+      const response = await fetchUrl(css, baseUrl);
+      
+      if (!response) {
+        console.warn(`Failed to fetch CSS: ${css}`);
+        sendMessage(`Failed to download CSS: ${css}`);
+        failCount++;
+        continue;
+      }
 
-    const blob = await response.blob();
-    const filename = css.split("/").pop();
-    if (!filename) continue;
+      const blob = await response.blob();
+      const filename = new URL(css, baseUrl).pathname.split('/').pop();
+      if (!filename) {
+        console.warn(`Could not determine filename for CSS: ${css}`);
+        sendMessage(`Could not determine filename for: ${css}`);
+        failCount++;
+        continue;
+      }
 
-    zstyles.file(fixFilename(filename), blob);
+      zstyles.file(fixFilename(filename), blob);
+      successCount++;
+    } catch (error) {
+      console.error(`Error downloading CSS ${css}:`, error);
+      sendMessage(`Error downloading CSS: ${css}`);
+      failCount++;
+    }
+  }
+
+  console.log(`CSS download summary: ${successCount} succeeded, ${failCount} failed`);
+  if (failCount > 0) {
+    sendMessage(`CSS files downloaded: ${successCount} succeeded, ${failCount} failed`);
   }
 }
 
 export async function addJsFiles(
-  jss: string[], 
-  zip: JSZip, 
-  tabUrl: string, 
+  jss: string[],
+  zip: JSZip,
+  tabUrl: string,
   sendMessage: (message: string) => void
 ) {
   if (!jss?.length) return;
 
   const zscripts = zip.folder("scripts") || zip;
   const count = jss.length;
+  let successCount = 0;
+  let failCount = 0;
   
   for (let i = 0; i < count; i++) {
     const js = jss[i];
     sendMessage(`Downloading JS files: ${i+1}/${count}`);
-    if (!js) continue;
+    if (!js) {
+      failCount++;
+      continue;
+    }
 
-    const u = new URL(js.startsWith("http") ? js : tabUrl);
-    const baseUrl = u.origin + "/";
-    const response = await fetchUrl(js, baseUrl);
-    if (!response) continue;
+    try {
+      const u = new URL(js.startsWith("http") ? js : tabUrl);
+      const baseUrl = u.origin;
+      const response = await fetchUrl(js, baseUrl);
+      
+      if (!response) {
+        console.warn(`Failed to fetch JS: ${js}`);
+        sendMessage(`Failed to download JS: ${js}`);
+        failCount++;
+        continue;
+      }
 
-    const blob = await response.blob();
-    const filename = js.split("/").pop();
-    if (!filename) continue;
+      const blob = await response.blob();
+      const filename = new URL(js, baseUrl).pathname.split('/').pop();
+      if (!filename) {
+        console.warn(`Could not determine filename for JS: ${js}`);
+        sendMessage(`Could not determine filename for: ${js}`);
+        failCount++;
+        continue;
+      }
 
-    zscripts.file(fixFilename(filename), blob);
+      zscripts.file(fixFilename(filename), blob);
+      successCount++;
+    } catch (error) {
+      console.error(`Error downloading JS ${js}:`, error);
+      sendMessage(`Error downloading JS: ${js}`);
+      failCount++;
+    }
+  }
+
+  console.log(`JS download summary: ${successCount} succeeded, ${failCount} failed`);
+  if (failCount > 0) {
+    sendMessage(`JS files downloaded: ${successCount} succeeded, ${failCount} failed`);
   }
 }
 
@@ -78,7 +144,6 @@ export async function addDocumentFiles(
   sendMessage: (message: string) => void
 ) {
   if (!documents?.length) {
-    console.log("No documents to download");
     return;
   }
 
@@ -91,41 +156,44 @@ export async function addDocumentFiles(
     const document = documents[i];
     sendMessage(`Downloading document files: ${i+1}/${count}`);
     if (!document) {
-      console.log(`Skipping empty document at index ${i}`);
       failCount++;
       continue;
     }
 
     try {
-      console.log(`Downloading document ${i + 1}/${count}: ${document}`);
       const u = new URL(document.startsWith("http") ? document : tabUrl);
-      const baseUrl = u.origin + "/";
+      const baseUrl = u.origin;
       const response = await fetchUrl(document, baseUrl);
       
       if (!response) {
         console.error(`Failed to fetch document: ${document}`);
+        sendMessage(`Failed to download document: ${document}`);
         failCount++;
         continue;
       }
 
       const blob = await response.blob();
-      const filename = document.split("/").pop();
+      const filename = new URL(document, baseUrl).pathname.split('/').pop();
       if (!filename) {
         console.error(`Could not determine filename for document: ${document}`);
+        sendMessage(`Could not determine filename for: ${document}`);
         failCount++;
         continue;
       }
 
       zdocuments.file(fixFilename(filename), blob);
       successCount++;
-      console.log(`Successfully downloaded document: ${filename}`);
     } catch (error) {
       console.error(`Error downloading document ${document}:`, error);
+      sendMessage(`Error downloading document: ${document}`);
       failCount++;
     }
   }
 
   console.log(`Document download summary: ${successCount} succeeded, ${failCount} failed`);
+  if (failCount > 0) {
+    sendMessage(`Document files downloaded: ${successCount} succeeded, ${failCount} failed`);
+  }
 }
 
 export async function addImageFiles(
@@ -138,22 +206,55 @@ export async function addImageFiles(
 
   const zimages = zip.folder("images") || zip;
   const count = images.length;
+  let successCount = 0;
+  let failCount = 0;
   
   for (let i = 0; i < count; i++) {
     const image = images[i];
     sendMessage(`Downloading images: ${i+1}/${count}`);
-    if (!image || image.startsWith("data:")) continue;
+    if (!image) {
+      failCount++;
+      continue;
+    }
+    
+    if (image.startsWith("data:")) {
+      successCount++;
+      continue;
+    }
 
-    const u = new URL(image.startsWith("http") ? image : tabUrl);
-    const baseUrl = u.origin + "/";
-    const response = await fetchUrl(image, baseUrl);
-    if (!response) continue;
+    try {
+      const u = new URL(image.startsWith("http") ? image : tabUrl);
+      const baseUrl = u.origin;
+      const response = await fetchUrl(image, baseUrl);
+      
+      if (!response) {
+        console.warn(`Failed to fetch image: ${image}`);
+        sendMessage(`Failed to download image: ${image}`);
+        failCount++;
+        continue;
+      }
 
-    const blob = await response.blob();
-    const filename = image.split("/").pop();
-    if (!filename) continue;
+      const blob = await response.blob();
+      const filename = new URL(image, baseUrl).pathname.split('/').pop();
+      if (!filename) {
+        console.warn(`Could not determine filename for image: ${image}`);
+        sendMessage(`Could not determine filename for: ${image}`);
+        failCount++;
+        continue;
+      }
 
-    zimages.file(fixFilename(filename), blob);
+      zimages.file(fixFilename(filename), blob);
+      successCount++;
+    } catch (error) {
+      console.error(`Error downloading image ${image}:`, error);
+      sendMessage(`Error downloading image: ${image}`);
+      failCount++;
+    }
+  }
+
+  console.log(`Image download summary: ${successCount} succeeded, ${failCount} failed`);
+  if (failCount > 0) {
+    sendMessage(`Images downloaded: ${successCount} succeeded, ${failCount} failed`);
   }
 }
 
@@ -167,25 +268,50 @@ export async function addHtmlFiles(
 
   const zhtmls = zip.folder("html") || zip;
   const count = links.length;
+  let successCount = 0;
+  let failCount = 0;
   
   for (let i = 0; i < count; i++) {
     const link = links[i];
     sendMessage(`Downloading linked html files: ${i+1}/${count}`);
-    if (!link) continue;
+    if (!link) {
+      failCount++;
+      continue;
+    }
 
-    const u = new URL(tabUrl);
-    const baseUrl = u.origin + "/";
-    const response = await fetchUrl(link, baseUrl);
-    if (!response) continue;
+    try {
+      const u = new URL(tabUrl);
+      const baseUrl = u.origin;
+      const response = await fetchUrl(link, baseUrl);
+      
+      if (!response) {
+        console.warn(`Failed to fetch HTML: ${link}`);
+        sendMessage(`Failed to download HTML: ${link}`);
+        failCount++;
+        continue;
+      }
 
-    const inputHtml = await response.text();
-    const html = convertHtml(inputHtml, tabUrl, "../");
-    const parts = link.split("/");
-    let filename = parts.pop();
-    if (!filename?.length) filename = parts.pop();
-    if (!filename?.length) continue;
-    if (!filename.endsWith(".html")) filename += ".html";
+      const inputHtml = await response.text();
+      const html = convertHtml(inputHtml, tabUrl, "../");
+      const filename = new URL(link, baseUrl).pathname.split('/').pop();
+      if (!filename?.length) {
+        console.warn(`Could not determine filename for HTML: ${link}`);
+        sendMessage(`Could not determine filename for: ${link}`);
+        failCount++;
+        continue;
+      }
 
-    zhtmls.file(fixFilename(filename), html);
+      zhtmls.file(fixFilename(filename.endsWith('.html') ? filename : `${filename}.html`), html);
+      successCount++;
+    } catch (error) {
+      console.error(`Error downloading HTML ${link}:`, error);
+      sendMessage(`Error downloading HTML: ${link}`);
+      failCount++;
+    }
+  }
+
+  console.log(`HTML download summary: ${successCount} succeeded, ${failCount} failed`);
+  if (failCount > 0) {
+    sendMessage(`HTML files downloaded: ${successCount} succeeded, ${failCount} failed`);
   }
 }

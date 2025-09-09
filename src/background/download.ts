@@ -12,6 +12,45 @@ import {
 } from "./fileHandlers";
 import { convertToSingleFileHtml } from "./htmlUtils";
 
+// download.ts
+
+// Manage download state using chrome.storage.local to persist across service worker restarts
+const setDownloadInProgress = async (inProgress: boolean) => {
+  await chrome.storage.local.set({ isDownloadInProgress: inProgress });
+};
+
+const getDownloadInProgress = async (): Promise<boolean> => {
+  const result = await chrome.storage.local.get('isDownloadInProgress');
+  return result.isDownloadInProgress ?? false;
+};
+
+
+// Add a listener to clean up object URLs after download completion
+chrome.downloads.onChanged.addListener(async (delta) => {
+  if (delta.state && delta.state.current !== 'inprogress') {
+    const { downloads } = await chrome.storage.local.get('downloads');
+    const downloadMap = downloads || {};
+
+    if (downloadMap[delta.id]) {
+      console.log(`Cleaning up object URL for download ${delta.id}`);
+      const url = downloadMap[delta.id];
+      
+      // Only revoke object URLs, not data URLs or blob URLs
+      if (url.startsWith('blob:') || url.startsWith('data:')) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (cleanupError) {
+          console.warn(`Failed to revoke object URL for download ${delta.id}:`, cleanupError);
+        }
+      }
+      
+      delete downloadMap[delta.id];
+      await chrome.storage.local.set({ downloads: downloadMap });
+    }
+  }
+});
+
+
 export async function downloadResources(
   html: string,
   tabUrl: string,
@@ -30,40 +69,95 @@ export async function downloadResources(
   
   if (!tabUrl) {
     console.error("No tab URL provided");
+    sendMessage("Error: No URL provided for download");
     return;
   }
+  
+  // Prevent concurrent downloads
+  if (await getDownloadInProgress()) {
+    console.warn("Download already in progress, rejecting new request");
+    sendMessage("A download is already in progress. Please wait.");
+    return;
+  }
+  
+  await setDownloadInProgress(true);
+  
+  try {
+    // Execute the download within a try-catch-finally block
+    await executeDownload(html, tabUrl, downloadOptions, sendMessage);
+  } catch (error) {
+    console.error("Download failed:", error);
+    sendMessage(`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } finally {
+    // Always reset the flag when done
+    await setDownloadInProgress(false);
+    console.log("Download process completed");
+  }
+}
+
+async function executeDownload(
+  html: string,
+  tabUrl: string,
+  downloadOptions: any,
+  sendMessage: (message: string) => void,
+) {
 
   // Check network connectivity
-  // try {
-  //   const online = await new Promise(resolve => {
-  //     chrome.runtime.sendMessage(
-  //       {action: messageActions.CHECK_ONLINE_STATUS},
-  //       resolve
-  //     );
-  //   });
-  //   if (!online) {
-  //     sendMessage("No internet connection - cannot download");
-  //     console.error("No internet connection");
-  //     return;
-  //   }
-  // } catch (error) {
-  //   console.error("Network check failed:", error);
-  //   sendMessage("Failed to check network status");
-  //   return;
-  // }
+  try {
+    const online = await new Promise<boolean>((resolve) => {
+      // Simple connectivity check
+      fetch('https://www.google.com/favicon.ico', {
+        method: 'HEAD',
+        mode: 'no-cors'
+      }).then(() => resolve(true))
+        .catch(() => resolve(false));
+      
+      // Fallback timeout
+      setTimeout(() => resolve(false), 5000);
+    });
+    
+    if (!online) {
+      sendMessage("No internet connection - cannot download external resources");
+      console.warn("No internet connection detected");
+      // Continue with basic HTML download only
+      if (!downloadOptions.downloadHTML && !downloadOptions.singleFile) {
+        sendMessage("Please enable HTML download or single file mode for offline use");
+        return;
+      }
+    }
+  } catch (error) {
+    console.warn("Network check failed, continuing with download:", error);
+    // Continue with download but warn about potential issues
+    sendMessage("Network connectivity check failed - continuing with download");
+  }
 
   const zip = new JSZip();
   const data = getResources(html);
   console.log("Extracted resources:", data);
 
   const u = new URL(tabUrl || "");
-  let zipFilename = u.pathname
-  .split("/")
-  .slice(1)
-  .join("-")
-  .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "") // Replace invalid characters
-  .slice(0, 200) // Limit filename length to 200 characters
-  + `${Date.now()}.zip`;
+  
+  // Generate a safe filename from the URL
+  const hostname = u.hostname.replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "");
+  const path = u.pathname
+    .split("/")
+    .slice(1)
+    .filter(part => part.length > 0) // Remove empty parts
+    .join("-")
+    .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-"); // Replace invalid characters with hyphens
+  
+  // Limit filename length and ensure it's not empty
+  const safePath = path.length > 100 ? path.substring(0, 100) : path || "webpage";
+  const timestamp = Date.now();
+  
+  let zipFilename: string;
+  if (downloadOptions.singleFile) {
+    zipFilename = `${hostname}-${safePath}-${timestamp}.html`;
+  } else {
+    zipFilename = `${hostname}-${safePath}-${timestamp}.zip`;
+  }
+  
+  console.log("Generated filename:", zipFilename);
 
   if (downloadOptions.downloadHTML) {
     console.log("Creating index.html");
@@ -149,84 +243,120 @@ export async function downloadResources(
     }
 
     console.log("Preparing download");
-    if (!blob) {
-      throw new Error("No blob data available for download");
+    if (!blob || blob.size === 0) {
+      throw new Error("No blob data available for download or blob is empty");
     }
 
-    const reader = new FileReader();
-    
-    reader.onloadend = async function() {
+    // Use a more reliable approach - create object URL instead of FileReader
+    const downloadWithRetry = async (attempt = 1): Promise<void> => {
       try {
-        if (!reader.result) {
-          throw new Error("FileReader returned no result");
-        }
-
-        const resultString = reader.result as string;
-        if (!resultString.includes(',')) {
-          throw new Error("Invalid data URL format from FileReader");
-        }
-
-        const base64data = resultString.split(",")[1];
-        if (!base64data) {
-          throw new Error("Failed to extract base64 data from result");
-        }
-
-        const downloadWithRetry = async (attempt = 1): Promise<void> => {
-          try {
-            console.log(`Initiating Chrome download (attempt ${attempt}):`, zipFilename);
-            const downloadId = await new Promise((resolve, reject) => {
-              chrome.downloads.download({
-                url: "data:application/octet-stream;base64," + base64data,
-                filename: zipFilename,
-                saveAs: true,
-              }, (downloadId) => {
-                if (chrome.runtime.lastError) {
-                  reject(chrome.runtime.lastError);
-                } else {
-                  resolve(downloadId);
-                }
-              });
+        console.log(`Preparing download (attempt ${attempt}):`, zipFilename);
+        
+        // Create object URL for the blob with proper error handling
+        let objectUrl: string;
+        try {
+          // Check if URL.createObjectURL exists
+          if (typeof URL.createObjectURL !== 'function') {
+            console.warn("URL.createObjectURL is not available in this context, using data URL fallback");
+            // Skip to data URL fallback for service worker context
+            throw new Error('URL.createObjectURL is not available in this context');
+          }
+          
+          objectUrl = URL.createObjectURL(blob);
+          console.log("Created object URL:", objectUrl.substring(0, 50) + "...");
+        } catch (urlError) {
+          console.error("URL.createObjectURL failed:", urlError);
+          
+          // Always try data URL fallback for service worker compatibility
+          console.log("Using data URL as fallback for service worker context");
+          if (blob.size < 10 * 1024 * 1024) { // 10MB limit for data URLs
+            const reader = new FileReader();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = () => reject(new Error('Failed to read blob as data URL'));
+              reader.readAsDataURL(blob);
             });
             
-            console.log("Download started successfully, ID:", downloadId);
+            // Use data URL directly with chrome.downloads.download
+            const downloadId = await new Promise<number>((resolve, reject) => {
+              chrome.downloads.download(
+                {
+                  url: dataUrl,
+                  filename: zipFilename,
+                  saveAs: true,
+                  conflictAction: "uniquify",
+                },
+                (downloadId) => {
+                  if (chrome.runtime.lastError) {
+                    reject(new Error(chrome.runtime.lastError.message));
+                  } else if (downloadId === undefined) {
+                    reject(new Error('Download failed: No download ID assigned.'));
+                  } else {
+                    resolve(downloadId);
+                  }
+                }
+              );
+            });
+            
+            console.log("Download started with data URL, ID:", downloadId);
             sendMessage("Download started successfully");
-          } catch (error) {
-            if (attempt >= 3) {
-              throw error;
-            }
-            console.warn(`Download attempt ${attempt} failed, retrying...`, error);
-            await new Promise(res => setTimeout(res, 1000 * attempt));
-            return downloadWithRetry(attempt + 1);
+            return;
+          } else {
+            throw new Error(`Blob too large for data URL fallback (${blob.size} bytes). URL.createObjectURL failed: ${urlError instanceof Error ? urlError.message : String(urlError)}`);
           }
-        };
-
-        await downloadWithRetry();
-      } catch (error) {
-        console.error("Download preparation error:", error);
-        sendMessage("Failed to prepare download - check your internet connection");
-      }
-    };
-
-    reader.onerror = function(error) {
-      console.error("FileReader error:", error);
-      let errorMessage = "Failed to read download data";
-      
-      if (error?.target?.error) {
-        const fileReaderError = error.target.error;
-        errorMessage += `: ${fileReaderError.name} - ${fileReaderError.message}`;
-        
-        if (fileReaderError.name === 'NotReadableError') {
-          errorMessage += ". The file may be corrupted or in an unsupported format.";
         }
+
+        const downloadId = await new Promise<number>((resolve, reject) => {
+          chrome.downloads.download(
+            {
+              url: objectUrl,
+              filename: zipFilename,
+              saveAs: true,
+              conflictAction: "uniquify",
+            },
+            (downloadId) => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else if (downloadId === undefined) {
+                reject(new Error('Download failed: No download ID assigned.'));
+              } else {
+                resolve(downloadId);
+              }
+            }
+          );
+        });
+        
+        console.log("Download started successfully, ID:", downloadId);
+        sendMessage("Download started successfully");
+
+        // Store the mapping of download ID to object URL for later cleanup
+        const { downloads } = await chrome.storage.local.get('downloads');
+        const downloadMap = downloads || {};
+        downloadMap[downloadId] = objectUrl;
+        await chrome.storage.local.set({ downloads: downloadMap });
+        
+      } catch (error) {
+        console.warn(`Download attempt ${attempt} failed:`, error);
+        
+        if (attempt >= 3) {
+          throw new Error(`Failed to download after 3 attempts: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        
+        // Exponential backoff for retries
+        const delay = 1000 * Math.pow(2, attempt - 1);
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(res => setTimeout(res, delay));
+        return downloadWithRetry(attempt + 1);
       }
-      
-      sendMessage(errorMessage);
     };
 
-    reader.readAsDataURL(blob);
+    await downloadWithRetry();
+    
   } catch (error) {
     console.error("Error creating download package:", error);
-    sendMessage("Failed to create download package");
+    const errorMessage = error instanceof Error ? error.message : "Failed to create download package";
+    sendMessage(errorMessage);
+    throw error; // Re-throw to allow calling code to handle the error
   }
 
   return data.links;
