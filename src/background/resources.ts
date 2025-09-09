@@ -1,5 +1,43 @@
 import * as cheerio from "cheerio";
 
+// Helper function to extract background images from CSS content
+function extractBackgroundImagesFromCSS(cssContent: string): string[] {
+  const imageUrls: string[] = [];
+  
+  // Regular expression to match url() patterns in CSS
+  const urlPattern = /url\(['"]?(.*?)['"]?\)/g;
+  let match;
+  
+  while ((match = urlPattern.exec(cssContent)) !== null) {
+    const imageUrl = match[1].trim();
+    if (imageUrl && !imageUrl.startsWith('data:')) {
+      imageUrls.push(imageUrl);
+    }
+  }
+  
+  return imageUrls;
+}
+
+// Helper function to extract background images from inline styles
+function extractBackgroundImagesFromInlineStyle(styleAttr: string | undefined): string[] {
+  if (!styleAttr) return [];
+  
+  const imageUrls: string[] = [];
+  
+  // Regular expression to match background-image: url(...) patterns
+  const bgImagePattern = /background-image\s*:\s*url\(['"]?(.*?)['"]?\)/gi;
+  let match;
+  
+  while ((match = bgImagePattern.exec(styleAttr)) !== null) {
+    const imageUrl = match[1].trim();
+    if (imageUrl && !imageUrl.startsWith('data:')) {
+      imageUrls.push(imageUrl);
+    }
+  }
+  
+  return imageUrls;
+}
+
 export function getResources(html: string): {
   css: string[];
   js: string[];
@@ -10,23 +48,48 @@ export function getResources(html: string): {
 } {
   const $ = cheerio.load(html);
 
+  // Extract CSS files
   const css = $("link[rel=stylesheet]")
     ?.filter((_i, el) => el && !$(el).attr("href")?.startsWith("#"))
     ?.toArray()
     ?.map((el) => ($(el).attr("href") || ""))
     ?.filter((el) => !!el?.length);
 
+  // Extract JavaScript files
   const js = $("script")
     ?.filter((_i, el) => el && !$(el).attr("src")?.startsWith("#"))
     ?.toArray()
     ?.map((el) => ($(el).attr("src") || ""))
     ?.filter((el) => !!el?.length);
 
+  // Extract regular images from img tags
   const images = $("img")
     ?.filter((_i, el) => el && !$(el).attr("src")?.startsWith("#"))
     ?.toArray()
     ?.map((el) => ($(el).attr("src") || ""))
     ?.filter((el) => !!el?.length);
+
+  // Extract images from inline styles
+  const inlineStyleImages = $("img, div, span, section, article, header, footer, nav, main, aside")
+    ?.filter((_i, el) => {
+      const style = $(el).attr('style');
+      return !!(style && style.includes('background-image'));
+    })
+    ?.toArray()
+    ?.flatMap((el) => extractBackgroundImagesFromInlineStyle($(el).attr('style')))
+    ?.filter((el) => !!el?.length);
+
+  // Extract images from style tags
+  const styleTagImages = $("style")
+    ?.toArray()
+    ?.flatMap((el) => extractBackgroundImagesFromCSS($(el).text()))
+    ?.filter((el) => !!el?.length);
+
+  // Extract images from external CSS files (we'll need to fetch these later)
+  const cssFileImages: string[] = [];
+  
+  // Combine all images
+  const allImages = [...images, ...inlineStyleImages, ...styleTagImages, ...cssFileImages];
 
   const links = $("a")
     ?.filter((_i, el) => el && !$(el).attr("href")?.startsWith("#"))
@@ -47,7 +110,7 @@ export function getResources(html: string): {
   return {
     css: [...new Set(css)],
     js: [...new Set(js)],
-    images: [...new Set(images)],
+    images: [...new Set(allImages)],
     links: [...new Set(links)],
     documents: [...new Set(documents)],
     text,

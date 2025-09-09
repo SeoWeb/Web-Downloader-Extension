@@ -252,26 +252,19 @@ async function executeDownload(
       try {
         console.log(`Preparing download (attempt ${attempt}):`, zipFilename);
         
-        // Create object URL for the blob with proper error handling
-        let objectUrl: string;
-        try {
-          // Check if URL.createObjectURL exists
-          if (typeof URL.createObjectURL !== 'function') {
-            console.warn("URL.createObjectURL is not available in this context, using data URL fallback");
-            // Skip to data URL fallback for service worker context
-            throw new Error('URL.createObjectURL is not available in this context');
-          }
+        // In service workers, we need to use data URLs directly since URL.createObjectURL is not available
+        // Check if we're in a service worker context
+        const isServiceWorker = typeof ServiceWorkerGlobalScope !== 'undefined' && 
+                                self instanceof ServiceWorkerGlobalScope;
+        
+        if (isServiceWorker || typeof URL.createObjectURL !== 'function') {
+          console.log("Running in service worker context or URL.createObjectURL not available, using data URL directly");
           
-          objectUrl = URL.createObjectURL(blob);
-          console.log("Created object URL:", objectUrl.substring(0, 50) + "...");
-        } catch (urlError) {
-          console.error("URL.createObjectURL failed:", urlError);
-          
-          // Always try data URL fallback for service worker compatibility
-          console.log("Using data URL as fallback for service worker context");
-          if (blob.size < 10 * 1024 * 1024) { // 10MB limit for data URLs
-            const reader = new FileReader();
+          // For service workers, we must use data URLs directly
+          if (blob.size < 50 * 1024 * 1024) { // 50MB limit for data URLs in Chrome
+            // Convert blob to data URL using FileReader
             const dataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
               reader.onload = () => resolve(reader.result as string);
               reader.onerror = () => reject(new Error('Failed to read blob as data URL'));
               reader.readAsDataURL(blob);
@@ -302,39 +295,43 @@ async function executeDownload(
             sendMessage("Download started successfully");
             return;
           } else {
-            throw new Error(`Blob too large for data URL fallback (${blob.size} bytes). URL.createObjectURL failed: ${urlError instanceof Error ? urlError.message : String(urlError)}`);
+            throw new Error(`Blob too large for data URL (${blob.size} bytes). Maximum size is 50MB.`);
           }
-        }
-
-        const downloadId = await new Promise<number>((resolve, reject) => {
-          chrome.downloads.download(
-            {
-              url: objectUrl,
-              filename: zipFilename,
-              saveAs: true,
-              conflictAction: "uniquify",
-            },
-            (downloadId) => {
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-              } else if (downloadId === undefined) {
-                reject(new Error('Download failed: No download ID assigned.'));
-              } else {
-                resolve(downloadId);
+        } else {
+          // In non-service worker contexts, we can use object URLs
+          console.log("Using object URL for download");
+          const objectUrl = URL.createObjectURL(blob);
+          console.log("Created object URL:", objectUrl.substring(0, 50) + "...");
+          
+          const downloadId = await new Promise<number>((resolve, reject) => {
+            chrome.downloads.download(
+              {
+                url: objectUrl,
+                filename: zipFilename,
+                saveAs: true,
+                conflictAction: "uniquify",
+              },
+              (downloadId) => {
+                if (chrome.runtime.lastError) {
+                  reject(new Error(chrome.runtime.lastError.message));
+                } else if (downloadId === undefined) {
+                  reject(new Error('Download failed: No download ID assigned.'));
+                } else {
+                  resolve(downloadId);
+                }
               }
-            }
-          );
-        });
-        
-        console.log("Download started successfully, ID:", downloadId);
-        sendMessage("Download started successfully");
+            );
+          });
+          
+          console.log("Download started successfully, ID:", downloadId);
+          sendMessage("Download started successfully");
 
-        // Store the mapping of download ID to object URL for later cleanup
-        const { downloads } = await chrome.storage.local.get('downloads');
-        const downloadMap = downloads || {};
-        downloadMap[downloadId] = objectUrl;
-        await chrome.storage.local.set({ downloads: downloadMap });
-        
+          // Store the mapping of download ID to object URL for later cleanup
+          const { downloads } = await chrome.storage.local.get('downloads');
+          const downloadMap = downloads || {};
+          downloadMap[downloadId] = objectUrl;
+          await chrome.storage.local.set({ downloads: downloadMap });
+        }
       } catch (error) {
         console.warn(`Download attempt ${attempt} failed:`, error);
         

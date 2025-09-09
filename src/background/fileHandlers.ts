@@ -56,7 +56,20 @@ export async function addCssFiles(
         continue;
       }
 
-      const blob = await response.blob();
+      const cssContent = await response.text();
+      
+      // Extract background images from CSS content
+      const backgroundImages = extractBackgroundImagesFromCSS(cssContent);
+      
+      // Download background images
+      if (backgroundImages.length > 0) {
+        await downloadBackgroundImages(backgroundImages, zip, baseUrl, sendMessage);
+      }
+
+      // Convert background image URLs to relative paths in CSS
+      const updatedCssContent = convertBackgroundImageUrlsToRelative(cssContent, baseUrl, "../");
+
+      const blob = new Blob([updatedCssContent], { type: "text/css" });
       const filename = new URL(css, baseUrl).pathname.split('/').pop();
       if (!filename) {
         console.warn(`Could not determine filename for CSS: ${css}`);
@@ -78,6 +91,119 @@ export async function addCssFiles(
   if (failCount > 0) {
     sendMessage(`CSS files downloaded: ${successCount} succeeded, ${failCount} failed`);
   }
+}
+
+// Helper function to extract background images from CSS content
+function extractBackgroundImagesFromCSS(cssContent: string): string[] {
+  const imageUrls: string[] = [];
+  
+  // Regular expression to match url() patterns in CSS
+  const urlPattern = /url\(['"]?(.*?)['"]?\)/g;
+  let match;
+  
+  while ((match = urlPattern.exec(cssContent)) !== null) {
+    const imageUrl = match[1].trim();
+    if (imageUrl && !imageUrl.startsWith('data:')) {
+      imageUrls.push(imageUrl);
+    }
+  }
+  
+  return imageUrls;
+}
+
+// Helper function to download background images found in CSS
+async function downloadBackgroundImages(
+  imageUrls: string[],
+  zip: JSZip,
+  baseUrl: string,
+  sendMessage: (message: string) => void
+): Promise<void> {
+  const zimages = zip.folder("images") || zip;
+  const count = imageUrls.length;
+  let successCount = 0;
+  let failCount = 0;
+  
+  for (let i = 0; i < count; i++) {
+    const imageUrl = imageUrls[i];
+    sendMessage(`Downloading background images from CSS: ${i+1}/${count}`);
+    if (!imageUrl) {
+      failCount++;
+      continue;
+    }
+
+    try {
+      const response = await fetchUrl(imageUrl, baseUrl);
+      
+      if (!response) {
+        console.warn(`Failed to fetch background image: ${imageUrl}`);
+        sendMessage(`Failed to download background image: ${imageUrl}`);
+        failCount++;
+        continue;
+      }
+
+      const blob = await response.blob();
+      const filename = new URL(imageUrl, baseUrl).pathname.split('/').pop();
+      if (!filename) {
+        console.warn(`Could not determine filename for background image: ${imageUrl}`);
+        sendMessage(`Could not determine filename for: ${imageUrl}`);
+        failCount++;
+        continue;
+      }
+
+      zimages.file(fixFilename(filename), blob);
+      successCount++;
+    } catch (error) {
+      console.error(`Error downloading background image ${imageUrl}:`, error);
+      sendMessage(`Error downloading background image: ${imageUrl}`);
+      failCount++;
+    }
+  }
+
+  console.log(`Background images from CSS download summary: ${successCount} succeeded, ${failCount} failed`);
+  if (failCount > 0) {
+    sendMessage(`Background images from CSS downloaded: ${successCount} succeeded, ${failCount} failed`);
+  }
+}
+
+// Helper function to convert background image URLs to relative paths in CSS
+function convertBackgroundImageUrlsToRelative(cssContent: string, baseUrl: string, path: string = "./"): string {
+  // Regular expression to match url() patterns in CSS
+  const urlPattern = /url\(['"]?(.*?)['"]?\)/gi;
+  let updatedContent = cssContent;
+  
+  // Replace all image URLs with relative paths
+  updatedContent = updatedContent.replace(urlPattern, (match, imageUrl) => {
+    if (!imageUrl || imageUrl.startsWith('data:')) {
+      return match; // Skip data URLs
+    }
+    
+    try {
+      // If URL is already relative, preserve its structure but ensure it points to images folder
+      if (!imageUrl.startsWith('http')) {
+        const filename = imageUrl.split('/').pop();
+        if (filename) {
+          const relativeImagePath = path + "images/" + filename;
+          return match.replace(imageUrl, relativeImagePath);
+        }
+      }
+      
+      if (imageUrl.startsWith(baseUrl)) {
+        const url = new URL(imageUrl, baseUrl);
+        const relativePath = url.pathname;
+        const filename = relativePath.split('/').pop();
+        if (filename) {
+          const relativeImagePath = path + "images/" + filename;
+          return match.replace(imageUrl, relativeImagePath);
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to convert image URL to relative: ${imageUrl}`, error);
+    }
+    
+    return match; // Return original if conversion fails
+  });
+  
+  return updatedContent;
 }
 
 export async function addJsFiles(
