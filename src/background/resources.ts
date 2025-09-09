@@ -69,6 +69,13 @@ export function getResources(html: string): {
     ?.map((el) => ($(el).attr("src") || ""))
     ?.filter((el) => !!el?.length);
 
+  // Extract images from object elements with type="image/..." and data attribute
+  const objectImages = $("object[type^='image/']")
+    ?.filter((_i, el) => el && !$(el).attr("data")?.startsWith("#"))
+    ?.toArray()
+    ?.map((el) => ($(el).attr("data") || ""))
+    ?.filter((el) => !!el?.length);
+
   // Extract images from inline styles
   const inlineStyleImages = $("img, div, span, section, article, header, footer, nav, main, aside")
     ?.filter((_i, el) => {
@@ -89,7 +96,7 @@ export function getResources(html: string): {
   const cssFileImages: string[] = [];
   
   // Combine all images
-  const allImages = [...images, ...inlineStyleImages, ...styleTagImages, ...cssFileImages];
+  const allImages = [...images, ...objectImages, ...inlineStyleImages, ...styleTagImages, ...cssFileImages];
 
   const links = $("a")
     ?.filter((_i, el) => el && !$(el).attr("href")?.startsWith("#"))
