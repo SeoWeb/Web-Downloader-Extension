@@ -41,7 +41,7 @@ export class HtmlAssembler {
       maxTotalSize: adaptiveMemoryManager.calculateSafeHtmlLimit(),
       maxChunkSize: adaptiveMemoryManager.calculateSafeChunkSize(),
       enableDeduplication: true,
-      enableMinification: true,
+      enableMinification: false,
       insertionPoint: '</body>',
     };
   }

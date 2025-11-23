@@ -280,13 +280,14 @@ export class StreamingDownloader {
     await this.updateDownload(download);
 
     const pendingChunks = download.chunks.filter(chunk => !chunk.downloaded);
-    const maxParallel = Math.min(
+    // Initial parallelism
+    let currentMaxParallel = Math.min(
       this.options.maxParallelChunks!,
       pendingChunks.length
     );
 
     download.status = 'streaming';
-    download.activeChunks = maxParallel;
+    download.activeChunks = currentMaxParallel;
     await this.updateDownload(download);
 
     // Download chunks in parallel batches
@@ -296,7 +297,7 @@ export class StreamingDownloader {
     while (chunkIndex < pendingChunks.length) {
       // Fill up the batch
       while (
-        chunkPromises.length < maxParallel &&
+        chunkPromises.length < download.activeChunks &&
         chunkIndex < pendingChunks.length
       ) {
         const chunk = pendingChunks[chunkIndex];
@@ -324,6 +325,9 @@ export class StreamingDownloader {
       if (this.options.monitorMemory) {
         await this.adjustForMemoryPressure(download);
       }
+
+      // Dynamic concurrency scaling based on throughput
+      this.adjustConcurrency(download);
     }
 
     // Wait for all remaining chunks to complete
@@ -583,6 +587,25 @@ export class StreamingDownloader {
       // Reduce parallelism
       download.activeChunks = Math.max(1, Math.floor(download.activeChunks / 2));
       await this.updateDownload(download);
+    }
+  }
+
+  /**
+   * Adjust concurrency based on network throughput
+   */
+  private adjustConcurrency(download: StreamingDownload): void {
+    const speed = this.calculateDownloadSpeed(download); // bytes per second
+    const currentParallelism = download.activeChunks;
+    const maxConfigured = this.options.maxParallelChunks!;
+
+    // Thresholds for scaling (arbitrary example values, can be tuned)
+    // If speed > 5 MB/s and we are not at max parallelism, increase
+    if (speed > 5 * 1024 * 1024 && currentParallelism < maxConfigured) {
+      download.activeChunks = Math.min(currentParallelism + 1, maxConfigured);
+    }
+    // If speed < 500 KB/s and we have high parallelism, decrease to reduce overhead
+    else if (speed < 500 * 1024 && currentParallelism > 2) {
+      download.activeChunks = Math.max(2, currentParallelism - 1);
     }
   }
 
