@@ -33,12 +33,46 @@ export async function addIndexHtml(
   tabUrl: string,
 ) {
   try {
-    const html = convertHtml(inputHtml, tabUrl);
-    const blob = new Blob([html], { type: "text/html" });
+    console.log("Converting HTML for index.html");
+    
+    // Validate input HTML
+    if (!inputHtml || typeof inputHtml !== 'string') {
+      throw new Error("Invalid HTML input: inputHtml is not a valid string");
+    }
+    
+    // Try to convert HTML, with fallback to original if conversion fails
+    let html: string;
+    try {
+      html = convertHtml(inputHtml, tabUrl);
+    } catch (conversionError) {
+      console.warn("HTML conversion failed, using original HTML:", conversionError);
+      html = inputHtml; // Fallback to original HTML
+    }
+    
+    // Ensure we have valid HTML content
+    if (!html || html.length === 0) {
+      throw new Error("HTML conversion resulted in empty content");
+    }
+    
+    console.log(`Creating index.html with ${html.length} characters`);
+    const blob = new Blob([html], { type: "text/html;charset=UTF-8" });
     zip.file("index.html", blob);
+    console.log("index.html created successfully");
   } catch (error) {
     console.error("Error creating index.html:", error);
-    throw new Error("Failed to create index.html");
+    
+    // Provide more detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+    
+    console.error("Detailed error information:", {
+      message: errorMessage,
+      stack: errorStack,
+      inputHtmlLength: inputHtml?.length || 0,
+      tabUrl: tabUrl || 'undefined'
+    });
+    
+    throw new Error(`Failed to create index.html: ${errorMessage}`);
   }
 }
 

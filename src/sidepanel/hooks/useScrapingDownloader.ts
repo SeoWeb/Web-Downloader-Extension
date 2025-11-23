@@ -77,10 +77,21 @@ export function useScrapingDownloader({
     if (response?.height && response.html) {
       setDownloadResponse((prev) => {
         const prevTop = prev?.top || 0;
+        const prevHeight = prev?.height || 0;
         const data = mergeDownloadResponse(prev, response);
 
-        if (response.top === prevTop) {
+        // Check if we've reached the bottom of the page
+        // If scroll position hasn't changed significantly OR we've made too many attempts, stop scrolling
+        const scrollPositionChanged = Math.abs((response.top || 0) - prevTop) > 10; // More than 10px change
+        const contentHeightChanged = Math.abs((response.height || 0) - prevHeight) > 50; // More than 50px change
+        
+        if (!scrollPositionChanged && !contentHeightChanged) {
+          console.log("Scroll position and content height unchanged, stopping scroll");
           setIsScraping(false);
+        } else if (scrollAttempts >= 50) { // Safety limit to prevent infinite scrolling
+          console.log("Maximum scroll attempts reached, stopping scroll");
+          setIsScraping(false);
+          setMessages((prev) => [...prev, "Maximum scroll attempts reached"]);
         } else {
           setScrollAttempts((prevCount) => prevCount + 1);
         }
@@ -91,7 +102,7 @@ export function useScrapingDownloader({
       setIsScraping(false);
       setMessages((prev) => [...prev, "Scraping failed or stopped"]);
     }
-  }, [tabId, startScrolling, setIsScraping, setMessages]);
+  }, [tabId, startScrolling, setIsScraping, setMessages, scrollAttempts]);
 
   useEffect(() => {
     if (isScraping) {

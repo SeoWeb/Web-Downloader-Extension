@@ -278,27 +278,44 @@ function analyzeHtmlComplexity(
   const elements2 = dom2("*").length;
   const totalElements = elements1 + elements2;
 
-  // Check for potentially problematic patterns
+  // Check for potentially problematic patterns - but be less aggressive
   const hasNestedTables =
-    dom1("table table").length > 0 || dom2("table table").length > 0;
+    (dom1("table table").length > 10) || (dom2("table table").length > 10); // Increased threshold
   const hasDeeplyNested =
     dom1("*").filter(function () {
-      return dom1(this).parents().length > 20;
-    }).length > 0;
+      return dom1(this).parents().length > 50; // Increased threshold
+    }).length > 5 || // Only if multiple deeply nested elements
+    dom2("*").filter(function () {
+      return dom2(this).parents().length > 50;
+    }).length > 5;
   const hasLargeTables =
-    dom1("table").filter(function () {
-      return dom1(this).find("tr").length > 1000;
-    }).length > 0;
+    (dom1("table").filter(function () {
+      return dom1(this).find("tr").length > 5000; // Increased threshold
+    }).length > 0) ||
+    (dom2("table").filter(function () {
+      return dom2(this).find("tr").length > 5000;
+    }).length > 0);
+
+  // Also check for duplicate content which might indicate exponential growth
+  const body1 = dom1("body").html() || "";
+  const body2 = dom2("body").html() || "";
+  const hasDuplicateContent = body1.length > 0 && body1 === body2;
 
   const complexity = totalElements;
+  // More conservative exponential growth detection
   const isExponential =
-    complexity > 50000 || hasNestedTables || hasDeeplyNested || hasLargeTables;
+    complexity > 100000 || // Increased threshold
+    hasNestedTables ||
+    hasDeeplyNested ||
+    hasLargeTables ||
+    hasDuplicateContent;
 
   let reason;
-  if (totalElements > 50000) reason = `Too many elements: ${totalElements}`;
-  else if (hasNestedTables) reason = "Nested tables detected";
-  else if (hasDeeplyNested) reason = "Deeply nested elements detected";
-  else if (hasLargeTables) reason = "Large tables detected";
+  if (totalElements > 100000) reason = `Too many elements: ${totalElements}`;
+  else if (hasNestedTables) reason = "Excessive nested tables detected";
+  else if (hasDeeplyNested) reason = "Excessively deeply nested elements detected";
+  else if (hasLargeTables) reason = "Very large tables detected";
+  else if (hasDuplicateContent) reason = "Duplicate content detected";
 
   return { isExponential, complexity, reason };
 }
