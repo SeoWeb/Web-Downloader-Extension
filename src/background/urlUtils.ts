@@ -1,5 +1,7 @@
 import { memoryManager } from "../utils/MemoryManager";
 import { RESOURCE_SIZE_LIMITS } from "../utils/memoryLimits";
+import { requestQueue } from "../utils/RequestQueue";
+import { ResourceType, RequestPriority } from "../types/queue";
 
 export interface FetchOptions {
   retries?: number;
@@ -8,6 +10,7 @@ export interface FetchOptions {
   checkSize?: boolean;
   maxSize?: number;
   downloadId?: string;
+  headers?: Record<string, string>;
 }
 
 export async function fetchUrl(
@@ -123,15 +126,31 @@ export async function fetchUrl(
     } catch (e) {
       console.warn(`Attempt ${i + 1} failed for ${fullUrl}:`, e);
 
-      // Try alternative approach using chrome.tabs for external resources
+      // Try alternative approach using different fetch modes for external resources
       if (i < retries - 1) {
         try {
           console.log(`Trying alternative fetch method for ${fullUrl}`);
+
+          // For CSS files, try no-cors mode first
+          const isCssFile = fullUrl.toLowerCase().includes('.css');
           const response = await fetch(fullUrl, {
             method: "GET",
-            mode: "cors",
-            cache: "force-cache",
+            mode: isCssFile ? "no-cors" : "cors",
+            cache: "no-cache",
+            credentials: "omit",
+            headers: isCssFile ? {
+              'Accept': 'text/css,*/*;q=0.1',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            } : undefined,
           });
+
+          // For no-cors responses, we need to handle them differently
+          if (response.type === 'opaque') {
+            console.warn(`Got opaque response for ${fullUrl}, may not be usable`);
+            // For CSS files, opaque responses usually mean the fetch succeeded but we can't access the content
+            // This is better than failing completely, so we'll try to use it
+            return response;
+          }
 
           // Apply size checking to fallback response as well
           if (checkSize && response.headers.has("Content-Length")) {
@@ -152,6 +171,20 @@ export async function fetchUrl(
             `Alternative fetch method also failed for ${fullUrl}:`,
             fallbackError,
           );
+
+          // Try one more approach with different headers
+          try {
+            console.log(`Trying third fetch method for ${fullUrl}`);
+            const thirdResponse = await fetch(fullUrl, {
+              method: "GET",
+              mode: "navigate",
+              cache: "force-cache",
+              redirect: "follow",
+            });
+            return thirdResponse;
+          } catch (thirdError) {
+            console.warn(`Third fetch method also failed for ${fullUrl}:`, thirdError);
+          }
         }
       }
 
@@ -336,4 +369,190 @@ export function fixFilename(filename: string) {
       : "bin";
 
   return `${cleanName}.${cleanExtension}`;
+}
+
+/**
+ * Queue-aware fetch function that uses the request queue system
+ * This is the preferred method for fetching resources when the queue system is available
+ */
+export async function fetchUrlWithQueue(
+  url: string,
+  baseUrl: string,
+  options: {
+    priority?: RequestPriority;
+    resourceType?: ResourceType;
+    fetchOptions?: FetchOptions;
+    onComplete?: (result: any) => void;
+    onError?: (error: Error) => void;
+  } = {}
+): Promise<Response | null> {
+  const {
+    priority = RequestPriority.NORMAL,
+    resourceType = ResourceType.OTHER,
+    fetchOptions = {},
+    onComplete,
+    onError
+  } = options;
+
+  if (!url) return null;
+
+  const fullUrl = new URL(url, baseUrl).href;
+  
+  // Determine resource type if not provided
+  const detectedResourceType = resourceType !== ResourceType.OTHER
+    ? resourceType
+    : getResourceTypeFromUrl(url);
+
+  try {
+    // Create a promise that will resolve when the request completes
+    return new Promise<Response | null>((resolve, reject) => {
+      let isResolved = false;
+      
+      // Create cleanup function to prevent memory leaks
+      const cleanup = () => {
+        if (isResolved) return;
+        isResolved = true;
+      };
+      
+      // Enqueue the request in the queue system
+      requestQueue.enqueue({
+        url: fullUrl,
+        resourceType: detectedResourceType,
+        priority,
+        domain: '', // Will be auto-extracted
+        dependencies: [], // No dependencies by default
+        retryCount: 0,
+        estimatedSize: 0, // Unknown size
+        fetchOptions: {
+          ...fetchOptions,
+          // Add default headers if not provided
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.5",
+            ...fetchOptions.headers
+          }
+        },
+        onComplete: async (result) => {
+          try {
+            // Prevent multiple resolutions
+            if (isResolved) return;
+            
+            // Call the provided callback if any
+            if (onComplete) {
+              onComplete(result);
+            }
+            
+            // Resolve the promise with the response
+            resolve(result.response);
+            cleanup();
+          } catch (error) {
+            console.error(`Error in onComplete callback for ${fullUrl}:`, error);
+            if (!isResolved) {
+              reject(error instanceof Error ? error : new Error(String(error)));
+              cleanup();
+            }
+          }
+        },
+        onError: (error) => {
+          try {
+            // Prevent multiple resolutions
+            if (isResolved) return;
+            
+            // Call the provided error callback if any
+            if (onError) {
+              onError(error);
+            }
+            
+            // Reject the promise with the error
+            reject(error);
+            cleanup();
+          } catch (callbackError) {
+            console.error(`Error in onError callback for ${fullUrl}:`, callbackError);
+            if (!isResolved) {
+              reject(callbackError instanceof Error ? callbackError : new Error(String(callbackError)));
+              cleanup();
+            }
+          }
+        }
+      }).catch((error) => {
+        // Handle enqueue failure
+        if (!isResolved) {
+          console.error(`Failed to enqueue request for ${fullUrl}:`, error);
+          if (onError) {
+            onError(error instanceof Error ? error : new Error(String(error)));
+          }
+          resolve(null);
+          cleanup();
+        }
+      });
+    });
+  } catch (error) {
+    console.error(`Unexpected error in fetchUrlWithQueue for ${fullUrl}:`, error);
+    if (onError) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+    }
+    return null;
+  }
+}
+
+/**
+ * Determine resource type from URL for queue system
+ */
+function getResourceTypeFromUrl(url: string): ResourceType {
+  const path = new URL(url).pathname.toLowerCase();
+  const extension = path.split(".").pop();
+
+  switch (extension) {
+    case "jpg":
+    case "jpeg":
+    case "png":
+    case "gif":
+    case "webp":
+    case "svg":
+    case "bmp":
+    case "ico":
+      return ResourceType.IMAGE;
+
+    case "css":
+      return ResourceType.CSS;
+
+    case "js":
+    case "mjs":
+      return ResourceType.JS;
+
+    case "html":
+    case "htm":
+    case "xhtml":
+      return ResourceType.HTML;
+
+    case "pdf":
+    case "doc":
+    case "docx":
+    case "odt":
+      return ResourceType.DOCUMENT;
+
+    case "mp4":
+    case "webm":
+    case "avi":
+    case "mov":
+    case "mkv":
+      return ResourceType.VIDEO;
+
+    case "mp3":
+    case "wav":
+    case "ogg":
+    case "flac":
+    case "aac":
+      return ResourceType.AUDIO;
+
+    case "woff":
+    case "woff2":
+    case "ttf":
+    case "otf":
+    case "eot":
+      return ResourceType.FONT;
+
+    default:
+      return ResourceType.OTHER;
+  }
 }

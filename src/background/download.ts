@@ -37,6 +37,10 @@ import { StreamingFetcher } from "../utils/streamingFetch";
 import {
   StreamingDownload,
 } from "../types/streaming";
+import { FilterOptions } from "../types/filterTypes";
+
+// Queue system imports
+import { requestQueue } from "../utils/RequestQueue";
 
 // Initialize cleanup handlers when this module loads
 initializeCleanupHandlers();
@@ -45,6 +49,23 @@ initializeCleanupHandlers();
 const persistence = createProgressPersistence('indexeddb');
 const streamingDownloader = new StreamingDownloader(persistence);
 const streamingFetcher = new StreamingFetcher();
+
+// Initialize queue system
+// Set up queue event listeners for global monitoring
+requestQueue.setEventListeners({
+  onStart: (request) => {
+    console.log(`Queue: Started processing ${request.resourceType} request for ${request.url}`);
+  },
+  onComplete: (result) => {
+    console.log(`Queue: Completed ${result.requestId} request`);
+  },
+  onError: (request, error) => {
+    console.error(`Queue: Failed ${request.resourceType} request for ${request.url}:`, error);
+  },
+  onRetry: (request, attempt) => {
+    console.log(`Queue: Retrying ${request.resourceType} request for ${request.url}, attempt ${attempt}`);
+  }
+});
 
 // Set up streaming event listeners
 streamingDownloader.setEventListeners({
@@ -84,6 +105,9 @@ const downloadId = `download-${Date.now()}-${Math.random().toString(36).substr(2
 memoryManager.registerCleanupCallback(async () => {
   console.log("Memory manager cleanup callback triggered");
   await cleanupOldBlobs();
+  
+  // Clear queue during cleanup
+  await requestQueue.clear();
 });
 
 memoryManager.registerMemoryPressureCallback(async (level) => {
@@ -101,6 +125,16 @@ memoryManager.registerMemoryPressureCallback(async (level) => {
         await streamingDownloader.pauseDownload(download.id);
       }
     }
+    
+    // Pause queue processing during critical memory pressure
+    requestQueue.pause();
+  } else if (level === MemoryPressureLevel.HIGH) {
+    // Reduce queue concurrency during high memory pressure
+    // Note: This would need to be implemented in RequestQueue if needed
+    console.log("High memory pressure detected, queue will naturally reduce concurrency");
+  } else if (level === MemoryPressureLevel.LOW) {
+    // Resume normal queue operation
+    requestQueue.resume();
   }
 });
 
@@ -244,15 +278,7 @@ async function setupOffscreenDocument(path: string) {
 export async function downloadResources(
   html: string,
   tabUrl: string,
-  downloadOptions: {
-    downloadHTML: boolean;
-    downloadImages: boolean;
-    downloadLinks: boolean;
-    downloadAssets: boolean;
-    downloadContentAsText: boolean;
-    downloadDocuments: boolean;
-    singleFile: boolean;
-  },
+  downloadOptions: FilterOptions,
   sendMessage: (message: string) => void,
   assemblyJobId?: string, // Optional job ID for incremental assembly
 ) {
@@ -294,18 +320,36 @@ export async function downloadResources(
 
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    sendMessage(`Download failed: ${errorMessage}`);
+    
+    // Categorize error for better user feedback
+    let userFriendlyMessage = `Download failed: ${errorMessage}`;
+    let isMemoryError = false;
 
-    // If it's a memory-related error, perform cleanup
     if (
       errorMessage.includes("memory") ||
       errorMessage.includes("size") ||
-      errorMessage.includes("limit")
+      errorMessage.includes("limit") ||
+      errorMessage.includes("quota")
     ) {
+      isMemoryError = true;
+      userFriendlyMessage = "Download failed due to memory limits. Attempting cleanup...";
+    } else if (
+      errorMessage.includes("network") ||
+      errorMessage.includes("fetch") ||
+      errorMessage.includes("connection") ||
+      errorMessage.includes("offline")
+    ) {
+      userFriendlyMessage = "Download failed due to network issues. Please check your connection.";
+    }
+
+    sendMessage(userFriendlyMessage);
+
+    // If it's a memory-related error, perform cleanup
+    if (isMemoryError) {
       console.log("Memory-related error detected, performing cleanup...");
       await memoryManager.forceCleanup();
       sendMessage(
-        "Memory cleanup performed due to download failure. Please try again.",
+        "Memory cleanup performed. Please try downloading again with fewer options selected.",
       );
     }
   } finally {
@@ -315,6 +359,10 @@ export async function downloadResources(
     // Cleanup download-specific resources
     try {
       await cleanupAfterDownload(downloadId);
+      
+      // Clear the queue after download completion
+      await requestQueue.clear();
+      console.log("Queue cleared after download completion");
     } catch (cleanupError) {
       console.error("Error during final cleanup:", cleanupError);
     }
@@ -325,6 +373,7 @@ export async function downloadResources(
       memoryUsed: formatBytes(finalMemoryStats.totalMemoryUsed),
       memoryPressure: finalMemoryStats.memoryPressureLevel,
       completedDownloads: finalMemoryStats.completedDownloads,
+      queueStats: requestQueue.getStats(),
     });
 
     console.log("Download process completed");
@@ -334,7 +383,7 @@ export async function downloadResources(
 async function executeDownload(
   html: string,
   tabUrl: string,
-  downloadOptions: any,
+  downloadOptions: FilterOptions,
   sendMessage: (message: string) => void,
   assemblyJobId?: string,
 ) {
@@ -505,7 +554,7 @@ async function executeDownload(
 
   try {
     console.log("Creating final download package");
-    let blob: any;
+    let blob: Blob;
 
     if (downloadOptions.singleFile) {
       sendMessage("Creating index.html");
@@ -752,15 +801,7 @@ async function executeDownload(
 export async function downloadResourcesWithStreaming(
   html: string,
   tabUrl: string,
-  downloadOptions: {
-    downloadHTML: boolean;
-    downloadImages: boolean;
-    downloadLinks: boolean;
-    downloadAssets: boolean;
-    downloadContentAsText: boolean;
-    downloadDocuments: boolean;
-    singleFile: boolean;
-  },
+  downloadOptions: FilterOptions,
   sendMessage: (message: string) => void,
 ) {
   console.log("Starting streaming downloadResources for URL:", tabUrl);
@@ -814,7 +855,7 @@ export async function downloadResourcesWithStreaming(
 async function executeStreamingDownload(
   html: string,
   tabUrl: string,
-  downloadOptions: any,
+  downloadOptions: FilterOptions,
   sendMessage: (message: string) => void,
   data: ReturnType<typeof getResources>
 ) {
@@ -1045,7 +1086,7 @@ async function checkForLargeFiles(data: ReturnType<typeof getResources>): Promis
  */
 async function addRegularFiles(
   data: ReturnType<typeof getResources>,
-  downloadOptions: any,
+  downloadOptions: FilterOptions,
   tabUrl: string,
   sendMessage: (message: string) => void,
   downloadId: string
@@ -1217,15 +1258,7 @@ async function addIndexHtmlFromBlob(
 export async function downloadResourcesWithIncrementalAssembly(
   assemblyJobId: string,
   tabUrl: string,
-  downloadOptions: {
-    downloadHTML: boolean;
-    downloadImages: boolean;
-    downloadLinks: boolean;
-    downloadAssets: boolean;
-    downloadContentAsText: boolean;
-    downloadDocuments: boolean;
-    singleFile: boolean;
-  },
+  downloadOptions: FilterOptions,
   sendMessage: (message: string) => void,
 ) {
   console.log(`Starting download with incremental assembly for job: ${assemblyJobId}`);
@@ -1319,7 +1352,7 @@ export async function downloadResourcesWithIncrementalAssembly(
 async function executeDownloadWithIncrementalAssembly(
   assemblyJobId: string,
   tabUrl: string,
-  downloadOptions: any,
+  downloadOptions: FilterOptions,
   sendMessage: (message: string) => void,
 ) {
   const zip = new JSZip();

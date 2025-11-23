@@ -40,7 +40,7 @@ export interface ZipCreationProgress {
 }
 
 export class ChunkedZipProcessor {
-  private zip: any;
+  private zip: JSZip;
   private options: ChunkedZipOptions;
   private entries: ZipEntry[] = [];
   private processedEntries: ZipEntry[] = [];
@@ -101,10 +101,10 @@ export class ChunkedZipProcessor {
     // Generate the ZIP with memory monitoring
     const generateOptions = {
       type: 'blob' as const,
-      compression: this.options.compressionLevel !== undefined
+      compression: this.options.compressionLevel !== undefined && this.options.compressionLevel > 0
         ? 'DEFLATE' as const
         : 'STORE' as const,
-      compressionOptions: this.options.compressionLevel !== undefined
+      compressionOptions: this.options.compressionLevel !== undefined && this.options.compressionLevel > 0
         ? { level: this.options.compressionLevel }
         : undefined,
       streamFiles: this.options.enableStreaming,
@@ -115,7 +115,7 @@ export class ChunkedZipProcessor {
     const maxAllowedMemory = this.options.maxMemoryUsage!;
 
     try {
-      const zipBlob = await this.zip.generateAsync(generateOptions, (metadata: any) => {
+      const zipBlob = await this.zip.generateAsync(generateOptions, (metadata: { percent: number }) => {
         this.currentProgress.completedBytes = metadata.percent / 100 * this.currentProgress.totalBytes;
 
         // Check memory pressure during generation
@@ -295,9 +295,9 @@ export class ChunkedZipProcessor {
    * Add a single entry to the JSZip instance
    */
   private async addEntryToZip(entry: ZipEntry): Promise<void> {
-    const zipOptions: any = {
-      compression: entry.compress !== false ? 'DEFLATE' : 'STORE',
-      compressionOptions: entry.compress !== false
+    const zipOptions: JSZip.JSZipFileOptions = {
+      compression: entry.compress !== false && (this.options.compressionLevel || 6) > 0 ? 'DEFLATE' : 'STORE',
+      compressionOptions: entry.compress !== false && (this.options.compressionLevel || 6) > 0
         ? { level: this.options.compressionLevel || 6 }
         : undefined,
       date: entry.lastModified ? new Date(entry.lastModified) : new Date(),

@@ -4,6 +4,7 @@ import Heading from "../../components/Heading";
 import Actions from "../../components/Actions";
 // import { FeatureRequestButton } from "../../components/FeatureRequestButton";
 import { ScrollingResponse } from "../hooks/useScrapingDownloader";
+import { ErrorBoundary } from "../../components/ErrorBoundary";
 
 const Filter = React.lazy(() => import("../../components/Filter"));
 
@@ -39,13 +40,15 @@ export function MainContent({
         action !== messageActions.DOWNLOAD_DONE &&
         !downloadResponse?.html && (
           <div className="pt-8">
-            <React.Suspense>
-              <Filter
-                download={onClickStartDownload}
-                userId={userId}
-                tabUrl={tabUrl}
-              />
-            </React.Suspense>
+            <ErrorBoundary name="Filter">
+              <React.Suspense fallback={<div className="p-4">Loading filters...</div>}>
+                <Filter
+                  download={onClickStartDownload}
+                  userId={userId}
+                  tabUrl={tabUrl}
+                />
+              </React.Suspense>
+            </ErrorBoundary>
           </div>
         )}
     </>

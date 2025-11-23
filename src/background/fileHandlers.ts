@@ -1,8 +1,11 @@
 import JSZip from "jszip";
-import { fetchUrl, fixFilename, FetchOptions } from "./urlUtils";
+import { fetchUrl, fixFilename } from "./urlUtils";
 import { convertHtml } from "./htmlUtils";
-import { memoryManager } from "../utils/MemoryManager";
 import { DEFAULT_MEMORY_LIMITS } from "../utils/memoryLimits";
+
+// Queue system imports
+import { requestQueue } from "../utils/RequestQueue";
+import { RequestPriority, ResourceType } from "../types/queue";
 
 // Streaming imports
 import { StreamingDownloader } from "../utils/StreamingDownloader";
@@ -63,126 +66,158 @@ export async function addCssFiles(
   let successCount = 0;
   let failCount = 0;
   let skippedCount = 0;
+  let completedCount = 0;
 
-  // Get optimal concurrency based on memory pressure
-  const maxConcurrency = memoryManager.getOptimalConcurrency();
-  const semaphore = new Semaphore(maxConcurrency);
-  const downloadPromises: Promise<void>[] = [];
+  // Log download tracking if downloadId is provided
+  if (downloadId) {
+    console.log(`Processing CSS files for download: ${downloadId}`);
+  }
 
+  // Set up queue event listeners for this batch
+  const originalListeners = requestQueue.getEventListeners() || {};
+  
+  const batchListeners = {
+    ...originalListeners,
+    onComplete: (result: any) => {
+      completedCount++;
+      sendMessage(`CSS files progress: ${completedCount}/${count}`);
+      // Call original listener if it exists
+      if (originalListeners.onComplete) {
+        originalListeners.onComplete(result);
+      }
+    },
+    onError: (request: any, error: Error) => {
+      failCount++;
+      console.error(`CSS download failed: ${request.url}`, error);
+      // Call original listener if it exists
+      if (originalListeners.onError) {
+        originalListeners.onError(request, error);
+      }
+    }
+  };
+
+  requestQueue.setEventListeners(batchListeners);
+
+  // Enqueue all CSS files
+  const requestPromises: Promise<string>[] = [];
+  
   for (let i = 0; i < count; i++) {
     const css = csss[i];
-
+    
     if (!css) {
       failCount++;
       continue;
     }
 
-    // Create download promise with semaphore control
-    const downloadPromise = semaphore.acquire().then(async (release) => {
-      try {
-        sendMessage(`Downloading CSS files: ${i + 1}/${count}`);
+    const fullCssUrl = new URL(css, tabUrl).href;
+    const u = new URL(fullCssUrl);
+    const baseUrl = u.origin;
 
-        const u = new URL(css.startsWith("http") ? css : tabUrl);
-        const baseUrl = u.origin;
+    // Create a promise that resolves when the CSS is processed
+    const cssPromise = new Promise<string>(async (resolve, reject) => {
+      await requestQueue.enqueue({
+        url: fullCssUrl,
+        resourceType: ResourceType.CSS,
+        priority: RequestPriority.HIGH, // CSS is high priority for rendering
+        domain: '', // Will be auto-extracted
+        dependencies: [], // No dependencies for CSS files
+        retryCount: 0,
+        estimatedSize: 0, // Unknown size
+        fetchOptions: {
+          headers: {
+            'Accept': 'text/css,*/*;q=0.1',
+            'Cache-Control': 'max-age=0',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          },
+          retries: 5, // Increase retries for CSS files
+          timeout: 45000, // Increase timeout for CSS files
+        },
+        onComplete: async (result) => {
+          try {
+            // Check for opaque response (CORS issue)
+            if (result.response.type === 'opaque') {
+              console.warn(`CSS ${css} returned opaque response (CORS blocked), skipping`);
+              skippedCount++;
+              resolve(css);
+              return;
+            }
 
-        // Create unique request ID for tracking
-        const requestId = `css-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            // Get CSS content
+            const cssContent = await result.response.text();
 
-        // Queue the resource with memory manager
-        memoryManager.queueResource({
-          id: requestId,
-          url: css,
-          type: "CSS",
-          size: 0, // Will be updated when we get Content-Length
-          status: "pending",
-        });
+            // Check CSS content size against limits
+            if (cssContent.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
+              console.warn(
+                `CSS content too large: ${css} (${cssContent.length} bytes)`,
+              );
+              skippedCount++;
+              resolve(css);
+              return;
+            }
 
-        const response = await fetchUrl(css, baseUrl, {
-          downloadId,
-          checkSize: true,
-        } as FetchOptions);
+            // Extract background images from CSS content
+            const backgroundImages = extractBackgroundImagesFromCSS(cssContent);
 
-        if (!response) {
-          console.warn(`Failed to fetch CSS: ${css}`);
-          sendMessage(`Failed to download CSS: ${css}`);
-          memoryManager.markResourceFailed(requestId);
-          failCount++;
-          return;
-        }
+            // Download background images with memory management
+            if (backgroundImages.length > 0) {
+              await downloadBackgroundImages(
+                backgroundImages,
+                zip,
+                fullCssUrl,
+                sendMessage,
+                downloadId,
+              );
+            }
 
-        // Get actual size from response
-        const contentLength =
-          response.headers.get("X-Actual-Size") ||
-          response.headers.get("Content-Length") ||
-          "0";
-        const actualSize = parseInt(contentLength) || 0;
+            // Convert background image URLs to relative paths in CSS
+            const updatedCssContent = convertBackgroundImageUrlsToRelative(
+              cssContent,
+              baseUrl,
+              "../",
+            );
 
-        // Track memory allocation
-        memoryManager.trackResourceAllocation(requestId, actualSize);
+            const blob = new Blob([updatedCssContent], { type: "text/css" });
+            const filename = new URL(fullCssUrl).pathname.split("/").pop();
+            if (!filename) {
+              console.warn(`Could not determine filename for CSS: ${fullCssUrl}`);
+              failCount++;
+              resolve(css);
+              return;
+            }
 
-        const cssContent = await response.text();
-
-        // Check CSS content size against limits
-        if (cssContent.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
-          console.warn(
-            `CSS content too large: ${css} (${cssContent.length} bytes)`,
-          );
-          sendMessage(`Skipping CSS due to size limit: ${css}`);
-          memoryManager.releaseResource(requestId);
-          skippedCount++;
-          return;
-        }
-
-        // Extract background images from CSS content
-        const backgroundImages = extractBackgroundImagesFromCSS(cssContent);
-
-        // Download background images with memory management
-        if (backgroundImages.length > 0) {
-          await downloadBackgroundImages(
-            backgroundImages,
-            zip,
-            baseUrl,
-            sendMessage,
-            downloadId,
-          );
-        }
-
-        // Convert background image URLs to relative paths in CSS
-        const updatedCssContent = convertBackgroundImageUrlsToRelative(
-          cssContent,
-          baseUrl,
-          "../",
-        );
-
-        const blob = new Blob([updatedCssContent], { type: "text/css" });
-        const filename = new URL(css, baseUrl).pathname.split("/").pop();
-        if (!filename) {
-          console.warn(`Could not determine filename for CSS: ${css}`);
-          sendMessage(`Could not determine filename for: ${css}`);
-          memoryManager.releaseResource(requestId);
-          failCount++;
-          return;
-        }
-
-        zstyles.file(fixFilename(filename), blob);
-        successCount++;
-
-        // Release memory
-        memoryManager.releaseResource(requestId);
-      } catch (error) {
-        console.error(`Error downloading CSS ${css}:`, error);
-        sendMessage(`Error downloading CSS: ${css}`);
-        failCount++;
-      } finally {
-        release();
-      }
+            zstyles.file(fixFilename(filename), blob);
+            successCount++;
+            resolve(css);
+          } catch (error) {
+            console.error(`Error processing CSS ${css}:`, error);
+            failCount++;
+            reject(error);
+          }
+        },
+        onError: (error) => {
+          console.error(`Error downloading CSS ${css}:`, error);
+          reject(error);
+        },
+      });
     });
 
-    downloadPromises.push(downloadPromise);
+    requestPromises.push(cssPromise);
   }
 
-  // Wait for all downloads to complete
-  await Promise.allSettled(downloadPromises);
+  // Wait for all CSS files to be processed
+  const results = await Promise.allSettled(requestPromises);
+  
+  // Restore original listeners
+  if (originalListeners) {
+    requestQueue.setEventListeners(originalListeners);
+  }
+
+  // Count failures from rejected promises
+  results.forEach((result) => {
+    if (result.status === 'rejected') {
+      failCount++;
+    }
+  });
 
   console.log(
     `CSS download summary: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
@@ -225,15 +260,41 @@ async function downloadBackgroundImages(
   let successCount = 0;
   let failCount = 0;
   let skippedCount = 0;
+  let completedCount = 0;
 
-  // Get optimal concurrency based on memory pressure
-  const maxConcurrency = Math.max(
-    1,
-    Math.floor(memoryManager.getOptimalConcurrency() * 0.5),
-  ); // Lower concurrency for images
-  const semaphore = new Semaphore(maxConcurrency);
-  const downloadPromises: Promise<void>[] = [];
+  // Log download tracking if downloadId is provided
+  if (downloadId) {
+    console.log(`Processing background images for download: ${downloadId}`);
+  }
 
+  // Set up queue event listeners for this batch
+  const originalListeners = requestQueue.getEventListeners() || {};
+  
+  const batchListeners = {
+    ...originalListeners,
+    onComplete: (result: any) => {
+      completedCount++;
+      sendMessage(`Background images progress: ${completedCount}/${count}`);
+      // Call original listener if it exists
+      if (originalListeners.onComplete) {
+        originalListeners.onComplete(result);
+      }
+    },
+    onError: (request: any, error: Error) => {
+      failCount++;
+      console.error(`Background image download failed: ${request.url}`, error);
+      // Call original listener if it exists
+      if (originalListeners.onError) {
+        originalListeners.onError(request, error);
+      }
+    }
+  };
+
+  requestQueue.setEventListeners(batchListeners);
+
+  // Enqueue all background image files
+  const requestPromises: Promise<string>[] = [];
+  
   for (let i = 0; i < count; i++) {
     const imageUrl = imageUrls[i];
 
@@ -242,72 +303,69 @@ async function downloadBackgroundImages(
       continue;
     }
 
-    const downloadPromise = semaphore.acquire().then(async (release) => {
-      try {
-        sendMessage(
-          `Downloading background images from CSS: ${i + 1}/${count}`,
-        );
+    // Create a promise that resolves when the image is processed
+    const imagePromise = new Promise<string>(async (resolve, reject) => {
+      const fullImageUrl = new URL(imageUrl, baseUrl).href;
+      await requestQueue.enqueue({
+        url: fullImageUrl,
+        resourceType: ResourceType.IMAGE,
+        priority: RequestPriority.LOW, // Background images are low priority
+        domain: '', // Will be auto-extracted
+        dependencies: [], // No dependencies for images
+        retryCount: 0,
+        estimatedSize: 0, // Unknown size
+        fetchOptions: {
+          headers: {
+            'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          },
+        },
+        onComplete: async (result) => {
+          try {
+            const blob = await result.response.blob();
+            const filename = new URL(fullImageUrl).pathname.split("/").pop();
+            if (!filename) {
+              console.warn(
+                `Could not determine filename for background image: ${fullImageUrl}`,
+              );
+              sendMessage(`Could not determine filename for: ${imageUrl}`);
+              failCount++;
+              resolve(imageUrl);
+              return;
+            }
 
-        const requestId = `img-bg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-        memoryManager.queueResource({
-          id: requestId,
-          url: imageUrl,
-          type: "IMAGE",
-          size: 0,
-          status: "pending",
-        });
-
-        const response = await fetchUrl(imageUrl, baseUrl, {
-          downloadId,
-          checkSize: true,
-        } as FetchOptions);
-
-        if (!response) {
-          console.warn(`Failed to fetch background image: ${imageUrl}`);
-          sendMessage(`Failed to download background image: ${imageUrl}`);
-          memoryManager.markResourceFailed(requestId);
-          failCount++;
-          return;
-        }
-
-        const contentLength =
-          response.headers.get("X-Actual-Size") ||
-          response.headers.get("Content-Length") ||
-          "0";
-        const actualSize = parseInt(contentLength) || 0;
-
-        memoryManager.trackResourceAllocation(requestId, actualSize);
-
-        const blob = await response.blob();
-        const filename = new URL(imageUrl, baseUrl).pathname.split("/").pop();
-        if (!filename) {
-          console.warn(
-            `Could not determine filename for background image: ${imageUrl}`,
-          );
-          sendMessage(`Could not determine filename for: ${imageUrl}`);
-          memoryManager.releaseResource(requestId);
-          failCount++;
-          return;
-        }
-
-        zimages.file(fixFilename(filename), blob);
-        successCount++;
-
-        memoryManager.releaseResource(requestId);
-      } catch (error) {
-        console.error(`Error downloading background image ${imageUrl}:`, error);
-        sendMessage(`Error downloading background image: ${imageUrl}`);
-        failCount++;
-      } finally {
-        release();
-      }
+            zimages.file(fixFilename(filename), blob);
+            successCount++;
+            resolve(imageUrl);
+          } catch (error) {
+            console.error(`Error processing background image ${imageUrl}:`, error);
+            failCount++;
+            reject(error);
+          }
+        },
+        onError: (error) => {
+          console.error(`Error downloading background image ${imageUrl}:`, error);
+          reject(error);
+        },
+      });
     });
 
-    downloadPromises.push(downloadPromise);
+    requestPromises.push(imagePromise);
   }
 
-  await Promise.allSettled(downloadPromises);
+  // Wait for all background image files to be processed
+  const results = await Promise.allSettled(requestPromises);
+  
+  // Restore original listeners
+  if (originalListeners) {
+    requestQueue.setEventListeners(originalListeners);
+  }
+
+  // Count failures from rejected promises
+  results.forEach((result) => {
+    if (result.status === 'rejected') {
+      failCount++;
+    }
+  });
 
   console.log(
     `Background images from CSS download summary: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
@@ -381,84 +439,112 @@ export async function addJsFiles(
   let successCount = 0;
   let failCount = 0;
   let skippedCount = 0;
+  let completedCount = 0;
 
-  const maxConcurrency = memoryManager.getOptimalConcurrency();
-  const semaphore = new Semaphore(maxConcurrency);
-  const downloadPromises: Promise<void>[] = [];
+  // Log download tracking if downloadId is provided
+  if (downloadId) {
+    console.log(`Processing JS files for download: ${downloadId}`);
+  }
 
+  // Set up queue event listeners for this batch
+  const originalListeners = requestQueue.getEventListeners() || {};
+  
+  const batchListeners = {
+    ...originalListeners,
+    onComplete: (result: any) => {
+      completedCount++;
+      sendMessage(`JS files progress: ${completedCount}/${count}`);
+      // Call original listener if it exists
+      if (originalListeners.onComplete) {
+        originalListeners.onComplete(result);
+      }
+    },
+    onError: (request: any, error: Error) => {
+      failCount++;
+      console.error(`JS download failed: ${request.url}`, error);
+      // Call original listener if it exists
+      if (originalListeners.onError) {
+        originalListeners.onError(request, error);
+      }
+    }
+  };
+
+  requestQueue.setEventListeners(batchListeners);
+
+  // Enqueue all JS files
+  const requestPromises: Promise<string>[] = [];
+  
   for (let i = 0; i < count; i++) {
     const js = jss[i];
-
+    
     if (!js) {
       failCount++;
       continue;
     }
 
-    const downloadPromise = semaphore.acquire().then(async (release) => {
-      try {
-        sendMessage(`Downloading JS files: ${i + 1}/${count}`);
+    const fullJsUrl = new URL(js, tabUrl).href;
+    const u = new URL(fullJsUrl);
+    const baseUrl = u.origin;
 
-        const u = new URL(js.startsWith("http") ? js : tabUrl);
-        const baseUrl = u.origin;
+    // Create a promise that resolves when the JS is processed
+    const jsPromise = new Promise<string>(async (resolve, reject) => {
+      await requestQueue.enqueue({
+        url: fullJsUrl,
+        resourceType: ResourceType.JS,
+        priority: RequestPriority.NORMAL, // JS is normal priority
+        domain: '', // Will be auto-extracted
+        dependencies: [], // No dependencies for JS files
+        retryCount: 0,
+        estimatedSize: 0, // Unknown size
+        fetchOptions: {
+          headers: {
+            'Accept': 'application/javascript,text/javascript,*/*;q=0.1',
+          },
+        },
+        onComplete: async (result) => {
+          try {
+            const blob = await result.response.blob();
+            const filename = new URL(fullJsUrl, baseUrl).pathname.split("/").pop();
+            if (!filename) {
+              console.warn(`Could not determine filename for JS: ${fullJsUrl}`);
+              failCount++;
+              resolve(js);
+              return;
+            }
 
-        const requestId = `js-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-        memoryManager.queueResource({
-          id: requestId,
-          url: js,
-          type: "JS",
-          size: 0,
-          status: "pending",
-        });
-
-        const response = await fetchUrl(js, baseUrl, {
-          downloadId,
-          checkSize: true,
-        } as FetchOptions);
-
-        if (!response) {
-          console.warn(`Failed to fetch JS: ${js}`);
-          sendMessage(`Failed to download JS: ${js}`);
-          memoryManager.markResourceFailed(requestId);
-          failCount++;
-          return;
-        }
-
-        const contentLength =
-          response.headers.get("X-Actual-Size") ||
-          response.headers.get("Content-Length") ||
-          "0";
-        const actualSize = parseInt(contentLength) || 0;
-
-        memoryManager.trackResourceAllocation(requestId, actualSize);
-
-        const blob = await response.blob();
-        const filename = new URL(js, baseUrl).pathname.split("/").pop();
-        if (!filename) {
-          console.warn(`Could not determine filename for JS: ${js}`);
-          sendMessage(`Could not determine filename for: ${js}`);
-          memoryManager.releaseResource(requestId);
-          failCount++;
-          return;
-        }
-
-        zscripts.file(fixFilename(filename), blob);
-        successCount++;
-
-        memoryManager.releaseResource(requestId);
-      } catch (error) {
-        console.error(`Error downloading JS ${js}:`, error);
-        sendMessage(`Error downloading JS: ${js}`);
-        failCount++;
-      } finally {
-        release();
-      }
+            zscripts.file(fixFilename(filename), blob);
+            successCount++;
+            resolve(js);
+          } catch (error) {
+            console.error(`Error processing JS ${js}:`, error);
+            failCount++;
+            reject(error);
+          }
+        },
+        onError: (error) => {
+          console.error(`Error downloading JS ${js}:`, error);
+          reject(error);
+        },
+      });
     });
 
-    downloadPromises.push(downloadPromise);
+    requestPromises.push(jsPromise);
   }
 
-  await Promise.allSettled(downloadPromises);
+  // Wait for all JS files to be processed
+  const results = await Promise.allSettled(requestPromises);
+  
+  // Restore original listeners
+  if (originalListeners) {
+    requestQueue.setEventListeners(originalListeners);
+  }
+
+  // Count failures from rejected promises
+  results.forEach((result) => {
+    if (result.status === 'rejected') {
+      failCount++;
+    }
+  });
 
   console.log(
     `JS download summary: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
@@ -485,15 +571,42 @@ export async function addDocumentFiles(
   let successCount = 0;
   let failCount = 0;
   let skippedCount = 0;
+  let completedCount = 0;
   const count = documents.length;
 
-  const maxConcurrency = Math.max(
-    1,
-    Math.floor(memoryManager.getOptimalConcurrency() * 0.7),
-  ); // Moderate concurrency for documents
-  const semaphore = new Semaphore(maxConcurrency);
-  const downloadPromises: Promise<void>[] = [];
+  // Log download tracking if downloadId is provided
+  if (downloadId) {
+    console.log(`Processing document files for download: ${downloadId}`);
+  }
 
+  // Set up queue event listeners for this batch
+  const originalListeners = requestQueue.getEventListeners() || {};
+  
+  const batchListeners = {
+    ...originalListeners,
+    onComplete: (result: any) => {
+      completedCount++;
+      sendMessage(`Document files progress: ${completedCount}/${count}`);
+      // Call original listener if it exists
+      if (originalListeners.onComplete) {
+        originalListeners.onComplete(result);
+      }
+    },
+    onError: (request: any, error: Error) => {
+      failCount++;
+      console.error(`Document download failed: ${request.url}`, error);
+      // Call original listener if it exists
+      if (originalListeners.onError) {
+        originalListeners.onError(request, error);
+      }
+    }
+  };
+
+  requestQueue.setEventListeners(batchListeners);
+
+  // Enqueue all document files
+  const requestPromises: Promise<string>[] = [];
+  
   for (let i = 0; i < count; i++) {
     const document = documents[i];
 
@@ -502,73 +615,71 @@ export async function addDocumentFiles(
       continue;
     }
 
-    const downloadPromise = semaphore.acquire().then(async (release) => {
-      try {
-        sendMessage(`Downloading document files: ${i + 1}/${count}`);
+    const fullDocumentUrl = new URL(document, tabUrl).href;
+    const u = new URL(fullDocumentUrl);
+    const baseUrl = u.origin;
 
-        const u = new URL(document.startsWith("http") ? document : tabUrl);
-        const baseUrl = u.origin;
+    // Create a promise that resolves when the document is processed
+    const documentPromise = new Promise<string>(async (resolve, reject) => {
+      await requestQueue.enqueue({
+        url: fullDocumentUrl,
+        resourceType: ResourceType.DOCUMENT,
+        priority: RequestPriority.NORMAL, // Documents are normal priority
+        domain: '', // Will be auto-extracted
+        dependencies: [], // No dependencies for documents
+        retryCount: 0,
+        estimatedSize: 0, // Unknown size
+        fetchOptions: {
+          headers: {
+            'Accept': 'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,*/*;q=0.5',
+          },
+        },
+        onComplete: async (result) => {
+          try {
+            const blob = await result.response.blob();
+            const filename = new URL(fullDocumentUrl, baseUrl).pathname.split("/").pop();
+            if (!filename) {
+              console.error(
+                `Could not determine filename for document: ${fullDocumentUrl}`,
+              );
+              failCount++;
+              resolve(document);
+              return;
+            }
 
-        const requestId = `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-        memoryManager.queueResource({
-          id: requestId,
-          url: document,
-          type: "PDF", // Default to PDF size limits
-          size: 0,
-          status: "pending",
-        });
-
-        const response = await fetchUrl(document, baseUrl, {
-          downloadId,
-          checkSize: true,
-        } as FetchOptions);
-
-        if (!response) {
-          console.error(`Failed to fetch document: ${document}`);
-          sendMessage(`Failed to download document: ${document}`);
-          memoryManager.markResourceFailed(requestId);
-          failCount++;
-          return;
-        }
-
-        const contentLength =
-          response.headers.get("X-Actual-Size") ||
-          response.headers.get("Content-Length") ||
-          "0";
-        const actualSize = parseInt(contentLength) || 0;
-
-        memoryManager.trackResourceAllocation(requestId, actualSize);
-
-        const blob = await response.blob();
-        const filename = new URL(document, baseUrl).pathname.split("/").pop();
-        if (!filename) {
-          console.error(
-            `Could not determine filename for document: ${document}`,
-          );
-          sendMessage(`Could not determine filename for: ${document}`);
-          memoryManager.releaseResource(requestId);
-          failCount++;
-          return;
-        }
-
-        zdocuments.file(fixFilename(filename), blob);
-        successCount++;
-
-        memoryManager.releaseResource(requestId);
-      } catch (error) {
-        console.error(`Error downloading document ${document}:`, error);
-        sendMessage(`Error downloading document: ${document}`);
-        failCount++;
-      } finally {
-        release();
-      }
+            zdocuments.file(fixFilename(filename), blob);
+            successCount++;
+            resolve(document);
+          } catch (error) {
+            console.error(`Error processing document ${document}:`, error);
+            failCount++;
+            reject(error);
+          }
+        },
+        onError: (error) => {
+          console.error(`Error downloading document ${document}:`, error);
+          reject(error);
+        },
+      });
     });
 
-    downloadPromises.push(downloadPromise);
+    requestPromises.push(documentPromise);
   }
 
-  await Promise.allSettled(downloadPromises);
+  // Wait for all document files to be processed
+  const results = await Promise.allSettled(requestPromises);
+  
+  // Restore original listeners
+  if (originalListeners) {
+    requestQueue.setEventListeners(originalListeners);
+  }
+
+  // Count failures from rejected promises
+  results.forEach((result) => {
+    if (result.status === 'rejected') {
+      failCount++;
+    }
+  });
 
   console.log(
     `Document download summary: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
@@ -594,15 +705,41 @@ export async function addImageFiles(
   let successCount = 0;
   let failCount = 0;
   let skippedCount = 0;
+  let completedCount = 0;
 
-  // Lower concurrency for images since they can be large
-  const maxConcurrency = Math.max(
-    1,
-    Math.floor(memoryManager.getOptimalConcurrency() * 0.4),
-  );
-  const semaphore = new Semaphore(maxConcurrency);
-  const downloadPromises: Promise<void>[] = [];
+  // Log download tracking if downloadId is provided
+  if (downloadId) {
+    console.log(`Processing image files for download: ${downloadId}`);
+  }
 
+  // Set up queue event listeners for this batch
+  const originalListeners = requestQueue.getEventListeners() || {};
+  
+  const batchListeners = {
+    ...originalListeners,
+    onComplete: (result: any) => {
+      completedCount++;
+      sendMessage(`Images progress: ${completedCount}/${count}`);
+      // Call original listener if it exists
+      if (originalListeners.onComplete) {
+        originalListeners.onComplete(result);
+      }
+    },
+    onError: (request: any, error: Error) => {
+      failCount++;
+      console.error(`Image download failed: ${request.url}`, error);
+      // Call original listener if it exists
+      if (originalListeners.onError) {
+        originalListeners.onError(request, error);
+      }
+    }
+  };
+
+  requestQueue.setEventListeners(batchListeners);
+
+  // Enqueue all image files
+  const requestPromises: Promise<string>[] = [];
+  
   for (let i = 0; i < count; i++) {
     const image = images[i];
 
@@ -613,74 +750,73 @@ export async function addImageFiles(
 
     if (image.startsWith("data:")) {
       successCount++;
+      skippedCount++;
       continue;
     }
 
-    const downloadPromise = semaphore.acquire().then(async (release) => {
-      try {
-        sendMessage(`Downloading images: ${i + 1}/${count}`);
+    const fullImageUrl = new URL(image, tabUrl).href;
+    const u = new URL(fullImageUrl);
+    const baseUrl = u.origin;
 
-        const u = new URL(image.startsWith("http") ? image : tabUrl);
-        const baseUrl = u.origin;
+    // Create a promise that resolves when the image is processed
+    const imagePromise = new Promise<string>(async (resolve, reject) => {
+      await requestQueue.enqueue({
+        url: fullImageUrl,
+        resourceType: ResourceType.IMAGE,
+        priority: RequestPriority.LOW, // Images are low priority
+        domain: '', // Will be auto-extracted
+        dependencies: [], // No dependencies for images
+        retryCount: 0,
+        estimatedSize: 0, // Unknown size
+        fetchOptions: {
+          headers: {
+            'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          },
+        },
+        onComplete: async (result) => {
+          try {
+            const blob = await result.response.blob();
+            const filename = new URL(fullImageUrl, baseUrl).pathname.split("/").pop();
+            if (!filename) {
+              console.warn(`Could not determine filename for image: ${fullImageUrl}`);
+              failCount++;
+              resolve(image);
+              return;
+            }
 
-        const requestId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-        memoryManager.queueResource({
-          id: requestId,
-          url: image,
-          type: "IMAGE",
-          size: 0,
-          status: "pending",
-        });
-
-        const response = await fetchUrl(image, baseUrl, {
-          downloadId,
-          checkSize: true,
-        } as FetchOptions);
-
-        if (!response) {
-          console.warn(`Failed to fetch image: ${image}`);
-          sendMessage(`Failed to download image: ${image}`);
-          memoryManager.markResourceFailed(requestId);
-          failCount++;
-          return;
-        }
-
-        const contentLength =
-          response.headers.get("X-Actual-Size") ||
-          response.headers.get("Content-Length") ||
-          "0";
-        const actualSize = parseInt(contentLength) || 0;
-
-        memoryManager.trackResourceAllocation(requestId, actualSize);
-
-        const blob = await response.blob();
-        const filename = new URL(image, baseUrl).pathname.split("/").pop();
-        if (!filename) {
-          console.warn(`Could not determine filename for image: ${image}`);
-          sendMessage(`Could not determine filename for: ${image}`);
-          memoryManager.releaseResource(requestId);
-          failCount++;
-          return;
-        }
-
-        zimages.file(fixFilename(filename), blob);
-        successCount++;
-
-        memoryManager.releaseResource(requestId);
-      } catch (error) {
-        console.error(`Error downloading image ${image}:`, error);
-        sendMessage(`Error downloading image: ${image}`);
-        failCount++;
-      } finally {
-        release();
-      }
+            zimages.file(fixFilename(filename), blob);
+            successCount++;
+            resolve(image);
+          } catch (error) {
+            console.error(`Error processing image ${image}:`, error);
+            failCount++;
+            reject(error);
+          }
+        },
+        onError: (error) => {
+          console.error(`Error downloading image ${image}:`, error);
+          reject(error);
+        },
+      });
     });
 
-    downloadPromises.push(downloadPromise);
+    requestPromises.push(imagePromise);
   }
 
-  await Promise.allSettled(downloadPromises);
+  // Wait for all image files to be processed
+  const results = await Promise.allSettled(requestPromises);
+  
+  // Restore original listeners
+  if (originalListeners) {
+    requestQueue.setEventListeners(originalListeners);
+  }
+
+  // Count failures from rejected promises
+  results.forEach((result) => {
+    if (result.status === 'rejected') {
+      failCount++;
+    }
+  });
 
   console.log(
     `Image download summary: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
@@ -706,12 +842,41 @@ export async function addHtmlFiles(
   let successCount = 0;
   let failCount = 0;
   let skippedCount = 0;
+  let completedCount = 0;
 
-  // Get optimal concurrency based on memory pressure
-  const maxConcurrency = memoryManager.getOptimalConcurrency();
-  const semaphore = new Semaphore(maxConcurrency);
-  const downloadPromises: Promise<void>[] = [];
+  // Log download tracking if downloadId is provided
+  if (downloadId) {
+    console.log(`Processing HTML files for download: ${downloadId}`);
+  }
 
+  // Set up queue event listeners for this batch
+  const originalListeners = requestQueue.getEventListeners() || {};
+  
+  const batchListeners = {
+    ...originalListeners,
+    onComplete: (result: any) => {
+      completedCount++;
+      sendMessage(`HTML files progress: ${completedCount}/${count}`);
+      // Call original listener if it exists
+      if (originalListeners.onComplete) {
+        originalListeners.onComplete(result);
+      }
+    },
+    onError: (request: any, error: Error) => {
+      failCount++;
+      console.error(`HTML download failed: ${request.url}`, error);
+      // Call original listener if it exists
+      if (originalListeners.onError) {
+        originalListeners.onError(request, error);
+      }
+    }
+  };
+
+  requestQueue.setEventListeners(batchListeners);
+
+  // Enqueue all HTML files
+  const requestPromises: Promise<string>[] = [];
+  
   for (let i = 0; i < count; i++) {
     const link = links[i];
 
@@ -720,90 +885,88 @@ export async function addHtmlFiles(
       continue;
     }
 
-    const downloadPromise = semaphore.acquire().then(async (release) => {
-      try {
-        sendMessage(`Downloading linked html files: ${i + 1}/${count}`);
+    const fullHtmlUrl = new URL(link, tabUrl).href;
+    const u = new URL(fullHtmlUrl);
+    const baseUrl = u.origin;
 
-        const u = new URL(tabUrl);
-        const baseUrl = u.origin;
+    // Create a promise that resolves when the HTML is processed
+    const htmlPromise = new Promise<string>(async (resolve, reject) => {
+      await requestQueue.enqueue({
+        url: fullHtmlUrl,
+        resourceType: ResourceType.HTML,
+        priority: RequestPriority.CRITICAL, // HTML is critical priority
+        domain: '', // Will be auto-extracted
+        dependencies: [], // No dependencies for HTML files
+        retryCount: 0,
+        estimatedSize: 0, // Unknown size
+        fetchOptions: {
+          headers: {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          },
+        },
+        onComplete: async (result) => {
+          try {
+            const inputHtml = await result.response.text();
 
-        // Create unique request ID for tracking
-        const requestId = `html-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            // Check HTML content size
+            if (inputHtml.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
+              console.warn(
+                `HTML content too large: ${link} (${inputHtml.length} bytes)`,
+              );
+              sendMessage(`Skipping HTML due to size limit: ${link}`);
+              skippedCount++;
+              resolve(link);
+              return;
+            }
 
-        memoryManager.queueResource({
-          id: requestId,
-          url: link,
-          type: "HTML",
-          size: 0,
-          status: "pending",
-        });
+            const html = convertHtml(inputHtml, tabUrl, "../");
+            const filename = new URL(fullHtmlUrl, baseUrl).pathname.split("/").pop();
+            if (!filename?.length) {
+              console.warn(`Could not determine filename for HTML: ${fullHtmlUrl}`);
+              sendMessage(`Could not determine filename for: ${link}`);
+              failCount++;
+              resolve(link);
+              return;
+            }
 
-        const response = await fetchUrl(link, baseUrl, {
-          downloadId,
-          checkSize: true,
-        } as FetchOptions);
-
-        if (!response) {
-          console.warn(`Failed to fetch HTML: ${link}`);
-          sendMessage(`Failed to download HTML: ${link}`);
-          memoryManager.markResourceFailed(requestId);
-          failCount++;
-          return;
-        }
-
-        const contentLength =
-          response.headers.get("X-Actual-Size") ||
-          response.headers.get("Content-Length") ||
-          "0";
-        const actualSize = parseInt(contentLength) || 0;
-
-        memoryManager.trackResourceAllocation(requestId, actualSize);
-
-        const inputHtml = await response.text();
-
-        // Check HTML content size
-        if (inputHtml.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
-          console.warn(
-            `HTML content too large: ${link} (${inputHtml.length} bytes)`,
-          );
-          sendMessage(`Skipping HTML due to size limit: ${link}`);
-          memoryManager.releaseResource(requestId);
-          skippedCount++;
-          return;
-        }
-
-        const html = convertHtml(inputHtml, tabUrl, "../");
-        const filename = new URL(link, baseUrl).pathname.split("/").pop();
-        if (!filename?.length) {
-          console.warn(`Could not determine filename for HTML: ${link}`);
-          sendMessage(`Could not determine filename for: ${link}`);
-          memoryManager.releaseResource(requestId);
-          failCount++;
-          return;
-        }
-
-        zhtmls.file(
-          fixFilename(
-            filename.endsWith(".html") ? filename : `${filename}.html`,
-          ),
-          html,
-        );
-        successCount++;
-
-        memoryManager.releaseResource(requestId);
-      } catch (error) {
-        console.error(`Error downloading HTML ${link}:`, error);
-        sendMessage(`Error downloading HTML: ${link}`);
-        failCount++;
-      } finally {
-        release();
-      }
+            zhtmls.file(
+              fixFilename(
+                filename.endsWith(".html") ? filename : `${filename}.html`,
+              ),
+              html,
+            );
+            successCount++;
+            resolve(link);
+          } catch (error) {
+            console.error(`Error processing HTML ${link}:`, error);
+            failCount++;
+            reject(error);
+          }
+        },
+        onError: (error) => {
+          console.error(`Error downloading HTML ${link}:`, error);
+          reject(error);
+        },
+      });
     });
 
-    downloadPromises.push(downloadPromise);
+    requestPromises.push(htmlPromise);
   }
 
-  await Promise.allSettled(downloadPromises);
+  // Wait for all HTML files to be processed
+  const results = await Promise.allSettled(requestPromises);
+  
+  // Restore original listeners
+  if (originalListeners) {
+    requestQueue.setEventListeners(originalListeners);
+  }
+
+  // Count failures from rejected promises
+  results.forEach((result) => {
+    if (result.status === 'rejected') {
+      failCount++;
+    }
+  });
 
   console.log(
     `HTML download summary: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
@@ -815,37 +978,6 @@ export async function addHtmlFiles(
   }
 }
 
-/**
- * Simple semaphore implementation for controlling concurrent operations
- */
-class Semaphore {
-  private permits: number;
-  private waitQueue: Array<(permit: () => void) => void> = [];
-
-  constructor(permits: number) {
-    this.permits = permits;
-  }
-
-  public acquire(): Promise<() => void> {
-    return new Promise((resolve) => {
-      if (this.permits > 0) {
-        this.permits--;
-        resolve(() => this.release());
-      } else {
-        this.waitQueue.push(resolve);
-      }
-    });
-  }
-
-  private release(): void {
-    if (this.waitQueue.length > 0) {
-      const resolve = this.waitQueue.shift()!;
-      resolve(() => this.release());
-    } else {
-      this.permits++;
-    }
-  }
-}
 
 /**
  * Streaming-aware version of addCssFiles
@@ -855,7 +987,7 @@ export async function addCssFilesWithStreaming(
   zipProcessor: ChunkedZipProcessor,
   tabUrl: string,
   sendMessage: (message: string) => void,
-  _downloadId?: string, // Prefix with underscore to indicate intentionally unused
+  downloadId?: string,
 ) {
   if (!csss?.length) return;
 
@@ -863,6 +995,11 @@ export async function addCssFilesWithStreaming(
   let successCount = 0;
   let failCount = 0;
   let streamedCount = 0;
+
+  // Log download tracking if downloadId is provided
+  if (downloadId) {
+    console.log(`Processing CSS files with streaming for download: ${downloadId}`);
+  }
 
   const { streamingDownloader, streamingFetcher } = getStreamingServices();
 
@@ -873,17 +1010,19 @@ export async function addCssFilesWithStreaming(
       continue;
     }
 
+    const fullCssUrl = new URL(css, tabUrl).href;
+
     try {
       sendMessage(`Processing CSS files: ${i + 1}/${count}`);
 
       // Check if file should be streamed
-      const metadata = await streamingFetcher.getMetadata(css);
-      const shouldStream = streamingDownloader.shouldUseStreaming(css, metadata.size);
+      const metadata = await streamingFetcher.getMetadata(fullCssUrl);
+      const shouldStream = streamingDownloader.shouldUseStreaming(fullCssUrl, metadata.size);
 
       if (shouldStream && metadata.size > 0) {
         // Use streaming download
         sendMessage(`Starting streaming download for large CSS: ${i + 1}/${count}`);
-        const download = await streamingDownloader.startDownload(css, {
+        const download = await streamingDownloader.startDownload(fullCssUrl, {
           chunkSize: 512 * 1024, // 512KB chunks for CSS
           maxParallelChunks: 2,
           enableResumption: true,
@@ -900,7 +1039,7 @@ export async function addCssFilesWithStreaming(
 
         if (download.status === 'completed') {
           // Add to ZIP processor
-          const filename = new URL(css, tabUrl).pathname.split("/").pop() || `style-${i}.css`;
+          const filename = new URL(fullCssUrl).pathname.split("/").pop() || `style-${i}.css`;
           await zipProcessor.addStreamingDownload(download, `styles/${fixFilename(filename)}`);
           successCount++;
           streamedCount++;
@@ -909,12 +1048,12 @@ export async function addCssFilesWithStreaming(
         }
       } else {
         // Use regular download for small files
-        await addSingleCssFile(css, zipProcessor, tabUrl);
+        await addSingleCssFile(fullCssUrl, zipProcessor, tabUrl);
         successCount++;
       }
     } catch (error) {
-      console.error(`Error processing CSS ${css}:`, error);
-      sendMessage(`Error processing CSS: ${css}`);
+      console.error(`Error processing CSS ${fullCssUrl}:`, error);
+      sendMessage(`Error processing CSS: ${fullCssUrl}`);
       failCount++;
     }
   }
@@ -937,7 +1076,7 @@ export async function addJsFilesWithStreaming(
   zipProcessor: ChunkedZipProcessor,
   tabUrl: string,
   sendMessage: (message: string) => void,
-  _downloadId?: string, // Prefix with underscore to indicate intentionally unused
+  downloadId?: string,
 ) {
   if (!jss?.length) return;
 
@@ -945,6 +1084,11 @@ export async function addJsFilesWithStreaming(
   let successCount = 0;
   let failCount = 0;
   let streamedCount = 0;
+
+  // Log download tracking if downloadId is provided
+  if (downloadId) {
+    console.log(`Processing JS files with streaming for download: ${downloadId}`);
+  }
 
   const { streamingDownloader, streamingFetcher } = getStreamingServices();
 
@@ -955,17 +1099,19 @@ export async function addJsFilesWithStreaming(
       continue;
     }
 
+    const fullJsUrl = new URL(js, tabUrl).href;
+
     try {
       sendMessage(`Processing JS files: ${i + 1}/${count}`);
 
       // Check if file should be streamed
-      const metadata = await streamingFetcher.getMetadata(js);
-      const shouldStream = streamingDownloader.shouldUseStreaming(js, metadata.size);
+      const metadata = await streamingFetcher.getMetadata(fullJsUrl);
+      const shouldStream = streamingDownloader.shouldUseStreaming(fullJsUrl, metadata.size);
 
       if (shouldStream && metadata.size > 0) {
         // Use streaming download
         sendMessage(`Starting streaming download for large JS: ${i + 1}/${count}`);
-        const download = await streamingDownloader.startDownload(js, {
+        const download = await streamingDownloader.startDownload(fullJsUrl, {
           chunkSize: 512 * 1024, // 512KB chunks for JS
           maxParallelChunks: 2,
           enableResumption: true,
@@ -982,7 +1128,7 @@ export async function addJsFilesWithStreaming(
 
         if (download.status === 'completed') {
           // Add to ZIP processor
-          const filename = new URL(js, tabUrl).pathname.split("/").pop() || `script-${i}.js`;
+          const filename = new URL(fullJsUrl).pathname.split("/").pop() || `script-${i}.js`;
           await zipProcessor.addStreamingDownload(download, `scripts/${fixFilename(filename)}`);
           successCount++;
           streamedCount++;
@@ -991,12 +1137,12 @@ export async function addJsFilesWithStreaming(
         }
       } else {
         // Use regular download for small files
-        await addSingleJsFile(js, zipProcessor, tabUrl);
+        await addSingleJsFile(fullJsUrl, zipProcessor, tabUrl);
         successCount++;
       }
     } catch (error) {
-      console.error(`Error processing JS ${js}:`, error);
-      sendMessage(`Error processing JS: ${js}`);
+      console.error(`Error processing JS ${fullJsUrl}:`, error);
+      sendMessage(`Error processing JS: ${fullJsUrl}`);
       failCount++;
     }
   }
@@ -1019,7 +1165,7 @@ export async function addImageFilesWithStreaming(
   zipProcessor: ChunkedZipProcessor,
   tabUrl: string,
   sendMessage: (message: string) => void,
-  _downloadId?: string, // Prefix with underscore to indicate intentionally unused
+  downloadId?: string,
 ) {
   if (!images?.length) return;
 
@@ -1028,6 +1174,11 @@ export async function addImageFilesWithStreaming(
   let failCount = 0;
   let skippedCount = 0;
   let streamedCount = 0;
+
+  // Log download tracking if downloadId is provided
+  if (downloadId) {
+    console.log(`Processing image files with streaming for download: ${downloadId}`);
+  }
 
   const { streamingDownloader, streamingFetcher } = getStreamingServices();
 
@@ -1041,17 +1192,19 @@ export async function addImageFilesWithStreaming(
       continue;
     }
 
+    const fullImageUrl = new URL(image, tabUrl).href;
+
     try {
       sendMessage(`Processing images: ${i + 1}/${count}`);
 
       // Check if file should be streamed
-      const metadata = await streamingFetcher.getMetadata(image);
-      const shouldStream = streamingDownloader.shouldUseStreaming(image, metadata.size);
+      const metadata = await streamingFetcher.getMetadata(fullImageUrl);
+      const shouldStream = streamingDownloader.shouldUseStreaming(fullImageUrl, metadata.size);
 
       if (shouldStream && metadata.size > 0) {
         // Use streaming download
         sendMessage(`Starting streaming download for large image: ${i + 1}/${count}`);
-        const download = await streamingDownloader.startDownload(image, {
+        const download = await streamingDownloader.startDownload(fullImageUrl, {
           chunkSize: 1024 * 1024, // 1MB chunks for images
           maxParallelChunks: 3,
           enableResumption: true,
@@ -1068,7 +1221,7 @@ export async function addImageFilesWithStreaming(
 
         if (download.status === 'completed') {
           // Add to ZIP processor
-          const filename = new URL(image, tabUrl).pathname.split("/").pop() || `image-${i}`;
+          const filename = new URL(fullImageUrl).pathname.split("/").pop() || `image-${i}`;
           await zipProcessor.addStreamingDownload(download, `images/${fixFilename(filename)}`);
           successCount++;
           streamedCount++;
@@ -1077,12 +1230,12 @@ export async function addImageFilesWithStreaming(
         }
       } else {
         // Use regular download for small files
-        await addSingleImageFile(image, zipProcessor, tabUrl);
+        await addSingleImageFile(fullImageUrl, zipProcessor, tabUrl);
         successCount++;
       }
     } catch (error) {
-      console.error(`Error processing image ${image}:`, error);
-      sendMessage(`Error processing image: ${image}`);
+      console.error(`Error processing image ${fullImageUrl}:`, error);
+      sendMessage(`Error processing image: ${fullImageUrl}`);
       failCount++;
     }
   }
@@ -1105,9 +1258,22 @@ async function addSingleCssFile(
   zipProcessor: ChunkedZipProcessor,
   tabUrl: string,
 ): Promise<void> {
-  const response = await fetchUrl(css, tabUrl);
+  const response = await fetchUrl(css, tabUrl, {
+    headers: {
+      'Accept': 'text/css,*/*;q=0.1',
+      'Cache-Control': 'no-cache',
+    },
+    retries: 5, // Increase retries for CSS files
+    timeout: 45000, // Increase timeout for CSS files
+  });
   if (!response) {
     throw new Error(`Failed to fetch CSS: ${css}`);
+  }
+
+  // Check for opaque response (CORS issue)
+  if (response.type === 'opaque') {
+    console.warn(`CSS ${css} returned opaque response (CORS blocked), cannot read content`);
+    throw new Error(`CSS blocked by CORS policy: ${css}`);
   }
 
   const cssContent = await response.text();

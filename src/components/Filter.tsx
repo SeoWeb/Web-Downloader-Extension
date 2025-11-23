@@ -229,6 +229,7 @@ export default function Filter({
             id="downloadHTML"
             checked={options.downloadHTML}
             onCheckedChange={handleDownloadHTMLChange}
+            aria-label="Download HTML content"
           />
           <label
             htmlFor="downloadHTML"
@@ -245,6 +246,7 @@ export default function Filter({
             onCheckedChange={(checked: CheckedState) =>
               setDownloadImages(!!checked)
             }
+            aria-label="Download images"
           />
           <label
             htmlFor="downloadImages"
@@ -259,6 +261,7 @@ export default function Filter({
             id="downloadLinks"
             checked={options.downloadLinks}
             onCheckedChange={handleDownloadLinksChange}
+            aria-label="Download links as HTML files"
           />
           <label
             htmlFor="downloadLinks"
@@ -281,6 +284,7 @@ export default function Filter({
             <button
               onClick={() => setDownloadLinks(false)}
               className="absolute top-0 bottom-0 right-0 px-4 py-3"
+              aria-label="Dismiss warning"
             >
               <span className="sr-only">Dismiss</span>
               <svg
@@ -308,6 +312,7 @@ export default function Filter({
             onCheckedChange={(checked: CheckedState) =>
               setDownloadAssets(!!checked)
             }
+            aria-label="Download assets like CSS and JS"
           />
           <label
             htmlFor="downloadAssets"
@@ -324,6 +329,7 @@ export default function Filter({
             onCheckedChange={(checked: CheckedState) =>
               setDownloadDocuments(!!checked)
             }
+            aria-label="Download documents like PDF and DOC"
           />
           <label
             htmlFor="downloadDocuments"
@@ -340,6 +346,7 @@ export default function Filter({
             onCheckedChange={(checked: CheckedState) =>
               setDownloadContentAsText(!!checked)
             }
+            aria-label="Download content as text"
           />
           <label
             htmlFor="downloadContentAsText"
@@ -354,6 +361,7 @@ export default function Filter({
             id="singleFile"
             checked={options.singleFile}
             onCheckedChange={handleSingleFileChange}
+            aria-label="Download as a single HTML file"
           />
           <label
             htmlFor="singleFile"
@@ -368,6 +376,7 @@ export default function Filter({
         className="mt-4"
         onClick={handleDownload}
         disabled={hasOffscreenPerm === false}
+        aria-label="Start download process"
       >
         Start download
       </Button>
