@@ -27,9 +27,53 @@ import {
   initializeCleanupHandlers,
   cleanupAfterDownload,
 } from "./cleanupHandlers";
+import { finalizeIncrementalMerge, cleanupIncrementalMerges } from "./merge-html";
+
+// Streaming imports
+import { StreamingDownloader } from "../utils/StreamingDownloader";
+import { createZipFromDownloads } from "../utils/chunkedZip";
+import { createProgressPersistence } from "../utils/progressPersistence";
+import { StreamingFetcher } from "../utils/streamingFetch";
+import {
+  StreamingDownload,
+} from "../types/streaming";
 
 // Initialize cleanup handlers when this module loads
 initializeCleanupHandlers();
+
+// Initialize streaming infrastructure
+const persistence = createProgressPersistence('indexeddb');
+const streamingDownloader = new StreamingDownloader(persistence);
+const streamingFetcher = new StreamingFetcher();
+
+// Set up streaming event listeners
+streamingDownloader.setEventListeners({
+  onStart: (download) => {
+    console.log(`Streaming download started: ${download.id} for ${download.url}`);
+  },
+  onProgress: (progress) => {
+    console.log(`Streaming progress: ${progress.downloadId} - ${progress.completedChunks}/${progress.totalChunks} chunks (${formatBytes(progress.bytesDownloaded)}/${formatBytes(progress.totalBytes)})`);
+  },
+  onComplete: (download) => {
+    console.log(`Streaming download completed: ${download.id}`);
+  },
+  onError: (download, error) => {
+    console.error(`Streaming download failed: ${download.id}`, error);
+  },
+  onMemoryPressure: async (pressure) => {
+    console.warn(`Memory pressure during streaming: ${pressure.level}`);
+
+    if (pressure.shouldPause) {
+      // Pause all active streaming downloads
+      const activeDownloads = streamingDownloader.getActiveDownloads();
+      for (const download of activeDownloads) {
+        if (download.status === 'streaming') {
+          await streamingDownloader.pauseDownload(download.id);
+        }
+      }
+    }
+  }
+});
 
 // download.ts
 
@@ -49,6 +93,14 @@ memoryManager.registerMemoryPressureCallback(async (level) => {
     // Emergency cleanup
     await cleanupOldBlobs(DEFAULT_MEMORY_LIMITS.MAX_BLOB_AGE / 2); // Cleanup sooner
     console.warn("Emergency cleanup performed due to critical memory pressure");
+
+    // Pause all streaming downloads during critical memory pressure
+    const activeDownloads = streamingDownloader.getActiveDownloads();
+    for (const download of activeDownloads) {
+      if (download.status === 'streaming') {
+        await streamingDownloader.pauseDownload(download.id);
+      }
+    }
   }
 });
 
@@ -186,6 +238,9 @@ async function setupOffscreenDocument(path: string) {
   }
 }
 
+/**
+ * Enhanced download function with streaming support for large files
+ */
 export async function downloadResources(
   html: string,
   tabUrl: string,
@@ -199,6 +254,7 @@ export async function downloadResources(
     singleFile: boolean;
   },
   sendMessage: (message: string) => void,
+  assemblyJobId?: string, // Optional job ID for incremental assembly
 ) {
   console.log("Starting downloadResources for URL:", tabUrl);
 
@@ -232,7 +288,7 @@ export async function downloadResources(
     await performInitialCleanup();
 
     // Execute the download within a try-catch-finally block
-    await executeDownload(html, tabUrl, downloadOptions, sendMessage);
+    await executeDownload(html, tabUrl, downloadOptions, sendMessage, assemblyJobId);
   } catch (error) {
     console.error("Download failed:", error);
 
@@ -280,6 +336,7 @@ async function executeDownload(
   tabUrl: string,
   downloadOptions: any,
   sendMessage: (message: string) => void,
+  assemblyJobId?: string,
 ) {
   // Check network connectivity
   try {
@@ -348,15 +405,41 @@ async function executeDownload(
     console.log("Creating index.html");
     sendMessage("Creating index.html");
 
-    // Check HTML size before processing
-    if (html.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
-      console.warn(`HTML content too large: ${formatBytes(html.length)}`);
-      sendMessage("HTML content is too large, may be truncated");
+    // Handle incremental assembly if job ID is provided
+    if (assemblyJobId) {
+      try {
+        console.log(`Finalizing incremental HTML assembly job: ${assemblyJobId}`);
+        const finalizeResult = finalizeIncrementalMerge(assemblyJobId);
+        
+        if (!finalizeResult.success) {
+          console.error(`Failed to finalize incremental assembly: ${finalizeResult.error}`);
+          sendMessage(`Error: ${finalizeResult.error}`);
+          
+          // Fall back to regular HTML processing
+          await processRegularHtml(html, zip, tabUrl, sendMessage);
+        } else {
+          // Use the assembled HTML
+          const finalHtml = finalizeResult.html;
+          if (finalHtml) {
+            await addIndexHtml(finalHtml, zip, tabUrl);
+            console.log("Incrementally assembled HTML added to ZIP");
+            sendMessage("HTML content assembled and added to download");
+          } else if (finalizeResult.blob) {
+            // Handle blob case for large files
+            console.log("Using blob for large HTML content");
+            await addIndexHtmlFromBlob(finalizeResult.blob, zip);
+            sendMessage("Large HTML content processed and added to download");
+          }
+        }
+      } catch (error) {
+        console.error("Error during incremental HTML assembly:", error);
+        sendMessage("Error during HTML assembly, falling back to regular processing");
+        await processRegularHtml(html, zip, tabUrl, sendMessage);
+      }
+    } else {
+      // Regular HTML processing
+      await processRegularHtml(html, zip, tabUrl, sendMessage);
     }
-
-    await addIndexHtml(html, zip, tabUrl);
-    console.log("index.html created");
-    sendMessage("Index.html created");
   }
 
   if (downloadOptions.downloadAssets) {
@@ -661,4 +744,771 @@ async function executeDownload(
   }
 
   return data.links;
+}
+
+/**
+ * Enhanced streaming download function for large files
+ */
+export async function downloadResourcesWithStreaming(
+  html: string,
+  tabUrl: string,
+  downloadOptions: {
+    downloadHTML: boolean;
+    downloadImages: boolean;
+    downloadLinks: boolean;
+    downloadAssets: boolean;
+    downloadContentAsText: boolean;
+    downloadDocuments: boolean;
+    singleFile: boolean;
+  },
+  sendMessage: (message: string) => void,
+) {
+  console.log("Starting streaming downloadResources for URL:", tabUrl);
+
+  if (!tabUrl) {
+    console.error("No tab URL provided");
+    sendMessage("Error: No URL provided for download");
+    return;
+  }
+
+  // Check if any resources are large enough to benefit from streaming
+  const data = getResources(html);
+  const hasLargeFiles = await checkForLargeFiles(data);
+
+  if (!hasLargeFiles) {
+    // Fall back to regular download for small files
+    console.log("No large files detected, using regular download");
+    return downloadResources(html, tabUrl, downloadOptions, sendMessage);
+  }
+
+  // Prevent concurrent downloads
+  if (await getDownloadInProgress()) {
+    console.warn("Download already in progress, rejecting new request");
+    sendMessage("A download is already in progress. Please wait.");
+    return;
+  }
+
+  await setDownloadInProgress(true);
+
+  try {
+    await executeStreamingDownload(html, tabUrl, downloadOptions, sendMessage, data);
+  } catch (error) {
+    console.error("Streaming download failed:", error);
+
+    // Fall back to regular download on streaming failure
+    sendMessage("Streaming download failed, falling back to regular download...");
+    try {
+      await downloadResources(html, tabUrl, downloadOptions, sendMessage);
+    } catch (fallbackError) {
+      console.error("Fallback download also failed:", fallbackError);
+      sendMessage(`Download failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
+    }
+  } finally {
+    await setDownloadInProgress(false);
+  }
+}
+
+/**
+ * Execute streaming download with chunked processing
+ */
+async function executeStreamingDownload(
+  html: string,
+  tabUrl: string,
+  downloadOptions: any,
+  sendMessage: (message: string) => void,
+  data: ReturnType<typeof getResources>
+) {
+  const u = new URL(tabUrl || "");
+
+  // Generate a safe filename
+  const hostname = u.hostname.replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "");
+  const path = u.pathname
+    .split("/")
+    .slice(1)
+    .filter((part) => part.length > 0)
+    .join("-")
+    .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-");
+
+  const safePath = path.length > 100 ? path.substring(0, 100) : path || "webpage";
+  const timestamp = Date.now();
+
+  const zipFilename = `${hostname}-${safePath}-${timestamp}.zip`;
+  console.log("Generated streaming filename:", zipFilename);
+
+  // Create streaming downloads for all resources
+  const streamingDownloads: Array<{ download: StreamingDownload; path: string }> = [];
+
+  // Download HTML
+  if (downloadOptions.downloadHTML) {
+    sendMessage("Processing HTML content");
+
+    // For HTML, we'll handle it directly since it's usually not too large
+    streamingDownloads.push({
+      download: {
+        id: `html-${timestamp}`,
+        url: tabUrl,
+        totalSize: html.length,
+        downloadedSize: html.length,
+        progress: 1.0,
+        chunks: [],
+        status: 'completed',
+        startedAt: Date.now(),
+        updatedAt: Date.now(),
+        completedAt: Date.now(),
+        resumable: false,
+        activeChunks: 0,
+        chunkSize: 0,
+        mimeType: 'text/html',
+        filename: 'index.html',
+      },
+      path: 'index.html'
+    });
+  }
+
+  // Download CSS files with streaming
+  if (downloadOptions.downloadAssets && data.css.length > 0) {
+    sendMessage(`Processing ${data.css.length} CSS files`);
+
+    for (let i = 0; i < data.css.length; i++) {
+      const cssUrl = data.css[i];
+      if (!cssUrl) continue;
+
+      try {
+        const shouldStream = streamingDownloader.shouldUseStreaming(cssUrl);
+
+        if (shouldStream) {
+          sendMessage(`Starting streaming download for CSS: ${i + 1}/${data.css.length}`);
+          const download = await streamingDownloader.startDownload(cssUrl, {
+            chunkSize: 512 * 1024, // 512KB chunks for CSS
+            maxParallelChunks: 2,
+          });
+
+          const filename = new URL(cssUrl, tabUrl).pathname.split("/").pop() || `style-${i}.css`;
+          streamingDownloads.push({
+            download,
+            path: `styles/${filename}`,
+          });
+        } else {
+          // Use regular download for small CSS files
+          // This will be handled by the regular file handlers
+        }
+      } catch (error) {
+        console.error(`Error streaming CSS ${cssUrl}:`, error);
+        // Fall back to regular download
+      }
+    }
+  }
+
+  // Download JavaScript files with streaming
+  if (downloadOptions.downloadAssets && data.js.length > 0) {
+    sendMessage(`Processing ${data.js.length} JS files`);
+
+    for (let i = 0; i < data.js.length; i++) {
+      const jsUrl = data.js[i];
+      if (!jsUrl) continue;
+
+      try {
+        const shouldStream = streamingDownloader.shouldUseStreaming(jsUrl);
+
+        if (shouldStream) {
+          sendMessage(`Starting streaming download for JS: ${i + 1}/${data.js.length}`);
+          const download = await streamingDownloader.startDownload(jsUrl, {
+            chunkSize: 512 * 1024, // 512KB chunks for JS
+            maxParallelChunks: 2,
+          });
+
+          const filename = new URL(jsUrl, tabUrl).pathname.split("/").pop() || `script-${i}.js`;
+          streamingDownloads.push({
+            download,
+            path: `scripts/${filename}`,
+          });
+        }
+      } catch (error) {
+        console.error(`Error streaming JS ${jsUrl}:`, error);
+      }
+    }
+  }
+
+  // Download images with streaming
+  if (downloadOptions.downloadImages && data.images.length > 0) {
+    sendMessage(`Processing ${data.images.length} images`);
+
+    for (let i = 0; i < data.images.length; i++) {
+      const imageUrl = data.images[i];
+      if (!imageUrl || imageUrl.startsWith("data:")) continue;
+
+      try {
+        const shouldStream = streamingDownloader.shouldUseStreaming(imageUrl);
+
+        if (shouldStream) {
+          sendMessage(`Starting streaming download for image: ${i + 1}/${data.images.length}`);
+          const download = await streamingDownloader.startDownload(imageUrl, {
+            chunkSize: 1024 * 1024, // 1MB chunks for images
+            maxParallelChunks: 3,
+          });
+
+          const filename = new URL(imageUrl, tabUrl).pathname.split("/").pop() || `image-${i}`;
+          streamingDownloads.push({
+            download,
+            path: `images/${filename}`,
+          });
+        }
+      } catch (error) {
+        console.error(`Error streaming image ${imageUrl}:`, error);
+      }
+    }
+  }
+
+  // Wait for all streaming downloads to complete
+  if (streamingDownloads.length > 0) {
+    sendMessage(`Waiting for ${streamingDownloads.length} streaming downloads to complete...`);
+
+    const completionPromises = streamingDownloads.map(async ({ download }) => {
+      while (download.status !== 'completed' && download.status !== 'failed') {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        // Update progress
+        const progress = streamingDownloader.getProgress(download.id);
+        if (progress && progress.status === 'streaming') {
+          const progressPercentage = progress.totalBytes > 0
+            ? (progress.bytesDownloaded / progress.totalBytes) * 100
+            : 0;
+          sendMessage(`Streaming progress: ${progress.completedChunks}/${progress.totalChunks} chunks (${Math.round(progressPercentage)}%)`);
+        }
+      }
+
+      if (download.status === 'failed') {
+        throw new Error(`Streaming download failed for ${download.url}: ${download.error}`);
+      }
+
+      return download;
+    });
+
+    await Promise.all(completionPromises);
+    sendMessage("All streaming downloads completed");
+  }
+
+  // Add regular file downloads for non-streamed content
+  if (downloadOptions.downloadAssets) {
+    await addRegularFiles(data, downloadOptions, tabUrl, sendMessage, downloadId);
+  }
+
+  // Create ZIP with chunked processing
+  sendMessage("Creating ZIP file with streaming content...");
+
+  try {
+    const zipBlob = await createZipFromDownloads(streamingDownloads, {
+      progressive: true,
+      compressionLevel: 6,
+      maxMemoryUsage: 50 * 1024 * 1024, // 50MB limit
+      enableStreaming: true,
+    });
+
+    await initiateDownload(zipBlob, zipFilename, sendMessage);
+    sendMessage("Streaming download completed successfully");
+
+  } catch (error) {
+    console.error("Error creating streaming ZIP:", error);
+    throw error;
+  }
+}
+
+/**
+ * Check if any files are large enough to benefit from streaming
+ */
+async function checkForLargeFiles(data: ReturnType<typeof getResources>): Promise<boolean> {
+  const checkThreshold = 5 * 1024 * 1024; // 5MB threshold
+  const allUrls = [...data.css, ...data.js, ...data.images, ...data.documents];
+
+  for (const url of allUrls) {
+    if (!url || url.startsWith("data:")) continue;
+
+    try {
+      const metadata = await streamingFetcher.getMetadata(url, { chunkTimeout: 5000 });
+      if (metadata.size > checkThreshold) {
+        console.log(`Large file detected: ${url} (${formatBytes(metadata.size)})`);
+        return true;
+      }
+    } catch (error) {
+      // If we can't determine size, conservatively assume it might be large
+      const largeFileExtensions = ['.zip', '.rar', '.7z', '.tar', '.gz', '.mp4', '.avi', '.mov', '.mkv'];
+      if (largeFileExtensions.some(ext => url.toLowerCase().includes(ext))) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Add regular file downloads for content not handled by streaming
+ */
+async function addRegularFiles(
+  data: ReturnType<typeof getResources>,
+  downloadOptions: any,
+  tabUrl: string,
+  sendMessage: (message: string) => void,
+  downloadId: string
+) {
+  const zip = new JSZip();
+
+  if (downloadOptions.downloadAssets) {
+    // Add CSS files that weren't streamed
+    if (data.css.length > 0) {
+      await addCssFiles(data.css, zip, tabUrl, sendMessage, downloadId);
+    }
+
+    // Add JS files that weren't streamed
+    if (data.js.length > 0) {
+      await addJsFiles(data.js, zip, tabUrl, sendMessage, downloadId);
+    }
+  }
+
+  if (downloadOptions.downloadDocuments) {
+    await addDocumentFiles(data.documents, zip, tabUrl, sendMessage, downloadId);
+  }
+
+  if (downloadOptions.downloadImages) {
+    await addImageFiles(data.images, zip, tabUrl, sendMessage, downloadId);
+  }
+
+  if (downloadOptions.downloadLinks) {
+    await addHtmlFiles(data.links, zip, tabUrl, sendMessage, downloadId);
+  }
+
+  if (downloadOptions.downloadContentAsText) {
+    await addContentText(data.text, zip);
+  }
+}
+
+/**
+ * Initiate the download process for the final blob
+ */
+async function initiateDownload(
+  blob: Blob,
+  filename: string,
+  sendMessage: (message: string) => void
+): Promise<void> {
+  console.log("Preparing to initiate download:", filename);
+
+  if (!blob || blob.size === 0) {
+    throw new Error("No blob data available for download or blob is empty");
+  }
+
+  // Check if we're in a service worker
+  const isServiceWorker =
+    typeof self !== "undefined" &&
+    self.constructor.name === "ServiceWorkerGlobalScope";
+
+  if (isServiceWorker || typeof URL.createObjectURL !== "function") {
+    // For service workers or when object URL is not available
+    if (blob.size < 50 * 1024 * 1024) { // 50MB limit
+      // Use data URL for smaller files
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read blob as data URL"));
+        reader.readAsDataURL(blob);
+      });
+
+      await chrome.downloads.download({
+        url: dataUrl,
+        filename,
+        saveAs: true,
+        conflictAction: "uniquify",
+      });
+    } else {
+      // Use offscreen document for large files
+      const key = `download-${Date.now()}`;
+      await saveBlob(key, blob);
+
+      await setupOffscreenDocument("offscreen.html");
+      const response = await chrome.runtime.sendMessage({
+        action: "createBlobUrl",
+        key,
+      });
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      const downloadId = await chrome.downloads.download({
+        url: response.url,
+        filename,
+        saveAs: true,
+        conflictAction: "uniquify",
+      });
+
+      // Store for cleanup
+      const { downloads } = await chrome.storage.local.get("downloads");
+      const downloadMap = downloads || {};
+      downloadMap[downloadId] = response.url;
+      await chrome.storage.local.set({ downloads: downloadMap });
+    }
+  } else {
+    // Regular download with object URL
+    const objectUrl = URL.createObjectURL(blob);
+    const downloadId = await chrome.downloads.download({
+      url: objectUrl,
+      filename,
+      saveAs: true,
+      conflictAction: "uniquify",
+    });
+
+    // Store for cleanup
+    const { downloads } = await chrome.storage.local.get("downloads");
+    const downloadMap = downloads || {};
+    downloadMap[downloadId] = objectUrl;
+    await chrome.storage.local.set({ downloads: downloadMap });
+  }
+
+  console.log("Download initiated successfully");
+  sendMessage("Download started successfully");
+}
+
+/**
+ * Process regular HTML content (non-incremental)
+ */
+async function processRegularHtml(
+  html: string,
+  zip: JSZip,
+  tabUrl: string,
+  sendMessage: (message: string) => void
+) {
+  // Check HTML size before processing
+  if (html.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
+    console.warn(`HTML content too large: ${formatBytes(html.length)}`);
+    sendMessage("HTML content is too large, may be truncated");
+  }
+
+  await addIndexHtml(html, zip, tabUrl);
+  console.log("index.html created");
+  sendMessage("Index.html created");
+}
+
+/**
+ * Add HTML content from blob to ZIP (for large files)
+ */
+async function addIndexHtmlFromBlob(
+  htmlBlob: Blob,
+  zip: JSZip,
+) {
+  try {
+    // Convert blob to array buffer and then to string
+    const arrayBuffer = await htmlBlob.arrayBuffer();
+    const htmlContent = new TextDecoder('utf-8').decode(arrayBuffer);
+    
+    // Add to ZIP
+    zip.file("index.html", htmlContent, {
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 },
+    });
+    
+    console.log(`Added HTML from blob (${formatBytes(htmlBlob.size)}) to ZIP`);
+  } catch (error) {
+    console.error("Error adding HTML blob to ZIP:", error);
+    throw new Error(`Failed to process HTML content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Enhanced download function with incremental HTML assembly support
+ */
+export async function downloadResourcesWithIncrementalAssembly(
+  assemblyJobId: string,
+  tabUrl: string,
+  downloadOptions: {
+    downloadHTML: boolean;
+    downloadImages: boolean;
+    downloadLinks: boolean;
+    downloadAssets: boolean;
+    downloadContentAsText: boolean;
+    downloadDocuments: boolean;
+    singleFile: boolean;
+  },
+  sendMessage: (message: string) => void,
+) {
+  console.log(`Starting download with incremental assembly for job: ${assemblyJobId}`);
+
+  if (!tabUrl) {
+    console.error("No tab URL provided");
+    sendMessage("Error: No URL provided for download");
+    return;
+  }
+
+  // Prevent concurrent downloads
+  if (await getDownloadInProgress()) {
+    console.warn("Download already in progress, rejecting new request");
+    sendMessage("A download is already in progress. Please wait.");
+    return;
+  }
+
+  // Initial memory check
+  const initialMemoryStats = memoryManager.getMemoryStats();
+  if (initialMemoryStats.memoryPressureLevel === MemoryPressureLevel.CRITICAL) {
+    console.error("Cannot start download - critical memory pressure");
+    sendMessage(
+      "Cannot start download due to critical memory pressure. Please try again later.",
+    );
+    return;
+  }
+
+  await setDownloadInProgress(true);
+
+  try {
+    // Perform initial cleanup
+    await performInitialCleanup();
+
+    // Execute download with incremental assembly
+    await executeDownloadWithIncrementalAssembly(assemblyJobId, tabUrl, downloadOptions, sendMessage);
+  } catch (error) {
+    console.error("Incremental download failed:", error);
+
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    sendMessage(`Download failed: ${errorMessage}`);
+
+    // If it's a memory-related error, perform cleanup
+    if (
+      errorMessage.includes("memory") ||
+      errorMessage.includes("size") ||
+      errorMessage.includes("limit")
+    ) {
+      console.log("Memory-related error detected, performing cleanup...");
+      await memoryManager.forceCleanup();
+      sendMessage(
+        "Memory cleanup performed due to download failure. Please try again.",
+      );
+    }
+  } finally {
+    // Always reset the flag when done and cleanup
+    await setDownloadInProgress(false);
+
+    // Cleanup download-specific resources
+    try {
+      await cleanupAfterDownload(downloadId);
+    } catch (cleanupError) {
+      console.error("Error during final cleanup:", cleanupError);
+    }
+
+    // Clean up incremental assembly jobs
+    try {
+      const cleanedJobs = cleanupIncrementalMerges();
+      if (cleanedJobs > 0) {
+        console.log(`Cleaned up ${cleanedJobs} old assembly jobs`);
+      }
+    } catch (cleanupError) {
+      console.error("Error during assembly job cleanup:", cleanupError);
+    }
+
+    // Final memory stats
+    const finalMemoryStats = memoryManager.getMemoryStats();
+    console.log("Incremental download process completed. Final memory stats:", {
+      memoryUsed: formatBytes(finalMemoryStats.totalMemoryUsed),
+      memoryPressure: finalMemoryStats.memoryPressureLevel,
+      completedDownloads: finalMemoryStats.completedDownloads,
+    });
+
+    console.log("Incremental download process completed");
+  }
+}
+
+/**
+ * Execute download with incremental HTML assembly
+ */
+async function executeDownloadWithIncrementalAssembly(
+  assemblyJobId: string,
+  tabUrl: string,
+  downloadOptions: any,
+  sendMessage: (message: string) => void,
+) {
+  const zip = new JSZip();
+  
+  // Generate filename
+  const u = new URL(tabUrl || "");
+  const hostname = u.hostname.replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "");
+  const path = u.pathname
+    .split("/")
+    .slice(1)
+    .filter((part) => part.length > 0)
+    .join("-")
+    .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-");
+
+  const safePath = path.length > 100 ? path.substring(0, 100) : path || "webpage";
+  const timestamp = Date.now();
+  const zipFilename = `${hostname}-${safePath}-${timestamp}.zip`;
+
+  console.log("Generated incremental filename:", zipFilename);
+
+  // Process HTML with incremental assembly
+  if (downloadOptions.downloadHTML) {
+    console.log("Processing HTML with incremental assembly");
+    sendMessage("Processing HTML content with incremental assembly");
+
+    // Finalize the incremental assembly job
+    const finalizeResult = finalizeIncrementalMerge(assemblyJobId);
+    
+    if (!finalizeResult.success) {
+      throw new Error(`Failed to finalize HTML assembly: ${finalizeResult.error}`);
+    }
+
+    if (finalizeResult.html) {
+      await addIndexHtml(finalizeResult.html, zip, tabUrl);
+      console.log("Incrementally assembled HTML added to ZIP");
+      sendMessage("HTML content assembled and added to download");
+    } else if (finalizeResult.blob) {
+      await addIndexHtmlFromBlob(finalizeResult.blob, zip);
+      console.log("Large HTML content processed and added to download");
+      sendMessage("Large HTML content processed and added to download");
+    }
+  }
+
+  // Process other resources (same as regular download)
+  const data = getResources(""); // Empty HTML since we're using incremental assembly
+  
+  if (downloadOptions.downloadAssets) {
+    // Process CSS and JS files
+    await processAssets(data, zip, tabUrl, sendMessage);
+  }
+
+  if (downloadOptions.downloadDocuments) {
+    await processDocuments(data.documents, zip, tabUrl, sendMessage);
+  }
+
+  if (downloadOptions.downloadImages) {
+    await processImages(data.images, zip, tabUrl, sendMessage);
+  }
+
+  if (downloadOptions.downloadLinks) {
+    await processLinks(data.links, zip, tabUrl, sendMessage);
+  }
+
+  if (downloadOptions.downloadContentAsText) {
+    await addContentText(data.text, zip);
+  }
+
+  // Create and initiate download
+  await createAndInitiateDownload(zip, zipFilename, sendMessage);
+}
+
+/**
+ * Process CSS and JS assets
+ */
+async function processAssets(
+  data: { css: string[]; js: string[] },
+  zip: JSZip,
+  tabUrl: string,
+  sendMessage: (message: string) => void
+) {
+  if (data.css.length > 0) {
+    sendMessage("Downloading CSS files");
+    try {
+      await addCssFiles(data.css, zip, tabUrl, sendMessage, downloadId);
+      console.log("CSS files downloaded:", data.css.length);
+      sendMessage("CSS files downloaded");
+    } catch (error) {
+      console.error("Error downloading CSS files:", error);
+      sendMessage("Error downloading CSS files - some may be missing");
+    }
+  }
+
+  if (data.js.length > 0) {
+    sendMessage("Downloading JS files");
+    try {
+      await addJsFiles(data.js, zip, tabUrl, sendMessage, downloadId);
+      console.log("JS files downloaded:", data.js.length);
+      sendMessage("JS files downloaded");
+    } catch (error) {
+      console.error("Error downloading JS files:", error);
+      sendMessage("Error downloading JS files - some may be missing");
+    }
+  }
+}
+
+/**
+ * Process document files
+ */
+async function processDocuments(
+  documents: string[],
+  zip: JSZip,
+  tabUrl: string,
+  sendMessage: (message: string) => void
+) {
+  if (documents.length > 0) {
+    sendMessage("Downloading document files");
+    await addDocumentFiles(documents, zip, tabUrl, sendMessage, downloadId);
+    console.log("Documents downloaded:", documents.length);
+    sendMessage("Document files downloaded");
+  }
+}
+
+/**
+ * Process image files
+ */
+async function processImages(
+  images: string[],
+  zip: JSZip,
+  tabUrl: string,
+  sendMessage: (message: string) => void
+) {
+  if (images.length > 0) {
+    sendMessage("Downloading images");
+    await addImageFiles(images, zip, tabUrl, sendMessage, downloadId);
+    console.log("Images downloaded:", images.length);
+    sendMessage("Images downloaded");
+  }
+}
+
+/**
+ * Process linked HTML files
+ */
+async function processLinks(
+  links: string[],
+  zip: JSZip,
+  tabUrl: string,
+  sendMessage: (message: string) => void
+) {
+  if (links.length > 0) {
+    sendMessage("Downloading linked HTML files");
+    await addHtmlFiles(links, zip, tabUrl, sendMessage, downloadId);
+    console.log("Linked HTML files downloaded:", links.length);
+    sendMessage("Linked HTML files downloaded");
+  }
+}
+
+/**
+ * Create ZIP and initiate download
+ */
+async function createAndInitiateDownload(
+  zip: JSZip,
+  zipFilename: string,
+  sendMessage: (message: string) => void
+) {
+  try {
+    console.log("Creating final download package");
+    sendMessage("Creating final download package");
+
+    const blob = await zip.generateAsync({
+      type: "blob",
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 },
+    });
+
+    console.log("ZIP archive created");
+    sendMessage("Finalizing download");
+
+    if (!blob || blob.size === 0) {
+      throw new Error("No blob data available for download or blob is empty");
+    }
+
+    await initiateDownload(blob, zipFilename, sendMessage);
+  } catch (error) {
+    console.error("Error creating download package:", error);
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Failed to create download package";
+    sendMessage(errorMessage);
+    throw error;
+  }
 }

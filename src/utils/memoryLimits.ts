@@ -3,6 +3,8 @@
  * Defines limits and thresholds for memory usage to prevent browser crashes
  */
 
+import { adaptiveMemoryManager } from './AdaptiveMemoryManager';
+
 export interface MemoryLimitsConfig {
   // Maximum total memory usage for the extension (in bytes)
   MAX_TOTAL_MEMORY_USAGE: number;
@@ -38,6 +40,7 @@ export interface MemoryLimitsConfig {
 /**
  * Default memory limits configuration
  * These values are tuned for Chrome extensions with service workers
+ * Note: HTML content size is now dynamically calculated using AdaptiveMemoryManager
  */
 export const DEFAULT_MEMORY_LIMITS: MemoryLimitsConfig = {
   // 500MB total memory limit - conservative for service workers
@@ -52,8 +55,16 @@ export const DEFAULT_MEMORY_LIMITS: MemoryLimitsConfig = {
   // 200MB ZIP size limit - forces streaming for large archives
   MAX_ZIP_SIZE: 200 * 1024 * 1024,
 
-  // 10MB HTML content limit - prevents DOM manipulation issues
-  MAX_HTML_CONTENT_SIZE: 10 * 1024 * 1024,
+  // HTML content limit is now dynamically calculated using AdaptiveMemoryManager
+  // This fallback value is only used if AdaptiveMemoryManager fails
+  get MAX_HTML_CONTENT_SIZE(): number {
+    try {
+      return adaptiveMemoryManager.calculateSafeHtmlLimit();
+    } catch (error) {
+      console.warn('Failed to calculate dynamic HTML limit, using fallback:', error);
+      return 10 * 1024 * 1024; // 10MB fallback
+    }
+  },
 
   // Start cleanup at 75% memory usage
   CLEANUP_THRESHOLD: 0.75,

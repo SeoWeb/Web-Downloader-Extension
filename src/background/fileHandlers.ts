@@ -4,6 +4,26 @@ import { convertHtml } from "./htmlUtils";
 import { memoryManager } from "../utils/MemoryManager";
 import { DEFAULT_MEMORY_LIMITS } from "../utils/memoryLimits";
 
+// Streaming imports
+import { StreamingDownloader } from "../utils/StreamingDownloader";
+import { ChunkedZipProcessor } from "../utils/chunkedZip";
+import { StreamingFetcher } from "../utils/streamingFetch";
+import { createProgressPersistence } from "../utils/progressPersistence";
+
+// Global streaming instances
+let streamingDownloader: StreamingDownloader | null = null;
+let streamingFetcher: StreamingFetcher | null = null;
+
+// Initialize streaming services
+function getStreamingServices() {
+  if (!streamingDownloader || !streamingFetcher) {
+    const persistence = createProgressPersistence('memory'); // Use memory persistence for handlers
+    streamingDownloader = new StreamingDownloader(persistence);
+    streamingFetcher = new StreamingFetcher();
+  }
+  return { streamingDownloader, streamingFetcher };
+}
+
 export async function addIndexHtml(
   inputHtml: string,
   zip: JSZip,
@@ -825,4 +845,326 @@ class Semaphore {
       this.permits++;
     }
   }
+}
+
+/**
+ * Streaming-aware version of addCssFiles
+ */
+export async function addCssFilesWithStreaming(
+  csss: string[],
+  zipProcessor: ChunkedZipProcessor,
+  tabUrl: string,
+  sendMessage: (message: string) => void,
+  _downloadId?: string, // Prefix with underscore to indicate intentionally unused
+) {
+  if (!csss?.length) return;
+
+  const count = csss.length;
+  let successCount = 0;
+  let failCount = 0;
+  let streamedCount = 0;
+
+  const { streamingDownloader, streamingFetcher } = getStreamingServices();
+
+  for (let i = 0; i < count; i++) {
+    const css = csss[i];
+    if (!css) {
+      failCount++;
+      continue;
+    }
+
+    try {
+      sendMessage(`Processing CSS files: ${i + 1}/${count}`);
+
+      // Check if file should be streamed
+      const metadata = await streamingFetcher.getMetadata(css);
+      const shouldStream = streamingDownloader.shouldUseStreaming(css, metadata.size);
+
+      if (shouldStream && metadata.size > 0) {
+        // Use streaming download
+        sendMessage(`Starting streaming download for large CSS: ${i + 1}/${count}`);
+        const download = await streamingDownloader.startDownload(css, {
+          chunkSize: 512 * 1024, // 512KB chunks for CSS
+          maxParallelChunks: 2,
+          enableResumption: true,
+        });
+
+        // Wait for completion
+        while (download.status !== 'completed' && download.status !== 'failed') {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          const progress = streamingDownloader.getProgress(download.id);
+          if (progress) {
+            sendMessage(`CSS streaming progress: ${progress.completedChunks}/${progress.totalChunks} chunks`);
+          }
+        }
+
+        if (download.status === 'completed') {
+          // Add to ZIP processor
+          const filename = new URL(css, tabUrl).pathname.split("/").pop() || `style-${i}.css`;
+          await zipProcessor.addStreamingDownload(download, `styles/${fixFilename(filename)}`);
+          successCount++;
+          streamedCount++;
+        } else {
+          throw new Error(download.error || 'Streaming download failed');
+        }
+      } else {
+        // Use regular download for small files
+        await addSingleCssFile(css, zipProcessor, tabUrl);
+        successCount++;
+      }
+    } catch (error) {
+      console.error(`Error processing CSS ${css}:`, error);
+      sendMessage(`Error processing CSS: ${css}`);
+      failCount++;
+    }
+  }
+
+  console.log(
+    `CSS processing summary: ${successCount} succeeded, ${streamedCount} streamed, ${failCount} failed`,
+  );
+  if (failCount > 0) {
+    sendMessage(
+      `CSS files processed: ${successCount} succeeded, ${streamedCount} streamed, ${failCount} failed`,
+    );
+  }
+}
+
+/**
+ * Streaming-aware version of addJsFiles
+ */
+export async function addJsFilesWithStreaming(
+  jss: string[],
+  zipProcessor: ChunkedZipProcessor,
+  tabUrl: string,
+  sendMessage: (message: string) => void,
+  _downloadId?: string, // Prefix with underscore to indicate intentionally unused
+) {
+  if (!jss?.length) return;
+
+  const count = jss.length;
+  let successCount = 0;
+  let failCount = 0;
+  let streamedCount = 0;
+
+  const { streamingDownloader, streamingFetcher } = getStreamingServices();
+
+  for (let i = 0; i < count; i++) {
+    const js = jss[i];
+    if (!js) {
+      failCount++;
+      continue;
+    }
+
+    try {
+      sendMessage(`Processing JS files: ${i + 1}/${count}`);
+
+      // Check if file should be streamed
+      const metadata = await streamingFetcher.getMetadata(js);
+      const shouldStream = streamingDownloader.shouldUseStreaming(js, metadata.size);
+
+      if (shouldStream && metadata.size > 0) {
+        // Use streaming download
+        sendMessage(`Starting streaming download for large JS: ${i + 1}/${count}`);
+        const download = await streamingDownloader.startDownload(js, {
+          chunkSize: 512 * 1024, // 512KB chunks for JS
+          maxParallelChunks: 2,
+          enableResumption: true,
+        });
+
+        // Wait for completion
+        while (download.status !== 'completed' && download.status !== 'failed') {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          const progress = streamingDownloader.getProgress(download.id);
+          if (progress) {
+            sendMessage(`JS streaming progress: ${progress.completedChunks}/${progress.totalChunks} chunks`);
+          }
+        }
+
+        if (download.status === 'completed') {
+          // Add to ZIP processor
+          const filename = new URL(js, tabUrl).pathname.split("/").pop() || `script-${i}.js`;
+          await zipProcessor.addStreamingDownload(download, `scripts/${fixFilename(filename)}`);
+          successCount++;
+          streamedCount++;
+        } else {
+          throw new Error(download.error || 'Streaming download failed');
+        }
+      } else {
+        // Use regular download for small files
+        await addSingleJsFile(js, zipProcessor, tabUrl);
+        successCount++;
+      }
+    } catch (error) {
+      console.error(`Error processing JS ${js}:`, error);
+      sendMessage(`Error processing JS: ${js}`);
+      failCount++;
+    }
+  }
+
+  console.log(
+    `JS processing summary: ${successCount} succeeded, ${streamedCount} streamed, ${failCount} failed`,
+  );
+  if (failCount > 0) {
+    sendMessage(
+      `JS files processed: ${successCount} succeeded, ${streamedCount} streamed, ${failCount} failed`,
+    );
+  }
+}
+
+/**
+ * Streaming-aware version of addImageFiles
+ */
+export async function addImageFilesWithStreaming(
+  images: string[],
+  zipProcessor: ChunkedZipProcessor,
+  tabUrl: string,
+  sendMessage: (message: string) => void,
+  _downloadId?: string, // Prefix with underscore to indicate intentionally unused
+) {
+  if (!images?.length) return;
+
+  const count = images.length;
+  let successCount = 0;
+  let failCount = 0;
+  let skippedCount = 0;
+  let streamedCount = 0;
+
+  const { streamingDownloader, streamingFetcher } = getStreamingServices();
+
+  for (let i = 0; i < count; i++) {
+    const image = images[i];
+    if (!image || image.startsWith("data:")) {
+      if (image?.startsWith("data:")) {
+        successCount++; // Skip data URLs but count as success
+        skippedCount++;
+      }
+      continue;
+    }
+
+    try {
+      sendMessage(`Processing images: ${i + 1}/${count}`);
+
+      // Check if file should be streamed
+      const metadata = await streamingFetcher.getMetadata(image);
+      const shouldStream = streamingDownloader.shouldUseStreaming(image, metadata.size);
+
+      if (shouldStream && metadata.size > 0) {
+        // Use streaming download
+        sendMessage(`Starting streaming download for large image: ${i + 1}/${count}`);
+        const download = await streamingDownloader.startDownload(image, {
+          chunkSize: 1024 * 1024, // 1MB chunks for images
+          maxParallelChunks: 3,
+          enableResumption: true,
+        });
+
+        // Wait for completion
+        while (download.status !== 'completed' && download.status !== 'failed') {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          const progress = streamingDownloader.getProgress(download.id);
+          if (progress) {
+            sendMessage(`Image streaming progress: ${progress.completedChunks}/${progress.totalChunks} chunks`);
+          }
+        }
+
+        if (download.status === 'completed') {
+          // Add to ZIP processor
+          const filename = new URL(image, tabUrl).pathname.split("/").pop() || `image-${i}`;
+          await zipProcessor.addStreamingDownload(download, `images/${fixFilename(filename)}`);
+          successCount++;
+          streamedCount++;
+        } else {
+          throw new Error(download.error || 'Streaming download failed');
+        }
+      } else {
+        // Use regular download for small files
+        await addSingleImageFile(image, zipProcessor, tabUrl);
+        successCount++;
+      }
+    } catch (error) {
+      console.error(`Error processing image ${image}:`, error);
+      sendMessage(`Error processing image: ${image}`);
+      failCount++;
+    }
+  }
+
+  console.log(
+    `Image processing summary: ${successCount} succeeded, ${streamedCount} streamed, ${failCount} failed, ${skippedCount} skipped`,
+  );
+  if (failCount > 0 || skippedCount > 0) {
+    sendMessage(
+      `Images processed: ${successCount} succeeded, ${streamedCount} streamed, ${failCount} failed, ${skippedCount} skipped`,
+    );
+  }
+}
+
+/**
+ * Helper function to add a single CSS file using regular download
+ */
+async function addSingleCssFile(
+  css: string,
+  zipProcessor: ChunkedZipProcessor,
+  tabUrl: string,
+): Promise<void> {
+  const response = await fetchUrl(css, tabUrl);
+  if (!response) {
+    throw new Error(`Failed to fetch CSS: ${css}`);
+  }
+
+  const cssContent = await response.text();
+  const filename = new URL(css, tabUrl).pathname.split("/").pop() || "style.css";
+
+  await zipProcessor.addEntry({
+    path: `styles/${fixFilename(filename)}`,
+    data: new Blob([cssContent], { type: "text/css" }),
+    mimeType: "text/css",
+    compress: true,
+  });
+}
+
+/**
+ * Helper function to add a single JS file using regular download
+ */
+async function addSingleJsFile(
+  js: string,
+  zipProcessor: ChunkedZipProcessor,
+  tabUrl: string,
+): Promise<void> {
+  const response = await fetchUrl(js, tabUrl);
+  if (!response) {
+    throw new Error(`Failed to fetch JS: ${js}`);
+  }
+
+  const jsContent = await response.blob();
+  const filename = new URL(js, tabUrl).pathname.split("/").pop() || "script.js";
+
+  await zipProcessor.addEntry({
+    path: `scripts/${fixFilename(filename)}`,
+    data: jsContent,
+    mimeType: "application/javascript",
+    compress: true,
+  });
+}
+
+/**
+ * Helper function to add a single image file using regular download
+ */
+async function addSingleImageFile(
+  image: string,
+  zipProcessor: ChunkedZipProcessor,
+  tabUrl: string,
+): Promise<void> {
+  const response = await fetchUrl(image, tabUrl);
+  if (!response) {
+    throw new Error(`Failed to fetch image: ${image}`);
+  }
+
+  const imageBlob = await response.blob();
+  const filename = new URL(image, tabUrl).pathname.split("/").pop() || "image.jpg";
+
+  await zipProcessor.addEntry({
+    path: `images/${fixFilename(filename)}`,
+    data: imageBlob,
+    mimeType: imageBlob.type,
+    compress: false, // Don't compress already compressed images
+  });
 }

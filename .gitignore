@@ -4,3 +4,8 @@ dist/
 tmp/
 .DS_Store
 dist.zip
+.claude-flow
+.swarm
+prompts
+zip
+.kilocode

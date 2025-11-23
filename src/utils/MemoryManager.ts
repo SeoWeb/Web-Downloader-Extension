@@ -404,11 +404,11 @@ export class MemoryManager {
     const now = Date.now();
     const toDelete: string[] = [];
 
-    for (const [id, request] of this.completedRequests.entries()) {
+    this.completedRequests.forEach((request, id) => {
       if (now - request.timestamp > this.config.MAX_BLOB_AGE) {
         toDelete.push(id);
       }
-    }
+    });
 
     toDelete.forEach((id) => this.completedRequests.delete(id));
 
@@ -438,8 +438,11 @@ export class MemoryManager {
    * Get estimated heap size from performance.memory if available
    */
   private getEstimatedHeapSize(): number | undefined {
-    if (typeof performance !== "undefined" && (performance as any).memory) {
-      return (performance as any).memory.usedJSHeapSize;
+    if (typeof performance !== "undefined") {
+      const performanceMemory = (performance as any).memory;
+      if (performanceMemory) {
+        return performanceMemory.usedJSHeapSize;
+      }
     }
     return undefined;
   }

@@ -4,12 +4,16 @@ import {
   MEMORY_ERROR_MESSAGES,
 } from "../utils/memoryLimits";
 import { memoryManager } from "../utils/MemoryManager";
+import { htmlAssembler } from "./HtmlAssembler";
+import { adaptiveMemoryManager } from "../utils/AdaptiveMemoryManager";
 
 interface MergeHtmlOptions {
   maxHtmlSize?: number;
   maxIterations?: number;
   enableMemoryCheck?: boolean;
   trackMemory?: boolean;
+  useIncrementalAssembly?: boolean; // New option for using HtmlAssembler
+  jobId?: string; // Job ID for incremental assembly
 }
 
 export function mergeHtml(
@@ -22,7 +26,14 @@ export function mergeHtml(
     maxIterations = 1000,
     enableMemoryCheck = true,
     trackMemory = false,
+    useIncrementalAssembly = false,
+    jobId,
   } = options;
+
+  // Use incremental assembly if requested
+  if (useIncrementalAssembly && jobId) {
+    return mergeHtmlIncremental(html1, html2, jobId, options);
+  }
 
   // Memory safety check before processing
   if (enableMemoryCheck) {
@@ -381,4 +392,129 @@ function getSelectors(element: cheerio.Cheerio<any>): string[] {
   }
 
   return selectors;
+}
+
+/**
+ * Incremental HTML merge using HtmlAssembler
+ * This is the new approach that avoids expensive DOM parsing
+ */
+export function mergeHtmlIncremental(
+  html1: string,
+  html2: string,
+  jobId: string,
+  options: MergeHtmlOptions = {},
+): string {
+  const {
+    maxHtmlSize = DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE,
+  } = options;
+
+  console.log(`Using incremental HTML assembly for job ${jobId}`);
+
+  try {
+    // Check if job exists, if not initialize it
+    let job = htmlAssembler.getActiveJobs().find(j => j.id === jobId);
+    
+    if (!job) {
+      // Initialize job with first HTML as skeleton
+      console.log(`Initializing new assembly job ${jobId}`);
+      htmlAssembler.initializeJob(jobId, html1, {
+        maxTotalSize: maxHtmlSize,
+        enableDeduplication: true,
+        enableMinification: true,
+      });
+    }
+
+    // Add the new HTML as a chunk
+    const addResult = htmlAssembler.addChunk(jobId, html2);
+    
+    if (!addResult.success) {
+      console.error(`Failed to add chunk to job ${jobId}:`, addResult.reason);
+      
+      // Fall back to traditional merge if incremental assembly fails
+      console.warn(`Falling back to traditional HTML merge for job ${jobId}`);
+      return mergeHtml(html1, html2, { ...options, useIncrementalAssembly: false });
+    }
+
+    if (addResult.added) {
+      console.log(`Added chunk to job ${jobId}: ${adaptiveMemoryManager.formatBytes(html2.length)}`);
+    } else {
+      console.log(`Chunk not added to job ${jobId}: ${addResult.reason}`);
+    }
+
+    // For incremental assembly, we don't return the full HTML yet
+    // The final HTML will be generated when the job is finalized
+    // Return a placeholder that indicates the merge was successful
+    return `<!-- Incremental merge successful for job ${jobId}. Total size: ${addResult.newSize || 'unknown'} -->`;
+
+  } catch (error) {
+    console.error(`Incremental HTML merge failed for job ${jobId}:`, error);
+    
+    // Fall back to traditional merge
+    console.warn(`Falling back to traditional HTML merge for job ${jobId}`);
+    return mergeHtml(html1, html2, { ...options, useIncrementalAssembly: false });
+  }
+}
+
+/**
+ * Finalize an incremental HTML assembly job
+ */
+export function finalizeIncrementalMerge(jobId: string): { success: boolean; html?: string; blob?: Blob; error?: string } {
+  try {
+    const result = htmlAssembler.finalizeJob(jobId);
+    
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.reason || 'Failed to finalize job',
+      };
+    }
+
+    console.log(`Finalized incremental HTML assembly job ${jobId}: ${adaptiveMemoryManager.formatBytes(result.html?.length || 0)}`);
+    
+    return {
+      success: true,
+      html: result.html,
+      blob: result.blob,
+    };
+  } catch (error) {
+    console.error(`Failed to finalize incremental HTML assembly job ${jobId}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Get statistics for an incremental assembly job
+ */
+export function getIncrementalMergeStats(jobId: string): { success: boolean; stats?: any; error?: string } {
+  try {
+    const result = htmlAssembler.getJobStats(jobId);
+    
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.reason || 'Failed to get job stats',
+      };
+    }
+
+    return {
+      success: true,
+      stats: result.stats,
+    };
+  } catch (error) {
+    console.error(`Failed to get stats for incremental HTML assembly job ${jobId}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Clean up old incremental assembly jobs
+ */
+export function cleanupIncrementalMerges(maxAge: number = 30 * 60 * 1000): number {
+  return htmlAssembler.cleanup(maxAge);
 }

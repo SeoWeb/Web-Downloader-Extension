@@ -214,7 +214,6 @@ async function convertBackgroundImageUrlsToBase64(
     // Regular expression to match background-image: url(...) patterns
     const bgImagePattern = /background-image\s*:\s*url\(['"]?(.*?)['"]?\)/gi;
     let match;
-    let updatedContent = cssContent;
 
     const processImage = async (imageUrl: string) => {
       try {
@@ -495,14 +494,14 @@ async function convertImagesToBase64(htmlString: string, tabUrl: string) {
       const response = await fetchUrl(src, baseUrl);
       const blob = response ? await response.blob() : null;
       if (blob) {
-        const reder = new FileReader();
-        reder.readAsDataURL(blob);
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
         src = await new Promise<string>((resolve, reject) => {
-          reder.onload = () => {
-            src = reder.result as string;
+          reader.onload = () => {
+            src = reader.result as string;
             resolve(src);
           };
-          reder.onerror = (error) => {
+          reader.onerror = (error) => {
             reject(error);
           };
         });
