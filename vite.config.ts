@@ -69,6 +69,7 @@ export default defineConfig({
         sidePanel: resolve(__dirname, "sidePanel.html"),
         featureRequest: resolve(__dirname, "featureRequest.html"),
         background: resolve(__dirname, "background.js"),
+        offscreen: resolve(__dirname, "src/offscreen/offscreen.html"),
       },
       output: {
         chunkFileNames: (chunkInfo) => {

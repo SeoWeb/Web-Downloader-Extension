@@ -5,7 +5,9 @@ import { Button } from "./Button";
 import { trackDownload, cleanWebsiteUrl } from "../common/services/analyticsService";
 import { useFilterOptions, useDownloadOptions, useStorageStatus } from "../hooks/useFilterOptions";
 import { StoragePermissionBanner } from "./StoragePermissionBanner";
+import { OffscreenPermissionBanner } from "./OffscreenPermissionBanner";
 import { hasStoragePermission } from "../background/userIdManager";
+import { hasOffscreenPermission } from "../common/permissions";
 
 export default function Filter({
   download,
@@ -26,6 +28,7 @@ export default function Filter({
 }) {
   const [showPermissionBanner, setShowPermissionBanner] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [hasOffscreenPerm, setHasOffscreenPerm] = useState<boolean | null>(null);
 
   const {
     options,
@@ -42,24 +45,28 @@ export default function Filter({
   const downloadOptions = useDownloadOptions();
   const { isLoadingFromStorage } = useStorageStatus();
 
-  // Check storage permission on mount
+  // Check permissions on mount
   useEffect(() => {
-    const checkPermission = async () => {
+    const checkPermissions = async () => {
       try {
-        const permission = await hasStoragePermission();
-        setHasPermission(permission);
+        const storagePermission = await hasStoragePermission();
+        setHasPermission(storagePermission);
         
         // Show banner if permission is not granted and we haven't shown it before
-        if (!permission && !localStorage.getItem('storage-banner-dismissed')) {
+        if (!storagePermission && !localStorage.getItem('storage-banner-dismissed')) {
           setShowPermissionBanner(true);
         }
+
+        const offscreenPermission = await hasOffscreenPermission();
+        setHasOffscreenPerm(offscreenPermission);
       } catch (error) {
-        console.error('Error checking storage permission:', error);
+        console.error('Error checking permissions:', error);
         setHasPermission(false);
+        setHasOffscreenPerm(false);
       }
     };
 
-    checkPermission();
+    checkPermissions();
   }, []);
 
   const handleDownload = async () => {
@@ -135,6 +142,10 @@ export default function Filter({
     localStorage.setItem('storage-banner-dismissed', 'true');
   };
 
+  const handleOffscreenPermissionGranted = () => {
+    setHasOffscreenPerm(true);
+  };
+
   // Show loading state while initializing from storage
   if (isLoading || isLoadingFromStorage) {
     return (
@@ -157,6 +168,13 @@ export default function Filter({
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
+      {/* Offscreen Permission Banner */}
+      {hasOffscreenPerm === false && (
+        <OffscreenPermissionBanner
+          onPermissionGranted={handleOffscreenPermissionGranted}
+        />
+      )}
+
       {/* Storage Permission Banner */}
       {showPermissionBanner && (
         <StoragePermissionBanner
@@ -332,7 +350,11 @@ export default function Filter({
         </div>
       </div>
       
-      <Button className="mt-4" onClick={handleDownload}>
+      <Button
+        className="mt-4"
+        onClick={handleDownload}
+        disabled={hasOffscreenPerm === false}
+      >
         Start download
       </Button>
     </div>

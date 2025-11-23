@@ -1,3 +1,4 @@
+/// <reference types="chrome" />
 import JSZip from "jszip";
 import { getResources } from "./resources";
 // import { messageActions } from "../common/message";
@@ -11,6 +12,7 @@ import {
   addHtmlFiles
 } from "./fileHandlers";
 import { convertToSingleFileHtml } from "./htmlUtils";
+import { saveBlob } from "../common/blobStorage";
 
 // download.ts
 
@@ -38,7 +40,22 @@ chrome.downloads.onChanged.addListener(async (delta) => {
       // Only revoke object URLs, not data URLs or blob URLs
       if (url.startsWith('blob:') || url.startsWith('data:')) {
         try {
-          URL.revokeObjectURL(url);
+          // If it's a blob URL created via offscreen document, we might need to revoke it there
+          // But since we can't easily tell if it was created in offscreen or here (if not SW),
+          // we try to revoke it here. If it fails, we might need to send a message to offscreen.
+          // However, blob URLs are origin-specific. If created in offscreen, they belong to the extension origin.
+          // Revoking in background script (SW) might not work for URLs created in offscreen document?
+          // Actually, URL.revokeObjectURL works for any URL associated with the document's origin.
+          // But SW doesn't have access to the same URL registry as the window?
+          // Let's try to revoke here, and if it's an offscreen URL, we send a message.
+          
+          if (typeof URL.revokeObjectURL === 'function') {
+             URL.revokeObjectURL(url);
+          } else {
+             // Send message to offscreen to revoke
+             await setupOffscreenDocument('offscreen.html');
+             chrome.runtime.sendMessage({ action: 'revokeBlobUrl', url });
+          }
         } catch (cleanupError) {
           console.warn(`Failed to revoke object URL for download ${delta.id}:`, cleanupError);
         }
@@ -49,6 +66,38 @@ chrome.downloads.onChanged.addListener(async (delta) => {
     }
   }
 });
+
+let creatingOffscreenDocument: Promise<void> | null = null;
+
+async function setupOffscreenDocument(path: string) {
+  // Check if offscreen API is available (permission granted)
+  if (!chrome.offscreen) {
+    throw new Error('Offscreen permission is required for this operation');
+  }
+
+  // Check if offscreen document already exists
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
+    documentUrls: [chrome.runtime.getURL(path)]
+  });
+
+  if (existingContexts.length > 0) {
+    return;
+  }
+
+  // Create offscreen document
+  if (creatingOffscreenDocument) {
+    await creatingOffscreenDocument;
+  } else {
+    creatingOffscreenDocument = chrome.offscreen.createDocument({
+      url: path,
+      reasons: [chrome.offscreen.Reason.BLOBS],
+      justification: 'To create Blob URLs for large downloads',
+    });
+    await creatingOffscreenDocument;
+    creatingOffscreenDocument = null;
+  }
+}
 
 
 export async function downloadResources(
@@ -254,8 +303,8 @@ async function executeDownload(
         
         // In service workers, we need to use data URLs directly since URL.createObjectURL is not available
         // Check if we're in a service worker context
-        const isServiceWorker = typeof ServiceWorkerGlobalScope !== 'undefined' && 
-                                self instanceof ServiceWorkerGlobalScope;
+        // We use a loose check to avoid TypeScript errors with ServiceWorkerGlobalScope
+        const isServiceWorker = typeof self !== 'undefined' && self.constructor.name === 'ServiceWorkerGlobalScope';
         
         if (isServiceWorker || typeof URL.createObjectURL !== 'function') {
           console.log("Running in service worker context or URL.createObjectURL not available, using data URL directly");
@@ -295,7 +344,64 @@ async function executeDownload(
             sendMessage("Download started successfully");
             return;
           } else {
-            throw new Error(`Blob too large for data URL (${blob.size} bytes). Maximum size is 50MB.`);
+            console.log(`Blob too large for data URL (${blob.size} bytes). Using offscreen document.`);
+            
+            // Check if offscreen permission is available
+            if (!chrome.offscreen) {
+              const errorMsg = "Download too large (>50MB). Please enable 'Offscreen' permission in the extension settings to download large files.";
+              sendMessage(errorMsg);
+              throw new Error(errorMsg);
+            }
+
+            sendMessage("Large file detected, using advanced download method...");
+            
+            // Use offscreen document for large files
+            const key = `download-${Date.now()}`;
+            await saveBlob(key, blob);
+            
+            await setupOffscreenDocument('offscreen.html');
+            
+            const response = await chrome.runtime.sendMessage({
+              action: 'createBlobUrl',
+              key
+            });
+            
+            if (response.error) {
+              throw new Error(response.error);
+            }
+            
+            const objectUrl = response.url;
+            console.log("Created object URL via offscreen:", objectUrl);
+            
+            const downloadId = await new Promise<number>((resolve, reject) => {
+              chrome.downloads.download(
+                {
+                  url: objectUrl,
+                  filename: zipFilename,
+                  saveAs: true,
+                  conflictAction: "uniquify",
+                },
+                (downloadId) => {
+                  if (chrome.runtime.lastError) {
+                    reject(new Error(chrome.runtime.lastError.message));
+                  } else if (downloadId === undefined) {
+                    reject(new Error('Download failed: No download ID assigned.'));
+                  } else {
+                    resolve(downloadId);
+                  }
+                }
+              );
+            });
+            
+            console.log("Download started successfully via offscreen, ID:", downloadId);
+            sendMessage("Download started successfully");
+
+            // Store the mapping of download ID to object URL for later cleanup
+            const { downloads } = await chrome.storage.local.get('downloads');
+            const downloadMap = downloads || {};
+            downloadMap[downloadId] = objectUrl;
+            await chrome.storage.local.set({ downloads: downloadMap });
+            return;
           }
         } else {
           // In non-service worker contexts, we can use object URLs
