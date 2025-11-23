@@ -1,5 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getUserId, hasStoragePermission, requestStoragePermission } from '../../background/userIdManager';
+import { useState, useEffect, useCallback } from "react";
+import {
+  getUserId,
+  hasStoragePermission,
+  requestStoragePermission,
+} from "../../background/userIdManager";
 
 export interface UseGlobalUserIdReturn {
   userId: number | null;
@@ -26,11 +30,11 @@ export function useGlobalUserId(): UseGlobalUserIdReturn {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Check if we have storage permission
       const permission = await hasStoragePermission();
       setHasPermission(permission);
-      
+
       if (permission) {
         const id = await getUserId();
         setUserId(id);
@@ -38,8 +42,8 @@ export function useGlobalUserId(): UseGlobalUserIdReturn {
         setUserId(null);
       }
     } catch (err) {
-      console.error('Error fetching user ID:', err);
-      setError('Failed to get user ID');
+      console.error("Error fetching user ID:", err);
+      setError("Failed to get user ID");
     } finally {
       setLoading(false);
     }
@@ -49,17 +53,17 @@ export function useGlobalUserId(): UseGlobalUserIdReturn {
     try {
       setPermissionRequesting(true);
       setError(null);
-      
+
       const granted = await requestStoragePermission();
       if (granted) {
         // Permission granted, now fetch user ID
         await checkPermissionAndFetchUserId();
       } else {
-        setError('Storage permission is required to use this extension');
+        setError("Storage permission is required to use this extension");
       }
     } catch (err) {
-      console.error('Error requesting permission:', err);
-      setError('Failed to request storage permission');
+      console.error("Error requesting permission:", err);
+      setError("Failed to request storage permission");
     } finally {
       setPermissionRequesting(false);
     }
@@ -80,6 +84,6 @@ export function useGlobalUserId(): UseGlobalUserIdReturn {
     hasPermission,
     permissionRequesting,
     requestPermission,
-    refreshUserId
+    refreshUserId,
   };
 }

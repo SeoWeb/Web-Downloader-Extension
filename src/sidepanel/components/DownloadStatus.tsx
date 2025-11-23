@@ -19,11 +19,19 @@ export function DownloadStatus({
 }: DownloadStatusProps) {
   if (!tabId) return null;
 
-  if (!isScraping && action !== messageActions.DOWNLOAD_DONE && !downloadResponse?.html) {
+  if (
+    !isScraping &&
+    action !== messageActions.DOWNLOAD_DONE &&
+    !downloadResponse?.html
+  ) {
     return null;
   }
 
-  if (!isScraping && action !== messageActions.DOWNLOAD_DONE && !!downloadResponse?.html) {
+  if (
+    !isScraping &&
+    action !== messageActions.DOWNLOAD_DONE &&
+    !!downloadResponse?.html
+  ) {
     return (
       <div className="pt-8">
         <h3 className="pb-2 font-bold">Downloading website content ...</h3>

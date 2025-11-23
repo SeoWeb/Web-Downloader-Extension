@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { Button } from '../../components/Button';
-import { ChatInterface } from './ChatInterface';
-import { GeneratedFormPreview } from './GeneratedFormPreview';
-import { FeatureRequestForm } from './FeatureRequestForm';
-import { useAIFeatureRequest } from '../hooks/useAIFeatureRequest';
-import { FeatureRequest } from '../utils/api';
+import { useState } from "react";
+import { Button } from "../../components/Button";
+import { ChatInterface } from "./ChatInterface";
+import { GeneratedFormPreview } from "./GeneratedFormPreview";
+import { FeatureRequestForm } from "./FeatureRequestForm";
+import { useAIFeatureRequest } from "../hooks/useAIFeatureRequest";
+import { FeatureRequest } from "../utils/api";
 
 interface AIFeatureRequestFormProps {
   userId: number;
@@ -12,10 +12,14 @@ interface AIFeatureRequestFormProps {
   submitting: boolean;
 }
 
-export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeatureRequestFormProps) {
-  const [initialDescription, setInitialDescription] = useState('');
+export function AIFeatureRequestForm({
+  userId,
+  onSubmit,
+  submitting,
+}: AIFeatureRequestFormProps) {
+  const [initialDescription, setInitialDescription] = useState("");
   const [useManualForm, setUseManualForm] = useState(false);
-  
+
   const {
     stage,
     conversation,
@@ -45,7 +49,7 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
       const success = await onSubmit(featureRequest);
       if (success) {
         reset();
-        setInitialDescription('');
+        setInitialDescription("");
       }
       return success;
     } finally {
@@ -61,7 +65,7 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
   const handleBackToAI = () => {
     setUseManualForm(false);
     reset();
-    setInitialDescription('');
+    setInitialDescription("");
   };
 
   // Show manual form if user explicitly chose it
@@ -69,7 +73,9 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">📝 Manual Feature Request</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            📝 Manual Feature Request
+          </h2>
           <Button
             variant="outline"
             size="sm"
@@ -93,7 +99,9 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
       {/* Error Display */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded flex justify-between items-center">
-          <span><strong>Error:</strong> {error}</span>
+          <span>
+            <strong>Error:</strong> {error}
+          </span>
           <button
             onClick={clearError}
             className="text-red-700 hover:text-red-900 font-bold"
@@ -104,13 +112,13 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
       )}
 
       {/* Initial Input Stage */}
-      {stage === 'input' && (
+      {stage === "input" && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
           {/* Magical Header Section */}
           <div className="relative group mb-6">
             {/* Magical glow background */}
             <div className="absolute -inset-2 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-1000 animate-pulse"></div>
-            
+
             {/* Header content */}
             <div className="relative bg-gradient-to-r from-purple-50 via-pink-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
               <div className="flex items-center justify-center space-x-3">
@@ -118,17 +126,31 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 bg-clip-text text-transparent">
                   Submit New Feature Request
                 </h2>
-                <span className="text-3xl animate-bounce" style={{ animationDelay: '0.5s' }}>🌟</span>
+                <span
+                  className="text-3xl animate-bounce"
+                  style={{ animationDelay: "0.5s" }}
+                >
+                  🌟
+                </span>
               </div>
-              
+
               {/* Floating sparkles */}
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-2 left-8 w-1 h-1 bg-purple-400 rounded-full animate-ping opacity-75"></div>
-                <div className="absolute top-6 right-12 w-1 h-1 bg-pink-400 rounded-full animate-pulse opacity-75" style={{ animationDelay: '1s' }}></div>
-                <div className="absolute bottom-3 left-16 w-1 h-1 bg-blue-400 rounded-full animate-bounce opacity-75" style={{ animationDelay: '1.5s' }}></div>
-                <div className="absolute bottom-6 right-6 w-1 h-1 bg-yellow-400 rounded-full animate-ping opacity-75" style={{ animationDelay: '2s' }}></div>
+                <div
+                  className="absolute top-6 right-12 w-1 h-1 bg-pink-400 rounded-full animate-pulse opacity-75"
+                  style={{ animationDelay: "1s" }}
+                ></div>
+                <div
+                  className="absolute bottom-3 left-16 w-1 h-1 bg-blue-400 rounded-full animate-bounce opacity-75"
+                  style={{ animationDelay: "1.5s" }}
+                ></div>
+                <div
+                  className="absolute bottom-6 right-6 w-1 h-1 bg-yellow-400 rounded-full animate-ping opacity-75"
+                  style={{ animationDelay: "2s" }}
+                ></div>
               </div>
-              
+
               {/* Magical subtitle */}
               <p className="text-center text-purple-700 font-medium mt-2 text-sm">
                 ✨ AI-powered wish fulfillment ✨
@@ -140,10 +162,13 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
             <br />
             Our artificial intelligence will help you structure your request.
           </p>
-          
+
           <div className="space-y-4">
             <div>
-              <label htmlFor="feature-description" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="feature-description"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 What feature would you like to see? *
               </label>
               <textarea
@@ -166,7 +191,7 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
               <div className="relative group flex-1">
                 {/* Magical glow background */}
                 <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 rounded-lg blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
-                
+
                 <button
                   onClick={handleStartAnalysis}
                   disabled={!initialDescription.trim() || isLoading}
@@ -183,19 +208,23 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
                 >
                   {/* Shimmer effect */}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 hover:opacity-20 transform -skew-x-12 -translate-x-full hover:translate-x-full transition-transform duration-1000"></div>
-                  
+
                   {/* Button content */}
                   <div className="relative flex items-center justify-center space-x-3">
                     {isLoading ? (
                       <>
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                        <span className="text-lg font-bold tracking-wide">Analyzing Magic...</span>
+                        <span className="text-lg font-bold tracking-wide">
+                          Analyzing Magic...
+                        </span>
                         <span className="text-xl animate-pulse">🔮</span>
                       </>
                     ) : (
                       <>
                         <span className="text-xl">🤖</span>
-                        <span className="text-lg font-bold tracking-wide">Analyze with AI</span>
+                        <span className="text-lg font-bold tracking-wide">
+                          Analyze with AI
+                        </span>
                         <span className="text-xl">✨</span>
                       </>
                     )}
@@ -218,12 +247,14 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
       )}
 
       {/* Analyzing Stage */}
-      {stage === 'analyzing' && (
+      {stage === "analyzing" && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="text-center py-8">
             <div className="inline-flex items-center space-x-3">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
-              <span className="text-lg text-gray-700">AI is analyzing your request...</span>
+              <span className="text-lg text-gray-700">
+                AI is analyzing your request...
+              </span>
             </div>
             <p className="text-gray-500 mt-2">This may take a few seconds</p>
           </div>
@@ -231,7 +262,7 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
       )}
 
       {/* Conversation Stage */}
-      {stage === 'conversation' && (
+      {stage === "conversation" && (
         <ChatInterface
           conversation={conversation}
           onSendMessage={continueConversation}
@@ -241,7 +272,7 @@ export function AIFeatureRequestForm({ userId, onSubmit, submitting }: AIFeature
       )}
 
       {/* Preview Stage */}
-      {stage === 'preview' && generatedData && (
+      {stage === "preview" && generatedData && (
         <GeneratedFormPreview
           generatedData={generatedData}
           onUpdateData={updateGeneratedData}

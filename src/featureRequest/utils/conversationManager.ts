@@ -1,6 +1,6 @@
 export interface ConversationMessage {
   id: string;
-  type: 'user' | 'ai';
+  type: "user" | "ai";
   content: string;
   timestamp: Date;
   answerOptions?: string[];
@@ -20,7 +20,7 @@ export class ConversationManager {
   addUserMessage(content: string): void {
     const message: ConversationMessage = {
       id: this.generateId(),
-      type: 'user',
+      type: "user",
       content: content.trim(),
       timestamp: new Date(),
     };
@@ -33,7 +33,7 @@ export class ConversationManager {
   addAIMessage(content: string): void {
     const message: ConversationMessage = {
       id: this.generateId(),
-      type: 'ai',
+      type: "ai",
       content: content.trim(),
       timestamp: new Date(),
     };
@@ -46,7 +46,7 @@ export class ConversationManager {
   addAIMessageWithOptions(content: string, answerOptions: string[]): void {
     const message: ConversationMessage = {
       id: this.generateId(),
-      type: 'ai',
+      type: "ai",
       content: content.trim(),
       timestamp: new Date(),
       answerOptions: answerOptions,
@@ -59,10 +59,10 @@ export class ConversationManager {
    */
   getFullDescription(): string {
     const userMessages = this.messages
-      .filter(msg => msg.type === 'user')
-      .map(msg => msg.content);
-    
-    return userMessages.join(' ');
+      .filter((msg) => msg.type === "user")
+      .map((msg) => msg.content);
+
+    return userMessages.join(" ");
   }
 
   /**
@@ -83,7 +83,7 @@ export class ConversationManager {
    * Get the latest AI message
    */
   getLatestAIMessage(): ConversationMessage | null {
-    const aiMessages = this.messages.filter(msg => msg.type === 'ai');
+    const aiMessages = this.messages.filter((msg) => msg.type === "ai");
     return aiMessages.length > 0 ? aiMessages[aiMessages.length - 1] : null;
   }
 
@@ -91,8 +91,10 @@ export class ConversationManager {
    * Get the latest user message
    */
   getLatestUserMessage(): ConversationMessage | null {
-    const userMessages = this.messages.filter(msg => msg.type === 'user');
-    return userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
+    const userMessages = this.messages.filter((msg) => msg.type === "user");
+    return userMessages.length > 0
+      ? userMessages[userMessages.length - 1]
+      : null;
   }
 
   /**
@@ -106,8 +108,8 @@ export class ConversationManager {
    * Get the initial description (first user message)
    */
   getInitialDescription(): string {
-    const firstUserMessage = this.messages.find(msg => msg.type === 'user');
-    return firstUserMessage ? firstUserMessage.content : '';
+    const firstUserMessage = this.messages.find((msg) => msg.type === "user");
+    return firstUserMessage ? firstUserMessage.content : "";
   }
 
   /**
@@ -115,24 +117,24 @@ export class ConversationManager {
    */
   getQuestionAnswerPairs(): QuestionAnswerPair[] {
     const pairs: QuestionAnswerPair[] = [];
-    
+
     for (let i = 0; i < this.messages.length - 1; i++) {
       const currentMessage = this.messages[i];
       const nextMessage = this.messages[i + 1];
-      
+
       // Skip the first user message (initial description)
-      if (i === 0 && currentMessage.type === 'user') {
+      if (i === 0 && currentMessage.type === "user") {
         continue;
       }
-      
-      if (currentMessage.type === 'ai' && nextMessage.type === 'user') {
+
+      if (currentMessage.type === "ai" && nextMessage.type === "user") {
         pairs.push({
           question: currentMessage.content,
           answer: nextMessage.content,
         });
       }
     }
-    
+
     return pairs;
   }
 
@@ -140,8 +142,9 @@ export class ConversationManager {
    * Get the latest AI message with answer options
    */
   getLatestAIMessageWithOptions(): ConversationMessage | null {
-    const aiMessages = this.messages.filter(msg => msg.type === 'ai');
-    const latestAI = aiMessages.length > 0 ? aiMessages[aiMessages.length - 1] : null;
+    const aiMessages = this.messages.filter((msg) => msg.type === "ai");
+    const latestAI =
+      aiMessages.length > 0 ? aiMessages[aiMessages.length - 1] : null;
     return latestAI && latestAI.answerOptions ? latestAI : null;
   }
 

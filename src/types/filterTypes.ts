@@ -27,4 +27,4 @@ export const DEFAULT_FILTER_OPTIONS: FilterOptions = {
 /**
  * Storage key for filter options in Chrome storage
  */
-export const FILTER_OPTIONS_STORAGE_KEY = 'webPageDownloader_filterOptions';
+export const FILTER_OPTIONS_STORAGE_KEY = "webPageDownloader_filterOptions";

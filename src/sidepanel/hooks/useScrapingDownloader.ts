@@ -1,5 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
-import { handleStartScroll, handleStartDownload } from "../utils/messageHandlers";
+import {
+  handleStartScroll,
+  handleStartDownload,
+} from "../utils/messageHandlers";
 import { mergeDownloadResponse } from "../utils/downloadUtils";
 
 export interface DownloadOptions {
@@ -44,20 +47,17 @@ export function useScrapingDownloader({
   const startScrolling = useCallback(async (): Promise<
     ScrollingResponse | undefined
   > => {
-    return handleStartScroll(tabId,
-      (msg) => setMessages(prev => [...prev, msg]),
-      setIsScraping
+    return handleStartScroll(
+      tabId,
+      (msg) => setMessages((prev) => [...prev, msg]),
+      setIsScraping,
     );
   }, [tabId, setIsScraping, setMessages]);
 
   const startDownload = useCallback(
     async (html: string): Promise<string[] | undefined> => {
-      return handleStartDownload(
-        tabId,
-        html,
-        tabUrl,
-        downloadOptions,
-        (msg) => setMessages(prev => [...prev, msg])
+      return handleStartDownload(tabId, html, tabUrl, downloadOptions, (msg) =>
+        setMessages((prev) => [...prev, msg]),
       );
     },
     [tabId, tabUrl, downloadOptions, setMessages],

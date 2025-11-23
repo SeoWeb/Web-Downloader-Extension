@@ -21,7 +21,13 @@ interface Options {
   singleFile: boolean;
 }
 
-function ErrorFallback({error, resetErrorBoundary}: {error: Error, resetErrorBoundary: () => void}) {
+function ErrorFallback({
+  error,
+  resetErrorBoundary,
+}: {
+  error: Error;
+  resetErrorBoundary: () => void;
+}) {
   return (
     <div role="alert" className="p-4 bg-red-100 rounded">
       <p className="font-bold text-red-800">Something went wrong:</p>
@@ -62,26 +68,29 @@ export default function SidePanel() {
     error: userIdError,
     hasPermission,
     permissionRequesting,
-    requestPermission
+    requestPermission,
   } = useGlobalUserId();
 
   // Use the custom hooks
   useActiveTabInfo({ setTabId, setTabUrl, setMessages });
 
   // Memoize messageWorker to stabilize useMessageListener dependency
-  const messageWorker = useCallback(async (action: MessageAction, data: any): Promise<any> => {
-    switch (action) {
-      case messageActions.PANEL_MESSAGE:
-        setMessages((prev) => [...prev, data.message]);
-        // Update completion based on message type if needed
-        break;
+  const messageWorker = useCallback(
+    async (action: MessageAction, data: any): Promise<any> => {
+      switch (action) {
+        case messageActions.PANEL_MESSAGE:
+          setMessages((prev) => [...prev, data.message]);
+          // Update completion based on message type if needed
+          break;
 
-      default:
-        break;
-    }
-    return null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Keep dependencies minimal, setMessages is stable
+        default:
+          break;
+      }
+      return null;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [],
+  ); // Keep dependencies minimal, setMessages is stable
 
   useMessageListener({ messageWorker });
 
@@ -98,38 +107,42 @@ export default function SidePanel() {
       setError(err instanceof Error ? err : new Error(String(err)));
       setMessages((prev) => [...prev, "Error completing download"]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Keep dependencies minimal, setLinks, setMessages, setAction are stable
 
-  const { downloadResponse, setDownloadResponse, setScrollAttempts } = useScrapingDownloader({
-    tabId,
-    tabUrl,
-    isScraping,
-    setIsScraping,
-    downloadOptions,
-    setMessages,
-    setDownloadDone,
-  });
+  const { downloadResponse, setDownloadResponse, setScrollAttempts } =
+    useScrapingDownloader({
+      tabId,
+      tabUrl,
+      isScraping,
+      setIsScraping,
+      downloadOptions,
+      setMessages,
+      setDownloadDone,
+    });
 
   // Memoize reset function
-  const reset = useCallback((newTabUrl: string) => {
-    setTabUrl(newTabUrl);
-    setMessages(["Waiting connection...", "Website connected!"]);
-    setAction(null);
-    setLinks([]);
-    setIsScraping(false);
-    setDownloadResponse(null); // Use setter from hook
-    setScrollAttempts(0);    // Use setter from hook
-    setDownloadOptions(null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setDownloadResponse, setScrollAttempts]); // Add setters from hook to dependencies
+  const reset = useCallback(
+    (newTabUrl: string) => {
+      setTabUrl(newTabUrl);
+      setMessages(["Waiting connection...", "Website connected!"]);
+      setAction(null);
+      setLinks([]);
+      setIsScraping(false);
+      setDownloadResponse(null); // Use setter from hook
+      setScrollAttempts(0); // Use setter from hook
+      setDownloadOptions(null);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [setDownloadResponse, setScrollAttempts],
+  ); // Add setters from hook to dependencies
 
   // Memoize onClickStartDownload
   const onClickStartDownload = useCallback(async (options: Options) => {
     setIsScraping(true);
     setDownloadOptions(options);
     setMessages((prev) => [...prev, "Scraping website..."]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Keep dependencies minimal
 
   const resetError = useCallback(() => {

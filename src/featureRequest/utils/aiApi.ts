@@ -1,4 +1,4 @@
-import { API_URLS } from '../../common/apiConstants.js';
+import { API_URLS } from "../../common/apiConstants.js";
 
 interface AIAnalysisRequest {
   description: string;
@@ -28,7 +28,7 @@ type AIAnalysisResponse = AIQuestionResponse[] | AICompleteResponse;
  */
 export async function analyzeFeatureDescription(
   description: string,
-  questions?: Array<{ question: string; answer: string }>
+  questions?: Array<{ question: string; answer: string }>,
 ): Promise<AIAnalysisResponse> {
   try {
     const requestBody: AIAnalysisRequest = {
@@ -40,9 +40,9 @@ export async function analyzeFeatureDescription(
     }
 
     const response = await fetch(API_URLS.AI_FEATURE_ANALYSIS, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
     });
@@ -54,7 +54,7 @@ export async function analyzeFeatureDescription(
     const data: AIAnalysisResponse = await response.json();
     return data;
   } catch (error) {
-    console.error('Error analyzing feature description:', error);
+    console.error("Error analyzing feature description:", error);
     throw error;
   }
 }
@@ -62,8 +62,15 @@ export async function analyzeFeatureDescription(
 /**
  * Check if AI response contains complete feature request data
  */
-export function isCompleteAIResponse(response: AIAnalysisResponse): response is AICompleteResponse {
-  return !Array.isArray(response) && 'title' in response && 'description' in response && 'use_case' in response;
+export function isCompleteAIResponse(
+  response: AIAnalysisResponse,
+): response is AICompleteResponse {
+  return (
+    !Array.isArray(response) &&
+    "title" in response &&
+    "description" in response &&
+    "use_case" in response
+  );
 }
 
 /**
@@ -71,7 +78,7 @@ export function isCompleteAIResponse(response: AIAnalysisResponse): response is 
  */
 export function hasAIQuestion(response: AIAnalysisResponse): boolean {
   if (Array.isArray(response)) {
-    return response.length > 0 && 'question' in response[response.length - 1];
+    return response.length > 0 && "question" in response[response.length - 1];
   }
   return false;
 }
@@ -82,7 +89,12 @@ export function hasAIQuestion(response: AIAnalysisResponse): boolean {
 export function hasAnswerOptions(response: AIAnalysisResponse): boolean {
   if (Array.isArray(response)) {
     const lastItem = response[response.length - 1];
-    return !!(lastItem && 'answer_options' in lastItem && lastItem.answer_options && lastItem.answer_options.length > 0);
+    return !!(
+      lastItem &&
+      "answer_options" in lastItem &&
+      lastItem.answer_options &&
+      lastItem.answer_options.length > 0
+    );
   }
   return false;
 }
@@ -90,7 +102,9 @@ export function hasAnswerOptions(response: AIAnalysisResponse): boolean {
 /**
  * Get the latest question from AI response
  */
-export function getLatestQuestion(response: AIAnalysisResponse): AIQuestionResponse | null {
+export function getLatestQuestion(
+  response: AIAnalysisResponse,
+): AIQuestionResponse | null {
   if (Array.isArray(response) && response.length > 0) {
     return response[response.length - 1];
   }
@@ -100,7 +114,9 @@ export function getLatestQuestion(response: AIAnalysisResponse): AIQuestionRespo
 /**
  * Get all conversation history from AI response
  */
-export function getConversationHistory(response: AIAnalysisResponse): AIQuestionResponse[] {
+export function getConversationHistory(
+  response: AIAnalysisResponse,
+): AIQuestionResponse[] {
   if (Array.isArray(response)) {
     return response;
   }

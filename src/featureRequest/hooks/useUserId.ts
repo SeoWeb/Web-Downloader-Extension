@@ -1,4 +1,4 @@
-import { useGlobalUserId } from '../../common/hooks/useGlobalUserId';
+import { useGlobalUserId } from "../../common/hooks/useGlobalUserId";
 
 /**
  * @deprecated Use useGlobalUserId instead for consistency across the extension
@@ -6,13 +6,13 @@ import { useGlobalUserId } from '../../common/hooks/useGlobalUserId';
  */
 export function useUserId() {
   const globalUserIdData = useGlobalUserId();
-  
+
   return {
     userId: globalUserIdData.userId,
     loading: globalUserIdData.loading,
     error: globalUserIdData.error,
     hasPermission: globalUserIdData.hasPermission,
     permissionRequesting: globalUserIdData.permissionRequesting,
-    requestPermission: globalUserIdData.requestPermission
+    requestPermission: globalUserIdData.requestPermission,
   };
 }

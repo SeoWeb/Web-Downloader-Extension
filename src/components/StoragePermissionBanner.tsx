@@ -1,32 +1,32 @@
-import { useState } from 'react';
-import { Button } from './Button';
-import { requestStoragePermission } from '../background/userIdManager';
+import { useState } from "react";
+import { Button } from "./Button";
+import { requestStoragePermission } from "../background/userIdManager";
 
 interface StoragePermissionBannerProps {
   onPermissionGranted?: () => void;
   onPermissionDenied?: () => void;
 }
 
-export function StoragePermissionBanner({ 
-  onPermissionGranted, 
-  onPermissionDenied 
+export function StoragePermissionBanner({
+  onPermissionGranted,
+  onPermissionDenied,
 }: StoragePermissionBannerProps) {
   const [isRequesting, setIsRequesting] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
   const handleRequestPermission = async () => {
     setIsRequesting(true);
-    
+
     try {
       const granted = await requestStoragePermission();
-      
+
       if (granted) {
         onPermissionGranted?.();
       } else {
         onPermissionDenied?.();
       }
     } catch (error) {
-      console.error('Error requesting storage permission:', error);
+      console.error("Error requesting storage permission:", error);
       onPermissionDenied?.();
     } finally {
       setIsRequesting(false);
@@ -65,8 +65,9 @@ export function StoragePermissionBanner({
           </h3>
           <div className="mt-2 text-sm text-blue-700">
             <p>
-              Allow storage access to remember your download filter preferences across browser sessions. 
-              Your preferences will be saved locally and never shared.
+              Allow storage access to remember your download filter preferences
+              across browser sessions. Your preferences will be saved locally
+              and never shared.
             </p>
           </div>
           <div className="mt-4 flex space-x-2">
@@ -75,7 +76,7 @@ export function StoragePermissionBanner({
               disabled={isRequesting}
               className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-1"
             >
-              {isRequesting ? 'Requesting...' : 'Allow Storage'}
+              {isRequesting ? "Requesting..." : "Allow Storage"}
             </Button>
             <button
               onClick={handleDismiss}

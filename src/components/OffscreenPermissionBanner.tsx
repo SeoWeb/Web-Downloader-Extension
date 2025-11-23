@@ -1,31 +1,31 @@
-import { useState } from 'react';
-import { Button } from './Button';
-import { requestOffscreenPermission } from '../common/permissions';
+import { useState } from "react";
+import { Button } from "./Button";
+import { requestOffscreenPermission } from "../common/permissions";
 
 interface OffscreenPermissionBannerProps {
   onPermissionGranted?: () => void;
   onPermissionDenied?: () => void;
 }
 
-export function OffscreenPermissionBanner({ 
-  onPermissionGranted, 
-  onPermissionDenied 
+export function OffscreenPermissionBanner({
+  onPermissionGranted,
+  onPermissionDenied,
 }: OffscreenPermissionBannerProps) {
   const [isRequesting, setIsRequesting] = useState(false);
 
   const handleRequestPermission = async () => {
     setIsRequesting(true);
-    
+
     try {
       const granted = await requestOffscreenPermission();
-      
+
       if (granted) {
         onPermissionGranted?.();
       } else {
         onPermissionDenied?.();
       }
     } catch (error) {
-      console.error('Error requesting offscreen permission:', error);
+      console.error("Error requesting offscreen permission:", error);
       onPermissionDenied?.();
     } finally {
       setIsRequesting(false);
@@ -64,7 +64,7 @@ export function OffscreenPermissionBanner({
               disabled={isRequesting}
               className="bg-yellow-600 hover:bg-yellow-700 text-white text-sm px-3 py-1"
             >
-              {isRequesting ? 'Requesting...' : 'Allow Offscreen'}
+              {isRequesting ? "Requesting..." : "Allow Offscreen"}
             </Button>
           </div>
         </div>

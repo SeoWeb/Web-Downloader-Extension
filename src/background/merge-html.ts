@@ -1,28 +1,330 @@
 import * as cheerio from "cheerio";
+import {
+  DEFAULT_MEMORY_LIMITS,
+  MEMORY_ERROR_MESSAGES,
+} from "../utils/memoryLimits";
+import { memoryManager } from "../utils/MemoryManager";
 
-export function mergeHtml(html1: string, html2: string) {
-  const $1 = cheerio.load(html1);
-  const $2 = cheerio.load(html2);
-  const parentSelector = findParentSelector($1, $2);
-  if (parentSelector) {
-    const $container1 = $1(parentSelector);
-    const $container2 = $2(parentSelector);
-    const children1 = $container1.children();
-    const children2 = $container2.children();
-    const firstCild1 = children1.first().html() || "";
-    const firstCild2 = children2.first().html() || "";
+interface MergeHtmlOptions {
+  maxHtmlSize?: number;
+  maxIterations?: number;
+  enableMemoryCheck?: boolean;
+  trackMemory?: boolean;
+}
 
-    if (compareHTMLBlocks(firstCild1, firstCild2)) {
-      return $2.html();
-    } else {
-      const length2 = children2.length;
-      for (let i = 0; i < length2; i++) {
-        $container1.append(children2[i]);
-      }
+export function mergeHtml(
+  html1: string,
+  html2: string,
+  options: MergeHtmlOptions = {},
+) {
+  const {
+    maxHtmlSize = DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE,
+    maxIterations = 1000,
+    enableMemoryCheck = true,
+    trackMemory = false,
+  } = options;
+
+  // Memory safety check before processing
+  if (enableMemoryCheck) {
+    const combinedSize = html1.length + html2.length;
+
+    if (combinedSize > maxHtmlSize) {
+      console.warn(
+        `HTML content too large for merging: ${formatBytes(combinedSize)} > ${formatBytes(maxHtmlSize)}`,
+      );
+      throw new Error(
+        MEMORY_ERROR_MESSAGES.HTML_TOO_LARGE(combinedSize, maxHtmlSize),
+      );
+    }
+
+    // Check memory availability
+    if (!memoryManager.checkMemoryAvailability(combinedSize * 2)) {
+      // Account for growth during merge
+      console.warn(`Insufficient memory for HTML merge operation`);
+      throw new Error(MEMORY_ERROR_MESSAGES.INSUFFICIENT_MEMORY);
     }
   }
 
-  return $1.html();
+  // Track memory usage if requested
+  let memoryStats = trackMemory ? memoryManager.getMemoryStats() : null;
+
+  try {
+    // Validate HTML content before parsing
+    if (!isValidHtml(html1) || !isValidHtml(html2)) {
+      throw new Error("Invalid HTML content provided for merge");
+    }
+
+    const $1 = cheerio.load(html1);
+    const $2 = cheerio.load(html2);
+
+    // Check for potential exponential growth scenarios
+    const complexity = analyzeHtmlComplexity(html1, html2);
+    if (complexity.isExponential) {
+      console.warn(
+        "Potential exponential growth detected, using safe merge strategy",
+      );
+      return safeHtmlMerge(html1, html2, options);
+    }
+
+    const parentSelector = findParentSelector($1, $2);
+    if (parentSelector) {
+      const $container1 = $1(parentSelector);
+      const $container2 = $2(parentSelector);
+      const children1 = $container1.children();
+      const children2 = $container2.children();
+      const firstChild1 = children1.first().html() || "";
+      const firstChild2 = children2.first().html() || "";
+
+      if (compareHTMLBlocks(firstChild1, firstChild2)) {
+        const result = $2.html();
+
+        // Final memory check
+        if (enableMemoryCheck && result.length > maxHtmlSize) {
+          throw new Error(
+            MEMORY_ERROR_MESSAGES.HTML_TOO_LARGE(result.length, maxHtmlSize),
+          );
+        }
+
+        return result;
+      } else {
+        const length2 = children2.length;
+
+        // Prevent excessive iterations
+        const iterations = Math.min(length2, maxIterations);
+
+        for (let i = 0; i < iterations; i++) {
+          $container1.append(children2[i]);
+
+          // Periodic memory check during merging
+          if (enableMemoryCheck && i % 100 === 0) {
+            const currentSize = $1.html()!.length;
+            if (currentSize > maxHtmlSize) {
+              console.warn(
+                `HTML size exceeded limit during merge at iteration ${i}: ${formatBytes(currentSize)}`,
+              );
+              throw new Error(
+                MEMORY_ERROR_MESSAGES.HTML_TOO_LARGE(currentSize, maxHtmlSize),
+              );
+            }
+          }
+        }
+      }
+    }
+
+    const result = $1.html();
+
+    // Final validation
+    if (enableMemoryCheck && result.length > maxHtmlSize) {
+      throw new Error(
+        MEMORY_ERROR_MESSAGES.HTML_TOO_LARGE(result.length, maxHtmlSize),
+      );
+    }
+
+    if (trackMemory) {
+      const finalStats = memoryManager.getMemoryStats();
+      console.log(
+        `Memory usage after HTML merge: ${formatBytes(finalStats.totalMemoryUsed)} (${finalStats.totalMemoryUsed - (memoryStats?.totalMemoryUsed || 0)} bytes increase)`,
+      );
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Error during HTML merge:", error);
+
+    // Fallback to safe merge if regular merge fails
+    if (
+      error instanceof Error &&
+      (error.message?.includes("memory") || error.message?.includes("size"))
+    ) {
+      console.warn(
+        "Regular merge failed due to memory constraints, using safe fallback",
+      );
+      return safeHtmlMerge(html1, html2, options);
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Safe HTML merge with minimal memory usage and growth
+ */
+function safeHtmlMerge(
+  html1: string,
+  html2: string,
+  options: MergeHtmlOptions = {},
+): string {
+  const { maxHtmlSize = DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE } = options;
+
+  try {
+    // Parse both HTML documents minimally
+    const $1 = cheerio.load(html1);
+    const $2 = cheerio.load(html2);
+
+    // Extract only the body content to avoid excessive duplication
+    const body1 = $1("body").html() || "";
+    const body2 = $2("body").html() || "";
+
+    // Simple concatenation with size limit
+    const combinedContent = body1 + "\n" + body2;
+
+    if (combinedContent.length > maxHtmlSize) {
+      // Truncate content if it's still too large
+      const truncatedContent =
+        combinedContent.substring(0, maxHtmlSize - 1000) +
+        "\n<!-- Content truncated due to size limits -->";
+      console.warn(
+        `HTML content truncated to fit size limits: ${combinedContent.length} -> ${truncatedContent.length} bytes`,
+      );
+
+      return createSimpleHtmlWrapper(truncatedContent, $1);
+    }
+
+    return createSimpleHtmlWrapper(combinedContent, $1);
+  } catch (error) {
+    console.error("Safe HTML merge failed:", error);
+
+    // Last resort: return the first HTML content
+    console.warn("All merge strategies failed, returning first HTML content");
+    return html1.length > maxHtmlSize
+      ? html1.substring(0, maxHtmlSize) + "\n<!-- Content truncated -->"
+      : html1;
+  }
+}
+
+/**
+ * Create a simple HTML wrapper for merged content
+ */
+function createSimpleHtmlWrapper(
+  content: string,
+  $template: cheerio.CheerioAPI,
+): string {
+  try {
+    // Extract basic structure from template
+    const title = $template("title").text() || "Merged Content";
+    const headContent = $template("head").html() || "";
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHtml(title)}</title>
+  ${headContent}
+</head>
+<body>
+  ${content}
+</body>
+</html>`;
+  } catch (error) {
+    // Fallback minimal HTML structure
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Merged Content</title>
+</head>
+<body>
+  ${escapeHtml(content)}
+</body>
+</html>`;
+  }
+}
+
+/**
+ * Validate HTML content for safety
+ */
+function isValidHtml(html: string): boolean {
+  if (!html || typeof html !== "string") return false;
+
+  // Basic size check
+  if (html.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) return false;
+
+  // Basic structure validation - check for basic HTML tags
+  const trimmedHtml = html.trim().toLowerCase();
+  return (
+    trimmedHtml.includes("<html") ||
+    trimmedHtml.includes("<!doctype") ||
+    trimmedHtml.includes("<head") ||
+    trimmedHtml.includes("<body")
+  );
+}
+
+/**
+ * Analyze HTML complexity to detect potential exponential growth
+ */
+function analyzeHtmlComplexity(
+  html1: string,
+  html2: string,
+): {
+  isExponential: boolean;
+  complexity: number;
+  reason?: string;
+} {
+  const dom1 = cheerio.load(html1);
+  const dom2 = cheerio.load(html2);
+
+  const elements1 = dom1("*").length;
+  const elements2 = dom2("*").length;
+  const totalElements = elements1 + elements2;
+
+  // Check for potentially problematic patterns
+  const hasNestedTables =
+    dom1("table table").length > 0 || dom2("table table").length > 0;
+  const hasDeeplyNested =
+    dom1("*").filter(function () {
+      return dom1(this).parents().length > 20;
+    }).length > 0;
+  const hasLargeTables =
+    dom1("table").filter(function () {
+      return dom1(this).find("tr").length > 1000;
+    }).length > 0;
+
+  const complexity = totalElements;
+  const isExponential =
+    complexity > 50000 || hasNestedTables || hasDeeplyNested || hasLargeTables;
+
+  let reason;
+  if (totalElements > 50000) reason = `Too many elements: ${totalElements}`;
+  else if (hasNestedTables) reason = "Nested tables detected";
+  else if (hasDeeplyNested) reason = "Deeply nested elements detected";
+  else if (hasLargeTables) reason = "Large tables detected";
+
+  return { isExponential, complexity, reason };
+}
+
+/**
+ * Escape HTML content to prevent injection
+ */
+function escapeHtml(text: string): string {
+  if (typeof document !== "undefined") {
+    const tempDiv = document.createElement("div");
+    tempDiv.textContent = text;
+    return tempDiv.innerHTML;
+  }
+
+  // Basic HTML escaping for non-browser environments
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Format bytes to human readable format
+ */
+function formatBytes(bytes: number): string {
+  const units = ["B", "KB", "MB", "GB"];
+  let size = bytes;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+
+  return `${size.toFixed(1)}${units[unitIndex]}`;
 }
 
 function compareHTMLBlocks(html1: string, html2: string) {
@@ -48,7 +350,7 @@ function findParentSelector($1: cheerio.CheerioAPI, $2: cheerio.CheerioAPI) {
         }
       }
     } catch (error) {
-      //
+      // Silently ignore selector generation errors
     }
   });
 

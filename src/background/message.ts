@@ -48,10 +48,10 @@ export async function messageWorker(
             data: { message },
           }),
       );
-    
+
     case messageActions.CHECK_ONLINE_STATUS:
       return true;
-      
+
     default:
       return null;
   }

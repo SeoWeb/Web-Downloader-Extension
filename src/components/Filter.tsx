@@ -2,8 +2,15 @@ import { useState, useEffect } from "react";
 import { Checkbox } from "./Checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Button } from "./Button";
-import { trackDownload, cleanWebsiteUrl } from "../common/services/analyticsService";
-import { useFilterOptions, useDownloadOptions, useStorageStatus } from "../hooks/useFilterOptions";
+import {
+  trackDownload,
+  cleanWebsiteUrl,
+} from "../common/services/analyticsService";
+import {
+  useFilterOptions,
+  useDownloadOptions,
+  useStorageStatus,
+} from "../hooks/useFilterOptions";
 import { StoragePermissionBanner } from "./StoragePermissionBanner";
 import { OffscreenPermissionBanner } from "./OffscreenPermissionBanner";
 import { hasStoragePermission } from "../background/userIdManager";
@@ -28,7 +35,9 @@ export default function Filter({
 }) {
   const [showPermissionBanner, setShowPermissionBanner] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [hasOffscreenPerm, setHasOffscreenPerm] = useState<boolean | null>(null);
+  const [hasOffscreenPerm, setHasOffscreenPerm] = useState<boolean | null>(
+    null,
+  );
 
   const {
     options,
@@ -51,16 +60,19 @@ export default function Filter({
       try {
         const storagePermission = await hasStoragePermission();
         setHasPermission(storagePermission);
-        
+
         // Show banner if permission is not granted and we haven't shown it before
-        if (!storagePermission && !localStorage.getItem('storage-banner-dismissed')) {
+        if (
+          !storagePermission &&
+          !localStorage.getItem("storage-banner-dismissed")
+        ) {
           setShowPermissionBanner(true);
         }
 
         const offscreenPermission = await hasOffscreenPermission();
         setHasOffscreenPerm(offscreenPermission);
       } catch (error) {
-        console.error('Error checking permissions:', error);
+        console.error("Error checking permissions:", error);
         setHasPermission(false);
         setHasOffscreenPerm(false);
       }
@@ -86,19 +98,21 @@ export default function Filter({
 
   const handleDownloadHTMLChange = (checked: CheckedState) => {
     const isChecked = !!checked;
-    
+
     // If unchecking HTML and no other content is selected, enable text content
-    if (!isChecked && 
-        !options.downloadImages && 
-        !options.downloadLinks && 
-        !options.downloadAssets && 
-        !options.downloadContentAsText && 
-        !options.downloadDocuments) {
+    if (
+      !isChecked &&
+      !options.downloadImages &&
+      !options.downloadLinks &&
+      !options.downloadAssets &&
+      !options.downloadContentAsText &&
+      !options.downloadDocuments
+    ) {
       setDownloadContentAsText(true);
     }
-    
+
     setDownloadHTML(isChecked);
-    
+
     // If enabling HTML, also enable images and assets
     if (isChecked) {
       setDownloadImages(true);
@@ -112,7 +126,7 @@ export default function Filter({
 
   const handleSingleFileChange = (checked: CheckedState) => {
     const isChecked = !!checked;
-    
+
     if (isChecked) {
       // If enabling single file, disable all other options
       setDownloadHTML(false);
@@ -122,7 +136,7 @@ export default function Filter({
       setDownloadContentAsText(false);
       setDownloadDocuments(false);
     }
-    
+
     setSingleFile(isChecked);
   };
 
@@ -139,7 +153,7 @@ export default function Filter({
 
   const handlePermissionDenied = () => {
     setShowPermissionBanner(false);
-    localStorage.setItem('storage-banner-dismissed', 'true');
+    localStorage.setItem("storage-banner-dismissed", "true");
   };
 
   const handleOffscreenPermissionGranted = () => {
@@ -182,7 +196,7 @@ export default function Filter({
           onPermissionDenied={handlePermissionDenied}
         />
       )}
-      
+
       {/* Storage Status Indicator */}
       {hasPermission === false && !showPermissionBanner && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
@@ -223,7 +237,7 @@ export default function Filter({
             Download HTML
           </label>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Checkbox
             id="downloadImages"
@@ -239,7 +253,7 @@ export default function Filter({
             Download images
           </label>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Checkbox
             id="downloadLinks"
@@ -253,7 +267,7 @@ export default function Filter({
             Download links (saved as html files)
           </label>
         </div>
-        
+
         {options.downloadLinks && (
           <div
             className={`bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4`}
@@ -286,7 +300,7 @@ export default function Filter({
             </button>
           </div>
         )}
-        
+
         <div className="flex items-center space-x-2">
           <Checkbox
             id="downloadAssets"
@@ -302,7 +316,7 @@ export default function Filter({
             Download assets (css, js)
           </label>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Checkbox
             id="downloadDocuments"
@@ -318,7 +332,7 @@ export default function Filter({
             Download documents (pdf, doc, etc.)
           </label>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Checkbox
             id="downloadContentAsText"
@@ -334,7 +348,7 @@ export default function Filter({
             Download content as text
           </label>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Checkbox
             id="singleFile"
@@ -349,7 +363,7 @@ export default function Filter({
           </label>
         </div>
       </div>
-      
+
       <Button
         className="mt-4"
         onClick={handleDownload}

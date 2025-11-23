@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
-import { useFilterStore } from '../stores/filterStore';
-import { FilterOptions } from '../types/filterTypes';
+import { useEffect } from "react";
+import { useFilterStore } from "../stores/filterStore";
+import { FilterOptions } from "../types/filterTypes";
 
 /**
  * Hook for accessing and managing filter options
@@ -36,25 +36,30 @@ export function useFilterOptions() {
     isInitialized,
     hasStorageError,
     storageErrorMessage,
-    
+
     // Actions
     setFilterOption,
     setAllOptions,
     resetToDefaults,
     clearStorageError,
-    
+
     // Computed values
     hasAnyContentSelected: hasAnyContentSelected(),
     isValidConfiguration: isValidConfiguration(),
-    
+
     // Convenience methods for specific options
-    setDownloadHTML: (value: boolean) => setFilterOption('downloadHTML', value),
-    setDownloadImages: (value: boolean) => setFilterOption('downloadImages', value),
-    setDownloadLinks: (value: boolean) => setFilterOption('downloadLinks', value),
-    setDownloadAssets: (value: boolean) => setFilterOption('downloadAssets', value),
-    setDownloadContentAsText: (value: boolean) => setFilterOption('downloadContentAsText', value),
-    setDownloadDocuments: (value: boolean) => setFilterOption('downloadDocuments', value),
-    setSingleFile: (value: boolean) => setFilterOption('singleFile', value),
+    setDownloadHTML: (value: boolean) => setFilterOption("downloadHTML", value),
+    setDownloadImages: (value: boolean) =>
+      setFilterOption("downloadImages", value),
+    setDownloadLinks: (value: boolean) =>
+      setFilterOption("downloadLinks", value),
+    setDownloadAssets: (value: boolean) =>
+      setFilterOption("downloadAssets", value),
+    setDownloadContentAsText: (value: boolean) =>
+      setFilterOption("downloadContentAsText", value),
+    setDownloadDocuments: (value: boolean) =>
+      setFilterOption("downloadDocuments", value),
+    setSingleFile: (value: boolean) => setFilterOption("singleFile", value),
   };
 }
 
@@ -64,9 +69,15 @@ export function useFilterOptions() {
  * @returns [value, setter] tuple
  */
 export function useFilterOption<K extends keyof FilterOptions>(
-  key: K
+  key: K,
 ): [FilterOptions[K], (value: FilterOptions[K]) => void, boolean] {
-  const { options, setFilterOption, isInitialized, initializeFromStorage, hasStorageError } = useFilterStore();
+  const {
+    options,
+    setFilterOption,
+    isInitialized,
+    initializeFromStorage,
+    hasStorageError,
+  } = useFilterStore();
 
   // Initialize from storage on mount
   useEffect(() => {
@@ -111,7 +122,8 @@ export function useDownloadOptions() {
  * Hook for checking if storage is available and working
  */
 export function useStorageStatus() {
-  const { isInitialized, isLoading, hasStorageError, storageErrorMessage } = useFilterStore();
+  const { isInitialized, isLoading, hasStorageError, storageErrorMessage } =
+    useFilterStore();
 
   return {
     isStorageAvailable: isInitialized && !hasStorageError,

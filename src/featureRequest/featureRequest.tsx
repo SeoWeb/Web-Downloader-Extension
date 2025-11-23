@@ -1,12 +1,12 @@
-import React, { useEffect } from 'react';
-import { createRoot } from 'react-dom/client';
-import '../popup.css';
-import { AIFeatureRequestForm } from './components/AIFeatureRequestForm';
-import { FeatureList } from './components/FeatureList';
-import { PermissionRequest } from './components/PermissionRequest';
-import { useUserId } from './hooks/useUserId';
-import { useFeatureRequests } from './hooks/useFeatureRequests';
-import { VoteRequest } from './utils/api';
+import React, { useEffect } from "react";
+import { createRoot } from "react-dom/client";
+import "../popup.css";
+import { AIFeatureRequestForm } from "./components/AIFeatureRequestForm";
+import { FeatureList } from "./components/FeatureList";
+import { PermissionRequest } from "./components/PermissionRequest";
+import { useUserId } from "./hooks/useUserId";
+import { useFeatureRequests } from "./hooks/useFeatureRequests";
+import { VoteRequest } from "./utils/api";
 
 function FeatureRequestPage() {
   const {
@@ -15,9 +15,9 @@ function FeatureRequestPage() {
     error: userIdError,
     hasPermission,
     permissionRequesting,
-    requestPermission
+    requestPermission,
   } = useUserId();
-  
+
   const {
     features,
     loading: featuresLoading,
@@ -26,7 +26,7 @@ function FeatureRequestPage() {
     fetchFeatures,
     submitFeature,
     submitVote,
-    clearError
+    clearError,
   } = useFeatureRequests();
 
   // Fetch features when component mounts
@@ -35,7 +35,7 @@ function FeatureRequestPage() {
   }, [fetchFeatures]);
 
   // Filter user's own features for highlighting
-  const userFeatures = userId ? features.filter(f => f.id === userId) : [];
+  const userFeatures = userId ? features.filter((f) => f.id === userId) : [];
 
   const handleSubmitFeature = async (featureRequest: any) => {
     if (!userId) {
@@ -80,7 +80,8 @@ function FeatureRequestPage() {
             </h1>
           </div>
           <p className="text-gray-600 mt-1">
-            Help us improve the extension by submitting feature requests and viewing existing ones.
+            Help us improve the extension by submitting feature requests and
+            viewing existing ones.
           </p>
         </div>
       </div>
@@ -90,7 +91,9 @@ function FeatureRequestPage() {
         {/* Error Display */}
         {(featuresError || userIdError) && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded flex justify-between items-center">
-            <span><strong>Error:</strong> {featuresError || userIdError}</span>
+            <span>
+              <strong>Error:</strong> {featuresError || userIdError}
+            </span>
             <button
               onClick={clearError}
               className="text-red-700 hover:text-red-900 font-bold"

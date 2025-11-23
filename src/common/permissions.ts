@@ -3,9 +3,9 @@
  */
 export async function hasStoragePermission(): Promise<boolean> {
   try {
-    return await chrome.permissions.contains({ permissions: ['storage'] });
+    return await chrome.permissions.contains({ permissions: ["storage"] });
   } catch (error) {
-    console.error('Error checking storage permission:', error);
+    console.error("Error checking storage permission:", error);
     return false;
   }
 }
@@ -15,9 +15,9 @@ export async function hasStoragePermission(): Promise<boolean> {
  */
 export async function requestStoragePermission(): Promise<boolean> {
   try {
-    return await chrome.permissions.request({ permissions: ['storage'] });
+    return await chrome.permissions.request({ permissions: ["storage"] });
   } catch (error) {
-    console.error('Error requesting storage permission:', error);
+    console.error("Error requesting storage permission:", error);
     return false;
   }
 }
@@ -27,9 +27,9 @@ export async function requestStoragePermission(): Promise<boolean> {
  */
 export async function hasOffscreenPermission(): Promise<boolean> {
   try {
-    return await chrome.permissions.contains({ permissions: ['offscreen'] });
+    return await chrome.permissions.contains({ permissions: ["offscreen"] });
   } catch (error) {
-    console.error('Error checking offscreen permission:', error);
+    console.error("Error checking offscreen permission:", error);
     return false;
   }
 }
@@ -39,9 +39,9 @@ export async function hasOffscreenPermission(): Promise<boolean> {
  */
 export async function requestOffscreenPermission(): Promise<boolean> {
   try {
-    return await chrome.permissions.request({ permissions: ['offscreen'] });
+    return await chrome.permissions.request({ permissions: ["offscreen"] });
   } catch (error) {
-    console.error('Error requesting offscreen permission:', error);
+    console.error("Error requesting offscreen permission:", error);
     return false;
   }
 }

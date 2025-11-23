@@ -1,4 +1,4 @@
-import { API_URLS } from '../apiConstants';
+import { API_URLS } from "../apiConstants";
 
 export interface AnalyticsSettings {
   html: 0 | 1;
@@ -29,7 +29,9 @@ export interface DownloadOptions {
 /**
  * Converts download options to analytics settings format
  */
-export function convertDownloadOptionsToAnalytics(options: DownloadOptions): AnalyticsSettings {
+export function convertDownloadOptionsToAnalytics(
+  options: DownloadOptions,
+): AnalyticsSettings {
   return {
     html: options.downloadHTML ? 1 : 0,
     images: options.downloadImages ? 1 : 0,
@@ -44,14 +46,16 @@ export function convertDownloadOptionsToAnalytics(options: DownloadOptions): Ana
 /**
  * Sends analytics data to the server
  */
-export async function sendAnalytics(payload: AnalyticsPayload): Promise<boolean> {
+export async function sendAnalytics(
+  payload: AnalyticsPayload,
+): Promise<boolean> {
   try {
-    console.log('Sending analytics data:', payload);
-    
+    console.log("Sending analytics data:", payload);
+
     const response = await fetch(API_URLS.ANALYTICS, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
     });
@@ -72,10 +76,10 @@ export async function sendAnalytics(payload: AnalyticsPayload): Promise<boolean>
 export async function trackDownload(
   userId: number,
   website: string,
-  downloadOptions: DownloadOptions
+  downloadOptions: DownloadOptions,
 ): Promise<boolean> {
   const settings = convertDownloadOptionsToAnalytics(downloadOptions);
-  
+
   const payload: AnalyticsPayload = {
     user_id: userId,
     website,

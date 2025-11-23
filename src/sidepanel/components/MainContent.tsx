@@ -48,7 +48,6 @@ export function MainContent({
             </React.Suspense>
           </div>
         )}
-      
     </>
   );
 }
