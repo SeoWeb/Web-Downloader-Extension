@@ -12,6 +12,7 @@ export async function scrollDownAndScrape(tabId: number) {
       top,
       html,
       height,
+      viewportHeight: scrollResponse.viewportHeight,
     };
   }
 

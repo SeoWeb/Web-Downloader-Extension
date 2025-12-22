@@ -19,6 +19,7 @@ export interface ScrollingResponse {
   height?: number;
   html?: string;
   top?: number;
+  viewportHeight?: number;
 }
 
 interface UseScrapingDownloaderProps {
@@ -28,7 +29,6 @@ interface UseScrapingDownloaderProps {
   setIsScraping: React.Dispatch<React.SetStateAction<boolean>>;
   downloadOptions: DownloadOptions | null;
   setMessages: React.Dispatch<React.SetStateAction<string[]>>;
-  setDownloadDone: (links: string[]) => void;
 }
 
 export function useScrapingDownloader({
@@ -38,7 +38,6 @@ export function useScrapingDownloader({
   setIsScraping,
   downloadOptions,
   setMessages,
-  setDownloadDone,
 }: UseScrapingDownloaderProps) {
   const [downloadResponse, setDownloadResponse] =
     useState<ScrollingResponse | null>(null);
@@ -76,23 +75,35 @@ export function useScrapingDownloader({
 
     if (response?.height && response.html) {
       setDownloadResponse((prev) => {
-        const prevTop = prev?.top || 0;
-        const prevHeight = prev?.height || 0;
         const data = mergeDownloadResponse(prev, response);
 
         // Check if we've reached the bottom of the page
-        // If scroll position hasn't changed significantly OR we've made too many attempts, stop scrolling
-        const scrollPositionChanged = Math.abs((response.top || 0) - prevTop) > 10; // More than 10px change
-        const contentHeightChanged = Math.abs((response.height || 0) - prevHeight) > 50; // More than 50px change
+        const prevTop = prev?.top || 0;
+        const currentTop = response.top || 0;
+        const currentHeight = response.height || 0;
         
-        if (!scrollPositionChanged && !contentHeightChanged) {
-          console.log("Scroll position and content height unchanged, stopping scroll");
+        // Calculate if we're at the bottom: scrollTop + viewport height >= total page height
+        const viewportHeight = response.viewportHeight || 1000;
+        const isAtBottom = currentTop + viewportHeight >= currentHeight - 100; // 100px buffer
+        
+        const scrollPositionChanged = Math.abs(currentTop - prevTop) > 10; // More than 10px change
+        
+        // Stop scrolling if:
+        // 1. We're at the bottom of the page, OR
+        // 2. Position hasn't changed (stuck), OR
+        // 3. We've exceeded the safety limit
+        if (isAtBottom) {
+          console.log("Reached bottom of page, stopping scroll");
           setIsScraping(false);
-        } else if (scrollAttempts >= 50) { // Safety limit to prevent infinite scrolling
+        } else if (prev && !scrollPositionChanged) {
+          console.log("Scroll position unchanged (stuck), stopping scroll");
+          setIsScraping(false);
+        } else if (scrollAttempts >= 500) { // Increased safety limit for very long pages
           console.log("Maximum scroll attempts reached, stopping scroll");
           setIsScraping(false);
           setMessages((prev) => [...prev, "Maximum scroll attempts reached"]);
         } else {
+          // Continue scrolling
           setScrollAttempts((prevCount) => prevCount + 1);
         }
 
@@ -111,24 +122,25 @@ export function useScrapingDownloader({
       console.log("Starting download with HTML content");
       startDownload(downloadResponse.html)
         .then((links) => {
-          console.log("Download completed successfully with links:", links);
-          setDownloadDone(links || []);
-          setDownloadResponse(null);
+          console.log("Download initiated successfully with links:", links);
+          // Don't reset downloadResponse here - keep it to maintain filter hidden state
+          // It will be cleared when DOWNLOAD_COMPLETE or DOWNLOAD_CANCELLED message is received
         })
         .catch((error) => {
           console.error("Download failed:", error);
           setMessages((prev) => [...prev, "Failed to complete download"]);
+          // Reset on error
+          setDownloadResponse(null);
         });
     }
   }, [
     isScraping,
-    scrollAttempts,
     downloadResponse?.html,
     downloadOptions,
     scrape,
     startDownload,
-    setDownloadDone,
     setMessages,
+    setDownloadResponse,
   ]);
 
   return {

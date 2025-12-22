@@ -12,6 +12,7 @@ export interface ScrollResult {
   success: boolean;
   top: number;
   height: number;
+  viewportHeight: number;
   html?: string;
   isInitial?: boolean;
   isComplete?: boolean;
@@ -339,6 +340,7 @@ export async function smoothScrollToBottom(): Promise<ScrollResult> {
       success: true,
       top: getCurrentScrollTop(),
       height: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
       html: document.documentElement.outerHTML,
     };
   }

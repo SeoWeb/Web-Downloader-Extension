@@ -1,5 +1,5 @@
 import React from "react";
-import { Button } from "../../components/Button";
+// import { Button } from "../../components/Button";
 import { MessageAction, messageActions } from "../../common/message";
 
 const ChromeExtensionRating = React.lazy(
@@ -15,11 +15,11 @@ interface DownloadCompleteProps {
 }
 
 export function DownloadComplete({
-  tabId,
-  tabUrl,
-  links,
+  // tabId,
+  // tabUrl,
+  // links,
   action,
-  reset,
+  // reset,
 }: DownloadCompleteProps) {
   if (action !== messageActions.DOWNLOAD_DONE) {
     return null;
@@ -39,7 +39,7 @@ export function DownloadComplete({
           <ChromeExtensionRating />
         </React.Suspense>
       </div>
-      <div className="pb-2 font-bold">Other links to download:</div>
+      {/* <div className="pb-2 font-bold">Other links to download:</div>
       <div className="pb-2 flex flex-col gap-0 justify-start">
         {links
           .filter(
@@ -62,7 +62,7 @@ export function DownloadComplete({
               {link}
             </Button>
           ))}
-      </div>
+      </div> */}
     </div>
   );
 }

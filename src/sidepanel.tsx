@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import "./popup.css";
 import { MessageAction, messageActions } from "./common/message";
@@ -74,6 +74,17 @@ export default function SidePanel() {
   // Use the custom hooks
   useActiveTabInfo({ setTabId, setTabUrl, setMessages });
 
+  // Initialize useScrapingDownloader hook early so setDownloadResponse is available
+  const { downloadResponse, setDownloadResponse, setScrollAttempts } =
+    useScrapingDownloader({
+      tabId,
+      tabUrl,
+      isScraping,
+      setIsScraping,
+      downloadOptions,
+      setMessages,
+    });
+
   // Memoize messageWorker to stabilize useMessageListener dependency
   const messageWorker = useCallback(
     async (action: MessageAction, data: any): Promise<any> => {
@@ -83,43 +94,103 @@ export default function SidePanel() {
           // Update completion based on message type if needed
           break;
 
+        case messageActions.DOWNLOAD_COMPLETE:
+          // Download actually completed - file was saved
+          console.log("Download completed:", data);
+          setMessages((prev) => [...prev, "Website scraped!"]);
+          setAction(messageActions.DOWNLOAD_DONE);
+          setMessages((prev) => [...prev, "Zip file created!"]);
+          setMessages((prev) => [...prev, "Download complete"]);
+          // Store download ID for "Show in folder" functionality
+          if (data.downloadId) {
+            chrome.storage.local.set({ lastDownloadId: data.downloadId });
+          }
+          // Reset downloadResponse to allow filter to show again
+          setDownloadResponse(null);
+          break;
+
+        case messageActions.DOWNLOAD_FAILED:
+          // Download failed or was interrupted
+          console.error("Download failed:", data);
+          setMessages((prev) => [
+            ...prev,
+            `Download failed: ${data.error || "Unknown error"}`,
+          ]);
+          setIsScraping(false);
+          setAction(null);
+          // Reset downloadResponse to allow filter to show again
+          setDownloadResponse(null);
+          break;
+
+        case messageActions.DOWNLOAD_CANCELLED:
+          // User cancelled the download
+          console.log("Download cancelled:", data);
+          setMessages((prev) => [...prev, "Download was cancelled"]);
+          setIsScraping(false);
+          setAction(null);
+          // Reset downloadResponse to allow filter to show again
+          setDownloadResponse(null);
+          break;
+
         default:
           break;
       }
       return null;
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [],
-  ); // Keep dependencies minimal, setMessages is stable
+    [setDownloadResponse],
+  ); // Add setDownloadResponse to dependencies
 
   useMessageListener({ messageWorker });
 
-  // Memoize setDownloadDone to stabilize useScrapingDownloader dependency
-  const setDownloadDone = useCallback((newLinks: string[]) => {
-    try {
-      setLinks(newLinks);
-      setMessages((prev) => [...prev, "Website scraped!"]);
-      setAction(messageActions.DOWNLOAD_DONE);
-      setMessages((prev) => [...prev, "Zip file created!"]);
-      setMessages((prev) => [...prev, "Download complete"]);
-    } catch (err) {
-      console.error("Error in download completion:", err);
-      setError(err instanceof Error ? err : new Error(String(err)));
-      setMessages((prev) => [...prev, "Error completing download"]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Keep dependencies minimal, setLinks, setMessages, setAction are stable
+  // Listen for download completion via chrome.storage
+  useEffect(() => {
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+      if (areaName === "local" && changes.downloadComplete) {
+        const downloadComplete = changes.downloadComplete.newValue;
+        if (downloadComplete) {
+          console.log("Download completed via storage:", downloadComplete);
+          setMessages((prev) => [...prev, "Website scraped!"]);
+          setAction(messageActions.DOWNLOAD_DONE);
+          setMessages((prev) => [...prev, "Zip file created!"]);
+          setMessages((prev) => [...prev, "Download complete"]);
+          
+          // Store download ID for "Show in folder" functionality
+          if (downloadComplete.downloadId) {
+            chrome.storage.local.set({ lastDownloadId: downloadComplete.downloadId });
+          }
+          
+          // Reset downloadResponse to allow filter to show again
+          setDownloadResponse(null);
+          
+          // Clear the downloadComplete flag
+          chrome.storage.local.remove("downloadComplete");
+        }
+      }
+    };
 
-  const { downloadResponse, setDownloadResponse, setScrollAttempts } =
-    useScrapingDownloader({
-      tabId,
-      tabUrl,
-      isScraping,
-      setIsScraping,
-      downloadOptions,
-      setMessages,
-      setDownloadDone,
-    });
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, [setMessages, setAction, setDownloadResponse]);
+
+  // Memoize setDownloadDone to stabilize useScrapingDownloader dependency
+  // const setDownloadDone = useCallback((newLinks: string[]) => {
+  //   try {
+  //     setLinks(newLinks);
+  //     setMessages((prev) => [...prev, "Website scraped!"]);
+  //     setAction(messageActions.DOWNLOAD_DONE);
+  //     setMessages((prev) => [...prev, "Zip file created!"]);
+  //     setMessages((prev) => [...prev, "Download complete"]);
+  //   } catch (err) {
+  //     console.error("Error in download completion:", err);
+  //     setError(err instanceof Error ? err : new Error(String(err)));
+  //     setMessages((prev) => [...prev, "Error completing download"]);
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []); // Keep dependencies minimal, setLinks, setMessages, setAction are stable
 
   // Memoize reset function
   const reset = useCallback(
