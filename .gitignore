@@ -9,3 +9,5 @@ dist.zip
 prompts
 zip
 .kilocode
+tests/e2e/screenshots/
+tests/e2e/downloads/
