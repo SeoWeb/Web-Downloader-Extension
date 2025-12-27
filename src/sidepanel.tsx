@@ -145,6 +145,11 @@ export default function SidePanel() {
 
   // Listen for download completion via chrome.storage
   useEffect(() => {
+    // Only set up listener if we have storage permission
+    if (!hasPermission) {
+      return;
+    }
+
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
       if (areaName === "local" && changes.downloadComplete) {
         const downloadComplete = changes.downloadComplete.newValue;
@@ -174,7 +179,7 @@ export default function SidePanel() {
     return () => {
       chrome.storage.onChanged.removeListener(handleStorageChange);
     };
-  }, [setMessages, setAction, setDownloadResponse]);
+  }, [hasPermission, setMessages, setAction, setDownloadResponse]);
 
   // Memoize setDownloadDone to stabilize useScrapingDownloader dependency
   // const setDownloadDone = useCallback((newLinks: string[]) => {

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import {
   getUserId,
   hasStoragePermission,
-  requestStoragePermission,
 } from "../../background/userIdManager";
 
 export interface UseGlobalUserIdReturn {
@@ -54,16 +53,20 @@ export function useGlobalUserId(): UseGlobalUserIdReturn {
       setPermissionRequesting(true);
       setError(null);
 
-      const granted = await requestStoragePermission();
+      // Request both storage and offscreen permissions together
+      const granted = await chrome.permissions.request({ 
+        permissions: ["storage", "offscreen"] 
+      });
+      
       if (granted) {
-        // Permission granted, now fetch user ID
+        // Permissions granted, now fetch user ID
         await checkPermissionAndFetchUserId();
       } else {
-        setError("Storage permission is required to use this extension");
+        setError("Storage and offscreen permissions are required to use this extension");
       }
     } catch (err) {
-      console.error("Error requesting permission:", err);
-      setError("Failed to request storage permission");
+      console.error("Error requesting permissions:", err);
+      setError("Failed to request permissions");
     } finally {
       setPermissionRequesting(false);
     }

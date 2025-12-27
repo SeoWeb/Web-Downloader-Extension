@@ -16,18 +16,21 @@ export function GlobalPermissionRequest({
       <div className="mb-4">
         <div className="text-3xl mb-2">🔒</div>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">
-          Storage Permission Required
+          Permissions Required
         </h2>
         <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-          We need storage permission to improve your download experience.
+          This extension needs storage and offscreen permissions to provide the best download experience.
         </p>
         <div className="text-xs text-gray-500 mb-3 text-left">
           <div className="mb-3">
-            <strong>What is storage permission?</strong>
+            <strong>Storage Permission:</strong>
             <br />
-            Storage permission allows this extension to save small amounts of
-            data locally in your browser. This enables us to remember your
-            preferences and provide a personalized experience across sessions.
+            Allows the extension to save small amounts of data locally in your browser. This enables us to remember your preferences and provide a personalized experience across sessions.
+          </div>
+          <div className="mb-3">
+            <strong>Offscreen Permission:</strong>
+            <br />
+            Enables large file downloads by allowing the extension to process files in the background without affecting your browsing experience.
           </div>
         </div>
         <div className="text-xs text-gray-500 mb-4 text-left">
@@ -40,6 +43,7 @@ export function GlobalPermissionRequest({
             <strong>Privacy:</strong>
             <br />• No personal data
             <br />• No browsing history
+            <br />• All data stays local in your browser
           </div>
         </div>
       </div>
@@ -55,7 +59,7 @@ export function GlobalPermissionRequest({
         disabled={requesting}
         className="px-6 py-2"
       >
-        {requesting ? "Requesting Permission..." : "Enable Storage Permission"}
+        {requesting ? "Requesting Permissions..." : "Enable Permissions"}
       </Button>
 
       <p className="text-xs text-gray-500 mt-3">

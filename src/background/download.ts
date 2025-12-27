@@ -147,12 +147,17 @@ memoryManager.registerMemoryPressureCallback(async (level) => {
 
 // Manage download state using chrome.storage.local to persist across service worker restarts
 export const setDownloadInProgress = async (inProgress: boolean) => {
-  await chrome.storage.local.set({ isDownloadInProgress: inProgress });
+  if (chrome.storage && chrome.storage.local) {
+    await chrome.storage.local.set({ isDownloadInProgress: inProgress });
+  }
 };
 
 export const getDownloadInProgress = async (): Promise<boolean> => {
-  const result = await chrome.storage.local.get("isDownloadInProgress");
-  return result.isDownloadInProgress ?? false;
+  if (chrome.storage && chrome.storage.local) {
+    const result = await chrome.storage.local.get("isDownloadInProgress");
+    return result.isDownloadInProgress ?? false;
+  }
+  return false;
 };
 
 /**
@@ -216,14 +221,16 @@ chrome.downloads.onChanged.addListener(async (delta) => {
       if (downloadInfo) {
         // Store completion status in chrome.storage for the side panel to pick up
         try {
-          await chrome.storage.local.set({
-            downloadComplete: {
-              downloadId: delta.id,
-              filename: downloadInfo.filename,
-              tabId: downloadInfo.tabId,
-              timestamp: Date.now(),
-            },
-          });
+          if (chrome.storage && chrome.storage.local) {
+            await chrome.storage.local.set({
+              downloadComplete: {
+                downloadId: delta.id,
+                filename: downloadInfo.filename,
+                tabId: downloadInfo.tabId,
+                timestamp: Date.now(),
+              },
+            });
+          }
           
           // Also try to send message in case side panel is still open
           try {
@@ -305,33 +312,35 @@ chrome.downloads.onChanged.addListener(async (delta) => {
   
   // Original cleanup logic for object URLs
   if (delta.state && delta.state.current !== "inprogress") {
-    const { downloads } = await chrome.storage.local.get("downloads");
-    const downloadMap = downloads || {};
+    if (chrome.storage && chrome.storage.local) {
+      const { downloads } = await chrome.storage.local.get("downloads");
+      const downloadMap = downloads || {};
 
-    if (downloadMap[delta.id]) {
-      console.log(`Cleaning up object URL for download ${delta.id}`);
-      const url = downloadMap[delta.id];
+      if (downloadMap[delta.id]) {
+        console.log(`Cleaning up object URL for download ${delta.id}`);
+        const url = downloadMap[delta.id];
 
-      // Only revoke object URLs, not data URLs or blob URLs
-      if (url.startsWith("blob:") || url.startsWith("data:")) {
-        try {
-          if (typeof URL.revokeObjectURL === "function") {
-            URL.revokeObjectURL(url);
-          } else {
-            // Send message to offscreen to revoke
-            await setupOffscreenDocument("offscreen.html");
-            chrome.runtime.sendMessage({ action: "revokeBlobUrl", url });
+        // Only revoke object URLs, not data URLs or blob URLs
+        if (url.startsWith("blob:") || url.startsWith("data:")) {
+          try {
+            if (typeof URL.revokeObjectURL === "function") {
+              URL.revokeObjectURL(url);
+            } else {
+              // Send message to offscreen to revoke
+              await setupOffscreenDocument("offscreen.html");
+              chrome.runtime.sendMessage({ action: "revokeBlobUrl", url });
+            }
+          } catch (cleanupError) {
+            console.warn(
+              `Failed to revoke object URL for download ${delta.id}:`,
+              cleanupError,
+            );
           }
-        } catch (cleanupError) {
-          console.warn(
-            `Failed to revoke object URL for download ${delta.id}:`,
-            cleanupError,
-          );
         }
-      }
 
-      delete downloadMap[delta.id];
-      await chrome.storage.local.set({ downloads: downloadMap });
+        delete downloadMap[delta.id];
+        await chrome.storage.local.set({ downloads: downloadMap });
+      }
     }
   }
 });

@@ -3,8 +3,9 @@ import { messageWorker } from "./src/background/message";
 
 // Reset download state on startup and installation
 const resetDownloadState = async () => {
-  await chrome.storage.local.set({ isDownloadInProgress: false, downloads: {} });
-  console.log('Download state reset.');
+  if (chrome.storage && chrome.storage.local) {
+    await chrome.storage.local.set({ isDownloadInProgress: false, downloads: {} });
+  }
 };
 
 chrome.runtime.onStartup.addListener(resetDownloadState);
