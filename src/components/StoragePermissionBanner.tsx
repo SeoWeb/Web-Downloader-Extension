@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "./Button";
-import { requestStoragePermission } from "../background/userIdManager";
+import { requestStoragePermission } from "../common/permissions";
 
 interface StoragePermissionBannerProps {
   onPermissionGranted?: () => void;

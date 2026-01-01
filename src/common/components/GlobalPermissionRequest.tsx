@@ -38,7 +38,6 @@ export function GlobalPermissionRequest({
         <div className="text-xs text-gray-500 mb-4 text-left">
           <div className="mb-2">
             <strong>{t('permissions.global.storageDetails.title')}</strong>
-            <br />• {t('permissions.global.storageDetails.id')}
             <br />• {t('permissions.global.storageDetails.preferences')}
           </div>
           <div>

@@ -15,7 +15,6 @@ interface MainContentProps {
   action: MessageAction | null;
   downloadResponse: ScrollingResponse | null;
   onClickStartDownload: (options: any) => void;
-  userId: number | null;
   tabUrl: string;
 }
 
@@ -26,7 +25,6 @@ export function MainContent({
   action,
   downloadResponse,
   onClickStartDownload,
-  userId,
   tabUrl,
 }: MainContentProps) {
   return (
@@ -44,7 +42,6 @@ export function MainContent({
               <React.Suspense fallback={<div className="p-4">Loading filters...</div>}>
                 <Filter
                   download={onClickStartDownload}
-                  userId={userId}
                   tabUrl={tabUrl}
                 />
               </React.Suspense>

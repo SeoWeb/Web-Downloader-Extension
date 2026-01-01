@@ -103,9 +103,7 @@ export async function recoverFromStorageError(
       try {
         // Clear all extension data except user ID
         const allData = await chrome.storage.local.get();
-        const keysToRemove = Object.keys(allData).filter(
-          (key) => key !== "webPageDownloader_userId",
-        );
+        const keysToRemove = Object.keys(allData);
         if (keysToRemove.length > 0) {
           await chrome.storage.local.remove(keysToRemove);
           console.log("Cleared storage to free up space");

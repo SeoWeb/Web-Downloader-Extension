@@ -12,7 +12,7 @@ import { DownloadComplete } from "./sidepanel/components/DownloadComplete";
 import { useActiveTabInfo } from "./sidepanel/hooks/useActiveTabInfo"; // Added hook import
 import { useMessageListener } from "./sidepanel/hooks/useMessageListener"; // Added hook import
 import { useScrapingDownloader } from "./sidepanel/hooks/useScrapingDownloader"; // Added hook import
-import { useGlobalUserId } from "./common/hooks/useGlobalUserId";
+import { usePermissions } from "./common/hooks/usePermissions";
 import { GlobalPermissionRequest } from "./common/components/GlobalPermissionRequest";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 
@@ -69,15 +69,14 @@ export default function SidePanel() {
     singleFile: boolean;
   } | null>(null);
 
-  // Use the global user ID hook
+  // Use the permissions hook
   const {
-    userId,
-    loading: userIdLoading,
-    error: userIdError,
     hasPermission,
     permissionRequesting,
     requestPermission,
-  } = useGlobalUserId();
+    loading: permissionsLoading,
+    error: permissionsError,
+  } = usePermissions();
 
   // Use the custom hooks
   useActiveTabInfo({ setTabId, setTabUrl, setMessages });
@@ -243,7 +242,7 @@ export default function SidePanel() {
   }
 
   // Show permission request if user doesn't have storage permission
-  if (!hasPermission && !userIdLoading) {
+  if (!hasPermission && !permissionsLoading) {
     return (
       <div className="p-6">
         <div className="mb-4 flex justify-end">
@@ -252,14 +251,14 @@ export default function SidePanel() {
         <GlobalPermissionRequest
           onRequestPermission={requestPermission}
           requesting={permissionRequesting}
-          error={userIdError}
+          error={permissionsError}
         />
       </div>
     );
   }
 
-  // Show loading state while checking permissions/user ID
-  if (userIdLoading) {
+  // Show loading state while checking permissions
+  if (permissionsLoading) {
     return (
       <div className="p-6 text-center">
         <div className="text-lg">{t('app.loading')}</div>
@@ -281,7 +280,6 @@ export default function SidePanel() {
         action={action}
         downloadResponse={downloadResponse}
         onClickStartDownload={onClickStartDownload}
-        userId={userId}
         tabUrl={tabUrl}
       />
       <DownloadStatus

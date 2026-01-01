@@ -6,7 +6,7 @@ import {
 import {
   hasStoragePermission,
   requestStoragePermission,
-} from "../../background/userIdManager";
+} from "../permissions";
 import {
   validateFilterOptions,
   safeStorageOperation,

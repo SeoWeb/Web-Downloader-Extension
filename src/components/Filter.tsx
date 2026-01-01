@@ -3,10 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Checkbox } from "./Checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Button } from "./Button";
-import {
-  trackDownload,
-  cleanWebsiteUrl,
-} from "../common/services/analyticsService";
+
 import {
   useFilterOptions,
   useDownloadOptions,
@@ -14,13 +11,11 @@ import {
 } from "../hooks/useFilterOptions";
 import { StoragePermissionBanner } from "./StoragePermissionBanner";
 import { OffscreenPermissionBanner } from "./OffscreenPermissionBanner";
-import { hasStoragePermission } from "../background/userIdManager";
+import { hasStoragePermission } from "../common/permissions";
 import { hasOffscreenPermission } from "../common/permissions";
 
 export default function Filter({
   download,
-  userId,
-  tabUrl,
 }: {
   download: (options: {
     downloadHTML: boolean;
@@ -31,7 +26,6 @@ export default function Filter({
     downloadDocuments: boolean;
     singleFile: boolean;
   }) => void;
-  userId: number | null;
   tabUrl: string;
 }) {
   const { t } = useTranslation();
@@ -84,16 +78,6 @@ export default function Filter({
   }, []);
 
   const handleDownload = async () => {
-    // Send analytics data immediately when download starts (before scraping begins)
-    if (userId && tabUrl) {
-      try {
-        const cleanUrl = cleanWebsiteUrl(tabUrl);
-        await trackDownload(userId, cleanUrl, downloadOptions);
-      } catch (error) {
-        // Continue with download even if analytics fails
-      }
-    }
-
     // Start the download process
     download(downloadOptions);
   };
