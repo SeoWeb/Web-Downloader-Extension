@@ -2,7 +2,7 @@ import React from "react";
 import { MessageAction, messageActions } from "../../common/message";
 import Heading from "../../components/Heading";
 import Actions, { Message } from "../../components/Actions";
-// import { FeatureRequestButton } from "../../components/FeatureRequestButton";
+
 import { ScrollingResponse } from "../hooks/useScrapingDownloader";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
 
@@ -32,7 +32,7 @@ export function MainContent({
   return (
     <>
       <Heading />
-      {/* <FeatureRequestButton /> */}
+
       <Actions messages={messages} />
 
       {!!tabId &&

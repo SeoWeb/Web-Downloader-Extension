@@ -177,11 +177,6 @@
       "prompt": "If you were satisfied, please leave a positive review :)",
       "ariaLabel_one": "Rate {{count}} star",
       "ariaLabel_other": "Rate {{count}} stars"
-    },
-    "featureRequest": {
-      "title": "Request a Feature",
-      "description": "Have an idea to improve this extension?",
-      "submit": "Submit Request"
     }
   }
 }
