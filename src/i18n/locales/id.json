@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Pengunduh Halaman Web",
+      "loading": "Memuat...",
+      "error": "Terjadi kesalahan:",
+      "tryAgain": "Coba lagi",
+      "iconAlt": "Ikon Pengunduh Halaman Web",
+      "noInternet": "Tidak ada koneksi internet - tidak dapat mengunduh sumber daya eksternal",
+      "enableHtmlForOffline": "Silakan aktifkan unduhan HTML atau mode file tunggal untuk penggunaan offline",
+      "networkCheckFailed": "Pemeriksaan konektivitas jaringan gagal - melanjutkan unduhan",
+      "noUrl": "Kesalahan: Tidak ada URL yang diberikan untuk unduhan",
+      "downloadInProgress": "Unduhan sedang berlangsung. Harap tunggu.",
+      "memoryPressure": "Tidak dapat memulai unduhan karena tekanan memori kritis. Silakan coba lagi nanti."
+    },
+    "filter": {
+      "title": "Filter apa yang ingin Anda unduh",
+      "downloadHTML": "Unduh HTML",
+      "downloadImages": "Unduh gambar",
+      "downloadLinks": "Unduh tautan (disimpan sebagai file html)",
+      "downloadAssets": "Unduh aset (css, js)",
+      "downloadDocuments": "Unduh dokumen (pdf, doc, dll.)",
+      "downloadContentAsText": "Unduh konten sebagai teks",
+      "singleFile": "Unduh dalam satu file HTML",
+      "startDownload": "Mulai mengunduh",
+      "linksWarning": "Jika Anda memilih untuk mengunduh tautan, Anda harus memperhitungkan bahwa total waktu pengunduhan dapat meningkat secara drastis dan file zip bisa jauh lebih besar.",
+      "permissionWarning": "Preferensi filter tidak akan disimpan tanpa izin penyimpanan",
+      "dismiss": "Tutup",
+      "loading": "Memuat filter...",
+      "ariaDownloadHtml": "Unduh konten HTML",
+      "ariaDownloadImages": "Unduh gambar",
+      "ariaDownloadLinks": "Unduh tautan (disimpan sebagai file html)",
+      "ariaDownloadAssets": "Unduh aset (css, js)",
+      "ariaDownloadDocuments": "Unduh dokumen (pdf, doc, dll.)",
+      "ariaDownloadContent": "Unduh konten sebagai teks",
+      "ariaSingleFile": "Unduh dalam satu file HTML",
+      "ariaStartDownload": "Mulai unduhan",
+      "ariaDismissWarning": "Tutup peringatan",
+      "error": "Kesalahan"
+    },
+    "actions": {
+      "title": "Tindakan:",
+      "stop": "Berhenti"
+    },
+    "status": {
+      "waiting": "Menunggu koneksi...",
+      "connected": "Situs web terhubung!",
+      "scraping": "Mengambil data situs web...",
+      "scraped": "Data situs web diambil!",
+      "creating": "File Zip dibuat!",
+      "complete": "Pengunduhan selesai",
+      "failed": "Pengunduhan gagal",
+      "cancelled": "Pengunduhan dibatalkan",
+      "creatingIndex": "Membuat index.html",
+      "downloadingCss": "Mengunduh file CSS",
+      "cssDownloaded": "File CSS diunduh",
+      "cssError": "Kesalahan mengunduh file CSS - beberapa mungkin hilang",
+      "downloadingJs": "Mengunduh file JS",
+      "jsDownloaded": "File JS diunduh",
+      "jsError": "Kesalahan mengunduh file JS - beberapa mungkin hilang",
+      "downloadingDocuments": "Mengunduh file dokumen",
+      "documentsDownloaded": "File dokumen diunduh",
+      "downloadingImages": "Mengunduh gambar",
+      "imagesDownloaded": "Gambar diunduh",
+      "downloadingLinks": "Mengunduh file html tertaut",
+      "linksDownloaded": "File html tertaut diunduh",
+      "downloadingContent": "Mengunduh konten sebagai teks",
+      "contentDownloaded": "Konten sebagai teks diunduh",
+      "singleFileCreated": "File HTML tunggal dibuat",
+      "zipCreated": "File Zip dibuat!",
+      "downloadStarted": "Unduhan berhasil dimulai",
+      "completeTitle": "Unduhan selesai:",
+      "zipLocation": "Anda dapat menemukan file zip di folder unduhan Anda",
+      "cssProgress": "Kemajuan file CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "Kemajuan gambar latar belakang: {{completed}}/{{total}}",
+      "jsProgress": "Kemajuan file JS: {{completed}}/{{total}}",
+      "documentsProgress": "Kemajuan file dokumen: {{completed}}/{{total}}",
+      "imagesProgress": "Kemajuan gambar: {{completed}}/{{total}}",
+      "htmlProgress": "Kemajuan file HTML: {{completed}}/{{total}}",
+      "cssSummary": "File CSS diunduh: {{succeeded}} berhasil, {{failed}} gagal, {{skipped}} dilewati",
+      "bgImagesSummary": "Gambar latar belakang dari CSS diunduh: {{succeeded}} berhasil, {{failed}} gagal, {{skipped}} dilewati",
+      "jsSummary": "File JS diunduh: {{succeeded}} berhasil, {{failed}} gagal, {{skipped}} dilewati",
+      "documentsSummary": "File dokumen diunduh: {{succeeded}} berhasil, {{failed}} gagal, {{skipped}} dilewati",
+      "imagesSummary": "Gambar diunduh: {{succeeded}} berhasil, {{failed}} gagal, {{skipped}} dilewati",
+      "htmlSummary": "File HTML diunduh: {{succeeded}} berhasil, {{failed}} gagal, {{skipped}} dilewati",
+      "processingCss": "Memproses file CSS: {{current}}/{{total}}",
+      "streamingCss": "Memulai unduhan streaming untuk CSS besar: {{current}}/{{total}}",
+      "streamingCssProgress": "Kemajuan streaming CSS: {{completed}}/{{total}} potongan",
+      "cssStreamingSummary": "File CSS diproses: {{succeeded}} berhasil, {{streamed}} dialirkan, {{failed}} gagal",
+      "processingJs": "Memproses file JS: {{current}}/{{total}}",
+      "streamingJs": "Memulai unduhan streaming untuk JS besar: {{current}}/{{total}}",
+      "streamingJsProgress": "Kemajuan streaming JS: {{completed}}/{{total}} potongan",
+      "jsStreamingSummary": "File JS diproses: {{succeeded}} berhasil, {{streamed}} dialirkan, {{failed}} gagal",
+      "processingImages": "Memproses gambar: {{current}}/{{total}}",
+      "streamingImages": "Memulai unduhan streaming untuk gambar besar: {{current}}/{{total}}",
+      "streamingImagesProgress": "Kemajuan streaming gambar: {{completed}}/{{total}} potongan",
+      "imagesStreamingSummary": "Gambar diproses: {{succeeded}} berhasil, {{streamed}} dialirkan, {{failed}} gagal, {{skipped}} dilewati",
+      "streamingFailedFallback": "Unduhan streaming gagal, kembali ke unduhan reguler...",
+      "processingHtmlIncremental": "Memproses konten HTML dengan perakitan tambahan",
+      "finalizingDownload": "Menyelesaikan unduhan",
+      "indexCreated": "Index.html dibuat",
+      "htmlTooLarge": "Konten HTML terlalu besar, mungkin terpotong",
+      "incrementalHtmlAdded": "Konten HTML dirakit dan ditambahkan ke unduhan",
+      "largeHtmlAdded": "Konten HTML besar diproses dan ditambahkan ke unduhan",
+      "creatingPackage": "Membuat paket unduhan akhir",
+      "processingImagesCount": "Memproses {{count}} gambar",
+      "streamingImageStart": "Memulai unduhan streaming untuk gambar: {{current}}/{{total}}",
+      "waitingForStreaming": "Menunggu {{count}} unduhan streaming selesai...",
+      "streamingProgress": "Kemajuan streaming: {{completed}}/{{total}} potongan ({{percent}}%)",
+      "streamingCompleted": "Semua unduhan streaming selesai",
+      "creatingStreamingZip": "Membuat file ZIP dengan konten streaming...",
+      "streamingSuccess": "Unduhan streaming berhasil diselesaikan",
+      "downloadingWebsiteContent": "Mengunduh konten situs web ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Izin Penyimpanan Diperlukan",
+        "description": "Ekstensi ini memerlukan izin penyimpanan untuk menyimpan preferensi filter Anda dan memberikan pengalaman yang lebih baik.",
+        "grant": "Berikan Izin",
+        "deny": "Mungkin Nanti",
+        "benefits": {
+          "title": "Manfaat memberikan izin penyimpanan:",
+          "savePreferences": "Simpan preferensi filter unduhan Anda",
+          "persistSettings": "Ingat pengaturan Anda antar sesi",
+          "improveExperience": "Berikan pengalaman yang lebih personal"
+        }
+      },
+      "offscreen": {
+        "title": "Izin Tambahan Diperlukan",
+        "description": "Ekstensi ini memerlukan izin offscreen untuk memproses unduhan secara efisien.",
+        "grant": "Berikan Izin",
+        "why": "Izin ini memungkinkan ekstensi untuk membuat dokumen latar belakang untuk memproses unduhan besar tanpa memengaruhi pengalaman menjelajah Anda."
+      },
+      "global": {
+        "title": "Izin Diperlukan",
+        "description": "Ekstensi ini memerlukan izin penyimpanan dan offscreen untuk memberikan pengalaman pengunduhan terbaik.",
+        "storage": {
+          "title": "Izin Penyimpanan:",
+          "description": "Memungkinkan ekstensi menyimpan sejumlah kecil data secara lokal di browser Anda. Ini memungkinkan kami mengingat preferensi Anda dan memberikan pengalaman yang dipersonalisasi di seluruh sesi."
+        },
+        "offscreen": {
+          "title": "Izin Offscreen:",
+          "description": "Memungkinkan pengunduhan file besar dengan membiarkan ekstensi memproses file di latar belakang tanpa memengaruhi pengalaman menjelajah Anda."
+        },
+        "storageDetails": {
+          "title": "Apa yang kami simpan:",
+          "id": "ID unik yang dibuat",
+          "preferences": "Preferensi pengunduhan"
+        },
+        "privacy": {
+          "title": "Privasi:",
+          "personal": "Tidak ada data pribadi",
+          "history": "Tidak ada riwayat penjelajahan",
+          "local": "Semua data tetap ada secara lokal di browser Anda"
+        },
+        "button": {
+          "requesting": "Meminta Izin...",
+          "enable": "Aktifkan Izin"
+        },
+        "footer": "Cabut kapan saja di pengaturan browser"
+      }
+    },
+    "download": {
+      "showInFolder": "Tampilkan dalam folder",
+      "downloadAnother": "Unduh halaman lain",
+      "cancel": "Batalkan pengunduhan"
+    },
+    "language": {
+      "select": "Pilih Bahasa",
+      "search": "Cari bahasa...",
+      "current": "Bahasa saat ini"
+    },
+    "rating": {
+      "title": "Menikmati ekstensi ini?",
+      "description": "Silakan beri kami nilai di Chrome Web Store!",
+      "rate": "Beri Nilai Ekstensi",
+      "prompt": "Jika Anda puas, silakan tinggalkan ulasan positif :)",
+      "ariaLabel_one": "Beri nilai {{count}} bintang",
+      "ariaLabel_other": "Beri nilai {{count}} bintang"
+    },
+    "featureRequest": {
+      "title": "Minta Fitur",
+      "description": "Punya ide untuk meningkatkan ekstensi ini?",
+      "submit": "Kirim Permintaan"
+    }
+  }
+}

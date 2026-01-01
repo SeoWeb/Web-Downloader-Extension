@@ -1,7 +1,11 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import "./popup.css";
+import "./styles/rtl.css"; // RTL support styles
+import "./i18n/config"; // Initialize i18n
+import { useTranslation } from "react-i18next";
 import { MessageAction, messageActions } from "./common/message";
+import { Message } from "./components/Actions";
 import { MainContent } from "./sidepanel/components/MainContent";
 import { DownloadStatus } from "./sidepanel/components/DownloadStatus";
 import { DownloadComplete } from "./sidepanel/components/DownloadComplete";
@@ -10,6 +14,7 @@ import { useMessageListener } from "./sidepanel/hooks/useMessageListener"; // Ad
 import { useScrapingDownloader } from "./sidepanel/hooks/useScrapingDownloader"; // Added hook import
 import { useGlobalUserId } from "./common/hooks/useGlobalUserId";
 import { GlobalPermissionRequest } from "./common/components/GlobalPermissionRequest";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
 
 interface Options {
   downloadHTML: boolean;
@@ -28,24 +33,27 @@ function ErrorFallback({
   error: Error;
   resetErrorBoundary: () => void;
 }) {
+  const { t } = useTranslation();
+  
   return (
     <div role="alert" className="p-4 bg-red-100 rounded">
-      <p className="font-bold text-red-800">Something went wrong:</p>
+      <p className="font-bold text-red-800">{t('app.error')}</p>
       <pre className="text-red-600">{error.message}</pre>
       <button
         onClick={resetErrorBoundary}
         className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
       >
-        Try again
+        {t('app.tryAgain')}
       </button>
     </div>
   );
 }
 
 export default function SidePanel() {
+  const { t } = useTranslation();
   const [tabId, setTabId] = useState<number>(0);
   const [tabUrl, setTabUrl] = useState<string>("");
-  const [messages, setMessages] = useState<string[]>(["Waiting connection..."]);
+  const [messages, setMessages] = useState<Message[]>([{ key: "status.waiting" }]);
   const [action, setAction] = useState<MessageAction | null>(null);
   const [links, setLinks] = useState<string[]>([]);
   const [isScraping, setIsScraping] = useState<boolean>(false);
@@ -97,10 +105,10 @@ export default function SidePanel() {
         case messageActions.DOWNLOAD_COMPLETE:
           // Download actually completed - file was saved
           console.log("Download completed:", data);
-          setMessages((prev) => [...prev, "Website scraped!"]);
+          setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
-          setMessages((prev) => [...prev, "Zip file created!"]);
-          setMessages((prev) => [...prev, "Download complete"]);
+          setMessages((prev) => [...prev, { key: "status.creating" }]);
+          setMessages((prev) => [...prev, { key: "status.complete" }]);
           // Store download ID for "Show in folder" functionality
           if (data.downloadId) {
             chrome.storage.local.set({ lastDownloadId: data.downloadId });
@@ -125,7 +133,7 @@ export default function SidePanel() {
         case messageActions.DOWNLOAD_CANCELLED:
           // User cancelled the download
           console.log("Download cancelled:", data);
-          setMessages((prev) => [...prev, "Download was cancelled"]);
+          setMessages((prev) => [...prev, { key: "status.cancelled" }]);
           setIsScraping(false);
           setAction(null);
           // Reset downloadResponse to allow filter to show again
@@ -155,10 +163,10 @@ export default function SidePanel() {
         const downloadComplete = changes.downloadComplete.newValue;
         if (downloadComplete) {
           console.log("Download completed via storage:", downloadComplete);
-          setMessages((prev) => [...prev, "Website scraped!"]);
+          setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
-          setMessages((prev) => [...prev, "Zip file created!"]);
-          setMessages((prev) => [...prev, "Download complete"]);
+          setMessages((prev) => [...prev, { key: "status.creating" }]);
+          setMessages((prev) => [...prev, { key: "status.complete" }]);
           
           // Store download ID for "Show in folder" functionality
           if (downloadComplete.downloadId) {
@@ -201,7 +209,7 @@ export default function SidePanel() {
   const reset = useCallback(
     (newTabUrl: string) => {
       setTabUrl(newTabUrl);
-      setMessages(["Waiting connection...", "Website connected!"]);
+      setMessages([{ key: "status.waiting" }, { key: "status.connected" }]);
       setAction(null);
       setLinks([]);
       setIsScraping(false);
@@ -217,7 +225,7 @@ export default function SidePanel() {
   const onClickStartDownload = useCallback(async (options: Options) => {
     setIsScraping(true);
     setDownloadOptions(options);
-    setMessages((prev) => [...prev, "Scraping website..."]);
+    setMessages((prev) => [...prev, { key: "status.scraping" }]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Keep dependencies minimal
 
@@ -238,6 +246,9 @@ export default function SidePanel() {
   if (!hasPermission && !userIdLoading) {
     return (
       <div className="p-6">
+        <div className="mb-4 flex justify-end">
+          <LanguageSwitcher />
+        </div>
         <GlobalPermissionRequest
           onRequestPermission={requestPermission}
           requesting={permissionRequesting}
@@ -251,13 +262,18 @@ export default function SidePanel() {
   if (userIdLoading) {
     return (
       <div className="p-6 text-center">
-        <div className="text-lg">Loading...</div>
+        <div className="text-lg">{t('app.loading')}</div>
       </div>
     );
   }
 
   return (
     <div className="p-6">
+      {/* Language Switcher */}
+      <div className="mb-4 flex justify-end">
+        <LanguageSwitcher />
+      </div>
+      
       <MainContent
         messages={messages}
         tabId={tabId}

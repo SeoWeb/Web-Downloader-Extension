@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Web Sayfası İndirici",
+      "loading": "Yükleniyor...",
+      "error": "Bir şeyler ters gitti:",
+      "tryAgain": "Tekrar dene",
+      "iconAlt": "Web Sayfası İndirici simgesi",
+      "noInternet": "İnternet bağlantısı yok - harici kaynaklar indirilemiyor",
+      "enableHtmlForOffline": "Çevrimdışı kullanım için lütfen HTML indirmeyi veya tek dosya modunu etkinleştirin",
+      "networkCheckFailed": "Ağ bağlantısı kontrolü başarısız oldu - indirme işlemine devam ediliyor",
+      "noUrl": "Hata: İndirme için URL sağlanmadı",
+      "downloadInProgress": "Bir indirme işlemi zaten devam ediyor. Lütfen bekleyin.",
+      "memoryPressure": "Kritik bellek baskısı nedeniyle indirme başlatılamıyor. Lütfen daha sonra tekrar deneyin."
+    },
+    "filter": {
+      "title": "İndirmek istediklerinizi filtreleyin",
+      "downloadHTML": "HTML İndir",
+      "downloadImages": "Resimleri İndir",
+      "downloadLinks": "Bağlantıları İndir (html dosyaları olarak kaydedilir)",
+      "downloadAssets": "Varlıkları İndir (css, js)",
+      "downloadDocuments": "Belgeleri İndir (pdf, doc, vb.)",
+      "downloadContentAsText": "İçeriği metin olarak indir",
+      "singleFile": "Tek bir HTML dosyasında indir",
+      "startDownload": "İndirmeyi Başlat",
+      "linksWarning": "Bağlantıları indirmeyi seçerseniz, toplam indirme süresinin önemli ölçüde artabileceğini ve zip dosyasının önemli ölçüde daha büyük olabileceğini dikkate almalısınız.",
+      "permissionWarning": "Depolama izni olmadan filtre tercihleri kaydedilmeyecek",
+      "dismiss": "Kapat",
+      "loading": "Filtreler yükleniyor...",
+      "ariaDownloadHtml": "HTML içeriğini indir",
+      "ariaDownloadImages": "Resimleri indir",
+      "ariaDownloadLinks": "Bağlantıları indir (html dosyaları olarak kaydedilir)",
+      "ariaDownloadAssets": "Varlıkları indir (css, js)",
+      "ariaDownloadDocuments": "Belgeleri indir (pdf, doc vb.)",
+      "ariaDownloadContent": "İçeriği metin olarak indir",
+      "ariaSingleFile": "Tek bir HTML dosyası olarak indir",
+      "ariaStartDownload": "İndirmeyi başlat",
+      "ariaDismissWarning": "Uyarıyı kapat",
+      "error": "Hata"
+    },
+    "actions": {
+      "title": "İşlemler:",
+      "stop": "Durdur"
+    },
+    "status": {
+      "waiting": "Bağlantı bekleniyor...",
+      "connected": "Web sitesi bağlandı!",
+      "scraping": "Web sitesi taranıyor...",
+      "scraped": "Web sitesi tarandı!",
+      "creating": "Zip dosyası oluşturuldu!",
+      "complete": "İndirme tamamlandı",
+      "failed": "İndirme başarısız oldu",
+      "cancelled": "İndirme iptal edildi",
+      "creatingIndex": "Index.html oluşturuluyor",
+      "downloadingCss": "CSS dosyaları indiriliyor",
+      "cssDownloaded": "CSS dosyaları indirildi",
+      "cssError": "CSS dosyaları indirilirken hata oluştu - bazıları eksik olabilir",
+      "downloadingJs": "JS dosyaları indiriliyor",
+      "jsDownloaded": "JS dosyaları indirildi",
+      "jsError": "JS dosyaları indirilirken hata oluştu - bazıları eksik olabilir",
+      "downloadingDocuments": "Belgeler indiriliyor",
+      "documentsDownloaded": "Belgeler indirildi",
+      "downloadingImages": "Resimler indiriliyor",
+      "imagesDownloaded": "Resimler indirildi",
+      "downloadingLinks": "Bağlantılı html dosyaları indiriliyor",
+      "linksDownloaded": "Bağlantılı html dosyaları indirildi",
+      "downloadingContent": "İçerik metin olarak indiriliyor",
+      "contentDownloaded": "İçerik metin olarak indirildi",
+      "singleFileCreated": "Tek HTML dosyası oluşturuldu",
+      "zipCreated": "Zip dosyası oluşturuldu!",
+      "downloadStarted": "İndirme başarıyla başladı",
+      "completeTitle": "İndirme tamamlandı:",
+      "zipLocation": "Zip dosyasını indirilenler klasörünüzde bulabilirsiniz",
+      "cssProgress": "CSS dosyaları ilerlemesi: {{completed}}/{{total}}",
+      "bgImagesProgress": "Arka plan resimleri ilerlemesi: {{completed}}/{{total}}",
+      "jsProgress": "JS dosyaları ilerlemesi: {{completed}}/{{total}}",
+      "documentsProgress": "Belge dosyaları ilerlemesi: {{completed}}/{{total}}",
+      "imagesProgress": "Resimler ilerlemesi: {{completed}}/{{total}}",
+      "htmlProgress": "HTML dosyaları ilerlemesi: {{completed}}/{{total}}",
+      "cssSummary": "İndirilen CSS dosyaları: {{succeeded}} başarılı, {{failed}} başarısız, {{skipped}} atlandı",
+      "bgImagesSummary": "CSS'den indirilen arka plan resimleri: {{succeeded}} başarılı, {{failed}} başarısız, {{skipped}} atlandı",
+      "jsSummary": "İndirilen JS dosyaları: {{succeeded}} başarılı, {{failed}} başarısız, {{skipped}} atlandı",
+      "documentsSummary": "İndirilen belge dosyaları: {{succeeded}} başarılı, {{failed}} başarısız, {{skipped}} atlandı",
+      "imagesSummary": "İndirilen resimler: {{succeeded}} başarılı, {{failed}} başarısız, {{skipped}} atlandı",
+      "htmlSummary": "İndirilen HTML dosyaları: {{succeeded}} başarılı, {{failed}} başarısız, {{skipped}} atlandı",
+      "processingCss": "CSS dosyaları işleniyor: {{current}}/{{total}}",
+      "streamingCss": "Büyük CSS için akış indirme başlatılıyor: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS akış ilerlemesi: {{completed}}/{{total}} parça",
+      "cssStreamingSummary": "İşlenen CSS dosyaları: {{succeeded}} başarılı, {{streamed}} akış, {{failed}} başarısız",
+      "processingJs": "JS dosyaları işleniyor: {{current}}/{{total}}",
+      "streamingJs": "Büyük JS için akış indirme başlatılıyor: {{current}}/{{total}}",
+      "streamingJsProgress": "JS akış ilerlemesi: {{completed}}/{{total}} parça",
+      "jsStreamingSummary": "İşlenen JS dosyaları: {{succeeded}} başarılı, {{streamed}} akış, {{failed}} başarısız",
+      "processingImages": "Resimler işleniyor: {{current}}/{{total}}",
+      "streamingImages": "Büyük resim için akış indirme başlatılıyor: {{current}}/{{total}}",
+      "streamingImagesProgress": "Resim akış ilerlemesi: {{completed}}/{{total}} parça",
+      "imagesStreamingSummary": "İşlenen resimler: {{succeeded}} başarılı, {{streamed}} akış, {{failed}} başarısız, {{skipped}} atlandı",
+      "streamingFailedFallback": "Akış indirme başarısız oldu, normal indirmeye dönülüyor...",
+      "processingHtmlIncremental": "HTML içeriği artımlı montaj ile işleniyor",
+      "finalizingDownload": "İndirme tamamlanıyor",
+      "indexCreated": "Index.html oluşturuldu",
+      "htmlTooLarge": "HTML içeriği çok büyük, kırpılabilir",
+      "incrementalHtmlAdded": "HTML içeriği birleştirildi ve indirmeye eklendi",
+      "largeHtmlAdded": "Büyük HTML içeriği işlendi ve indirmeye eklendi",
+      "creatingPackage": "Son indirme paketi oluşturuluyor",
+      "processingImagesCount": "{{count}} resim işleniyor",
+      "streamingImageStart": "Resim için akış indirme başlatılıyor: {{current}}/{{total}}",
+      "waitingForStreaming": "{{count}} akış indirmesinin tamamlanması bekleniyor...",
+      "streamingProgress": "Akış ilerlemesi: {{completed}}/{{total}} parça (%{{percent}})",
+      "streamingCompleted": "Tüm akış indirmeleri tamamlandı",
+      "creatingStreamingZip": "Akış içeriğiyle ZIP dosyası oluşturuluyor...",
+      "streamingSuccess": "Akış indirme başarıyla tamamlandı",
+      "downloadingWebsiteContent": "Web sitesi içeriği indiriliyor ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Depolama İzni Gerekli",
+        "description": "Bu uzantının, filtre tercihlerinizi kaydetmek ve daha iyi bir deneyim sağlamak için depolama iznine ihtiyacı vardır.",
+        "grant": "İzin Ver",
+        "deny": "Belki Daha Sonra",
+        "benefits": {
+          "title": "Depolama izni vermenin faydaları:",
+          "savePreferences": "İndirme filtresi tercihlerinizi kaydedin",
+          "persistSettings": "Ayarlarınızı oturumlar arasında hatırlayın",
+          "improveExperience": "Daha kişiselleştirilmiş bir deneyim sağlayın"
+        }
+      },
+      "offscreen": {
+        "title": "Ek İzin Gerekli",
+        "description": "Bu uzantının, indirmeleri verimli bir şekilde işlemek için offscreen iznine ihtiyacı vardır.",
+        "grant": "İzin Ver",
+        "why": "Bu izin, uzantının tarama deneyiminizi etkilemeden büyük indirmeleri işlemek için arka plan belgeleri oluşturmasına olanak tanır."
+      },
+      "global": {
+        "title": "İzinler Gerekli",
+        "description": "Bu uzantı, en iyi indirme deneyimini sağlamak için depolama ve ekran dışı izinlere ihtiyaç duyar.",
+        "storage": {
+          "title": "Depolama İzni:",
+          "description": "Uzantının tarayıcınıza yerel olarak küçük miktarda veri kaydetmesine izin verir. Bu, tercihlerinizi hatırlamamızı ve oturumlar arasında kişiselleştirilmiş bir deneyim sunmamızı sağlar."
+        },
+        "offscreen": {
+          "title": "Ekran Dışı İzin:",
+          "description": "Uzantının dosyaları arka planda işlemesine izin vererek, tarama deneyiminizi etkilemeden büyük dosya indirmelerini sağlar."
+        },
+        "storageDetails": {
+          "title": "Neyi saklıyoruz:",
+          "id": "Benzersiz oluşturulan kimlik",
+          "preferences": "İndirme tercihleri"
+        },
+        "privacy": {
+          "title": "Gizlilik:",
+          "personal": "Kişisel veri yok",
+          "history": "Tarama geçmişi yok",
+          "local": "Tüm veriler yerel olarak tarayıcınızda kalır"
+        },
+        "button": {
+          "requesting": "İzinler İsteniyor...",
+          "enable": "İzinleri Etkinleştir"
+        },
+        "footer": "Tarayıcı ayarlarından istediğiniz zaman iptal edebilirsiniz"
+      }
+    },
+    "download": {
+      "showInFolder": "Klasörde göster",
+      "downloadAnother": "Başka bir sayfa indir",
+      "cancel": "İndirmeyi iptal et"
+    },
+    "language": {
+      "select": "Dil Seçin",
+      "search": "Dilleri ara...",
+      "current": "Geçerli dil"
+    },
+    "rating": {
+      "title": "Bu uzantıyı beğendiniz mi?",
+      "description": "Lütfen bizi Chrome Web Mağazası'nda derecelendirin!",
+      "rate": "Uzantıyı Derecelendir",
+      "prompt": "Memnun kaldıysanız, lütfen olumlu bir yorum bırakın :)",
+      "ariaLabel_one": "{{count}} yıldız ver",
+      "ariaLabel_other": "{{count}} yıldız ver"
+    },
+    "featureRequest": {
+      "title": "Bir Özellik İsteyin",
+      "description": "Bu uzantıyı geliştirmek için bir fikriniz mi var?",
+      "submit": "İsteği Gönder"
+    }
+  }
+}

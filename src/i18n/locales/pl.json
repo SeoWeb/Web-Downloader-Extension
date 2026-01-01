@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Narzędzie do pobierania stron internetowych",
+      "loading": "Ładowanie...",
+      "error": "Coś poszło nie tak:",
+      "tryAgain": "Spróbuj ponownie",
+      "iconAlt": "Ikona pobieracza stron internetowych",
+      "noInternet": "Brak połączenia z internetem - nie można pobrać zasobów zewnętrznych",
+      "enableHtmlForOffline": "Włącz pobieranie HTML lub tryb pojedynczego pliku do użytku offline",
+      "networkCheckFailed": "Sprawdzenie połączenia sieciowego nie powiodło się - kontynuowanie pobierania",
+      "noUrl": "Błąd: Nie podano adresu URL do pobrania",
+      "downloadInProgress": "Pobieranie jest już w toku. Proszę czekać.",
+      "memoryPressure": "Nie można rozpocząć pobierania z powodu krytycznego braku pamięci. Spróbuj ponownie później."
+    },
+    "filter": {
+      "title": "Filtruj to, co chcesz pobrać",
+      "downloadHTML": "Pobierz HTML",
+      "downloadImages": "Pobierz obrazy",
+      "downloadLinks": "Pobierz linki (zapisane jako pliki html)",
+      "downloadAssets": "Pobierz zasoby (css, js)",
+      "downloadDocuments": "Pobierz dokumenty (pdf, doc itp.)",
+      "downloadContentAsText": "Pobierz treść jako tekst",
+      "singleFile": "Pobierz w jednym pliku HTML",
+      "startDownload": "Rozpocznij pobieranie",
+      "linksWarning": "Jeśli zdecydujesz się pobrać linki, musisz wziąć pod uwagę, że całkowity czas pobierania może drastycznie wzrosnąć, a plik zip może być znacznie większy.",
+      "permissionWarning": "Preferencje filtrów nie zostaną zapisane bez uprawnień do przechowywania",
+      "dismiss": "Odrzuć",
+      "loading": "Ładowanie filtrów...",
+      "ariaDownloadHtml": "Pobierz zawartość HTML",
+      "ariaDownloadImages": "Pobierz obrazy",
+      "ariaDownloadLinks": "Pobierz linki (zapisane jako pliki html)",
+      "ariaDownloadAssets": "Pobierz zasoby (css, js)",
+      "ariaDownloadDocuments": "Pobierz dokumenty (pdf, doc itp.)",
+      "ariaDownloadContent": "Pobierz zawartość jako tekst",
+      "ariaSingleFile": "Pobierz jako pojedynczy plik HTML",
+      "ariaStartDownload": "Rozpocznij pobieranie",
+      "ariaDismissWarning": "Zamknij ostrzeżenie",
+      "error": "Błąd"
+    },
+    "actions": {
+      "title": "Akcje:",
+      "stop": "Zatrzymaj"
+    },
+    "status": {
+      "waiting": "Oczekiwanie na połączenie...",
+      "connected": "Strona internetowa połączona!",
+      "scraping": "Pobieranie danych ze strony internetowej...",
+      "scraped": "Dane ze strony internetowej pobrane!",
+      "creating": "Plik Zip utworzony!",
+      "complete": "Pobieranie zakończone",
+      "failed": "Pobieranie nie powiodło się",
+      "cancelled": "Pobieranie zostało anulowane",
+      "creatingIndex": "Tworzenie index.html",
+      "downloadingCss": "Pobieranie plików CSS",
+      "cssDownloaded": "Pobrane pliki CSS",
+      "cssError": "Błąd pobierania plików CSS - niektórych może brakować",
+      "downloadingJs": "Pobieranie plików JS",
+      "jsDownloaded": "Pobrane pliki JS",
+      "jsError": "Błąd pobierania plików JS - niektórych może brakować",
+      "downloadingDocuments": "Pobieranie dokumentów",
+      "documentsDownloaded": "Dokumenty pobrane",
+      "downloadingImages": "Pobieranie obrazów",
+      "imagesDownloaded": "Obrazy pobrane",
+      "downloadingLinks": "Pobieranie powiązanych plików html",
+      "linksDownloaded": "Powiązane pliki html pobrane",
+      "downloadingContent": "Pobieranie zawartości jako tekst",
+      "contentDownloaded": "Zawartość jako tekst pobrana",
+      "singleFileCreated": "Utworzono pojedynczy plik HTML",
+      "zipCreated": "Plik Zip utworzony!",
+      "downloadStarted": "Pobieranie rozpoczęte pomyślnie",
+      "completeTitle": "Pobieranie zakończone:",
+      "zipLocation": "Plik zip znajdziesz w folderze pobranych",
+      "cssProgress": "Postęp plików CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "Postęp obrazów tła: {{completed}}/{{total}}",
+      "jsProgress": "Postęp plików JS: {{completed}}/{{total}}",
+      "documentsProgress": "Postęp plików dokumentów: {{completed}}/{{total}}",
+      "imagesProgress": "Postęp obrazów: {{completed}}/{{total}}",
+      "htmlProgress": "Postęp plików HTML: {{completed}}/{{total}}",
+      "cssSummary": "Pobrane pliki CSS: {{succeeded}} powiodło się, {{failed}} nie powiodło się, {{skipped}} pominięto",
+      "bgImagesSummary": "Pobrane obrazy tła z CSS: {{succeeded}} powiodło się, {{failed}} nie powiodło się, {{skipped}} pominięto",
+      "jsSummary": "Pobrane pliki JS: {{succeeded}} powiodło się, {{failed}} nie powiodło się, {{skipped}} pominięto",
+      "documentsSummary": "Pobrane pliki dokumentów: {{succeeded}} powiodło się, {{failed}} nie powiodło się, {{skipped}} pominięto",
+      "imagesSummary": "Pobrane obrazy: {{succeeded}} powiodło się, {{failed}} nie powiodło się, {{skipped}} pominięto",
+      "htmlSummary": "Pobrane pliki HTML: {{succeeded}} powiodło się, {{failed}} nie powiodło się, {{skipped}} pominięto",
+      "processingCss": "Przetwarzanie plików CSS: {{current}}/{{total}}",
+      "streamingCss": "Rozpoczynanie pobierania strumieniowego dla dużego CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "Postęp strumieniowania CSS: {{completed}}/{{total}} części",
+      "cssStreamingSummary": "Przetworzone pliki CSS: {{succeeded}} powiodło się, {{streamed}} strumieniowano, {{failed}} nie powiodło się",
+      "processingJs": "Przetwarzanie plików JS: {{current}}/{{total}}",
+      "streamingJs": "Rozpoczynanie pobierania strumieniowego dla dużego JS: {{current}}/{{total}}",
+      "streamingJsProgress": "Postęp strumieniowania JS: {{completed}}/{{total}} części",
+      "jsStreamingSummary": "Przetworzone pliki JS: {{succeeded}} powiodło się, {{streamed}} strumieniowano, {{failed}} nie powiodło się",
+      "processingImages": "Przetwarzanie obrazów: {{current}}/{{total}}",
+      "streamingImages": "Rozpoczynanie pobierania strumieniowego dla dużego obrazu: {{current}}/{{total}}",
+      "streamingImagesProgress": "Postęp strumieniowania obrazu: {{completed}}/{{total}} części",
+      "imagesStreamingSummary": "Przetworzone obrazy: {{succeeded}} powiodło się, {{streamed}} strumieniowano, {{failed}} nie powiodło się, {{skipped}} pominięto",
+      "streamingFailedFallback": "Pobieranie strumieniowe nie powiodło się, powrót do zwykłego pobierania...",
+      "processingHtmlIncremental": "Przetwarzanie zawartości HTML z przyrostowym montażem",
+      "finalizingDownload": "Finalizowanie pobierania",
+      "indexCreated": "Utworzono index.html",
+      "htmlTooLarge": "Zawartość HTML jest zbyt duża, może zostać przycięta",
+      "incrementalHtmlAdded": "Zawartość HTML zmontowana i dodana do pobierania",
+      "largeHtmlAdded": "Duża zawartość HTML przetworzona i dodana do pobierania",
+      "creatingPackage": "Tworzenie końcowego pakietu pobierania",
+      "processingImagesCount": "Przetwarzanie {{count}} obrazów",
+      "streamingImageStart": "Rozpoczynanie pobierania strumieniowego dla obrazu: {{current}}/{{total}}",
+      "waitingForStreaming": "Oczekiwanie na zakończenie {{count}} pobierań strumieniowych...",
+      "streamingProgress": "Postęp strumieniowania: {{completed}}/{{total}} części ({{percent}}%)",
+      "streamingCompleted": "Wszystkie pobierania strumieniowe zakończone",
+      "creatingStreamingZip": "Tworzenie pliku ZIP z zawartością strumieniową...",
+      "streamingSuccess": "Pobieranie strumieniowe zakończone pomyślnie",
+      "downloadingWebsiteContent": "Pobieranie zawartości strony internetowej ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Wymagane uprawnienie do przechowywania",
+        "description": "To rozszerzenie wymaga uprawnień do przechowywania, aby zapisać preferencje filtrów i zapewnić lepsze wrażenia.",
+        "grant": "Przyznaj uprawnienie",
+        "deny": "Może później",
+        "benefits": {
+          "title": "Korzyści z przyznania uprawnień do przechowywania:",
+          "savePreferences": "Zapisz swoje preferencje filtra pobierania",
+          "persistSettings": "Zapamiętaj swoje ustawienia między sesjami",
+          "improveExperience": "Zapewnij bardziej spersonalizowane wrażenia"
+        }
+      },
+      "offscreen": {
+        "title": "Wymagane dodatkowe uprawnienie",
+        "description": "To rozszerzenie wymaga uprawnienia offscreen do wydajnego przetwarzania pobierania.",
+        "grant": "Przyznaj uprawnienie",
+        "why": "To uprawnienie umożliwia rozszerzeniu tworzenie dokumentów w tle w celu przetwarzania dużych plików do pobrania bez wpływu na jakość przeglądania."
+      },
+      "global": {
+        "title": "Wymagane uprawnienia",
+        "description": "To rozszerzenie wymaga uprawnień do przechowywania i działania w tle, aby zapewnić najlepsze wrażenia z pobierania.",
+        "storage": {
+          "title": "Uprawnienie do przechowywania:",
+          "description": "Pozwala rozszerzeniu na lokalne zapisywanie niewielkich ilości danych w przeglądarce. Dzięki temu możemy zapamiętać Twoje preferencje i zapewnić spersonalizowane wrażenia podczas sesji."
+        },
+        "offscreen": {
+          "title": "Uprawnienie Offscreen:",
+          "description": "Umożliwia pobieranie dużych plików, pozwalając rozszerzeniu przetwarzać pliki w tle bez wpływu na przeglądanie."
+        },
+        "storageDetails": {
+          "title": "Co przechowujemy:",
+          "id": "Unikalny wygenerowany identyfikator",
+          "preferences": "Preferencje pobierania"
+        },
+        "privacy": {
+          "title": "Prywatność:",
+          "personal": "Brak danych osobowych",
+          "history": "Brak historii przeglądania",
+          "local": "Wszystkie dane pozostają lokalnie w przeglądarce"
+        },
+        "button": {
+          "requesting": "Żądanie uprawnień...",
+          "enable": "Włącz uprawnienia"
+        },
+        "footer": "Możesz cofnąć w dowolnym momencie w ustawieniach przeglądarki"
+      }
+    },
+    "download": {
+      "showInFolder": "Pokaż w folderze",
+      "downloadAnother": "Pobierz inną stronę",
+      "cancel": "Anuluj pobieranie"
+    },
+    "language": {
+      "select": "Wybierz język",
+      "search": "Szukaj języków...",
+      "current": "Obecny język"
+    },
+    "rating": {
+      "title": "Podoba Ci się to rozszerzenie?",
+      "description": "Oceń nas w Chrome Web Store!",
+      "rate": "Oceń rozszerzenie",
+      "prompt": "Jeśli jesteś zadowolony, zostaw pozytywną opinię :)",
+      "ariaLabel_one": "Oceń na {{count}} gwiazdkę",
+      "ariaLabel_other": "Oceń na {{count}} gwiazdek"
+    },
+    "featureRequest": {
+      "title": "Poproś o funkcję",
+      "description": "Masz pomysł na ulepszenie tego rozszerzenia?",
+      "submit": "Prześlij prośbę"
+    }
+  }
+}

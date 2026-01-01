@@ -1,4 +1,5 @@
 import { Button } from "../../components/Button";
+import { useTranslation } from "react-i18next";
 
 interface GlobalPermissionRequestProps {
   onRequestPermission: () => Promise<void>;
@@ -11,39 +12,40 @@ export function GlobalPermissionRequest({
   requesting,
   error,
 }: GlobalPermissionRequestProps) {
+  const { t } = useTranslation();
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
       <div className="mb-4">
         <div className="text-3xl mb-2">🔒</div>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">
-          Permissions Required
+          {t('permissions.global.title')}
         </h2>
         <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-          This extension needs storage and offscreen permissions to provide the best download experience.
+          {t('permissions.global.description')}
         </p>
         <div className="text-xs text-gray-500 mb-3 text-left">
           <div className="mb-3">
-            <strong>Storage Permission:</strong>
+            <strong>{t('permissions.global.storage.title')}</strong>
             <br />
-            Allows the extension to save small amounts of data locally in your browser. This enables us to remember your preferences and provide a personalized experience across sessions.
+            {t('permissions.global.storage.description')}
           </div>
           <div className="mb-3">
-            <strong>Offscreen Permission:</strong>
+            <strong>{t('permissions.global.offscreen.title')}</strong>
             <br />
-            Enables large file downloads by allowing the extension to process files in the background without affecting your browsing experience.
+            {t('permissions.global.offscreen.description')}
           </div>
         </div>
         <div className="text-xs text-gray-500 mb-4 text-left">
           <div className="mb-2">
-            <strong>What we store:</strong>
-            <br />• Unique generated ID
-            <br />• Download preferences
+            <strong>{t('permissions.global.storageDetails.title')}</strong>
+            <br />• {t('permissions.global.storageDetails.id')}
+            <br />• {t('permissions.global.storageDetails.preferences')}
           </div>
           <div>
-            <strong>Privacy:</strong>
-            <br />• No personal data
-            <br />• No browsing history
-            <br />• All data stays local in your browser
+            <strong>{t('permissions.global.privacy.title')}</strong>
+            <br />• {t('permissions.global.privacy.personal')}
+            <br />• {t('permissions.global.privacy.history')}
+            <br />• {t('permissions.global.privacy.local')}
           </div>
         </div>
       </div>
@@ -59,11 +61,11 @@ export function GlobalPermissionRequest({
         disabled={requesting}
         className="px-6 py-2"
       >
-        {requesting ? "Requesting Permissions..." : "Enable Permissions"}
+        {requesting ? t('permissions.global.button.requesting') : t('permissions.global.button.enable')}
       </Button>
 
       <p className="text-xs text-gray-500 mt-3">
-        Revoke anytime in browser settings
+        {t('permissions.global.footer')}
       </p>
     </div>
   );

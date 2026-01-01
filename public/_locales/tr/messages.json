@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Web Sayfası İndirici",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Web Sayfası İndirici, bağlantılı kaynaklar da dahil olmak üzere tüm web sayfalarını çevrimdışı görüntüleme için indirip kaydetmenize olanak tanır.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Web Sayfası İndirici",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

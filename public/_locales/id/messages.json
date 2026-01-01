@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Pengunduh Halaman Web",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Pengunduh Halaman Web memungkinkan Anda mengunduh dan menyimpan seluruh halaman web, termasuk sumber daya yang terhubung, untuk dilihat secara offline.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Pengunduh Halaman Web",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

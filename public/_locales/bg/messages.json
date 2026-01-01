@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Изтегляне на уеб страници",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Приложението за изтегляне на уеб страници ви позволява да изтегляте и запазвате цели уеб страници, включително свързани ресурси, за преглед офлайн.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Изтегляне на уеб страници",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

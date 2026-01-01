@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "網頁下載器",
+      "loading": "載入中...",
+      "error": "發生錯誤：",
+      "tryAgain": "重試",
+      "iconAlt": "網頁下載器圖示",
+      "noInternet": "無網際網路連線 - 無法下載外部資源",
+      "enableHtmlForOffline": "請啟用 HTML 下載或單一檔案模式以供離線使用",
+      "networkCheckFailed": "網路連線檢查失敗 - 繼續下載",
+      "noUrl": "錯誤：未提供下載 URL",
+      "downloadInProgress": "下載已在進行中。請稍候。",
+      "memoryPressure": "由於記憶體嚴重不足，無法開始下載。請稍後再試。"
+    },
+    "filter": {
+      "title": "篩選您要下載的內容",
+      "downloadHTML": "下載 HTML",
+      "downloadImages": "下載圖片",
+      "downloadLinks": "下載連結（儲存為 html 檔案）",
+      "downloadAssets": "下載資源 (css, js)",
+      "downloadDocuments": "下載文件 (pdf, doc 等)",
+      "downloadContentAsText": "將內容下載為文字",
+      "singleFile": "在單一 HTML 檔案中下載",
+      "startDownload": "開始下載",
+      "linksWarning": "如果您選擇下載連結，您必須考慮到總下載時間可能會急劇增加，並且 zip 檔案可能會大得多。",
+      "permissionWarning": "如果沒有儲存權限，將不會儲存篩選偏好設定",
+      "dismiss": "忽略",
+      "loading": "正在載入篩選器...",
+      "ariaDownloadHtml": "下載 HTML 內容",
+      "ariaDownloadImages": "下載圖片",
+      "ariaDownloadLinks": "下載連結（儲存為 HTML 檔案）",
+      "ariaDownloadAssets": "下載資源（如 CSS 和 JS）",
+      "ariaDownloadDocuments": "下載文件（如 PDF 和 DOC）",
+      "ariaDownloadContent": "下載內容為文字",
+      "ariaSingleFile": "下載為單一 HTML 檔案",
+      "ariaStartDownload": "開始下載",
+      "ariaDismissWarning": "忽略警告",
+      "error": "錯誤"
+    },
+    "actions": {
+      "title": "操作：",
+      "stop": "停止"
+    },
+    "status": {
+      "waiting": "等待連線...",
+      "connected": "網站已連線！",
+      "scraping": "正在擷取網站...",
+      "scraped": "網站已擷取！",
+      "creating": "Zip 檔案已建立！",
+      "complete": "下載完成",
+      "failed": "下載失敗",
+      "cancelled": "下載已取消",
+      "creatingIndex": "正在建立 index.html",
+      "downloadingCss": "正在下載 CSS 檔案",
+      "cssDownloaded": "CSS 檔案已下載",
+      "cssError": "下載 CSS 檔案出錯 - 可能遺失部分檔案",
+      "downloadingJs": "正在下載 JS 檔案",
+      "jsDownloaded": "JS 檔案已下載",
+      "jsError": "下載 JS 檔案出錯 - 可能遺失部分檔案",
+      "downloadingDocuments": "正在下載文件",
+      "documentsDownloaded": "文件已下載",
+      "downloadingImages": "正在下載圖片",
+      "imagesDownloaded": "圖片已下載",
+      "downloadingLinks": "正在下載連結的 HTML 檔案",
+      "linksDownloaded": "連結的 HTML 檔案已下載",
+      "downloadingContent": "正在下載內容為文字",
+      "contentDownloaded": "內容文字已下載",
+      "singleFileCreated": "單一 HTML 檔案已建立",
+      "zipCreated": "Zip 檔案已建立！",
+      "downloadStarted": "下載已成功開始",
+      "completeTitle": "下載已完成：",
+      "zipLocation": "您可以在下載資料夾中找到 zip 檔案",
+      "cssProgress": "CSS 檔案進度：{{completed}}/{{total}}",
+      "bgImagesProgress": "背景圖片進度：{{completed}}/{{total}}",
+      "jsProgress": "JS 檔案進度：{{completed}}/{{total}}",
+      "documentsProgress": "文件檔案進度：{{completed}}/{{total}}",
+      "imagesProgress": "圖片進度：{{completed}}/{{total}}",
+      "htmlProgress": "HTML 檔案進度：{{completed}}/{{total}}",
+      "cssSummary": "CSS 檔案已下載：{{succeeded}} 成功，{{failed}} 失敗，{{skipped}} 跳過",
+      "bgImagesSummary": "CSS 背景圖片已下載：{{succeeded}} 成功，{{failed}} 失敗，{{skipped}} 跳過",
+      "jsSummary": "JS 檔案已下載：{{succeeded}} 成功，{{failed}} 失敗，{{skipped}} 跳過",
+      "documentsSummary": "文件檔案已下載：{{succeeded}} 成功，{{failed}} 失敗，{{skipped}} 跳過",
+      "imagesSummary": "圖片已下載：{{succeeded}} 成功，{{failed}} 失敗，{{skipped}} 跳過",
+      "htmlSummary": "HTML 檔案已下載：{{succeeded}} 成功，{{failed}} 失敗，{{skipped}} 跳過",
+      "processingCss": "正在處理 CSS 檔案：{{current}}/{{total}}",
+      "streamingCss": "開始串流下載大型 CSS：{{current}}/{{total}}",
+      "streamingCssProgress": "CSS 串流傳輸進度：{{completed}}/{{total}} 塊",
+      "cssStreamingSummary": "CSS 檔案已處理：{{succeeded}} 成功，{{streamed}} 串流傳輸，{{failed}} 失敗",
+      "processingJs": "正在處理 JS 檔案：{{current}}/{{total}}",
+      "streamingJs": "開始串流下載大型 JS：{{current}}/{{total}}",
+      "streamingJsProgress": "JS 串流傳輸進度：{{completed}}/{{total}} 塊",
+      "jsStreamingSummary": "JS 檔案已處理：{{succeeded}} 成功，{{streamed}} 串流傳輸，{{failed}} 失敗",
+      "processingImages": "正在處理圖片：{{current}}/{{total}}",
+      "streamingImages": "開始串流下載大型圖片：{{current}}/{{total}}",
+      "streamingImagesProgress": "圖片串流傳輸進度：{{completed}}/{{total}} 塊",
+      "imagesStreamingSummary": "圖片已處理：{{succeeded}} 成功，{{streamed}} 串流傳輸，{{failed}} 失敗，{{skipped}} 跳過",
+      "streamingFailedFallback": "串流下載失敗，回退到普通下載...",
+      "processingHtmlIncremental": "正在透過增量組裝處理 HTML 內容",
+      "finalizingDownload": "正在完成下載",
+      "indexCreated": "Index.html 已建立",
+      "htmlTooLarge": "HTML 內容過大，可能會被截斷",
+      "incrementalHtmlAdded": "HTML 內容已組裝並新增至下載中",
+      "largeHtmlAdded": "大型 HTML 內容已處理並新增至下載中",
+      "creatingPackage": "正在建立最終下載包",
+      "processingImagesCount": "正在處理 {{count}} 張圖片",
+      "streamingImageStart": "開始串流下載圖片：{{current}}/{{total}}",
+      "waitingForStreaming": "正在等待 {{count}} 個串流下載完成...",
+      "streamingProgress": "串流傳輸進度：{{completed}}/{{total}} 塊 ({{percent}}%)",
+      "streamingCompleted": "所有串流下載已完成",
+      "creatingStreamingZip": "正在建立包含串流內容的 ZIP 檔案...",
+      "streamingSuccess": "串流下載成功完成",
+      "downloadingWebsiteContent": "正在下載網站內容 ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "需要儲存權限",
+        "description": "此擴充功能需要儲存權限才能儲存您的篩選偏好設定並提供更好的體驗。",
+        "grant": "授予權限",
+        "deny": "以後再說",
+        "benefits": {
+          "title": "授予儲存權限的好處：",
+          "savePreferences": "儲存您的下載篩選偏好設定",
+          "persistSettings": "記住您的跨工作階段設定",
+          "improveExperience": "提供更個人化的體驗"
+        }
+      },
+      "offscreen": {
+        "title": "需要額外權限",
+        "description": "此擴充功能需要 offscreen 權限才能有效地處理下載。",
+        "grant": "授予權限",
+        "why": "此權限允許擴充功能建立背景文件以處理大型下載，而不會影響您的瀏覽體驗。"
+      },
+      "global": {
+        "title": "需要權限",
+        "description": "此擴充功能需要儲存和離線權限才能提供最佳下載體驗。",
+        "storage": {
+          "title": "儲存權限：",
+          "description": "允許擴充功能在您的瀏覽器中本機儲存少量資料。這使我們能夠記住您的偏好設定並在工作階段之間提供個人化體驗。"
+        },
+        "offscreen": {
+          "title": "離線權限：",
+          "description": "透過允許擴充功能在背景處理檔案而不影響您的瀏覽體驗，從而啟用大檔案下載。"
+        },
+        "storageDetails": {
+          "title": "我們儲存的內容：",
+          "id": "唯一產生的 ID",
+          "preferences": "下載偏好設定"
+        },
+        "privacy": {
+          "title": "隱私：",
+          "personal": "無個人資料",
+          "history": "無瀏覽歷史記錄",
+          "local": "所有資料都保留在您的瀏覽器本機"
+        },
+        "button": {
+          "requesting": "正在請求權限...",
+          "enable": "啟用權限"
+        },
+        "footer": "隨時在瀏覽器設定中撤銷"
+      }
+    },
+    "download": {
+      "showInFolder": "在資料夾中顯示",
+      "downloadAnother": "下載另一個頁面",
+      "cancel": "取消下載"
+    },
+    "language": {
+      "select": "選擇語言",
+      "search": "搜尋語言...",
+      "current": "目前語言"
+    },
+    "rating": {
+      "title": "喜歡這個擴充功能嗎？",
+      "description": "請在 Chrome 線上應用程式商店給我們評分！",
+      "rate": "評分擴充功能",
+      "prompt": "如果您滿意，請留下好評 :)",
+      "ariaLabel_one": "評價 {{count}} 星",
+      "ariaLabel_other": "評價 {{count}} 星"
+    },
+    "featureRequest": {
+      "title": "請求功能",
+      "description": "有改進此擴充功能的想法嗎？",
+      "submit": "提交請求"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Weboldal letöltő",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "A Weboldal letöltő lehetővé teszi teljes weboldalak letöltését és mentését, beleértve a kapcsolódó erőforrásokat is, offline megtekintéshez.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Weboldal letöltő",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

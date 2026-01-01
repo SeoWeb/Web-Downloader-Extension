@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "ویب پیج ڈاؤنلوڈر",
+      "loading": "لوڈ ہو رہا ہے...",
+      "error": "کچھ غلط ہو گیا:",
+      "tryAgain": "دوبارہ کوشش کریں",
+      "iconAlt": "ویب پیج ڈاؤنلوڈر آئیکن",
+      "noInternet": "انٹرنیٹ کنکشن نہیں ہے - بیرونی وسائل ڈاؤن لوڈ نہیں کیے جا سکتے",
+      "enableHtmlForOffline": "آف لائن استعمال کے لیے براہ کرم HTML ڈاؤن لوڈ یا سنگل فائل موڈ کو فعال کریں",
+      "networkCheckFailed": "نیٹ ورک کنیکٹیویٹی چیک ناکام - ڈاؤن لوڈ جاری ہے",
+      "noUrl": "غلطی: ڈاؤن لوڈ کے لیے کوئی URL فراہم نہیں کیا گیا",
+      "downloadInProgress": "ایک ڈاؤن لوڈ پہلے ہی جاری ہے۔ براہ کرم انتظار کریں۔",
+      "memoryPressure": "اہم میموری دباؤ کی وجہ سے ڈاؤن لوڈ شروع نہیں کیا جا سکتا۔ براہ کرم بعد میں دوبارہ کوشش کریں۔"
+    },
+    "filter": {
+      "title": "جو آپ ڈاؤن لوڈ کرنا چاہتے ہیں اسے فلٹر کریں",
+      "downloadHTML": "ایچ ٹی ایم ایل ڈاؤن لوڈ کریں",
+      "downloadImages": "تصاویر ڈاؤن لوڈ کریں",
+      "downloadLinks": "لنکس ڈاؤن لوڈ کریں (ایچ ٹی ایم ایل فائلوں کے طور پر محفوظ شدہ)",
+      "downloadAssets": "اثاثے ڈاؤن لوڈ کریں (سی ایس ایس، جے ایس)",
+      "downloadDocuments": "دستاویزات ڈاؤن لوڈ کریں (پی ڈی ایف، ڈاک، وغیرہ)",
+      "downloadContentAsText": "مواد کو متن کے طور پر ڈاؤن لوڈ کریں",
+      "singleFile": "سنگل ایچ ٹی ایم ایل فائل میں ڈاؤن لوڈ کریں",
+      "startDownload": "ڈاؤن لوڈ شروع کریں",
+      "linksWarning": "اگر آپ لنکس ڈاؤن لوڈ کرنے کا انتخاب کرتے ہیں، تو آپ کو یہ بات ذہن میں رکھنی ہوگی کہ کل ڈاؤن لوڈ کا وقت ڈرامائی طور پر بڑھ سکتا ہے اور زپ فائل نمایاں طور پر بڑی ہو سکتی ہے۔",
+      "permissionWarning": "اسٹوریج کی اجازت کے بغیر فلٹر کی ترجیحات محفوظ نہیں کی جائیں گی",
+      "dismiss": "مسترد کریں",
+      "loading": "فلٹرز لوڈ ہو رہے ہیں...",
+      "ariaDownloadHtml": "HTML مواد ڈاؤن لوڈ کریں",
+      "ariaDownloadImages": "تصاویر ڈاؤن لوڈ کریں",
+      "ariaDownloadLinks": "لنکس ڈاؤن لوڈ کریں (html فائلوں کے طور پر محفوظ)",
+      "ariaDownloadAssets": "اثاثے ڈاؤن لوڈ کریں (css, js)",
+      "ariaDownloadDocuments": "دستاویزات ڈاؤن لوڈ کریں (pdf, doc وغیرہ)",
+      "ariaDownloadContent": "مواد کو بطور متن ڈاؤن لوڈ کریں",
+      "ariaSingleFile": "ایک HTML فائل کے طور پر ڈاؤن لوڈ کریں",
+      "ariaStartDownload": "ڈاؤن لوڈ شروع کریں",
+      "ariaDismissWarning": "انتباہ مسترد کریں",
+      "error": "غلطی"
+    },
+    "actions": {
+      "title": "اقدامات:",
+      "stop": "رکیں"
+    },
+    "status": {
+      "waiting": "کنکشن کا انتظار ہے...",
+      "connected": "ویب سائٹ منسلک!",
+      "scraping": "ویب سائٹ سکریپ کی جا رہی ہے...",
+      "scraped": "ویب سائٹ سکریپ ہو گئی!",
+      "creating": "زپ فائل بنائی گئی!",
+      "complete": "ڈاؤن لوڈ مکمل",
+      "failed": "ڈاؤن لوڈ ناکام",
+      "cancelled": "ڈاؤن لوڈ منسوخ کر دیا گیا",
+      "creatingIndex": "index.html بنایا جا رہا ہے",
+      "downloadingCss": "CSS فائلیں ڈاؤن لوڈ ہو رہی ہیں",
+      "cssDownloaded": "CSS فائلیں ڈاؤن لوڈ ہو گئیں",
+      "cssError": "CSS فائلیں ڈاؤن لوڈ کرنے میں غلطی - کچھ غائب ہو سکتی ہیں",
+      "downloadingJs": "JS فائلیں ڈاؤن لوڈ ہو رہی ہیں",
+      "jsDownloaded": "JS فائلیں ڈاؤن لوڈ ہو گئیں",
+      "jsError": "JS فائلیں ڈاؤن لوڈ کرنے میں غلطی - کچھ غائب ہو سکتی ہیں",
+      "downloadingDocuments": "دستاویزات ڈاؤن لوڈ ہو رہی ہیں",
+      "documentsDownloaded": "دستاویزات ڈاؤن لوڈ ہو گئیں",
+      "downloadingImages": "تصاویر ڈاؤن لوڈ ہو رہی ہیں",
+      "imagesDownloaded": "تصاویر ڈاؤن لوڈ ہو گئیں",
+      "downloadingLinks": "منسلک html فائلیں ڈاؤن لوڈ ہو رہی ہیں",
+      "linksDownloaded": "منسلک html فائلیں ڈاؤن لوڈ ہو گئیں",
+      "downloadingContent": "مواد کو بطور متن ڈاؤن لوڈ کیا جا رہا ہے",
+      "contentDownloaded": "مواد بطور متن ڈاؤن لوڈ ہو گیا",
+      "singleFileCreated": "ایک HTML فائل بنائی گئی",
+      "zipCreated": "زپ فائل بنائی گئی!",
+      "downloadStarted": "ڈاؤن لوڈ کامیابی سے شروع ہوا",
+      "completeTitle": "ڈاؤن لوڈ مکمل ہو گیا ہے:",
+      "zipLocation": "آپ اپنے ڈاؤن لوڈ فولڈر میں زپ فائل تلاش کر سکتے ہیں",
+      "cssProgress": "CSS فائلیں پیشرفت: {{completed}}/{{total}}",
+      "bgImagesProgress": "پس منظر کی تصاویر پیشرفت: {{completed}}/{{total}}",
+      "jsProgress": "JS فائلیں پیشرفت: {{completed}}/{{total}}",
+      "documentsProgress": "دستاویز فائلیں پیشرفت: {{completed}}/{{total}}",
+      "imagesProgress": "تصاویر پیشرفت: {{completed}}/{{total}}",
+      "htmlProgress": "HTML فائلیں پیشرفت: {{completed}}/{{total}}",
+      "cssSummary": "CSS فائلیں ڈاؤن لوڈ ہوئیں: {{succeeded}} کامیاب، {{failed}} ناکام، {{skipped}} چھوڑی گئیں",
+      "bgImagesSummary": "CSS سے پس منظر کی تصاویر ڈاؤن لوڈ ہوئیں: {{succeeded}} کامیاب، {{failed}} ناکام، {{skipped}} چھوڑی گئیں",
+      "jsSummary": "JS فائلیں ڈاؤن لوڈ ہوئیں: {{succeeded}} کامیاب، {{failed}} ناکام، {{skipped}} چھوڑی گئیں",
+      "documentsSummary": "دستاویز فائلیں ڈاؤن لوڈ ہوئیں: {{succeeded}} کامیاب، {{failed}} ناکام، {{skipped}} چھوڑی گئیں",
+      "imagesSummary": "تصاویر ڈاؤن لوڈ ہوئیں: {{succeeded}} کامیاب، {{failed}} ناکام، {{skipped}} چھوڑی گئیں",
+      "htmlSummary": "HTML فائلیں ڈاؤن لوڈ ہوئیں: {{succeeded}} کامیاب، {{failed}} ناکام، {{skipped}} چھوڑی گئیں",
+      "processingCss": "CSS فائلوں پر کام جاری ہے: {{current}}/{{total}}",
+      "streamingCss": "بڑی CSS کے لیے اسٹریمنگ ڈاؤن لوڈ شروع ہو رہا ہے: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS اسٹریمنگ پیشرفت: {{completed}}/{{total}} حصے",
+      "cssStreamingSummary": "پروسیس شدہ CSS فائلیں: {{succeeded}} کامیاب، {{streamed}} اسٹریم کی گئیں، {{failed}} ناکام",
+      "processingJs": "JS فائلوں پر کام جاری ہے: {{current}}/{{total}}",
+      "streamingJs": "بڑی JS کے لیے اسٹریمنگ ڈاؤن لوڈ شروع ہو رہا ہے: {{current}}/{{total}}",
+      "streamingJsProgress": "JS اسٹریمنگ پیشرفت: {{completed}}/{{total}} حصے",
+      "jsStreamingSummary": "پروسیس شدہ JS فائلیں: {{succeeded}} کامیاب، {{streamed}} اسٹریم کی گئیں، {{failed}} ناکام",
+      "processingImages": "تصاویر پر کام جاری ہے: {{current}}/{{total}}",
+      "streamingImages": "بڑی تصویر کے لیے اسٹریمنگ ڈاؤن لوڈ شروع ہو رہا ہے: {{current}}/{{total}}",
+      "streamingImagesProgress": "تصویر اسٹریمنگ پیشرفت: {{completed}}/{{total}} حصے",
+      "imagesStreamingSummary": "پروسیس شدہ تصاویر: {{succeeded}} کامیاب، {{streamed}} اسٹریم کی گئیں، {{failed}} ناکام، {{skipped}} چھوڑی گئیں",
+      "streamingFailedFallback": "اسٹریمنگ ڈاؤن لوڈ ناکام، عام ڈاؤن لوڈ پر واپس جا رہا ہے...",
+      "processingHtmlIncremental": "انکریمنٹل اسمبلی کے ساتھ HTML مواد پر کام جاری ہے",
+      "finalizingDownload": "ڈاؤن لوڈ مکمل کیا جا رہا ہے",
+      "indexCreated": "index.html بن گیا",
+      "htmlTooLarge": "HTML مواد بہت بڑا ہے، کاٹا جا سکتا ہے",
+      "incrementalHtmlAdded": "HTML مواد جمع کیا گیا اور ڈاؤن لوڈ میں شامل کیا گیا",
+      "largeHtmlAdded": "بڑا HTML مواد پروسیس کیا گیا اور ڈاؤن لوڈ میں شامل کیا گیا",
+      "creatingPackage": "حتمی ڈاؤن لوڈ پیکیج بنایا جا رہا ہے",
+      "processingImagesCount": "{{count}} تصاویر پر کام جاری ہے",
+      "streamingImageStart": "تصویر کے لیے اسٹریمنگ ڈاؤن لوڈ شروع ہو رہا ہے: {{current}}/{{total}}",
+      "waitingForStreaming": "{{count}} اسٹریمنگ ڈاؤن لوڈز مکمل ہونے کا انتظار ہے...",
+      "streamingProgress": "اسٹریمنگ پیشرفت: {{completed}}/{{total}} حصے ({{percent}}%)",
+      "streamingCompleted": "تمام اسٹریمنگ ڈاؤن لوڈز مکمل ہو گئے",
+      "creatingStreamingZip": "اسٹریمنگ مواد کے ساتھ زپ فائل بنائی جا رہی ہے...",
+      "streamingSuccess": "اسٹریمنگ ڈاؤن لوڈ کامیابی سے مکمل ہو گیا",
+      "downloadingWebsiteContent": "ویب سائٹ کا مواد ڈاؤن لوڈ ہو رہا ہے ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "اسٹوریج کی اجازت درکار ہے",
+        "description": "اس ایکسٹینشن کو آپ کی فلٹر کی ترجیحات کو محفوظ کرنے اور بہتر تجربہ فراہم کرنے کے لیے اسٹوریج کی اجازت درکار ہے۔",
+        "grant": "اجازت دیں",
+        "deny": "شاید بعد میں",
+        "benefits": {
+          "title": "اسٹوریج کی اجازت دینے کے فوائد:",
+          "savePreferences": "اپنی ڈاؤن لوڈ فلٹر کی ترجیحات محفوظ کریں",
+          "persistSettings": "سیشنز کے درمیان اپنی سیٹنگز یاد رکھیں",
+          "improveExperience": "مزید ذاتی تجربہ فراہم کریں"
+        }
+      },
+      "offscreen": {
+        "title": "اضافی اجازت درکار ہے",
+        "description": "اس ایکسٹینشن کو ڈاؤن لوڈز کو مؤثر طریقے سے پروسیس کرنے کے لیے آف اسکرین اجازت درکار ہے۔",
+        "grant": "اجازت دیں",
+        "why": "یہ اجازت ایکسٹینشن کو آپ کے براؤزنگ کے تجربے کو متاثر کیے بغیر بڑے ڈاؤن لوڈز کو پروسیس کرنے کے لیے پس منظر کے دستاویزات بنانے کی اجازت دیتی ہے۔"
+      },
+      "global": {
+        "title": "اجازت درکار ہے",
+        "description": "بہترین ڈاؤن لوڈ کا تجربہ فراہم کرنے کے لیے اس توسیع کو اسٹوریج اور آف اسکرین اجازتوں کی ضرورت ہے۔",
+        "storage": {
+          "title": "اسٹوریج کی اجازت:",
+          "description": "ایکسٹینشن کو آپ کے براؤزر میں مقامی طور پر تھوڑی مقدار میں ڈیٹا محفوظ کرنے کی اجازت دیتا ہے۔ یہ ہمیں آپ کی ترجیحات کو یاد رکھنے اور سیشنز میں ذاتی نوعیت کا تجربہ فراہم کرنے کے قابل بناتا ہے۔"
+        },
+        "offscreen": {
+          "title": "آف اسکرین اجازت:",
+          "description": "بڑی فائلوں کو ڈاؤن لوڈ کرنے کے قابل بناتا ہے تاکہ ایکسٹینشن کو آپ کے براؤزنگ کے تجربے کو متاثر کیے بغیر پس منظر میں فائلوں پر کارروائی کی جا سکے۔"
+        },
+        "storageDetails": {
+          "title": "ہم کیا اسٹور کرتے ہیں:",
+          "id": "منفرد تیار کردہ ID",
+          "preferences": "ڈاؤن لوڈ کی ترجیحات"
+        },
+        "privacy": {
+          "title": "رازداری:",
+          "personal": "کوئی ذاتی ڈیٹا نہیں",
+          "history": "کوئی براؤزنگ ہسٹری نہیں",
+          "local": "تمام ڈیٹا مقامی طور پر آپ کے براؤزر میں رہتا ہے"
+        },
+        "button": {
+          "requesting": "اجازت طلب کر رہا ہے...",
+          "enable": "اجازت نامے کو فعال کریں"
+        },
+        "footer": "براؤزر کی ترتیبات میں کسی bhi waqt منسوخ کریں"
+      }
+    },
+    "download": {
+      "showInFolder": "فولڈر میں دکھائیں",
+      "downloadAnother": "دوسرا صفحہ ڈاؤن لوڈ کریں",
+      "cancel": "ڈاؤن لوڈ منسوخ کریں"
+    },
+    "language": {
+      "select": "زبان منتخب کریں",
+      "search": "زبانیں تلاش کریں...",
+      "current": "موجودہ زبان"
+    },
+    "rating": {
+      "title": "کیا آپ اس ایکسٹینشن سے لطف اندوز ہو رہے ہیں؟",
+      "description": "براہ کرم کروم ویب اسٹور پر ہماری درجہ بندی کریں!",
+      "rate": "ایکسٹینشن کی درجہ بندی کریں",
+      "prompt": "اگر آپ مطمئن تھے تو براہ کرم مثبت جائزہ چھوڑیں :)",
+      "ariaLabel_one": "{{count}} ستارہ کی درجہ بندی کریں",
+      "ariaLabel_other": "{{count}} ستاروں کی درجہ بندی کریں"
+    },
+    "featureRequest": {
+      "title": "فیچر کی درخواست کریں",
+      "description": "کیا آپ کے پاس اس ایکسٹینشن کو بہتر بنانے کا کوئی خیال ہے؟",
+      "submit": "درخواست جمع کرائیں"
+    }
+  }
+}

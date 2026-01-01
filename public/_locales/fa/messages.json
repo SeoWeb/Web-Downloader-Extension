@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "دانلود کننده صفحات وب",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "دانلود کننده صفحات وب به شما اجازه می دهد تا تمام صفحات وب، شامل منابع لینک شده، را برای مشاهده آفلاین دانلود و ذخیره کنید.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "دانلود کننده صفحات وب",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

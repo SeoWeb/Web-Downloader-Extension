@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "دانلود کننده صفحات وب",
+      "loading": "در حال بارگیری...",
+      "error": "مشکلی پیش آمد:",
+      "tryAgain": "تلاش مجدد",
+      "iconAlt": "آیکون دانلودر صفحه وب",
+      "noInternet": "اتصال اینترنت وجود ندارد - امکان دانلود منابع خارجی نیست",
+      "enableHtmlForOffline": "لطفاً برای استفاده آفلاین، دانلود HTML یا حالت تک فایل را فعال کنید",
+      "networkCheckFailed": "بررسی اتصال شبکه ناموفق بود - ادامه دانلود",
+      "noUrl": "خطا: هیچ نشانی اینترنتی برای دانلود ارائه نشده است",
+      "downloadInProgress": "دانلود در حال انجام است. لطفاً صبر کنید.",
+      "memoryPressure": "به دلیل فشار حافظه بحرانی امکان شروع دانلود وجود ندارد. لطفاً بعداً دوباره تلاش کنید."
+    },
+    "filter": {
+      "title": "آنچه را که می خواهید دانلود کنید فیلتر کنید",
+      "downloadHTML": "دانلود HTML",
+      "downloadImages": "دانلود تصاویر",
+      "downloadLinks": "دانلود لینک ها (ذخیره شده به عنوان فایل های html)",
+      "downloadAssets": "دانلود دارایی ها (css, js)",
+      "downloadDocuments": "دانلود اسناد (pdf, doc, etc.)",
+      "downloadContentAsText": "دانلود محتوا به عنوان متن",
+      "singleFile": "دانلود در یک فایل HTML واحد",
+      "startDownload": "شروع دانلود",
+      "linksWarning": "اگر انتخاب کنید که لینک ها را دانلود کنید، باید در نظر بگیرید که زمان کل دانلود می تواند به طور چشمگیری افزایش یابد و فایل zip می تواند به طور قابل توجهی بزرگتر باشد.",
+      "permissionWarning": "تنظیمات فیلتر بدون مجوز ذخیره سازی ذخیره نمی شوند",
+      "dismiss": "رد کردن",
+      "loading": "بارگیری فیلترها...",
+      "ariaDownloadHtml": "دانلود محتوای HTML",
+      "ariaDownloadImages": "دانلود تصاویر",
+      "ariaDownloadLinks": "دانلود لینک‌ها (ذخیره شده به عنوان فایل‌های html)",
+      "ariaDownloadAssets": "دانلود دارایی‌ها (css، js)",
+      "ariaDownloadDocuments": "دانلود اسناد (pdf، doc و غیره)",
+      "ariaDownloadContent": "دانلود محتوا به عنوان متن",
+      "ariaSingleFile": "دانلود به عنوان یک فایل HTML",
+      "ariaStartDownload": "شروع دانلود",
+      "ariaDismissWarning": "رد هشدار",
+      "error": "خطا"
+    },
+    "actions": {
+      "title": "اقدامات:",
+      "stop": "توقف"
+    },
+    "status": {
+      "waiting": "در انتظار اتصال...",
+      "connected": "وب سایت متصل شد!",
+      "scraping": "در حال استخراج وب سایت...",
+      "scraped": "وب سایت استخراج شد!",
+      "creating": "فایل Zip ایجاد شد!",
+      "complete": "دانلود کامل شد",
+      "failed": "دانلود ناموفق بود",
+      "cancelled": "دانلود لغو شد",
+      "creatingIndex": "در حال ایجاد index.html",
+      "downloadingCss": "در حال دانلود فایل‌های CSS",
+      "cssDownloaded": "فایل‌های CSS دانلود شدند",
+      "cssError": "خطا در دانلود فایل‌های CSS - ممکن است برخی از آنها وجود نداشته باشند",
+      "downloadingJs": "در حال دانلود فایل‌های JS",
+      "jsDownloaded": "فایل‌های JS دانلود شدند",
+      "jsError": "خطا در دانلود فایل‌های JS - ممکن است برخی از آنها وجود نداشته باشند",
+      "downloadingDocuments": "در حال دانلود اسناد",
+      "documentsDownloaded": "اسناد دانلود شدند",
+      "downloadingImages": "در حال دانلود تصاویر",
+      "imagesDownloaded": "تصاویر دانلود شدند",
+      "downloadingLinks": "در حال دانلود فایل‌های html لینک شده",
+      "linksDownloaded": "فایل‌های html لینک شده دانلود شدند",
+      "downloadingContent": "در حال دانلود محتوا به عنوان متن",
+      "contentDownloaded": "محتوا به عنوان متن دانلود شد",
+      "singleFileCreated": "فایل HTML تکی ایجاد شد",
+      "zipCreated": "فایل Zip ایجاد شد!",
+      "downloadStarted": "دانلود با موفقیت شروع شد",
+      "completeTitle": "دانلود کامل شد:",
+      "zipLocation": "می‌توانید فایل zip را در پوشه دانلودهای خود پیدا کنید",
+      "cssProgress": "پیشرفت فایل‌های CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "پیشرفت تصاویر پس‌زمینه: {{completed}}/{{total}}",
+      "jsProgress": "پیشرفت فایل‌های JS: {{completed}}/{{total}}",
+      "documentsProgress": "پیشرفت فایل‌های اسناد: {{completed}}/{{total}}",
+      "imagesProgress": "پیشرفت تصاویر: {{completed}}/{{total}}",
+      "htmlProgress": "پیشرفت فایل‌های HTML: {{completed}}/{{total}}",
+      "cssSummary": "فایل‌های CSS دانلود شده: {{succeeded}} موفق، {{failed}} ناموفق، {{skipped}} نادیده گرفته شده",
+      "bgImagesSummary": "تصاویر پس‌زمینه دانلود شده از CSS: {{succeeded}} موفق، {{failed}} ناموفق، {{skipped}} نادیده گرفته شده",
+      "jsSummary": "فایل‌های JS دانلود شده: {{succeeded}} موفق، {{failed}} ناموفق، {{skipped}} نادیده گرفته شده",
+      "documentsSummary": "فایل‌های اسناد دانلود شده: {{succeeded}} موفق، {{failed}} ناموفق، {{skipped}} نادیده گرفته شده",
+      "imagesSummary": "تصاویر دانلود شده: {{succeeded}} موفق، {{failed}} ناموفق، {{skipped}} نادیده گرفته شده",
+      "htmlSummary": "فایل‌های HTML دانلود شده: {{succeeded}} موفق، {{failed}} ناموفق، {{skipped}} نادیده گرفته شده",
+      "processingCss": "در حال پردازش فایل‌های CSS: {{current}}/{{total}}",
+      "streamingCss": "شروع دانلود استریم برای CSS بزرگ: {{current}}/{{total}}",
+      "streamingCssProgress": "پیشرفت استریم CSS: {{completed}}/{{total}} تکه",
+      "cssStreamingSummary": "فایل‌های CSS پردازش شده: {{succeeded}} موفق، {{streamed}} استریم شده، {{failed}} ناموفق",
+      "processingJs": "در حال پردازش فایل‌های JS: {{current}}/{{total}}",
+      "streamingJs": "شروع دانلود استریم برای JS بزرگ: {{current}}/{{total}}",
+      "streamingJsProgress": "پیشرفت استریم JS: {{completed}}/{{total}} تکه",
+      "jsStreamingSummary": "فایل‌های JS پردازش شده: {{succeeded}} موفق، {{streamed}} استریم شده، {{failed}} ناموفق",
+      "processingImages": "در حال پردازش تصاویر: {{current}}/{{total}}",
+      "streamingImages": "شروع دانلود استریم برای تصویر بزرگ: {{current}}/{{total}}",
+      "streamingImagesProgress": "پیشرفت استریم تصویر: {{completed}}/{{total}} تکه",
+      "imagesStreamingSummary": "تصاویر پردازش شده: {{succeeded}} موفق، {{streamed}} استریم شده، {{failed}} ناموفق، {{skipped}} نادیده گرفته شده",
+      "streamingFailedFallback": "دانلود استریم ناموفق بود، بازگشت به دانلود معمولی...",
+      "processingHtmlIncremental": "پردازش محتوای HTML با مونتاژ افزایشی",
+      "finalizingDownload": "نهایی کردن دانلود",
+      "indexCreated": "index.html ایجاد شد",
+      "htmlTooLarge": "محتوای HTML خیلی بزرگ است، ممکن است کوتاه شود",
+      "incrementalHtmlAdded": "محتوای HTML مونتاژ و به دانلود اضافه شد",
+      "largeHtmlAdded": "محتوای HTML بزرگ پردازش و به دانلود اضافه شد",
+      "creatingPackage": "ایجاد بسته دانلود نهایی",
+      "processingImagesCount": "در حال پردازش {{count}} تصویر",
+      "streamingImageStart": "شروع دانلود استریم برای تصویر: {{current}}/{{total}}",
+      "waitingForStreaming": "در انتظار تکمیل {{count}} دانلود استریم...",
+      "streamingProgress": "پیشرفت استریم: {{completed}}/{{total}} تکه ({{percent}}%)",
+      "streamingCompleted": "تمام دانلودهای استریم کامل شد",
+      "creatingStreamingZip": "ایجاد فایل ZIP با محتوای استریم...",
+      "streamingSuccess": "دانلود استریم با موفقیت کامل شد",
+      "downloadingWebsiteContent": "در حال دانلود محتوای وب سایت ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "مجوز ذخیره سازی مورد نیاز است",
+        "description": "این افزونه برای ذخیره تنظیمات فیلتر شما و ارائه تجربه بهتر به مجوز ذخیره سازی نیاز دارد.",
+        "grant": "اعطای مجوز",
+        "deny": "شاید بعداً",
+        "benefits": {
+          "title": "مزایای اعطای مجوز ذخیره سازی:",
+          "savePreferences": "ذخیره تنظیمات فیلتر دانلود شما",
+          "persistSettings": "به خاطر سپردن تنظیمات شما در جلسات مختلف",
+          "improveExperience": "ارائه تجربه شخصی تر"
+        }
+      },
+      "offscreen": {
+        "title": "مجوز اضافی مورد نیاز است",
+        "description": "این افزونه برای پردازش کارآمد دانلودها به مجوز offscreen نیاز دارد.",
+        "grant": "اعطای مجوز",
+        "why": "این مجوز به افزونه اجازه می دهد تا اسناد پس زمینه را برای پردازش دانلودهای بزرگ بدون تأثیر بر تجربه مرور شما ایجاد کند."
+      },
+      "global": {
+        "title": "مجوزها لازم است",
+        "description": "این افزونه برای ارائه بهترین تجربه دانلود به مجوزهای ذخیره‌سازی و خارج از صفحه نیاز دارد.",
+        "storage": {
+          "title": "مجوز ذخیره‌سازی:",
+          "description": "به افزونه اجازه می‌دهد مقادیر کمی از داده‌ها را به صورت محلی در مرورگر شما ذخیره کند. این به ما امکان می‌دهد تنظیمات شما را به خاطر بسپاریم و تجربه‌ای شخصی‌سازی شده در جلسات مختلف ارائه دهیم."
+        },
+        "offscreen": {
+          "title": "مجوز خارج از صفحه:",
+          "description": "با اجازه دادن به افزونه برای پردازش فایل‌ها در پس‌زمینه بدون تأثیر بر تجربه مرور شما، دانلود فایل‌های بزرگ را فعال می‌کند."
+        },
+        "storageDetails": {
+          "title": "آنچه ما ذخیره می‌کنیم:",
+          "id": "شناسه منحصر به فرد تولید شده",
+          "preferences": "تنظیمات دانلود"
+        },
+        "privacy": {
+          "title": "حریم خصوصی:",
+          "personal": "بدون داده‌های شخصی",
+          "history": "بدون تاریخچه مرور",
+          "local": "همه داده‌ها به صورت محلی در مرورگر شما باقی می‌مانند"
+        },
+        "button": {
+          "requesting": "در حال درخواست مجوز...",
+          "enable": "فعال‌سازی مجوزها"
+        },
+        "footer": "لغو در هر زمان در تنظیمات مرورگر"
+      }
+    },
+    "download": {
+      "showInFolder": "نمایش در پوشه",
+      "downloadAnother": "دانلود یک صفحه دیگر",
+      "cancel": "لغو دانلود"
+    },
+    "language": {
+      "select": "انتخاب زبان",
+      "search": "جستجوی زبان ها...",
+      "current": "زبان فعلی"
+    },
+    "rating": {
+      "title": "از این افزونه لذت می برید؟",
+      "description": "لطفاً در فروشگاه وب Chrome به ما امتیاز دهید!",
+      "rate": "امتیاز به افزونه",
+      "prompt": "اگر راضی بودید، لطفا یک نظر مثبت بگذارید :)",
+      "ariaLabel_one": "امتیاز {{count}} ستاره",
+      "ariaLabel_other": "امتیاز {{count}} ستاره"
+    },
+    "featureRequest": {
+      "title": "درخواست ویژگی",
+      "description": "ایده ای برای بهبود این افزونه دارید؟",
+      "submit": "ارسال درخواست"
+    }
+  }
+}

@@ -1,0 +1,108 @@
+/* RTL (Right-to-Left) Support Styles */
+
+/* Apply RTL-specific styles when dir="rtl" is set on the root element */
+[dir="rtl"] {
+  /* Text alignment */
+  text-align: right;
+}
+
+/* Flip flex direction for RTL */
+[dir="rtl"] .flex {
+  flex-direction: row-reverse;
+}
+
+/* Reverse spacing for RTL - use logical properties where possible */
+[dir="rtl"] .space-x-2 > * + * {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+[dir="rtl"] .space-x-4 > * + * {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+/* Flip padding for specific elements */
+[dir="rtl"] .pr-16 {
+  padding-right: 0;
+  padding-left: 4rem;
+}
+
+[dir="rtl"] .pl-10 {
+  padding-left: 0;
+  padding-right: 2.5rem;
+}
+
+[dir="rtl"] .pl-3 {
+  padding-left: 0;
+  padding-right: 0.75rem;
+}
+
+/* Flip positioning for icons and elements */
+[dir="rtl"] .left-3 {
+  left: auto;
+  right: 0.75rem;
+}
+
+[dir="rtl"] .right-0 {
+  right: auto;
+  left: 0;
+}
+
+/* Flip chevron and arrow rotations */
+[dir="rtl"] svg.rotate-180 {
+  transform: rotate(180deg) scaleX(-1);
+}
+
+/* Flip checkbox and input alignments */
+[dir="rtl"] input[type="checkbox"] {
+  margin-left: 0.5rem;
+  margin-right: 0;
+}
+
+/* Ensure dropdowns align correctly */
+[dir="rtl"] .absolute.right-0 {
+  right: auto;
+  left: 0;
+}
+
+/* Flip justify-end to justify-start for RTL */
+[dir="rtl"] .justify-end {
+  justify-content: flex-start;
+}
+
+/* Flip text-left to text-right */
+[dir="rtl"] .text-left {
+  text-align: right;
+}
+
+/* Flip border radius for RTL */
+[dir="rtl"] .rounded-l-lg {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+[dir="rtl"] .rounded-r-lg {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-top-left-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+}
+
+/* Ensure proper spacing in RTL for inline elements */
+[dir="rtl"] .gap-2 {
+  gap: 0.5rem;
+}
+
+/* Fix for search icon in language switcher */
+[dir="rtl"] .absolute.left-3 {
+  left: auto;
+  right: 0.75rem;
+}
+
+/* Smooth transition for direction changes */
+* {
+  transition: margin 0.2s ease, padding 0.2s ease;
+}

@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Trình tải xuống trang web",
+      "loading": "Đang tải...",
+      "error": "Đã xảy ra lỗi:",
+      "tryAgain": "Thử lại",
+      "iconAlt": "Biểu tượng Trình tải xuống trang web",
+      "noInternet": "Không có kết nối internet - không thể tải xuống tài nguyên bên ngoài",
+      "enableHtmlForOffline": "Vui lòng bật tải xuống HTML hoặc chế độ tệp đơn để sử dụng ngoại tuyến",
+      "networkCheckFailed": "Kiểm tra kết nối mạng thất bại - tiếp tục tải xuống",
+      "noUrl": "Lỗi: Không có URL nào được cung cấp để tải xuống",
+      "downloadInProgress": "Đang tải xuống. Vui lòng đợi.",
+      "memoryPressure": "Không thể bắt đầu tải xuống do bộ nhớ bị đầy. Vui lòng thử lại sau."
+    },
+    "filter": {
+      "title": "Lọc những gì bạn muốn tải xuống",
+      "downloadHTML": "Tải xuống HTML",
+      "downloadImages": "Tải xuống hình ảnh",
+      "downloadLinks": "Tải xuống liên kết (được lưu dưới dạng tệp html)",
+      "downloadAssets": "Tải xuống tài nguyên (css, js)",
+      "downloadDocuments": "Tải xuống tài liệu (pdf, doc, v.v.)",
+      "downloadContentAsText": "Tải xuống nội dung dưới dạng văn bản",
+      "singleFile": "Tải xuống trong một tệp HTML duy nhất",
+      "startDownload": "Bắt đầu tải xuống",
+      "linksWarning": "Nếu bạn chọn tải xuống các liên kết, bạn phải tính đến việc tổng thời gian tải xuống có thể tăng lên đáng kể và tệp zip có thể lớn hơn đáng kể.",
+      "permissionWarning": "Tùy chọn bộ lọc sẽ không được lưu nếu không có quyền lưu trữ",
+      "dismiss": "Bỏ qua",
+      "loading": "Đang tải bộ lọc...",
+      "ariaDownloadHtml": "Tải xuống nội dung HTML",
+      "ariaDownloadImages": "Tải xuống hình ảnh",
+      "ariaDownloadLinks": "Tải xuống liên kết dưới dạng tệp HTML",
+      "ariaDownloadAssets": "Tải xuống tài nguyên như CSS và JS",
+      "ariaDownloadDocuments": "Tải xuống tài liệu như PDF và DOC",
+      "ariaDownloadContent": "Tải xuống nội dung dưới dạng văn bản",
+      "ariaSingleFile": "Tải xuống dưới dạng một tệp HTML duy nhất",
+      "ariaStartDownload": "Bắt đầu tải xuống",
+      "ariaDismissWarning": "Bỏ qua cảnh báo",
+      "error": "Lỗi"
+    },
+    "actions": {
+      "title": "Hành động:",
+      "stop": "Dừng"
+    },
+    "status": {
+      "waiting": "Đang chờ kết nối...",
+      "connected": "Đã kết nối trang web!",
+      "scraping": "Đang cạo trang web...",
+      "scraped": "Đã cạo trang web!",
+      "creating": "Đã tạo tệp Zip!",
+      "complete": "Tải xuống hoàn tất",
+      "failed": "Tải xuống thất bại",
+      "cancelled": "Tải xuống đã bị hủy",
+      "creatingIndex": "Đang tạo index.html",
+      "downloadingCss": "Đang tải xuống các tệp CSS",
+      "cssDownloaded": "Đã tải xuống các tệp CSS",
+      "cssError": "Lỗi khi tải xuống tệp CSS - một số tệp có thể bị thiếu",
+      "downloadingJs": "Đang tải xuống các tệp JS",
+      "jsDownloaded": "Đã tải xuống các tệp JS",
+      "jsError": "Lỗi khi tải xuống tệp JS - một số tệp có thể bị thiếu",
+      "downloadingDocuments": "Đang tải xuống tài liệu",
+      "documentsDownloaded": "Đã tải xuống tài liệu",
+      "downloadingImages": "Đang tải xuống hình ảnh",
+      "imagesDownloaded": "Đã tải xuống hình ảnh",
+      "downloadingLinks": "Đang tải xuống các tệp html được liên kết",
+      "linksDownloaded": "Đã tải xuống các tệp html được liên kết",
+      "downloadingContent": "Đang tải xuống nội dung dưới dạng văn bản",
+      "contentDownloaded": "Đã tải xuống nội dung dưới dạng văn bản",
+      "singleFileCreated": "Đã tạo một tệp HTML duy nhất",
+      "zipCreated": "Đã tạo tệp Zip!",
+      "downloadStarted": "Tải xuống đã bắt đầu thành công",
+      "completeTitle": "Tải xuống đã hoàn tất:",
+      "zipLocation": "Bạn có thể tìm thấy tệp zip trong thư mục tải xuống của mình",
+      "cssProgress": "Tiến trình tệp CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "Tiến trình hình ảnh nền: {{completed}}/{{total}}",
+      "jsProgress": "Tiến trình tệp JS: {{completed}}/{{total}}",
+      "documentsProgress": "Tiến trình tệp tài liệu: {{completed}}/{{total}}",
+      "imagesProgress": "Tiến trình hình ảnh: {{completed}}/{{total}}",
+      "htmlProgress": "Tiến trình tệp HTML: {{completed}}/{{total}}",
+      "cssSummary": "Tệp CSS đã tải: {{succeeded}} thành công, {{failed}} thất bại, {{skipped}} bỏ qua",
+      "bgImagesSummary": "Hình ảnh nền từ CSS đã tải: {{succeeded}} thành công, {{failed}} thất bại, {{skipped}} bỏ qua",
+      "jsSummary": "Tệp JS đã tải: {{succeeded}} thành công, {{failed}} thất bại, {{skipped}} bỏ qua",
+      "documentsSummary": "Tệp tài liệu đã tải: {{succeeded}} thành công, {{failed}} thất bại, {{skipped}} bỏ qua",
+      "imagesSummary": "Hình ảnh đã tải: {{succeeded}} thành công, {{failed}} thất bại, {{skipped}} bỏ qua",
+      "htmlSummary": "Tệp HTML đã tải: {{succeeded}} thành công, {{failed}} thất bại, {{skipped}} bỏ qua",
+      "processingCss": "Đang xử lý tệp CSS: {{current}}/{{total}}",
+      "streamingCss": "Bắt đầu tải xuống trực tuyến cho CSS lớn: {{current}}/{{total}}",
+      "streamingCssProgress": "Tiến trình truyền phát CSS: {{completed}}/{{total}} khối",
+      "cssStreamingSummary": "Tệp CSS đã xử lý: {{succeeded}} thành công, {{streamed}} đã truyền phát, {{failed}} thất bại",
+      "processingJs": "Đang xử lý tệp JS: {{current}}/{{total}}",
+      "streamingJs": "Bắt đầu tải xuống trực tuyến cho JS lớn: {{current}}/{{total}}",
+      "streamingJsProgress": "Tiến trình truyền phát JS: {{completed}}/{{total}} khối",
+      "jsStreamingSummary": "Tệp JS đã xử lý: {{succeeded}} thành công, {{streamed}} đã truyền phát, {{failed}} thất bại",
+      "processingImages": "Đang xử lý hình ảnh: {{current}}/{{total}}",
+      "streamingImages": "Bắt đầu tải xuống trực tuyến cho hình ảnh lớn: {{current}}/{{total}}",
+      "streamingImagesProgress": "Tiến trình truyền phát hình ảnh: {{completed}}/{{total}} khối",
+      "imagesStreamingSummary": "Hình ảnh đã xử lý: {{succeeded}} thành công, {{streamed}} đã truyền phát, {{failed}} thất bại, {{skipped}} bỏ qua",
+      "streamingFailedFallback": "Tải xuống trực tuyến thất bại, quay lại tải xuống thường...",
+      "processingHtmlIncremental": "Đang xử lý nội dung HTML với lắp ráp tăng dần",
+      "finalizingDownload": "Đang hoàn tất tải xuống",
+      "indexCreated": "Đã tạo index.html",
+      "htmlTooLarge": "Nội dung HTML quá lớn, có thể bị cắt bớt",
+      "incrementalHtmlAdded": "Nội dung HTML đã được lắp ráp và thêm vào bản tải xuống",
+      "largeHtmlAdded": "Nội dung HTML lớn đã được xử lý và thêm vào bản tải xuống",
+      "creatingPackage": "Đang tạo gói tải xuống cuối cùng",
+      "processingImagesCount": "Đang xử lý {{count}} hình ảnh",
+      "streamingImageStart": "Bắt đầu tải xuống trực tuyến cho hình ảnh: {{current}}/{{total}}",
+      "waitingForStreaming": "Đang chờ {{count}} tải xuống trực tuyến hoàn tất...",
+      "streamingProgress": "Tiến trình truyền phát: {{completed}}/{{total}} khối ({{percent}}%)",
+      "streamingCompleted": "Tất cả tải xuống trực tuyến đã hoàn tất",
+      "creatingStreamingZip": "Đang tạo tệp ZIP với nội dung truyền phát...",
+      "streamingSuccess": "Tải xuống trực tuyến hoàn tất thành công",
+      "downloadingWebsiteContent": "Đang tải xuống nội dung trang web ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Cần quyền lưu trữ",
+        "description": "Tiện ích mở rộng này cần quyền lưu trữ để lưu các tùy chọn bộ lọc của bạn và cung cấp trải nghiệm tốt hơn.",
+        "grant": "Cấp quyền",
+        "deny": "Có lẽ để sau",
+        "benefits": {
+          "title": "Lợi ích của việc cấp quyền lưu trữ:",
+          "savePreferences": "Lưu các tùy chọn bộ lọc tải xuống của bạn",
+          "persistSettings": "Ghi nhớ cài đặt của bạn giữa các phiên",
+          "improveExperience": "Cung cấp trải nghiệm cá nhân hóa hơn"
+        }
+      },
+      "offscreen": {
+        "title": "Cần quyền bổ sung",
+        "description": "Tiện ích mở rộng này cần quyền offscreen để xử lý tải xuống hiệu quả.",
+        "grant": "Cấp quyền",
+        "why": "Quyền này cho phép tiện ích mở rộng tạo tài liệu nền để xử lý các bản tải xuống lớn mà không ảnh hưởng đến trải nghiệm duyệt web của bạn."
+      },
+      "global": {
+        "title": "Yêu cầu quyền truy cập",
+        "description": "Tiện ích này cần quyền truy cập bộ nhớ và offscreen để cung cấp trải nghiệm tải xuống tốt nhất.",
+        "storage": {
+          "title": "Quyền truy cập bộ nhớ:",
+          "description": "Cho phép tiện ích lưu một lượng nhỏ dữ liệu cục bộ trong trình duyệt của bạn. Điều này cho phép chúng tôi ghi nhớ tùy chọn của bạn và cung cấp trải nghiệm cá nhân hóa giữa các phiên làm việc."
+        },
+        "offscreen": {
+          "title": "Quyền Offscreen:",
+          "description": "Cho phép tải xuống tệp lớn bằng cách cho phép tiện ích xử lý tệp trong nền mà không ảnh hưởng đến trải nghiệm duyệt web của bạn."
+        },
+        "storageDetails": {
+          "title": "Những gì chúng tôi lưu trữ:",
+          "id": "ID duy nhất được tạo",
+          "preferences": "Tùy chọn tải xuống"
+        },
+        "privacy": {
+          "title": "Quyền riêng tư:",
+          "personal": "Không có dữ liệu cá nhân",
+          "history": "Không có lịch sử duyệt web",
+          "local": "Tất cả dữ liệu được lưu cục bộ trong trình duyệt của bạn"
+        },
+        "button": {
+          "requesting": "Đang yêu cầu quyền...",
+          "enable": "Bật quyền truy cập"
+        },
+        "footer": "Thu hồi bất cứ lúc nào trong cài đặt trình duyệt"
+      }
+    },
+    "download": {
+      "showInFolder": "Hiển thị trong thư mục",
+      "downloadAnother": "Tải xuống trang khác",
+      "cancel": "Hủy tải xuống"
+    },
+    "language": {
+      "select": "Chọn ngôn ngữ",
+      "search": "Tìm kiếm ngôn ngữ...",
+      "current": "Ngôn ngữ hiện tại"
+    },
+    "rating": {
+      "title": "Bạn có thích tiện ích mở rộng này không?",
+      "description": "Vui lòng đánh giá chúng tôi trên Cửa hàng Chrome trực tuyến!",
+      "rate": "Đánh giá tiện ích mở rộng",
+      "prompt": "Nếu bạn hài lòng, vui lòng để lại đánh giá tích cực :)",
+      "ariaLabel_one": "Đánh giá {{count}} sao",
+      "ariaLabel_other": "Đánh giá {{count}} sao"
+    },
+    "featureRequest": {
+      "title": "Yêu cầu tính năng",
+      "description": "Bạn có ý tưởng để cải thiện tiện ích mở rộng này?",
+      "submit": "Gửi yêu cầu"
+    }
+  }
+}

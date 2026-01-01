@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Verkkosivujen Lataaja",
+      "loading": "Ladataan...",
+      "error": "Jokin meni pieleen:",
+      "tryAgain": "Yritä uudelleen",
+      "iconAlt": "Verkkosivun lataajan kuvake",
+      "noInternet": "Ei internetyhteyttä - ulkoisia resursseja ei voida ladata",
+      "enableHtmlForOffline": "Ota HTML-lataus tai yksittäinen tiedostotila käyttöön offline-käyttöä varten",
+      "networkCheckFailed": "Verkkoyhteyden tarkistus epäonnistui - lataus jatkuu",
+      "noUrl": "Virhe: Latausta varten ei annettu URL-osoitetta",
+      "downloadInProgress": "Lataus on jo käynnissä. Odota.",
+      "memoryPressure": "Latausta ei voida aloittaa kriittisen muistinpuutteen vuoksi. Yritä myöhemmin uudelleen."
+    },
+    "filter": {
+      "title": "Suodata mitä haluat ladata",
+      "downloadHTML": "Lataa HTML",
+      "downloadImages": "Lataa kuvat",
+      "downloadLinks": "Lataa linkit (tallennettu html-tiedostoina)",
+      "downloadAssets": "Lataa resurssit (css, js)",
+      "downloadDocuments": "Lataa asiakirjat (pdf, doc, jne.)",
+      "downloadContentAsText": "Lataa sisältö tekstinä",
+      "singleFile": "Lataa yksittäisenä HTML-tiedostona",
+      "startDownload": "Aloita lataus",
+      "linksWarning": "Jos valitset linkkien lataamisen, ota huomioon, että kokonaislatausaika voi kasvaa dramaattisesti ja zip-tiedosto voi olla huomattavasti suurempi.",
+      "permissionWarning": "Suodatusasetuksia ei tallenneta ilman tallennuslupaa",
+      "dismiss": "Hylkää",
+      "loading": "Ladataan suodattimia...",
+      "ariaDownloadHtml": "Lataa HTML-sisältö",
+      "ariaDownloadImages": "Lataa kuvat",
+      "ariaDownloadLinks": "Lataa linkit (tallennettu html-tiedostoina)",
+      "ariaDownloadAssets": "Lataa resurssit (css, js)",
+      "ariaDownloadDocuments": "Lataa asiakirjat (pdf, doc, jne.)",
+      "ariaDownloadContent": "Lataa sisältö tekstinä",
+      "ariaSingleFile": "Lataa yhtenä HTML-tiedostona",
+      "ariaStartDownload": "Aloita lataus",
+      "ariaDismissWarning": "Hylkää varoitus",
+      "error": "Virhe"
+    },
+    "actions": {
+      "title": "Toiminnot:",
+      "stop": "Pysäytä"
+    },
+    "status": {
+      "waiting": "Odotetaan yhteyttä...",
+      "connected": "Verkkosivusto yhdistetty!",
+      "scraping": "Luetaan verkkosivustoa...",
+      "scraped": "Verkkosivusto luettu!",
+      "creating": "Zip-tiedosto luotu!",
+      "complete": "Lataus valmis",
+      "failed": "Lataus epäonnistui",
+      "cancelled": "Lataus peruttiin",
+      "creatingIndex": "Luodaan index.html",
+      "downloadingCss": "Ladataan CSS-tiedostoja",
+      "cssDownloaded": "CSS-tiedostot ladattu",
+      "cssError": "Virhe CSS-tiedostojen lataamisessa - jotkut saattavat puuttua",
+      "downloadingJs": "Ladataan JS-tiedostoja",
+      "jsDownloaded": "JS-tiedostot ladattu",
+      "jsError": "Virhe JS-tiedostojen lataamisessa - jotkut saattavat puuttua",
+      "downloadingDocuments": "Ladataan asiakirjatiedostoja",
+      "documentsDownloaded": "Asiakirjatiedostot ladattu",
+      "downloadingImages": "Ladataan kuvia",
+      "imagesDownloaded": "Kuvat ladattu",
+      "downloadingLinks": "Ladataan linkitettyjä html-tiedostoja",
+      "linksDownloaded": "Linkitetyt html-tiedostot ladattu",
+      "downloadingContent": "Ladataan sisältöä tekstinä",
+      "contentDownloaded": "Sisältö tekstinä ladattu",
+      "singleFileCreated": "Yksittäinen HTML-tiedosto luotu",
+      "zipCreated": "Zip-tiedosto luotu!",
+      "downloadStarted": "Lataus aloitettu onnistuneesti",
+      "completeTitle": "Lataus on valmis:",
+      "zipLocation": "Löydät zip-tiedoston latauskansiostasi",
+      "cssProgress": "CSS-tiedostojen edistyminen: {{completed}}/{{total}}",
+      "bgImagesProgress": "Taustakuvien edistyminen: {{completed}}/{{total}}",
+      "jsProgress": "JS-tiedostojen edistyminen: {{completed}}/{{total}}",
+      "documentsProgress": "Asiakirjatiedostojen edistyminen: {{completed}}/{{total}}",
+      "imagesProgress": "Kuvien edistyminen: {{completed}}/{{total}}",
+      "htmlProgress": "HTML-tiedostojen edistyminen: {{completed}}/{{total}}",
+      "cssSummary": "CSS-tiedostot ladattu: {{succeeded}} onnistui, {{failed}} epäonnistui, {{skipped}} ohitettiin",
+      "bgImagesSummary": "Taustakuvat CSS:stä ladattu: {{succeeded}} onnistui, {{failed}} epäonnistui, {{skipped}} ohitettiin",
+      "jsSummary": "JS-tiedostot ladattu: {{succeeded}} onnistui, {{failed}} epäonnistui, {{skipped}} ohitettiin",
+      "documentsSummary": "Asiakirjatiedostot ladattu: {{succeeded}} onnistui, {{failed}} epäonnistui, {{skipped}} ohitettiin",
+      "imagesSummary": "Kuvat ladattu: {{succeeded}} onnistui, {{failed}} epäonnistui, {{skipped}} ohitettiin",
+      "htmlSummary": "HTML-tiedostot ladattu: {{succeeded}} onnistui, {{failed}} epäonnistui, {{skipped}} ohitettiin",
+      "processingCss": "Käsitellään CSS-tiedostoja: {{current}}/{{total}}",
+      "streamingCss": "Aloitetaan suoratoistolataus suurelle CSS:lle: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS suoratoiston edistyminen: {{completed}}/{{total}} lohkoa",
+      "cssStreamingSummary": "Käsitellyt CSS-tiedostot: {{succeeded}} onnistui, {{streamed}} suoratoistettu, {{failed}} epäonnistui",
+      "processingJs": "Käsitellään JS-tiedostoja: {{current}}/{{total}}",
+      "streamingJs": "Aloitetaan suoratoistolataus suurelle JS:lle: {{current}}/{{total}}",
+      "streamingJsProgress": "JS suoratoiston edistyminen: {{completed}}/{{total}} lohkoa",
+      "jsStreamingSummary": "Käsitellyt JS-tiedostot: {{succeeded}} onnistui, {{streamed}} suoratoistettu, {{failed}} epäonnistui",
+      "processingImages": "Käsitellään kuvia: {{current}}/{{total}}",
+      "streamingImages": "Aloitetaan suoratoistolataus suurelle kuvalle: {{current}}/{{total}}",
+      "streamingImagesProgress": "Kuvan suoratoiston edistyminen: {{completed}}/{{total}} lohkoa",
+      "imagesStreamingSummary": "Käsitellyt kuvat: {{succeeded}} onnistui, {{streamed}} suoratoistettu, {{failed}} epäonnistui, {{skipped}} ohitettiin",
+      "streamingFailedFallback": "Suoratoistolataus epäonnistui, palataan normaaliin lataukseen...",
+      "processingHtmlIncremental": "Käsitellään HTML-sisältöä inkrementaalisella kokoamisella",
+      "finalizingDownload": "Viimeistellään latausta",
+      "indexCreated": "Index.html luotu",
+      "htmlTooLarge": "HTML-sisältö on liian suuri, saatetaan katkaista",
+      "incrementalHtmlAdded": "HTML-sisältö koottu ja lisätty lataukseen",
+      "largeHtmlAdded": "Suuri HTML-sisältö käsitelty ja lisätty lataukseen",
+      "creatingPackage": "Luodaan lopullinen latauspaketti",
+      "processingImagesCount": "Käsitellään {{count}} kuvaa",
+      "streamingImageStart": "Aloitetaan suoratoistolataus kuvalle: {{current}}/{{total}}",
+      "waitingForStreaming": "Odotetaan {{count}} suoratoistolatauksen valmistumista...",
+      "streamingProgress": "Suoratoiston edistyminen: {{completed}}/{{total}} lohkoa ({{percent}}%)",
+      "streamingCompleted": "Kaikki suoratoistolataukset valmiit",
+      "creatingStreamingZip": "Luodaan ZIP-tiedosto suoratoistosisällöllä...",
+      "streamingSuccess": "Suoratoistolataus onnistui",
+      "downloadingWebsiteContent": "Ladataan verkkosivuston sisältöä ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Tallennuslupa vaaditaan",
+        "description": "Tämä laajennus tarvitsee tallennusluvan suodatusasetustesi tallentamiseen ja paremman kokemuksen tarjoamiseen.",
+        "grant": "Myönnä lupa",
+        "deny": "Ehkä myöhemmin",
+        "benefits": {
+          "title": "Tallennusluvan myöntämisen edut:",
+          "savePreferences": "Tallenna lataussuodatusasetuksesi",
+          "persistSettings": "Muista asetuksesi istuntojen välillä",
+          "improveExperience": "Tarjoa yksilöllisempi kokemus"
+        }
+      },
+      "offscreen": {
+        "title": "Lisälupa vaaditaan",
+        "description": "Tämä laajennus tarvitsee offscreen-luvan latausten tehokkaaseen käsittelyyn.",
+        "grant": "Myönnä lupa",
+        "why": "Tämä lupa antaa laajennukselle mahdollisuuden luoda taustadokumentteja suurten latausten käsittelyä varten vaikuttamatta selauskokemukseesi."
+      },
+      "global": {
+        "title": "Käyttöoikeudet vaaditaan",
+        "description": "Tämä laajennus tarvitsee tallennustila- ja offscreen-oikeudet tarjotakseen parhaan latauskokemuksen.",
+        "storage": {
+          "title": "Tallennustilaoikeus:",
+          "description": "Sallii laajennuksen tallentaa pieniä määriä tietoa paikallisesti selaimeesi. Tämä mahdollistaa asetustesi muistamisen ja personoidun kokemuksen tarjoamisen istuntojen välillä."
+        },
+        "offscreen": {
+          "title": "Offscreen-oikeus:",
+          "description": "Mahdollistaa suurten tiedostojen lataamisen antamalla laajennuksen käsitellä tiedostoja taustalla vaikuttamatta selauskokemukseesi."
+        },
+        "storageDetails": {
+          "title": "Mitä tallennamme:",
+          "id": "Ainutlaatuinen luotu tunnus",
+          "preferences": "Latausasetukset"
+        },
+        "privacy": {
+          "title": "Tietosuoja:",
+          "personal": "Ei henkilökohtaisia tietoja",
+          "history": "Ei selaushistoriaa",
+          "local": "Kaikki tiedot pysyvät paikallisesti selaimessasi"
+        },
+        "button": {
+          "requesting": "Pyydetään oikeuksia...",
+          "enable": "Ota käyttöoikeudet käyttöön"
+        },
+        "footer": "Peruuta milloin tahansa selaimen asetuksissa"
+      }
+    },
+    "download": {
+      "showInFolder": "Näytä kansiossa",
+      "downloadAnother": "Lataa toinen sivu",
+      "cancel": "Peruuta lataus"
+    },
+    "language": {
+      "select": "Valitse kieli",
+      "search": "Etsi kieliä...",
+      "current": "Nykyinen kieli"
+    },
+    "rating": {
+      "title": "Pidätkö tästä laajennuksesta?",
+      "description": "Arvioi meidät Chrome Web Storessa!",
+      "rate": "Arvioi laajennus",
+      "prompt": "Jos olit tyytyväinen, jätä positiivinen arvostelu :)",
+      "ariaLabel_one": "Arvostele {{count}} tähdellä",
+      "ariaLabel_other": "Arvostele {{count}} tähdellä"
+    },
+    "featureRequest": {
+      "title": "Pyydä ominaisuutta",
+      "description": "Onko sinulla idea tämän laajennuksen parantamiseksi?",
+      "submit": "Lähetä pyyntö"
+    }
+  }
+}

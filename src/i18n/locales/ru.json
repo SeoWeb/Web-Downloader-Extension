@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Загрузчик веб-страниц",
+      "loading": "Загрузка...",
+      "error": "Что-то пошло не так:",
+      "tryAgain": "Попробовать снова",
+      "iconAlt": "Значок загрузчика веб-страниц",
+      "noInternet": "Нет подключения к Интернету - невозможно загрузить внешние ресурсы",
+      "enableHtmlForOffline": "Пожалуйста, включите загрузку HTML или режим одного файла для использования в автономном режиме",
+      "networkCheckFailed": "Проверка сетевого подключения не удалась - продолжение загрузки",
+      "noUrl": "Ошибка: URL для загрузки не предоставлен",
+      "downloadInProgress": "Загрузка уже выполняется. Пожалуйста, подождите.",
+      "memoryPressure": "Невозможно начать загрузку из-за критической нехватки памяти. Пожалуйста, повторите попытку позже."
+    },
+    "filter": {
+      "title": "Отфильтруйте то, что вы хотите скачать",
+      "downloadHTML": "Скачать HTML",
+      "downloadImages": "Скачать изображения",
+      "downloadLinks": "Скачать ссылки (сохраненные как html-файлы)",
+      "downloadAssets": "Скачать ресурсы (css, js)",
+      "downloadDocuments": "Скачать документы (pdf, doc и т. д.)",
+      "downloadContentAsText": "Скачать контент как текст",
+      "singleFile": "Скачать в одном HTML-файле",
+      "startDownload": "Начать загрузку",
+      "linksWarning": "Если вы решите загрузить ссылки, вы должны учитывать, что общее время загрузки может значительно увеличиться, а zip-файл может быть значительно больше.",
+      "permissionWarning": "Настройки фильтра не будут сохранены без разрешения на хранение",
+      "dismiss": "Отклонить",
+      "loading": "Загрузка фильтров...",
+      "ariaDownloadHtml": "Скачать HTML контент",
+      "ariaDownloadImages": "Скачать изображения",
+      "ariaDownloadLinks": "Скачать ссылки (сохраняются как html файлы)",
+      "ariaDownloadAssets": "Скачать ресурсы (css, js)",
+      "ariaDownloadDocuments": "Скачать документы (pdf, doc и т.д.)",
+      "ariaDownloadContent": "Скачать содержимое как текст",
+      "ariaSingleFile": "Скачать как один HTML-файл",
+      "ariaStartDownload": "Начать загрузку",
+      "ariaDismissWarning": "Закрыть предупреждение",
+      "error": "Ошибка"
+    },
+    "actions": {
+      "title": "Действия:",
+      "stop": "Стоп"
+    },
+    "status": {
+      "waiting": "Ожидание подключения...",
+      "connected": "Сайт подключен!",
+      "scraping": "Скрапинг сайта...",
+      "scraped": "Сайт скрапирован!",
+      "creating": "Zip-файл создан!",
+      "complete": "Загрузка завершена",
+      "failed": "Загрузка не удалась",
+      "cancelled": "Загрузка была отменена",
+      "creatingIndex": "Создание index.html",
+      "downloadingCss": "Скачивание CSS файлов",
+      "cssDownloaded": "CSS файлы скачаны",
+      "cssError": "Ошибка загрузки файлов CSS - некоторые могут отсутствовать",
+      "downloadingJs": "Скачивание JS файлов",
+      "jsDownloaded": "JS файлы скачаны",
+      "jsError": "Ошибка загрузки файлов JS - некоторые могут отсутствовать",
+      "downloadingDocuments": "Скачивание документов",
+      "documentsDownloaded": "Документы скачаны",
+      "downloadingImages": "Скачивание изображений",
+      "imagesDownloaded": "Изображения скачаны",
+      "downloadingLinks": "Загрузка связанных html файлов",
+      "linksDownloaded": "Связанные html файлы загружены",
+      "downloadingContent": "Загрузка содержимого как текст",
+      "contentDownloaded": "Содержимое как текст загружено",
+      "singleFileCreated": "Создан один HTML файл",
+      "zipCreated": "Zip-файл создан!",
+      "downloadStarted": "Скачивание успешно началось",
+      "completeTitle": "Загрузка завершена:",
+      "zipLocation": "Вы можете найти zip-файл в папке загрузок",
+      "cssProgress": "Прогресс CSS файлов: {{completed}}/{{total}}",
+      "bgImagesProgress": "Прогресс фоновых изображений: {{completed}}/{{total}}",
+      "jsProgress": "Прогресс JS файлов: {{completed}}/{{total}}",
+      "documentsProgress": "Прогресс файлов документов: {{completed}}/{{total}}",
+      "imagesProgress": "Прогресс изображений: {{completed}}/{{total}}",
+      "htmlProgress": "Прогресс HTML файлов: {{completed}}/{{total}}",
+      "cssSummary": "Загружено CSS файлов: {{succeeded}} успешно, {{failed}} с ошибкой, {{skipped}} пропущено",
+      "bgImagesSummary": "Загружено фоновых изображений из CSS: {{succeeded}} успешно, {{failed}} с ошибкой, {{skipped}} пропущено",
+      "jsSummary": "Загружено JS файлов: {{succeeded}} успешно, {{failed}} с ошибкой, {{skipped}} пропущено",
+      "documentsSummary": "Загружено файлов документов: {{succeeded}} успешно, {{failed}} с ошибкой, {{skipped}} пропущено",
+      "imagesSummary": "Загружено изображений: {{succeeded}} успешно, {{failed}} с ошибкой, {{skipped}} пропущено",
+      "htmlSummary": "Загружено HTML файлов: {{succeeded}} успешно, {{failed}} с ошибкой, {{skipped}} пропущено",
+      "processingCss": "Обработка CSS файлов: {{current}}/{{total}}",
+      "streamingCss": "Запуск потоковой загрузки для большого CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "Прогресс потоковой передачи CSS: {{completed}}/{{total}} частей",
+      "cssStreamingSummary": "Обработано CSS файлов: {{succeeded}} успешно, {{streamed}} в потоке, {{failed}} с ошибкой",
+      "processingJs": "Обработка JS файлов: {{current}}/{{total}}",
+      "streamingJs": "Запуск потоковой загрузки для большого JS: {{current}}/{{total}}",
+      "streamingJsProgress": "Прогресс потоковой передачи JS: {{completed}}/{{total}} частей",
+      "jsStreamingSummary": "Обработано JS файлов: {{succeeded}} успешно, {{streamed}} в потоке, {{failed}} с ошибкой",
+      "processingImages": "Обработка изображений: {{current}}/{{total}}",
+      "streamingImages": "Запуск потоковой загрузки для большого изображения: {{current}}/{{total}}",
+      "streamingImagesProgress": "Прогресс потоковой передачи изображения: {{completed}}/{{total}} частей",
+      "imagesStreamingSummary": "Обработано изображений: {{succeeded}} успешно, {{streamed}} в потоке, {{failed}} с ошибкой, {{skipped}} пропущено",
+      "streamingFailedFallback": "Потоковая загрузка не удалась, возврат к обычной загрузке...",
+      "processingHtmlIncremental": "Обработка HTML контента с инкрементальной сборкой",
+      "finalizingDownload": "Завершение загрузки",
+      "indexCreated": "Index.html создан",
+      "htmlTooLarge": "HTML контент слишком большой, может быть обрезан",
+      "incrementalHtmlAdded": "HTML контент собран и добавлен в загрузку",
+      "largeHtmlAdded": "Большой HTML контент обработан и добавлен в загрузку",
+      "creatingPackage": "Создание финального пакета загрузки",
+      "processingImagesCount": "Обработка {{count}} изображений",
+      "streamingImageStart": "Запуск потоковой загрузки для изображения: {{current}}/{{total}}",
+      "waitingForStreaming": "Ожидание завершения {{count}} потоковых загрузок...",
+      "streamingProgress": "Прогресс потоковой передачи: {{completed}}/{{total}} частей ({{percent}}%)",
+      "streamingCompleted": "Все потоковые загрузки завершены",
+      "creatingStreamingZip": "Создание ZIP файла с потоковым контентом...",
+      "streamingSuccess": "Потоковая загрузка успешно завершена",
+      "downloadingWebsiteContent": "Скачивание содержимого веб-сайта ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Требуется разрешение на хранение",
+        "description": "Этому расширению требуется разрешение на хранение для сохранения ваших настроек фильтра и обеспечения лучшего опыта.",
+        "grant": "Предоставить разрешение",
+        "deny": "Может быть позже",
+        "benefits": {
+          "title": "Преимущества предоставления разрешения на хранение:",
+          "savePreferences": "Сохранить ваши настройки фильтра загрузки",
+          "persistSettings": "Запомнить ваши настройки между сессиями",
+          "improveExperience": "Предоставить более персонализированный опыт"
+        }
+      },
+      "offscreen": {
+        "title": "Требуется дополнительное разрешение",
+        "description": "Этому расширению требуется разрешение offscreen для эффективной обработки загрузок.",
+        "grant": "Предоставить разрешение",
+        "why": "Это разрешение позволяет расширению создавать фоновые документы для обработки больших загрузок, не влияя на ваш опыт просмотра."
+      },
+      "global": {
+        "title": "Требуются разрешения",
+        "description": "Этому расширению требуются разрешения на хранение и offscreen для обеспечения наилучшего опыта загрузки.",
+        "storage": {
+          "title": "Разрешение на хранение:",
+          "description": "Позволяет расширению сохранять небольшие объемы данных локально в вашем браузере. Это позволяет нам запоминать ваши настройки и предоставлять персонализированный опыт в разных сессиях."
+        },
+        "offscreen": {
+          "title": "Разрешение Offscreen:",
+          "description": "Позволяет загружать большие файлы, разрешая расширению обрабатывать файлы в фоновом режиме, не влияя на ваш опыт просмотра."
+        },
+        "storageDetails": {
+          "title": "Что мы храним:",
+          "id": "Уникальный сгенерированный ID",
+          "preferences": "Настройки загрузки"
+        },
+        "privacy": {
+          "title": "Конфиденциальность:",
+          "personal": "Никаких личных данных",
+          "history": "Никакой истории просмотра",
+          "local": "Все данные остаются локально в вашем браузере"
+        },
+        "button": {
+          "requesting": "Запрос разрешений...",
+          "enable": "Включить разрешения"
+        },
+        "footer": "Отозвать в любое время в настройках браузера"
+      }
+    },
+    "download": {
+      "showInFolder": "Показать в папке",
+      "downloadAnother": "Скачать другую страницу",
+      "cancel": "Отменить загрузку"
+    },
+    "language": {
+      "select": "Выбрать язык",
+      "search": "Поиск языков...",
+      "current": "Текущий язык"
+    },
+    "rating": {
+      "title": "Вам нравится это расширение?",
+      "description": "Пожалуйста, оцените нас в интернет-магазине Chrome!",
+      "rate": "Оценить расширение",
+      "prompt": "Если вы остались довольны, пожалуйста, оставьте положительный отзыв :)",
+      "ariaLabel_one": "Оценить {{count}} звездой",
+      "ariaLabel_other": "Оценить {{count}} звездами"
+    },
+    "featureRequest": {
+      "title": "Запросить функцию",
+      "description": "Есть идея, как улучшить это расширение?",
+      "submit": "Отправить запрос"
+    }
+  }
+}

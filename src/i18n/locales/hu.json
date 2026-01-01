@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Weboldal letöltő",
+      "loading": "Betöltés...",
+      "error": "Valami hiba történt:",
+      "tryAgain": "Próbálja újra",
+      "iconAlt": "Weboldal letöltő ikon",
+      "noInternet": "Nincs internetkapcsolat - külső források nem tölthetők le",
+      "enableHtmlForOffline": "Kérjük, engedélyezze a HTML letöltést vagy az egyfájlos módot offline használathoz",
+      "networkCheckFailed": "Hálózati kapcsolat ellenőrzése sikertelen - letöltés folytatása",
+      "noUrl": "Hiba: Nincs megadva URL a letöltéshez",
+      "downloadInProgress": "Egy letöltés már folyamatban van. Kérjük, várjon.",
+      "memoryPressure": "A letöltés nem indítható kritikus memóriahiány miatt. Kérjük, próbálja újra később."
+    },
+    "filter": {
+      "title": "Szűrje ki, mit szeretne letölteni",
+      "downloadHTML": "HTML letöltése",
+      "downloadImages": "Képek letöltése",
+      "downloadLinks": "Hivatkozások letöltése (html fájlként mentve)",
+      "downloadAssets": "Források letöltése (css, js)",
+      "downloadDocuments": "Dokumentumok letöltése (pdf, doc stb.)",
+      "downloadContentAsText": "Tartalom letöltése szövegként",
+      "singleFile": "Letöltés egyetlen HTML fájlban",
+      "startDownload": "Letöltés indítása",
+      "linksWarning": "Ha a hivatkozások letöltését választja, figyelembe kell vennie, hogy a teljes letöltési idő drámaian megnőhet, és a zip fájl lényegesen nagyobb lehet.",
+      "permissionWarning": "A szűrőbeállítások nem kerülnek mentésre tárolási engedély nélkül",
+      "dismiss": "Elvetés",
+      "loading": "Szűrők betöltése...",
+      "ariaDownloadHtml": "HTML tartalom letöltése",
+      "ariaDownloadImages": "Képek letöltése",
+      "ariaDownloadLinks": "Hivatkozások letöltése (html fájlként mentve)",
+      "ariaDownloadAssets": "Eszközök letöltése (css, js)",
+      "ariaDownloadDocuments": "Dokumentumok letöltése (pdf, doc, stb.)",
+      "ariaDownloadContent": "Tartalom letöltése szövegként",
+      "ariaSingleFile": "Letöltés egyetlen HTML fájlként",
+      "ariaStartDownload": "Letöltés indítása",
+      "ariaDismissWarning": "Figyelmeztetés elvetése",
+      "error": "Hiba"
+    },
+    "actions": {
+      "title": "Műveletek:",
+      "stop": "Állj"
+    },
+    "status": {
+      "waiting": "Várakozás a kapcsolatra...",
+      "connected": "Weboldal csatlakoztatva!",
+      "scraping": "Weboldal beolvasása...",
+      "scraped": "Weboldal beolvasva!",
+      "creating": "Zip fájl létrehozva!",
+      "complete": "Letöltés kész",
+      "failed": "A letöltés sikertelen",
+      "cancelled": "A letöltés megszakítva",
+      "creatingIndex": "Index.html létrehozása",
+      "downloadingCss": "CSS fájlok letöltése",
+      "cssDownloaded": "CSS fájlok letöltve",
+      "cssError": "Hiba a CSS fájlok letöltésekor - néhány hiányozhat",
+      "downloadingJs": "JS fájlok letöltése",
+      "jsDownloaded": "JS fájlok letöltve",
+      "jsError": "Hiba a JS fájlok letöltésekor - néhány hiányozhat",
+      "downloadingDocuments": "Dokumentumok letöltése",
+      "documentsDownloaded": "Dokumentumok letöltve",
+      "downloadingImages": "Képek letöltése",
+      "imagesDownloaded": "Képek letöltve",
+      "downloadingLinks": "Kapcsolt html fájlok letöltése",
+      "linksDownloaded": "Kapcsolt html fájlok letöltve",
+      "downloadingContent": "Tartalom letöltése szövegként",
+      "contentDownloaded": "Tartalom szövegként letöltve",
+      "singleFileCreated": "Egyetlen HTML fájl létrehozva",
+      "zipCreated": "Zip fájl létrehozva!",
+      "downloadStarted": "A letöltés sikeresen elindult",
+      "completeTitle": "A letöltés befejeződött:",
+      "zipLocation": "A zip fájlt a letöltések mappában találja",
+      "cssProgress": "CSS fájlok folyamata: {{completed}}/{{total}}",
+      "bgImagesProgress": "Háttérképek folyamata: {{completed}}/{{total}}",
+      "jsProgress": "JS fájlok folyamata: {{completed}}/{{total}}",
+      "documentsProgress": "Dokumentum fájlok folyamata: {{completed}}/{{total}}",
+      "imagesProgress": "Képek folyamata: {{completed}}/{{total}}",
+      "htmlProgress": "HTML fájlok folyamata: {{completed}}/{{total}}",
+      "cssSummary": "Letöltött CSS fájlok: {{succeeded}} sikeres, {{failed}} sikertelen, {{skipped}} kihagyva",
+      "bgImagesSummary": "Letöltött háttérképek CSS-ből: {{succeeded}} sikeres, {{failed}} sikertelen, {{skipped}} kihagyva",
+      "jsSummary": "Letöltött JS fájlok: {{succeeded}} sikeres, {{failed}} sikertelen, {{skipped}} kihagyva",
+      "documentsSummary": "Letöltött dokumentum fájlok: {{succeeded}} sikeres, {{failed}} sikertelen, {{skipped}} kihagyva",
+      "imagesSummary": "Letöltött képek: {{succeeded}} sikeres, {{failed}} sikertelen, {{skipped}} kihagyva",
+      "htmlSummary": "Letöltött HTML fájlok: {{succeeded}} sikeres, {{failed}} sikertelen, {{skipped}} kihagyva",
+      "processingCss": "CSS fájlok feldolgozása: {{current}}/{{total}}",
+      "streamingCss": "Streaming letöltés indítása nagy CSS-hez: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS streaming folyamata: {{completed}}/{{total}} darab",
+      "cssStreamingSummary": "Feldolgozott CSS fájlok: {{succeeded}} sikeres, {{streamed}} streamelt, {{failed}} sikertelen",
+      "processingJs": "JS fájlok feldolgozása: {{current}}/{{total}}",
+      "streamingJs": "Streaming letöltés indítása nagy JS-hez: {{current}}/{{total}}",
+      "streamingJsProgress": "JS streaming folyamata: {{completed}}/{{total}} darab",
+      "jsStreamingSummary": "Feldolgozott JS fájlok: {{succeeded}} sikeres, {{streamed}} streamelt, {{failed}} sikertelen",
+      "processingImages": "Képek feldolgozása: {{current}}/{{total}}",
+      "streamingImages": "Streaming letöltés indítása nagy képhez: {{current}}/{{total}}",
+      "streamingImagesProgress": "Kép streaming folyamata: {{completed}}/{{total}} darab",
+      "imagesStreamingSummary": "Feldolgozott képek: {{succeeded}} sikeres, {{streamed}} streamelt, {{failed}} sikertelen, {{skipped}} kihagyva",
+      "streamingFailedFallback": "Streaming letöltés sikertelen, visszatérés a normál letöltéshez...",
+      "processingHtmlIncremental": "HTML tartalom feldolgozása inkrementális összeszereléssel",
+      "finalizingDownload": "Letöltés befejezése",
+      "indexCreated": "Index.html létrehozva",
+      "htmlTooLarge": "A HTML tartalom túl nagy, levágható",
+      "incrementalHtmlAdded": "HTML tartalom összeszerelve és hozzáadva a letöltéshez",
+      "largeHtmlAdded": "Nagy HTML tartalom feldolgozva és hozzáadva a letöltéshez",
+      "creatingPackage": "Végső letöltési csomag létrehozása",
+      "processingImagesCount": "{{count}} kép feldolgozása",
+      "streamingImageStart": "Streaming letöltés indítása képhez: {{current}}/{{total}}",
+      "waitingForStreaming": "Várakozás {{count}} streaming letöltés befejezésére...",
+      "streamingProgress": "Streaming folyamata: {{completed}}/{{total}} darab ({{percent}}%)",
+      "streamingCompleted": "Minden streaming letöltés befejeződött",
+      "creatingStreamingZip": "ZIP fájl létrehozása streaming tartalommal...",
+      "streamingSuccess": "Streaming letöltés sikeresen befejeződött",
+      "downloadingWebsiteContent": "Weboldal tartalmának letöltése ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Tárolási engedély szükséges",
+        "description": "Ennek a bővítménynek tárolási engedélyre van szüksége a szűrőbeállítások mentéséhez és a jobb élmény biztosításához.",
+        "grant": "Engedély megadása",
+        "deny": "Talán később",
+        "benefits": {
+          "title": "A tárolási engedély megadásának előnyei:",
+          "savePreferences": "Mentse el letöltési szűrőbeállításait",
+          "persistSettings": "Emlékezzen beállításaira a munkamenetek között",
+          "improveExperience": "Nyújtson személyre szabottabb élményt"
+        }
+      },
+      "offscreen": {
+        "title": "További engedély szükséges",
+        "description": "Ennek a bővítménynek offscreen engedélyre van szüksége a letöltések hatékony feldolgozásához.",
+        "grant": "Engedély megadása",
+        "why": "Ez az engedély lehetővé teszi a bővítmény számára, hogy háttérdokumentumokat hozzon létre a nagy letöltések feldolgozásához anélkül, hogy befolyásolná a böngészési élményt."
+      },
+      "global": {
+        "title": "Engedélyek szükségesek",
+        "description": "Ennek a bővítménynek tárolási és képernyőn kívüli (offscreen) engedélyekre van szüksége a legjobb letöltési élmény biztosításához.",
+        "storage": {
+          "title": "Tárolási engedély:",
+          "description": "Lehetővé teszi a bővítmény számára, hogy kis mennyiségű adatot mentsen helyileg a böngészőjében. Ez lehetővé teszi számunkra, hogy megjegyezzük beállításait, és személyre szabott élményt nyújtsunk."
+        },
+        "offscreen": {
+          "title": "Offscreen engedély:",
+          "description": "Lehetővé teszi nagy fájlok letöltését azáltal, hogy a bővítmény feldolgozza a fájlokat a háttérben anélkül, hogy befolyásolná a böngészési élményt."
+        },
+        "storageDetails": {
+          "title": "Amit tárolunk:",
+          "id": "Egyedi generált azonosító",
+          "preferences": "Letöltési beállítások"
+        },
+        "privacy": {
+          "title": "Adatvédelem:",
+          "personal": "Nincsenek személyes adatok",
+          "history": "Nincs böngészési előzmény",
+          "local": "Minden adat helyileg marad a böngészőben"
+        },
+        "button": {
+          "requesting": "Engedélyek kérése...",
+          "enable": "Engedélyek bekapcsolása"
+        },
+        "footer": "Bármikor visszavonható a böngésző beállításaiban"
+      }
+    },
+    "download": {
+      "showInFolder": "Megjelenítés mappában",
+      "downloadAnother": "Másik oldal letöltése",
+      "cancel": "Letöltés megszakítása"
+    },
+    "language": {
+      "select": "Nyelv kiválasztása",
+      "search": "Nyelvek keresése...",
+      "current": "Jelenlegi nyelv"
+    },
+    "rating": {
+      "title": "Tetszik ez a bővítmény?",
+      "description": "Kérjük, értékeljen minket a Chrome Webáruházban!",
+      "rate": "Bővítmény értékelése",
+      "prompt": "Ha elégedett volt, kérjük, hagyjon pozitív értékelést :)",
+      "ariaLabel_one": "Értékelés {{count}} csillaggal",
+      "ariaLabel_other": "Értékelés {{count}} csillaggal"
+    },
+    "featureRequest": {
+      "title": "Funkció kérése",
+      "description": "Van ötlete a bővítmény fejlesztésére?",
+      "submit": "Kérés küldése"
+    }
+  }
+}

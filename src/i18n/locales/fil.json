@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Downloader ng Web Page",
+      "loading": "Naglo-load...",
+      "error": "May maling nangyari:",
+      "tryAgain": "Subukan muli",
+      "iconAlt": "Icon ng Web Page Downloader",
+      "noInternet": "Walang koneksyon sa internet - hindi ma-download ang mga panlabas na mapagkukunan",
+      "enableHtmlForOffline": "Paki-enable ang pag-download ng HTML o single file mode para sa paggamit nang offline",
+      "networkCheckFailed": "Nabigo ang pagsusuri sa koneksyon ng network - ipinagpapatuloy ang pag-download",
+      "noUrl": "Error: Walang URL na ibinigay para sa pag-download",
+      "downloadInProgress": "Isang pag-download ang kasalukuyang isinasagawa. Mangyaring maghintay.",
+      "memoryPressure": "Hindi masimulan ang pag-download dahil sa kritikal na memory pressure. Pakisubukan muli mamaya."
+    },
+    "filter": {
+      "title": "I-filter kung ano ang gusto mong i-download",
+      "downloadHTML": "I-download ang HTML",
+      "downloadImages": "I-download ang mga imahe",
+      "downloadLinks": "I-download ang mga link (na-save bilang html file)",
+      "downloadAssets": "I-download ang mga asset (css, js)",
+      "downloadDocuments": "I-download ang mga dokumento (pdf, doc, atbp.)",
+      "downloadContentAsText": "I-download ang nilalaman bilang teksto",
+      "singleFile": "I-download sa iisang HTML file",
+      "startDownload": "Simulan ang pag-download",
+      "linksWarning": "Kung pipiliin mong i-download ang mga link, kailangan mong isaalang-alang na ang kabuuang oras ng pag-download ay maaaring tumaas nang husto at ang zip file ay maaaring maging mas malaki.",
+      "permissionWarning": "Ang mga kagustuhan sa filter ay hindi ma-save nang walang pahintulot sa storage",
+      "dismiss": "I-dismiss",
+      "loading": "Naglo-load ng mga filter...",
+      "ariaDownloadHtml": "I-download ang nilalamang HTML",
+      "ariaDownloadImages": "I-download ang mga imahe",
+      "ariaDownloadLinks": "I-download ang mga link (naka-save bilang mga html file)",
+      "ariaDownloadAssets": "I-download ang mga asset (css, js)",
+      "ariaDownloadDocuments": "I-download ang mga dokumento (pdf, doc, atbp.)",
+      "ariaDownloadContent": "I-download ang nilalaman bilang text",
+      "ariaSingleFile": "I-download bilang isang solong HTML file",
+      "ariaStartDownload": "Simulan ang pag-download",
+      "ariaDismissWarning": "I-dismiss ang babala",
+      "error": "May Error"
+    },
+    "actions": {
+      "title": "Mga Aksyon:",
+      "stop": "Hinto"
+    },
+    "status": {
+      "waiting": "Naghihintay ng koneksyon...",
+      "connected": "Konektado na ang website!",
+      "scraping": "Kina-scrape ang website...",
+      "scraped": "Na-scrape na ang website!",
+      "creating": "Nilikha na ang Zip file!",
+      "complete": "Kumpleto na ang pag-download",
+      "failed": "Nabigo ang pag-download",
+      "cancelled": "Kinansela ang pag-download",
+      "creatingIndex": "Ginagawa ang index.html",
+      "downloadingCss": "Nagda-download ng mga CSS file",
+      "cssDownloaded": "Na-download na ang mga CSS file",
+      "cssError": "Error sa pag-download ng mga CSS file - maaaring nawawala ang ilan",
+      "downloadingJs": "Nagda-download ng mga JS file",
+      "jsDownloaded": "Na-download na ang mga JS file",
+      "jsError": "Error sa pag-download ng mga JS file - maaaring nawawala ang ilan",
+      "downloadingDocuments": "Nagda-download ng mga dokumento",
+      "documentsDownloaded": "Na-download na ang mga dokumento",
+      "downloadingImages": "Nagda-download ng mga larawan",
+      "imagesDownloaded": "Na-download na ang mga larawan",
+      "downloadingLinks": "Nagda-download ng mga naka-link na html file",
+      "linksDownloaded": "Nai-download na ang mga naka-link na html file",
+      "downloadingContent": "Nagda-download ng nilalaman bilang text",
+      "contentDownloaded": "Nai-download na ang nilalaman bilang text",
+      "singleFileCreated": "Nalikha ang solong HTML file",
+      "zipCreated": "Nalikha na ang Zip file!",
+      "downloadStarted": "Matagumpay na nagsimula ang pag-download",
+      "completeTitle": "Tapos na ang pag-download:",
+      "zipLocation": "Makikita mo ang zip file sa iyong downloads folder",
+      "cssProgress": "Pag-usad ng mga CSS file: {{completed}}/{{total}}",
+      "bgImagesProgress": "Pag-usad ng mga background image: {{completed}}/{{total}}",
+      "jsProgress": "Pag-usad ng mga JS file: {{completed}}/{{total}}",
+      "documentsProgress": "Pag-usad ng mga dokumento file: {{completed}}/{{total}}",
+      "imagesProgress": "Pag-usad ng mga imahe: {{completed}}/{{total}}",
+      "htmlProgress": "Pag-usad ng mga HTML file: {{completed}}/{{total}}",
+      "cssSummary": "Mga CSS file na na-download: {{succeeded}} nagtagumpay, {{failed}} nabigo, {{skipped}} nilaktawan",
+      "bgImagesSummary": "Mga background image mula sa CSS na na-download: {{succeeded}} nagtagumpay, {{failed}} nabigo, {{skipped}} nilaktawan",
+      "jsSummary": "Mga JS file na na-download: {{succeeded}} nagtagumpay, {{failed}} nabigo, {{skipped}} nilaktawan",
+      "documentsSummary": "Mga dokumento file na na-download: {{succeeded}} nagtagumpay, {{failed}} nabigo, {{skipped}} nilaktawan",
+      "imagesSummary": "Mga imahe na na-download: {{succeeded}} nagtagumpay, {{failed}} nabigo, {{skipped}} nilaktawan",
+      "htmlSummary": "Mga HTML file na na-download: {{succeeded}} nagtagumpay, {{failed}} nabigo, {{skipped}} nilaktawan",
+      "processingCss": "Pinoproseso ang mga CSS file: {{current}}/{{total}}",
+      "streamingCss": "Sinisimulan ang streaming download para sa malaking CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "Pag-usad ng CSS streaming: {{completed}}/{{total}} chunks",
+      "cssStreamingSummary": "Naproseso ang mga CSS file: {{succeeded}} nagtagumpay, {{streamed}} na-stream, {{failed}} nabigo",
+      "processingJs": "Pinoproseso ang mga JS file: {{current}}/{{total}}",
+      "streamingJs": "Sinisimulan ang streaming download para sa malaking JS: {{current}}/{{total}}",
+      "streamingJsProgress": "Pag-usad ng JS streaming: {{completed}}/{{total}} chunks",
+      "jsStreamingSummary": "Naproseso ang mga JS file: {{succeeded}} nagtagumpay, {{streamed}} na-stream, {{failed}} nabigo",
+      "processingImages": "Pinoproseso ang mga imahe: {{current}}/{{total}}",
+      "streamingImages": "Sinisimulan ang streaming download para sa malaking imahe: {{current}}/{{total}}",
+      "streamingImagesProgress": "Pag-usad ng streaming ng imahe: {{completed}}/{{total}} chunks",
+      "imagesStreamingSummary": "Naproseso ang mga imahe: {{succeeded}} nagtagumpay, {{streamed}} na-stream, {{failed}} nabigo, {{skipped}} nilaktawan",
+      "streamingFailedFallback": "Nabigo ang streaming download, bumabalik sa normal na download...",
+      "processingHtmlIncremental": "Pinoproseso ang HTML content gamit ang incremental assembly",
+      "finalizingDownload": "Tinatapos ang pag-download",
+      "indexCreated": "Nalikha na ang index.html",
+      "htmlTooLarge": "Masyadong malaki ang HTML content, maaaring maputol",
+      "incrementalHtmlAdded": "HTML content na-assemble at idinagdag sa download",
+      "largeHtmlAdded": "Malaking HTML content naproseso at idinagdag sa download",
+      "creatingPackage": "Gumagawa ng pinal na download package",
+      "processingImagesCount": "Pinoproseso ang {{count}} mga imahe",
+      "streamingImageStart": "Sinisimulan ang streaming download para sa imahe: {{current}}/{{total}}",
+      "waitingForStreaming": "Hinihintay na matapos ang {{count}} streaming downloads...",
+      "streamingProgress": "Pag-usad ng streaming: {{completed}}/{{total}} chunks ({{percent}}%)",
+      "streamingCompleted": "Natapos na ang lahat ng streaming downloads",
+      "creatingStreamingZip": "Gumagawa ng ZIP file na may streaming content...",
+      "streamingSuccess": "Matagumpay na natapos ang streaming download",
+      "downloadingWebsiteContent": "Dina-download ang nilalaman ng website ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Kinakailangan ang Pahintulot sa Storage",
+        "description": "Kailangan ng extension na ito ang pahintulot sa storage upang i-save ang iyong mga kagustuhan sa filter at magbigay ng mas mahusay na karanasan.",
+        "grant": "Magbigay ng Pahintulot",
+        "deny": "Siguro Mamaya",
+        "benefits": {
+          "title": "Mga benepisyo ng pagbibigay ng pahintulot sa storage:",
+          "savePreferences": "I-save ang iyong mga kagustuhan sa filter ng pag-download",
+          "persistSettings": "Tandaan ang iyong mga setting sa mga session",
+          "improveExperience": "Magbigay ng mas personalized na karanasan"
+        }
+      },
+      "offscreen": {
+        "title": "Kinakailangan ang Karagdagang Pahintulot",
+        "description": "Kailangan ng extension na ito ang offscreen na pahintulot upang maproseso ang mga pag-download nang mahusay.",
+        "grant": "Magbigay ng Pahintulot",
+        "why": "Ang pahintulot na ito ay nagbibigay-daan sa extension na lumikha ng mga background document para sa pagproseso ng malalaking pag-download nang hindi naaapektuhan ang iyong karanasan sa pagba-browse."
+      },
+      "global": {
+        "title": "Kinakailangan ang mga Pahintulot",
+        "description": "Kailangan ng extension na ito ng mga pahintulot sa storage at offscreen upang magbigay ng pinakamahusay na karanasan sa pag-download.",
+        "storage": {
+          "title": "Pahintulot sa Storage:",
+          "description": "Pinapayagan ang extension na mag-save ng maliliit na halaga ng data nang lokal sa iyong browser. Nagbibigay-daan ito sa amin na tandaan ang iyong mga kagustuhan at magbigay ng personalized na karanasan sa mga session."
+        },
+        "offscreen": {
+          "title": "Pahintulot sa Offscreen:",
+          "description": "Nagbibigay-daan sa pag-download ng malalaking file sa pamamagitan ng pagpayag sa extension na magproseso ng mga file sa background nang hindi naaapektuhan ang iyong karanasan sa pag-browse."
+        },
+        "storageDetails": {
+          "title": "Ano ang aming iniimbak:",
+          "id": "Natatanging nabuong ID",
+          "preferences": "Mga kagustuhan sa pag-download"
+        },
+        "privacy": {
+          "title": "Pagkapribado:",
+          "personal": "Walang personal na data",
+          "history": "Walang kasaysayan ng pag-browse",
+          "local": "Ang lahat ng data ay nananatiling lokal sa iyong browser"
+        },
+        "button": {
+          "requesting": "Humihiling ng mga Pahintulot...",
+          "enable": "Paganahin ang mga Pahintulot"
+        },
+        "footer": "Bawiin anumang oras sa mga setting ng browser"
+      }
+    },
+    "download": {
+      "showInFolder": "Ipakita sa folder",
+      "downloadAnother": "I-download ang ibang pahina",
+      "cancel": "Kanselahin ang pag-download"
+    },
+    "language": {
+      "select": "Pumili ng Wika",
+      "search": "Maghanap ng mga wika...",
+      "current": "Kasalukuyang wika"
+    },
+    "rating": {
+      "title": "Nag-e-enjoy ka ba sa extension na ito?",
+      "description": "Mangyaring i-rate kami sa Chrome Web Store!",
+      "rate": "I-rate ang Extension",
+      "prompt": "Kung nasiyahan ka, mangyaring mag-iwan ng positibong pagsusuri :)",
+      "ariaLabel_one": "I-rate ng {{count}} bituin",
+      "ariaLabel_other": "I-rate ng {{count}} bituin"
+    },
+    "featureRequest": {
+      "title": "Humiling ng Tampok",
+      "description": "May ideya ka ba upang mapabuti ang extension na ito?",
+      "submit": "Isumite ang Kahilingan"
+    }
+  }
+}

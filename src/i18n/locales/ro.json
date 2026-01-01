@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Descărcător de Pagini Web",
+      "loading": "Se încarcă...",
+      "error": "Ceva nu a mers bine:",
+      "tryAgain": "Încearcă din nou",
+      "iconAlt": "Pictogramă Descărcător de Pagini Web",
+      "noInternet": "Fără conexiune la internet - nu se pot descărca resurse externe",
+      "enableHtmlForOffline": "Vă rugăm să activați descărcarea HTML sau modul fișier unic pentru utilizare offline",
+      "networkCheckFailed": "Verificarea conexiunii la rețea a eșuat - se continuă descărcarea",
+      "noUrl": "Eroare: Niciun URL furnizat pentru descărcare",
+      "downloadInProgress": "O descărcare este deja în curs. Vă rugăm să așteptați.",
+      "memoryPressure": "Nu se poate începe descărcarea din cauza presiunii critice asupra memoriei. Vă rugăm să încercați din nou mai târziu."
+    },
+    "filter": {
+      "title": "Filtrează ce vrei să descarci",
+      "downloadHTML": "Descarcă HTML",
+      "downloadImages": "Descarcă imagini",
+      "downloadLinks": "Descarcă link-uri (salvate ca fișiere html)",
+      "downloadAssets": "Descarcă resurse (css, js)",
+      "downloadDocuments": "Descarcă documente (pdf, doc, etc.)",
+      "downloadContentAsText": "Descarcă conținut ca text",
+      "singleFile": "Descarcă într-un singur fișier HTML",
+      "startDownload": "Începe descărcarea",
+      "linksWarning": "Dacă alegi să descarci link-uri, trebuie să iei în considerare că timpul total de descărcare poate crește dramatic și fișierul zip poate fi semnificativ mai mare.",
+      "permissionWarning": "Preferințele de filtrare nu vor fi salvate fără permisiunea de stocare",
+      "dismiss": "Respinge",
+      "loading": "Se încarcă filtrele...",
+      "ariaDownloadHtml": "Descarcă conținut HTML",
+      "ariaDownloadImages": "Descarcă imagini",
+      "ariaDownloadLinks": "Descarcă linkuri (salvate ca fișiere html)",
+      "ariaDownloadAssets": "Descarcă active (css, js)",
+      "ariaDownloadDocuments": "Descarcă documente (pdf, doc, etc.)",
+      "ariaDownloadContent": "Descarcă conținut ca text",
+      "ariaSingleFile": "Descarcă ca un singur fișier HTML",
+      "ariaStartDownload": "Începe descărcarea",
+      "ariaDismissWarning": "Închide avertismentul",
+      "error": "Eroare"
+    },
+    "actions": {
+      "title": "Acțiuni:",
+      "stop": "Oprește"
+    },
+    "status": {
+      "waiting": "Așteptare conexiune...",
+      "connected": "Website conectat!",
+      "scraping": "Se extrag datele de pe site...",
+      "scraped": "Datele au fost extrase!",
+      "creating": "Fișier Zip creat!",
+      "complete": "Descărcare completă",
+      "failed": "Descărcare eșuată",
+      "cancelled": "Descărcarea a fost anulată",
+      "creatingIndex": "Se creează index.html",
+      "downloadingCss": "Se descarcă fișiere CSS",
+      "cssDownloaded": "Fișiere CSS descărcate",
+      "cssError": "Eroare la descărcarea fișierelor CSS - unele ar putea lipsi",
+      "downloadingJs": "Se descarcă fișiere JS",
+      "jsDownloaded": "Fișiere JS descărcate",
+      "jsError": "Eroare la descărcarea fișierelor JS - unele ar putea lipsi",
+      "downloadingDocuments": "Se descarcă documente",
+      "documentsDownloaded": "Documente descărcate",
+      "downloadingImages": "Se descarcă imagini",
+      "imagesDownloaded": "Imagini descărcate",
+      "downloadingLinks": "Se descarcă fișierele html legate",
+      "linksDownloaded": "Fișierele html legate descărcate",
+      "downloadingContent": "Se descarcă conținutul ca text",
+      "contentDownloaded": "Conținutul ca text descărcat",
+      "singleFileCreated": "Fișier HTML unic creat",
+      "zipCreated": "Fișier Zip creat!",
+      "downloadStarted": "Descărcarea a început cu succes",
+      "completeTitle": "Descărcarea este completă:",
+      "zipLocation": "Puteți găsi fișierul zip în folderul de descărcări",
+      "cssProgress": "Progres fișiere CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "Progres imagini de fundal: {{completed}}/{{total}}",
+      "jsProgress": "Progres fișiere JS: {{completed}}/{{total}}",
+      "documentsProgress": "Progres fișiere documente: {{completed}}/{{total}}",
+      "imagesProgress": "Progres imagini: {{completed}}/{{total}}",
+      "htmlProgress": "Progres fișiere HTML: {{completed}}/{{total}}",
+      "cssSummary": "Fișiere CSS descărcate: {{succeeded}} reușite, {{failed}} eșuate, {{skipped}} sărite",
+      "bgImagesSummary": "Imagini de fundal din CSS descărcate: {{succeeded}} reușite, {{failed}} eșuate, {{skipped}} sărite",
+      "jsSummary": "Fișiere JS descărcate: {{succeeded}} reușite, {{failed}} eșuate, {{skipped}} sărite",
+      "documentsSummary": "Fișiere documente descărcate: {{succeeded}} reușite, {{failed}} eșuate, {{skipped}} sărite",
+      "imagesSummary": "Imagini descărcate: {{succeeded}} reușite, {{failed}} eșuate, {{skipped}} sărite",
+      "htmlSummary": "Fișiere HTML descărcate: {{succeeded}} reușite, {{failed}} eșuate, {{skipped}} sărite",
+      "processingCss": "Procesare fișiere CSS: {{current}}/{{total}}",
+      "streamingCss": "Începere descărcare prin streaming pentru CSS mare: {{current}}/{{total}}",
+      "streamingCssProgress": "Progres streaming CSS: {{completed}}/{{total}} bucăți",
+      "cssStreamingSummary": "Fișiere CSS procesate: {{succeeded}} reușite, {{streamed}} transmise, {{failed}} eșuate",
+      "processingJs": "Procesare fișiere JS: {{current}}/{{total}}",
+      "streamingJs": "Începere descărcare prin streaming pentru JS mare: {{current}}/{{total}}",
+      "streamingJsProgress": "Progres streaming JS: {{completed}}/{{total}} bucăți",
+      "jsStreamingSummary": "Fișiere JS procesate: {{succeeded}} reușite, {{streamed}} transmise, {{failed}} eșuate",
+      "processingImages": "Procesare imagini: {{current}}/{{total}}",
+      "streamingImages": "Începere descărcare prin streaming pentru imagine mare: {{current}}/{{total}}",
+      "streamingImagesProgress": "Progres streaming imagine: {{completed}}/{{total}} bucăți",
+      "imagesStreamingSummary": "Imagini procesate: {{succeeded}} reușite, {{streamed}} transmise, {{failed}} eșuate, {{skipped}} sărite",
+      "streamingFailedFallback": "Descărcarea prin streaming a eșuat, revenire la descărcarea normală...",
+      "processingHtmlIncremental": "Procesare conținut HTML cu asamblare incrementală",
+      "finalizingDownload": "Finalizare descărcare",
+      "indexCreated": "Index.html creat",
+      "htmlTooLarge": "Conținutul HTML este prea mare, poate fi trunchiat",
+      "incrementalHtmlAdded": "Conținut HTML asamblat și adăugat la descărcare",
+      "largeHtmlAdded": "Conținut HTML mare procesat și adăugat la descărcare",
+      "creatingPackage": "Creare pachet final de descărcare",
+      "processingImagesCount": "Procesare {{count}} imagini",
+      "streamingImageStart": "Începere descărcare prin streaming pentru imagine: {{current}}/{{total}}",
+      "waitingForStreaming": "Se așteaptă finalizarea a {{count}} descărcări prin streaming...",
+      "streamingProgress": "Progres streaming: {{completed}}/{{total}} bucăți ({{percent}}%)",
+      "streamingCompleted": "Toate descărcările prin streaming finalizate",
+      "creatingStreamingZip": "Creare fișier ZIP cu conținut transmis...",
+      "streamingSuccess": "Descărcare prin streaming finalizată cu succes",
+      "downloadingWebsiteContent": "Se descarcă conținutul site-ului web ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Permisiune de Stocare Necesară",
+        "description": "Această extensie are nevoie de permisiune de stocare pentru a salva preferințele tale de filtrare și pentru a oferi o experiență mai bună.",
+        "grant": "Acordă Permisiune",
+        "deny": "Poate Mai Târziu",
+        "benefits": {
+          "title": "Beneficiile acordării permisiunii de stocare:",
+          "savePreferences": "Salvează preferințele tale de filtrare a descărcărilor",
+          "persistSettings": "Reține setările între sesiuni",
+          "improveExperience": "Oferă o experiență mai personalizată"
+        }
+      },
+      "offscreen": {
+        "title": "Permisiune Suplimentară Necesară",
+        "description": "Această extensie are nevoie de permisiunea offscreen pentru a procesa descărcările eficient.",
+        "grant": "Acordă Permisiune",
+        "why": "Această permisiune permite extensiei să creeze documente în fundal pentru procesarea descărcărilor mari fără a afecta experiența ta de navigare."
+      },
+      "global": {
+        "title": "Permisiuni necesare",
+        "description": "Această extensie necesită permisiuni de stocare și offscreen pentru a oferi cea mai bună experiență de descărcare.",
+        "storage": {
+          "title": "Permisiune de stocare:",
+          "description": "Permite extensiei să salveze cantități mici de date local în browserul dvs. Acest lucru ne permite să reținem preferințele dvs. și să oferim o experiență personalizată în timpul sesiunilor."
+        },
+        "offscreen": {
+          "title": "Permisiune Offscreen:",
+          "description": "Permite descărcarea de fișiere mari, permițând extensiei să proceseze fișiere în fundal fără a afecta experiența dvs. de navigare."
+        },
+        "storageDetails": {
+          "title": "Ce stocăm:",
+          "id": "ID unic generat",
+          "preferences": "Preferințe de descărcare"
+        },
+        "privacy": {
+          "title": "Confidențialitate:",
+          "personal": "Fără date personale",
+          "history": "Fără istoric de navigare",
+          "local": "Toate datele rămân local în browserul dvs."
+        },
+        "button": {
+          "requesting": "Se solicită permisiuni...",
+          "enable": "Activează permisiunile"
+        },
+        "footer": "Revocați oricând în setările browserului"
+      }
+    },
+    "download": {
+      "showInFolder": "Arată în dosar",
+      "downloadAnother": "Descarcă altă pagină",
+      "cancel": "Anulează descărcarea"
+    },
+    "language": {
+      "select": "Selectează Limba",
+      "search": "Caută limbi...",
+      "current": "Limba curentă"
+    },
+    "rating": {
+      "title": "Îți place această extensie?",
+      "description": "Te rugăm să ne evaluezi pe Chrome Web Store!",
+      "rate": "Evaluează Extensia",
+      "prompt": "Dacă ați fost mulțumit, vă rugăm să lăsați o recenzie pozitivă :)",
+      "ariaLabel_one": "Evaluează cu {{count}} stea",
+      "ariaLabel_other": "Evaluează cu {{count}} stele"
+    },
+    "featureRequest": {
+      "title": "Solicită o Funcționalitate",
+      "description": "Ai o idee pentru a îmbunătăți această extensie?",
+      "submit": "Trimite Solicitare"
+    }
+  }
+}

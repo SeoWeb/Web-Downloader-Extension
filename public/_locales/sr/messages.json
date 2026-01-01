@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Програм за преузимање веб страница",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Програм за преузимање веб страница вам омогућава да преузмете и сачувате целе веб странице, укључујући повезане ресурсе, за офлајн преглед.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Програм за преузимање веб страница",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

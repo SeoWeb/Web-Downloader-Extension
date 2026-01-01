@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "โปรแกรมดาวน์โหลดหน้าเว็บ",
+      "loading": "กำลังโหลด...",
+      "error": "มีบางอย่างผิดพลาด:",
+      "tryAgain": "ลองอีกครั้ง",
+      "iconAlt": "ไอคอนโปรแกรมดาวน์โหลดหน้าเว็บ",
+      "noInternet": "ไม่มีการเชื่อมต่ออินเทอร์เน็ต - ไม่สามารถดาวน์โหลดทรัพยากรภายนอกได้",
+      "enableHtmlForOffline": "โปรดเปิดใช้งานการดาวน์โหลด HTML หรือโหมดไฟล์เดียวสำหรับการใช้งานออฟไลน์",
+      "networkCheckFailed": "การตรวจสอบการเชื่อมต่อเครือข่ายล้มเหลว - ดำเนินการดาวน์โหลดต่อ",
+      "noUrl": "ข้อผิดพลาด: ไม่มีการระบุ URL สำหรับการดาวน์โหลด",
+      "downloadInProgress": "กำลังดาวน์โหลด โปรดรอสักครู่",
+      "memoryPressure": "ไม่สามารถเริ่มการดาวน์โหลดได้เนื่องจากหน่วยความจำไม่เพียงพออย่างวิกฤต โปรดลองใหม่อีกครั้งในภายหลัง"
+    },
+    "filter": {
+      "title": "กรองสิ่งที่คุณต้องการดาวน์โหลด",
+      "downloadHTML": "ดาวน์โหลด HTML",
+      "downloadImages": "ดาวน์โหลดรูปภาพ",
+      "downloadLinks": "ดาวน์โหลดลิงก์ (บันทึกเป็นไฟล์ html)",
+      "downloadAssets": "ดาวน์โหลดทรัพย์สิน (css, js)",
+      "downloadDocuments": "ดาวน์โหลดเอกสาร (pdf, doc, ฯลฯ)",
+      "downloadContentAsText": "ดาวน์โหลดเนื้อหาเป็นข้อความ",
+      "singleFile": "ดาวน์โหลดในไฟล์ HTML เดียว",
+      "startDownload": "เริ่มดาวน์โหลด",
+      "linksWarning": "หากคุณเลือกดาวน์โหลดลิงก์ คุณจะต้องคำนึงว่าเวลาดาวน์โหลดทั้งหมดอาจเพิ่มขึ้นอย่างมากและไฟล์ zip อาจมีขนาดใหญ่ขึ้นมาก",
+      "permissionWarning": "การตั้งค่าตัวกรองจะไม่ถูกบันทึกโดยไม่ได้รับอนุญาตให้ใช้พื้นที่เก็บข้อมูล",
+      "dismiss": "ปิด",
+      "loading": "กำลังโหลดตัวกรอง...",
+      "ariaDownloadHtml": "ดาวน์โหลดเนื้อหา HTML",
+      "ariaDownloadImages": "ดาวน์โหลดรูปภาพ",
+      "ariaDownloadLinks": "ดาวน์โหลดลิงก์ (บันทึกเป็นไฟล์ html)",
+      "ariaDownloadAssets": "ดาวน์โหลดทรัพยากร (css, js)",
+      "ariaDownloadDocuments": "ดาวน์โหลดเอกสาร (pdf, doc ฯลฯ)",
+      "ariaDownloadContent": "ดาวน์โหลดเนื้อหาเป็นข้อความ",
+      "ariaSingleFile": "ดาวน์โหลดเป็นไฟล์ HTML เดียว",
+      "ariaStartDownload": "เริ่มดาวน์โหลด",
+      "ariaDismissWarning": "ปิดคำเตือน",
+      "error": "ข้อผิดพลาด"
+    },
+    "actions": {
+      "title": "การดำเนินการ:",
+      "stop": "หยุด"
+    },
+    "status": {
+      "waiting": "กำลังรอการเชื่อมต่อ...",
+      "connected": "เชื่อมต่อเว็บไซต์แล้ว!",
+      "scraping": "กำลังดึงข้อมูลเว็บไซต์...",
+      "scraped": "ดึงข้อมูลเว็บไซต์แล้ว!",
+      "creating": "สร้างไฟล์ Zip แล้ว!",
+      "complete": "ดาวน์โหลดเสร็จสมบูรณ์",
+      "failed": "ดาวน์โหลดล้มเหลว",
+      "cancelled": "การดาวน์โหลดถูกยกเลิก",
+      "creatingIndex": "กำลังสร้าง index.html",
+      "downloadingCss": "กำลังดาวน์โหลดไฟล์ CSS",
+      "cssDownloaded": "ดาวน์โหลดไฟล์ CSS แล้ว",
+      "cssError": "เกิดข้อผิดพลาดในการดาวน์โหลดไฟล์ CSS - บางไฟล์อาจหายไป",
+      "downloadingJs": "กำลังดาวน์โหลดไฟล์ JS",
+      "jsDownloaded": "ดาวน์โหลดไฟล์ JS แล้ว",
+      "jsError": "เกิดข้อผิดพลาดในการดาวน์โหลดไฟล์ JS - บางไฟล์อาจหายไป",
+      "downloadingDocuments": "กำลังดาวน์โหลดเอกสาร",
+      "documentsDownloaded": "ดาวน์โหลดเอกสารแล้ว",
+      "downloadingImages": "กำลังดาวน์โหลดรูปภาพ",
+      "imagesDownloaded": "ดาวน์โหลดรูปภาพแล้ว",
+      "downloadingLinks": "กำลังดาวน์โหลดไฟล์ html ที่เชื่อมโยง",
+      "linksDownloaded": "ดาวน์โหลดไฟล์ html ที่เชื่อมโยงแล้ว",
+      "downloadingContent": "กำลังดาวน์โหลดเนื้อหาเป็นข้อความ",
+      "contentDownloaded": "ดาวน์โหลดเนื้อหาเป็นข้อความแล้ว",
+      "singleFileCreated": "สร้างไฟล์ HTML เดียวแล้ว",
+      "zipCreated": "สร้างไฟล์ Zip แล้ว!",
+      "downloadStarted": "เริ่มการดาวน์โหลดสำเร็จ",
+      "completeTitle": "การดาวน์โหลดเสร็จสมบูรณ์:",
+      "zipLocation": "คุณสามารถค้นหาไฟล์ zip ในโฟลเดอร์ดาวน์โหลดของคุณ",
+      "cssProgress": "ความคืบหน้าไฟล์ CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "ความคืบหน้ารูปภาพพื้นหลัง: {{completed}}/{{total}}",
+      "jsProgress": "ความคืบหน้าไฟล์ JS: {{completed}}/{{total}}",
+      "documentsProgress": "ความคืบหน้าไฟล์เอกสาร: {{completed}}/{{total}}",
+      "imagesProgress": "ความคืบหน้ารูปภาพ: {{completed}}/{{total}}",
+      "htmlProgress": "ความคืบหน้าไฟล์ HTML: {{completed}}/{{total}}",
+      "cssSummary": "ไฟล์ CSS ที่ดาวน์โหลด: {{succeeded}} สำเร็จ, {{failed}} ล้มเหลว, {{skipped}} ข้าม",
+      "bgImagesSummary": "รูปภาพพื้นหลัง CSS ที่ดาวน์โหลด: {{succeeded}} สำเร็จ, {{failed}} ล้มเหลว, {{skipped}} ข้าม",
+      "jsSummary": "ไฟล์ JS ที่ดาวน์โหลด: {{succeeded}} สำเร็จ, {{failed}} ล้มเหลว, {{skipped}} ข้าม",
+      "documentsSummary": "ไฟล์เอกสารที่ดาวน์โหลด: {{succeeded}} สำเร็จ, {{failed}} ล้มเหลว, {{skipped}} ข้าม",
+      "imagesSummary": "รูปภาพที่ดาวน์โหลด: {{succeeded}} สำเร็จ, {{failed}} ล้มเหลว, {{skipped}} ข้าม",
+      "htmlSummary": "ไฟล์ HTML ที่ดาวน์โหลด: {{succeeded}} สำเร็จ, {{failed}} ล้มเหลว, {{skipped}} ข้าม",
+      "processingCss": "กำลังประมวลผลไฟล์ CSS: {{current}}/{{total}}",
+      "streamingCss": "กำลังเริ่มดาวน์โหลดแบบสตรีมมิ่งสำหรับ CSS ขนาดใหญ่: {{current}}/{{total}}",
+      "streamingCssProgress": "ความคืบหน้าการสตรีม CSS: {{completed}}/{{total}} ส่วน",
+      "cssStreamingSummary": "ไฟล์ CSS ที่ประมวลผล: {{succeeded}} สำเร็จ, {{streamed}} สตรีมแล้ว, {{failed}} ล้มเหลว",
+      "processingJs": "กำลังประมวลผลไฟล์ JS: {{current}}/{{total}}",
+      "streamingJs": "กำลังเริ่มดาวน์โหลดแบบสตรีมมิ่งสำหรับ JS ขนาดใหญ่: {{current}}/{{total}}",
+      "streamingJsProgress": "ความคืบหน้าการสตรีม JS: {{completed}}/{{total}} ส่วน",
+      "jsStreamingSummary": "ไฟล์ JS ที่ประมวลผล: {{succeeded}} สำเร็จ, {{streamed}} สตรีมแล้ว, {{failed}} ล้มเหลว",
+      "processingImages": "กำลังประมวลผลรูปภาพ: {{current}}/{{total}}",
+      "streamingImages": "กำลังเริ่มดาวน์โหลดแบบสตรีมมิ่งสำหรับรูปภาพขนาดใหญ่: {{current}}/{{total}}",
+      "streamingImagesProgress": "ความคืบหน้าการสตรีมรูปภาพ: {{completed}}/{{total}} ส่วน",
+      "imagesStreamingSummary": "รูปภาพที่ประมวลผล: {{succeeded}} สำเร็จ, {{streamed}} สตรีมแล้ว, {{failed}} ล้มเหลว, {{skipped}} ข้าม",
+      "streamingFailedFallback": "การดาวน์โหลดแบบสตรีมมิ่งล้มเหลว กลับไปใช้การดาวน์โหลดแบบปกติ...",
+      "processingHtmlIncremental": "กำลังประมวลผลเนื้อหา HTML ด้วยการประกอบส่วนเพิ่ม",
+      "finalizingDownload": "กำลังสิ้นสุดการดาวน์โหลด",
+      "indexCreated": "สร้าง index.html แล้ว",
+      "htmlTooLarge": "เนื้อหา HTML ใหญ่เกินไป อาจถูกตัดทอน",
+      "incrementalHtmlAdded": "เนื้อหา HTML ถูกประกอบและเพิ่มลงในการดาวน์โหลดแล้ว",
+      "largeHtmlAdded": "เนื้อหา HTML ขนาดใหญ่ถูกประมวลผลและเพิ่มลงในการดาวน์โหลดแล้ว",
+      "creatingPackage": "กำลังสร้างแพ็คเกจดาวน์โหลดขั้นสุดท้าย",
+      "processingImagesCount": "กำลังประมวลผล {{count}} รูปภาพ",
+      "streamingImageStart": "กำลังเริ่มดาวน์โหลดแบบสตรีมมิ่งสำหรับรูปภาพ: {{current}}/{{total}}",
+      "waitingForStreaming": "กำลังรอให้การดาวน์โหลดแบบสตรีมมิ่ง {{count}} รายการเสร็จสมบูรณ์...",
+      "streamingProgress": "ความคืบหน้าการสตรีม: {{completed}}/{{total}} ส่วน ({{percent}}%)",
+      "streamingCompleted": "การดาวน์โหลดแบบสตรีมมิ่งทั้งหมดเสร็จสมบูรณ์",
+      "creatingStreamingZip": "กำลังสร้างไฟล์ ZIP ที่มีเนื้อหาสตรีมมิ่ง...",
+      "streamingSuccess": "การดาวน์โหลดแบบสตรีมมิ่งเสร็จสมบูรณ์",
+      "downloadingWebsiteContent": "กำลังดาวน์โหลดเนื้อหาเว็บไซต์ ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "ต้องได้รับอนุญาตให้ใช้พื้นที่เก็บข้อมูล",
+        "description": "ส่วนขยายนี้ต้องได้รับอนุญาตให้ใช้พื้นที่เก็บข้อมูลเพื่อบันทึกการตั้งค่าตัวกรองของคุณและมอบประสบการณ์ที่ดีขึ้น",
+        "grant": "อนุญาต",
+        "deny": "อาจจะภายหลัง",
+        "benefits": {
+          "title": "ประโยชน์ของการอนุญาตให้ใช้พื้นที่เก็บข้อมูล:",
+          "savePreferences": "บันทึกการตั้งค่าตัวกรองการดาวน์โหลดของคุณ",
+          "persistSettings": "จำการตั้งค่าของคุณในแต่ละเซสชัน",
+          "improveExperience": "มอบประสบการณ์ที่เป็นส่วนตัวยิ่งขึ้น"
+        }
+      },
+      "offscreen": {
+        "title": "ต้องได้รับอนุญาตเพิ่มเติม",
+        "description": "ส่วนขยายนี้ต้องได้รับอนุญาต offscreen เพื่อประมวลผลการดาวน์โหลดอย่างมีประสิทธิภาพ",
+        "grant": "อนุญาต",
+        "why": "การอนุญาตนี้ช่วยให้ส่วนขยายสร้างเอกสารพื้นหลังเพื่อประมวลผลการดาวน์โหลดขนาดใหญ่โดยไม่กระทบต่อประสบการณ์การท่องเว็บของคุณ"
+      },
+      "global": {
+        "title": "จำเป็นต้องได้รับอนุญาต",
+        "description": "ส่วนขยายนี้ต้องการสิทธิ์การจัดเก็บและปิดหน้าจอเพื่อมอบประสบการณ์การดาวน์โหลดที่ดีที่สุด",
+        "storage": {
+          "title": "สิทธิ์การจัดเก็บ:",
+          "description": "อนุญาตให้ส่วนขยายบันทึกข้อมูลจำนวนเล็กน้อยในเบราว์เซอร์ของคุณ สิ่งนี้ช่วยให้เราจดจำการตั้งค่าของคุณและมอบประสบการณ์ที่เป็นส่วนตัว"
+        },
+        "offscreen": {
+          "title": "สิทธิ์ปิดหน้าจอ:",
+          "description": "เปิดใช้งานการดาวน์โหลดไฟล์ขนาดใหญ่โดยอนุญาตให้ส่วนขยายประมวลผลไฟล์ในพื้นหลังโดยไม่ส่งผลกระทบต่อประสบการณ์การท่องเว็บของคุณ"
+        },
+        "storageDetails": {
+          "title": "สิ่งที่เราเก็บรักษา:",
+          "id": "ID ที่สร้างขึ้นเฉพาะ",
+          "preferences": "การตั้งค่าการดาวน์โหลด"
+        },
+        "privacy": {
+          "title": "ความเป็นส่วนตัว:",
+          "personal": "ไม่มีข้อมูลส่วนบุคคล",
+          "history": "ไม่มีประวัติการเข้าชม",
+          "local": "ข้อมูลทั้งหมดจะถูกเก็บไว้ในเบราว์เซอร์ของคุณ"
+        },
+        "button": {
+          "requesting": "กำลังขอสิทธิ์...",
+          "enable": "เปิดใช้งานสิทธิ์"
+        },
+        "footer": "เพิกถอนได้ตลอดเวลาในการตั้งค่าเบราว์เซอร์"
+      }
+    },
+    "download": {
+      "showInFolder": "แสดงในโฟลเดอร์",
+      "downloadAnother": "ดาวน์โหลดหน้าอื่น",
+      "cancel": "ยกเลิกการดาวน์โหลด"
+    },
+    "language": {
+      "select": "เลือกภาษา",
+      "search": "ค้นหาภาษา...",
+      "current": "ภาษาปัจจุบัน"
+    },
+    "rating": {
+      "title": "ชอบส่วนขยายนี้ไหม?",
+      "description": "โปรดให้คะแนนเราใน Chrome Web Store!",
+      "rate": "ให้คะแนนส่วนขยาย",
+      "prompt": "หากคุณพอใจ โปรดเขียนรีวิวเชิงบวก :)",
+      "ariaLabel_one": "ให้คะแนน {{count}} ดาว",
+      "ariaLabel_other": "ให้คะแนน {{count}} ดาว"
+    },
+    "featureRequest": {
+      "title": "ขอคุณสมบัติ",
+      "description": "มีไอเดียในการปรับปรุงส่วนขยายนี้ไหม?",
+      "submit": "ส่งคำขอ"
+    }
+  }
+}

@@ -28,7 +28,7 @@ interface UseScrapingDownloaderProps {
   isScraping: boolean;
   setIsScraping: React.Dispatch<React.SetStateAction<boolean>>;
   downloadOptions: DownloadOptions | null;
-  setMessages: React.Dispatch<React.SetStateAction<string[]>>;
+  setMessages: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export function useScrapingDownloader({
@@ -63,9 +63,9 @@ export function useScrapingDownloader({
   );
 
   const scrape = useCallback(async () => {
-    if (!tabId) {
+  if (!tabId) {
       setIsScraping(false);
-      setMessages((prev) => [...prev, "Invalid tab ID"]);
+      setMessages((prev) => [...prev, { key: "status.failed", options: { error: "Invalid tab ID" } }]);
       return;
     }
 
@@ -111,7 +111,7 @@ export function useScrapingDownloader({
       });
     } else {
       setIsScraping(false);
-      setMessages((prev) => [...prev, "Scraping failed or stopped"]);
+      setMessages((prev) => [...prev, { key: "status.failed" }]);
     }
   }, [tabId, startScrolling, setIsScraping, setMessages, scrollAttempts]);
 
@@ -128,7 +128,7 @@ export function useScrapingDownloader({
         })
         .catch((error) => {
           console.error("Download failed:", error);
-          setMessages((prev) => [...prev, "Failed to complete download"]);
+          setMessages((prev) => [...prev, { key: "status.failed" }]);
           // Reset on error
           setDownloadResponse(null);
         });

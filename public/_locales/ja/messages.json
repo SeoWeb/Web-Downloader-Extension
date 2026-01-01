@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Webページダウンローダー",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Webページダウンローダーを使用すると、リンクされたリソースを含むWebページ全体をダウンロードして保存し、オフラインで表示できます。",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Webページダウンローダー",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

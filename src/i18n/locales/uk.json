@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Завантажувач веб-сторінок",
+      "loading": "Завантаження...",
+      "error": "Щось пішло не так:",
+      "tryAgain": "Спробувати знову",
+      "iconAlt": "Значок завантажувача веб-сторінок",
+      "noInternet": "Немає підключення до Інтернету - неможливо завантажити зовнішні ресурси",
+      "enableHtmlForOffline": "Будь ласка, увімкніть завантаження HTML або режим одного файлу для використання в автономному режимі",
+      "networkCheckFailed": "Перевірка підключення до мережі не вдалася - продовження завантаження",
+      "noUrl": "Помилка: URL для завантаження не надано",
+      "downloadInProgress": "Завантаження вже триває. Будь ласка, зачекайте.",
+      "memoryPressure": "Неможливо розпочати завантаження через критичну нестачу пам'яті. Будь ласка, спробуйте пізніше."
+    },
+    "filter": {
+      "title": "Відфільтруйте те, що ви хочете завантажити",
+      "downloadHTML": "Завантажити HTML",
+      "downloadImages": "Завантажити зображення",
+      "downloadLinks": "Завантажити посилання (збережені як html файли)",
+      "downloadAssets": "Завантажити ресурси (css, js)",
+      "downloadDocuments": "Завантажити документи (pdf, doc тощо)",
+      "downloadContentAsText": "Завантажити вміст як текст",
+      "singleFile": "Завантажити в одному HTML файлі",
+      "startDownload": "Почати завантаження",
+      "linksWarning": "Якщо ви вирішите завантажити посилання, ви повинні враховувати, що загальний час завантаження може різко зрости, а zip-файл може бути значно більшим.",
+      "permissionWarning": "Налаштування фільтра не будуть збережені без дозволу на зберігання",
+      "dismiss": "Відхилити",
+      "loading": "Завантаження фільтрів...",
+      "ariaDownloadHtml": "Завантажити HTML контент",
+      "ariaDownloadImages": "Завантажити зображення",
+      "ariaDownloadLinks": "Завантажити посилання (зберігаються як html файли)",
+      "ariaDownloadAssets": "Завантажити ресурси (css, js)",
+      "ariaDownloadDocuments": "Завантажити документи (pdf, doc тощо)",
+      "ariaDownloadContent": "Завантажити вміст як текст",
+      "ariaSingleFile": "Завантажити як один HTML-файл",
+      "ariaStartDownload": "Почати завантаження",
+      "ariaDismissWarning": "Закрити попередження",
+      "error": "Помилка"
+    },
+    "actions": {
+      "title": "Дії:",
+      "stop": "Стоп"
+    },
+    "status": {
+      "waiting": "Очікування підключення...",
+      "connected": "Веб-сайт підключено!",
+      "scraping": "Скрапінг веб-сайту...",
+      "scraped": "Веб-сайт скрапіровано!",
+      "creating": "Zip-файл створено!",
+      "complete": "Завантаження завершено",
+      "failed": "Завантаження не вдалося",
+      "cancelled": "Завантаження скасовано",
+      "creatingIndex": "Створення index.html",
+      "downloadingCss": "Завантаження файлів CSS",
+      "cssDownloaded": "Файли CSS завантажено",
+      "cssError": "Помилка завантаження файлів CSS - деякі можуть бути відсутні",
+      "downloadingJs": "Завантаження файлів JS",
+      "jsDownloaded": "Файли JS завантажено",
+      "jsError": "Помилка завантаження файлів JS - деякі можуть бути відсутні",
+      "downloadingDocuments": "Завантаження документів",
+      "documentsDownloaded": "Документи завантажено",
+      "downloadingImages": "Завантаження зображень",
+      "imagesDownloaded": "Зображення завантажено",
+      "downloadingLinks": "Завантаження пов'язаних html файлів",
+      "linksDownloaded": "Пов'язані html файли завантажено",
+      "downloadingContent": "Завантаження вмісту як текст",
+      "contentDownloaded": "Вміст як текст завантажено",
+      "singleFileCreated": "Створено один HTML файл",
+      "zipCreated": "Zip-файл створено!",
+      "downloadStarted": "Завантаження успішно розпочато",
+      "completeTitle": "Завантаження завершено:",
+      "zipLocation": "Ви можете знайти zip-файл у папці завантажень",
+      "cssProgress": "Прогрес CSS файлів: {{completed}}/{{total}}",
+      "bgImagesProgress": "Прогрес фонових зображень: {{completed}}/{{total}}",
+      "jsProgress": "Прогрес JS файлів: {{completed}}/{{total}}",
+      "documentsProgress": "Прогрес файлів документів: {{completed}}/{{total}}",
+      "imagesProgress": "Прогрес зображень: {{completed}}/{{total}}",
+      "htmlProgress": "Прогрес HTML файлів: {{completed}}/{{total}}",
+      "cssSummary": "Завантажено CSS файлів: {{succeeded}} успішно, {{failed}} не вдалося, {{skipped}} пропущено",
+      "bgImagesSummary": "Завантажено фонових зображень з CSS: {{succeeded}} успішно, {{failed}} не вдалося, {{skipped}} пропущено",
+      "jsSummary": "Завантажено JS файлів: {{succeeded}} успішно, {{failed}} не вдалося, {{skipped}} пропущено",
+      "documentsSummary": "Завантажено файлів документів: {{succeeded}} успішно, {{failed}} не вдалося, {{skipped}} пропущено",
+      "imagesSummary": "Завантажено зображень: {{succeeded}} успішно, {{failed}} не вдалося, {{skipped}} пропущено",
+      "htmlSummary": "Завантажено HTML файлів: {{succeeded}} успішно, {{failed}} не вдалося, {{skipped}} пропущено",
+      "processingCss": "Обробка CSS файлів: {{current}}/{{total}}",
+      "streamingCss": "Запуск потокового завантаження для великого CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "Прогрес потокової передачі CSS: {{completed}}/{{total}} частин",
+      "cssStreamingSummary": "Оброблено CSS файлів: {{succeeded}} успішно, {{streamed}} в потоці, {{failed}} не вдалося",
+      "processingJs": "Обробка JS файлів: {{current}}/{{total}}",
+      "streamingJs": "Запуск потокового завантаження для великого JS: {{current}}/{{total}}",
+      "streamingJsProgress": "Прогрес потокової передачі JS: {{completed}}/{{total}} частин",
+      "jsStreamingSummary": "Оброблено JS файлів: {{succeeded}} успішно, {{streamed}} в потоці, {{failed}} не вдалося",
+      "processingImages": "Обробка зображень: {{current}}/{{total}}",
+      "streamingImages": "Запуск потокового завантаження для великого зображення: {{current}}/{{total}}",
+      "streamingImagesProgress": "Прогрес потокової передачі зображення: {{completed}}/{{total}} частин",
+      "imagesStreamingSummary": "Оброблено зображень: {{succeeded}} успішно, {{streamed}} в потоці, {{failed}} не вдалося, {{skipped}} пропущено",
+      "streamingFailedFallback": "Потокове завантаження не вдалося, повернення до звичайного завантаження...",
+      "processingHtmlIncremental": "Обробка HTML контенту з інкрементальною збіркою",
+      "finalizingDownload": "Завершення завантаження",
+      "indexCreated": "Index.html створено",
+      "htmlTooLarge": "HTML контент занадто великий, може бути обрізаний",
+      "incrementalHtmlAdded": "HTML контент зібрано та додано до завантаження",
+      "largeHtmlAdded": "Великий HTML контент оброблено та додано до завантаження",
+      "creatingPackage": "Створення фінального пакету завантаження",
+      "processingImagesCount": "Обробка {{count}} зображень",
+      "streamingImageStart": "Запуск потокового завантаження для зображення: {{current}}/{{total}}",
+      "waitingForStreaming": "Очікування завершення {{count}} потокових завантажень...",
+      "streamingProgress": "Прогрес потокової передачі: {{completed}}/{{total}} частин ({{percent}}%)",
+      "streamingCompleted": "Всі потокові завантаження завершено",
+      "creatingStreamingZip": "Створення ZIP файлу з потоковим контентом...",
+      "streamingSuccess": "Потокове завантаження успішно завершено",
+      "downloadingWebsiteContent": "Завантаження вмісту веб-сайту ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Потрібен дозвіл на зберігання",
+        "description": "Цьому розширенню потрібен дозвіл на зберігання, щоб зберегти ваші налаштування фільтра та забезпечити кращий досвід.",
+        "grant": "Надати дозвіл",
+        "deny": "Можливо пізніше",
+        "benefits": {
+          "title": "Переваги надання дозволу на зберігання:",
+          "savePreferences": "Збережіть налаштування фільтра завантаження",
+          "persistSettings": "Запам'ятати ваші налаштування між сесіями",
+          "improveExperience": "Забезпечити більш персоналізований досвід"
+        }
+      },
+      "offscreen": {
+        "title": "Потрібен додатковий дозвіл",
+        "description": "Цьому розширенню потрібен дозвіл offscreen для ефективної обробки завантажень.",
+        "grant": "Надати дозвіл",
+        "why": "Цей дозвіл дозволяє розширенню створювати фонові документи для обробки великих завантажень, не впливаючи на ваш досвід перегляду."
+      },
+      "global": {
+        "title": "Потрібні дозволи",
+        "description": "Цьому розширенню потрібні дозволи на зберігання та offscreen для забезпечення найкращого досвіду завантаження.",
+        "storage": {
+          "title": "Дозвіл на зберігання:",
+          "description": "Дозволяє розширенню зберігати невеликі обсяги даних локально у вашому браузері. Це дозволяє нам запам'ятовувати ваші налаштування та надавати персоналізований досвід."
+        },
+        "offscreen": {
+          "title": "Дозвіл Offscreen:",
+          "description": "Дозволяє завантажувати великі файли, дозволяючи розширенню обробляти файли у фоновому режимі, не впливаючи на ваш досвід перегляду."
+        },
+        "storageDetails": {
+          "title": "Що ми зберігаємо:",
+          "id": "Унікальний згенерований ID",
+          "preferences": "Налаштування завантаження"
+        },
+        "privacy": {
+          "title": "Конфіденційність:",
+          "personal": "Жодних особистих даних",
+          "history": "Жодної історії перегляду",
+          "local": "Всі дані залишаються локально у вашому браузері"
+        },
+        "button": {
+          "requesting": "Запит дозволів...",
+          "enable": "Увімкнути дозволи"
+        },
+        "footer": "Скасувати будь-коли в налаштуваннях браузера"
+      }
+    },
+    "download": {
+      "showInFolder": "Показати в папці",
+      "downloadAnother": "Завантажити іншу сторінку",
+      "cancel": "Скасувати завантаження"
+    },
+    "language": {
+      "select": "Вибрати мову",
+      "search": "Пошук мов...",
+      "current": "Поточна мова"
+    },
+    "rating": {
+      "title": "Вам подобається це розширення?",
+      "description": "Будь ласка, оцініть нас у веб-магазині Chrome!",
+      "rate": "Оцінити розширення",
+      "prompt": "Якщо ви задоволені, будь ласка, залиште позитивний відгук :)",
+      "ariaLabel_one": "Оцінити {{count}} зіркою",
+      "ariaLabel_other": "Оцінити {{count}} зірками"
+    },
+    "featureRequest": {
+      "title": "Запитати функцію",
+      "description": "Є ідея покращити це розширення?",
+      "submit": "Надіслати запит"
+    }
+  }
+}

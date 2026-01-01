@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "웹 페이지 다운로더",
+      "loading": "로딩 중...",
+      "error": "문제가 발생했습니다:",
+      "tryAgain": "다시 시도",
+      "iconAlt": "웹 페이지 다운로더 아이콘",
+      "noInternet": "인터넷 연결 없음 - 외부 리소스를 다운로드할 수 없습니다",
+      "enableHtmlForOffline": "오프라인 사용을 위해 HTML 다운로드 또는 단일 파일 모드를 활성화하십시오",
+      "networkCheckFailed": "네트워크 연결 확인 실패 - 다운로드 계속 진행",
+      "noUrl": "오류: 다운로드할 URL이 제공되지 않았습니다",
+      "downloadInProgress": "다운로드가 이미 진행 중입니다. 잠시 기다려 주십시오.",
+      "memoryPressure": "치명적인 메모리 부족으로 인해 다운로드를 시작할 수 없습니다. 나중에 다시 시도하십시오."
+    },
+    "filter": {
+      "title": "다운로드할 항목 필터링",
+      "downloadHTML": "HTML 다운로드",
+      "downloadImages": "이미지 다운로드",
+      "downloadLinks": "링크 다운로드 (html 파일로 저장됨)",
+      "downloadAssets": "자산 다운로드 (css, js)",
+      "downloadDocuments": "문서 다운로드 (pdf, doc 등)",
+      "downloadContentAsText": "콘텐츠를 텍스트로 다운로드",
+      "singleFile": "단일 HTML 파일로 다운로드",
+      "startDownload": "다운로드 시작",
+      "linksWarning": "링크 다운로드를 선택하면 총 다운로드 시간이 크게 늘어날 수 있으며 zip 파일이 훨씬 커질 수 있음을 고려해야 합니다.",
+      "permissionWarning": "저장 권한 없이는 필터 기본 설정이 저장되지 않습니다",
+      "dismiss": "무시",
+      "loading": "필터 로딩 중...",
+      "ariaDownloadHtml": "HTML 콘텐츠 다운로드",
+      "ariaDownloadImages": "이미지 다운로드",
+      "ariaDownloadLinks": "링크 다운로드 (HTML 파일로 저장)",
+      "ariaDownloadAssets": "자산 다운로드 (css, js)",
+      "ariaDownloadDocuments": "문서 다운로드 (pdf, doc 등)",
+      "ariaDownloadContent": "콘텐츠를 텍스트로 다운로드",
+      "ariaSingleFile": "단일 HTML 파일로 다운로드",
+      "ariaStartDownload": "다운로드 시작",
+      "ariaDismissWarning": "경고 무시",
+      "error": "오류"
+    },
+    "actions": {
+      "title": "작업:",
+      "stop": "중지"
+    },
+    "status": {
+      "waiting": "연결 대기 중...",
+      "connected": "웹사이트 연결됨!",
+      "scraping": "웹사이트 스크래핑 중...",
+      "scraped": "웹사이트 스크래핑 완료!",
+      "creating": "Zip 파일 생성됨!",
+      "complete": "다운로드 완료",
+      "failed": "다운로드 실패",
+      "cancelled": "다운로드 취소됨",
+      "creatingIndex": "index.html 생성 중",
+      "downloadingCss": "CSS 파일 다운로드 중",
+      "cssDownloaded": "CSS 파일 다운로드됨",
+      "cssError": "CSS 파일 다운로드 오류 - 일부가 누락될 수 있습니다",
+      "downloadingJs": "JS 파일 다운로드 중",
+      "jsDownloaded": "JS 파일 다운로드됨",
+      "jsError": "JS 파일 다운로드 오류 - 일부가 누락될 수 있습니다",
+      "downloadingDocuments": "문서 파일 다운로드 중",
+      "documentsDownloaded": "문서 파일 다운로드됨",
+      "downloadingImages": "이미지 다운로드 중",
+      "imagesDownloaded": "이미지 다운로드됨",
+      "downloadingLinks": "연결된 html 파일 다운로드 중",
+      "linksDownloaded": "연결된 html 파일 다운로드됨",
+      "downloadingContent": "콘텐츠를 텍스트로 다운로드 중",
+      "contentDownloaded": "콘텐츠 텍스트 다운로드됨",
+      "singleFileCreated": "단일 HTML 파일 생성됨",
+      "zipCreated": "Zip 파일이 생성되었습니다!",
+      "downloadStarted": "다운로드가 성공적으로 시작되었습니다",
+      "completeTitle": "다운로드가 완료되었습니다:",
+      "zipLocation": "다운로드 폴더에서 zip 파일을 찾을 수 있습니다",
+      "cssProgress": "CSS 파일 진행 상황: {{completed}}/{{total}}",
+      "bgImagesProgress": "배경 이미지 진행 상황: {{completed}}/{{total}}",
+      "jsProgress": "JS 파일 진행 상황: {{completed}}/{{total}}",
+      "documentsProgress": "문서 파일 진행 상황: {{completed}}/{{total}}",
+      "imagesProgress": "이미지 진행 상황: {{completed}}/{{total}}",
+      "htmlProgress": "HTML 파일 진행 상황: {{completed}}/{{total}}",
+      "cssSummary": "다운로드된 CSS 파일: {{succeeded}} 성공, {{failed}} 실패, {{skipped}} 건너뜀",
+      "bgImagesSummary": "다운로드된 CSS 배경 이미지: {{succeeded}} 성공, {{failed}} 실패, {{skipped}} 건너뜀",
+      "jsSummary": "다운로드된 JS 파일: {{succeeded}} 성공, {{failed}} 실패, {{skipped}} 건너뜀",
+      "documentsSummary": "다운로드된 문서 파일: {{succeeded}} 성공, {{failed}} 실패, {{skipped}} 건너뜀",
+      "imagesSummary": "다운로드된 이미지: {{succeeded}} 성공, {{failed}} 실패, {{skipped}} 건너뜀",
+      "htmlSummary": "다운로드된 HTML 파일: {{succeeded}} 성공, {{failed}} 실패, {{skipped}} 건너뜀",
+      "processingCss": "CSS 파일 처리 중: {{current}}/{{total}}",
+      "streamingCss": "대용량 CSS 스트리밍 다운로드 시작: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS 스트리밍 진행 상황: {{completed}}/{{total}} 청크",
+      "cssStreamingSummary": "처리된 CSS 파일: {{succeeded}} 성공, {{streamed}} 스트리밍됨, {{failed}} 실패",
+      "processingJs": "JS 파일 처리 중: {{current}}/{{total}}",
+      "streamingJs": "대용량 JS 스트리밍 다운로드 시작: {{current}}/{{total}}",
+      "streamingJsProgress": "JS 스트리밍 진행 상황: {{completed}}/{{total}} 청크",
+      "jsStreamingSummary": "처리된 JS 파일: {{succeeded}} 성공, {{streamed}} 스트리밍됨, {{failed}} 실패",
+      "processingImages": "이미지 처리 중: {{current}}/{{total}}",
+      "streamingImages": "대용량 이미지 스트리밍 다운로드 시작: {{current}}/{{total}}",
+      "streamingImagesProgress": "이미지 스트리밍 진행 상황: {{completed}}/{{total}} 청크",
+      "imagesStreamingSummary": "처리된 이미지: {{succeeded}} 성공, {{streamed}} 스트리밍됨, {{failed}} 실패, {{skipped}} 건너뜀",
+      "streamingFailedFallback": "스트리밍 다운로드 실패, 일반 다운로드로 대체 중...",
+      "processingHtmlIncremental": "증분 조립으로 HTML 콘텐츠 처리 중",
+      "finalizingDownload": "다운로드 완료 중",
+      "indexCreated": "index.html 생성됨",
+      "htmlTooLarge": "HTML 콘텐츠가 너무 커서 잘릴 수 있습니다",
+      "incrementalHtmlAdded": "HTML 콘텐츠가 조립되어 다운로드에 추가되었습니다",
+      "largeHtmlAdded": "대용량 HTML 콘텐츠가 처리되어 다운로드에 추가되었습니다",
+      "creatingPackage": "최종 다운로드 패키지 생성 중",
+      "processingImagesCount": "{{count}}개 이미지 처리 중",
+      "streamingImageStart": "이미지 스트리밍 다운로드 시작: {{current}}/{{total}}",
+      "waitingForStreaming": "{{count}}개 스트리밍 다운로드 완료 대기 중...",
+      "streamingProgress": "스트리밍 진행 상황: {{completed}}/{{total}} 청크 ({{percent}}%)",
+      "streamingCompleted": "모든 스트리밍 다운로드 완료",
+      "creatingStreamingZip": "스트리밍 콘텐츠로 ZIP 파일 생성 중...",
+      "streamingSuccess": "스트리밍 다운로드 성공적으로 완료",
+      "downloadingWebsiteContent": "웹사이트 콘텐츠 다운로드 중..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "저장 권한 필요",
+        "description": "이 확장 프로그램은 필터 기본 설정을 저장하고 더 나은 경험을 제공하기 위해 저장 권한이 필요합니다.",
+        "grant": "권한 부여",
+        "deny": "나중에",
+        "benefits": {
+          "title": "저장 권한 부여의 이점:",
+          "savePreferences": "다운로드 필터 기본 설정 저장",
+          "persistSettings": "세션 간 설정 기억",
+          "improveExperience": "더 개인화된 경험 제공"
+        }
+      },
+      "offscreen": {
+        "title": "추가 권한 필요",
+        "description": "이 확장 프로그램은 다운로드를 효율적으로 처리하기 위해 offscreen 권한이 필요합니다.",
+        "grant": "권한 부여",
+        "why": "이 권한을 통해 확장 프로그램은 브라우징 경험에 영향을 주지 않고 대규모 다운로드를 처리하기 위한 백그라운드 문서를 생성할 수 있습니다."
+      },
+      "global": {
+        "title": "권한 필요",
+        "description": "이 확장 프로그램은 최상의 다운로드 경험을 제공하기 위해 저장소 및 오프스크린 권한이 필요합니다.",
+        "storage": {
+          "title": "저장소 권한:",
+          "description": "확장 프로그램이 브라우저에 소량의 데이터를 로컬로 저장할 수 있도록 허용합니다. 이를 통해 기본 설정을 기억하고 세션 간에 맞춤형 경험을 제공할 수 있습니다."
+        },
+        "offscreen": {
+          "title": "오프스크린 권한:",
+          "description": "확장 프로그램이 검색 경험에 영향을 주지 않고 백그라운드에서 파일을 처리할 수 있도록 하여 대용량 파일 다운로드를 가능하게 합니다."
+        },
+        "storageDetails": {
+          "title": "저장하는 정보:",
+          "id": "고유 생성 ID",
+          "preferences": "다운로드 기본 설정"
+        },
+        "privacy": {
+          "title": "개인정보 보호:",
+          "personal": "개인 데이터 없음",
+          "history": "검색 기록 없음",
+          "local": "모든 데이터는 브라우저에 로컬로 유지됩니다"
+        },
+        "button": {
+          "requesting": "권한 요청 중...",
+          "enable": "권한 활성화"
+        },
+        "footer": "브라우저 설정에서 언제든지 철회 가능"
+      }
+    },
+    "download": {
+      "showInFolder": "폴더에서 보기",
+      "downloadAnother": "다른 페이지 다운로드",
+      "cancel": "다운로드 취소"
+    },
+    "language": {
+      "select": "언어 선택",
+      "search": "언어 검색...",
+      "current": "현재 언어"
+    },
+    "rating": {
+      "title": "이 확장 프로그램이 마음에 드시나요?",
+      "description": "Chrome 웹 스토어에서 평가해 주세요!",
+      "rate": "확장 프로그램 평가",
+      "prompt": "만족하셨다면 긍정적인 리뷰를 남겨주세요 :)",
+      "ariaLabel_one": "별 {{count}}개로 평가",
+      "ariaLabel_other": "별 {{count}}개로 평가"
+    },
+    "featureRequest": {
+      "title": "기능 요청",
+      "description": "이 확장 프로그램을 개선할 아이디어가 있으신가요?",
+      "submit": "요청 제출"
+    }
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Webpagina Downloader",
+      "loading": "Laden...",
+      "error": "Er is iets misgegaan:",
+      "tryAgain": "Probeer opnieuw",
+      "iconAlt": "Webpagina Downloader icoon",
+      "noInternet": "Geen internetverbinding - kan geen externe bronnen downloaden",
+      "enableHtmlForOffline": "Schakel HTML-download of modus voor enkel bestand in voor offline gebruik",
+      "networkCheckFailed": "Netwerkconnectiviteitscontrole mislukt - download gaat door",
+      "noUrl": "Fout: Geen URL opgegeven voor download",
+      "downloadInProgress": "Er is al een download bezig. Even geduld a.u.b.",
+      "memoryPressure": "Kan download niet starten vanwege kritiek geheugentekort. Probeer het later opnieuw."
+    },
+    "filter": {
+      "title": "Filter wat je wilt downloaden",
+      "downloadHTML": "HTML downloaden",
+      "downloadImages": "Download afbeeldingen",
+      "downloadLinks": "Download links (opgeslagen als html-bestanden)",
+      "downloadAssets": "Assets downloaden",
+      "downloadDocuments": "Download documenten (pdf, doc, etc.)",
+      "downloadContentAsText": "Download inhoud als tekst",
+      "singleFile": "Download in één HTML-bestand",
+      "startDownload": "Download starten",
+      "linksWarning": "Als je ervoor kiest om links te downloaden, moet je er rekening mee houden dat de totale downloadtijd drastisch kan toenemen en het zip-bestand aanzienlijk groter kan zijn.",
+      "permissionWarning": "Filtervoorkeuren worden niet opgeslagen zonder opslagtoestemming",
+      "dismiss": "Sluiten",
+      "loading": "Filters laden...",
+      "ariaDownloadHtml": "HTML-inhoud downloaden",
+      "ariaDownloadImages": "Afbeeldingen downloaden",
+      "ariaDownloadLinks": "Links downloaden (opgeslagen als html-bestanden)",
+      "ariaDownloadAssets": "Assets downloaden (css, js)",
+      "ariaDownloadDocuments": "Documenten downloaden (pdf, doc, enz.)",
+      "ariaDownloadContent": "Inhoud als tekst downloaden",
+      "ariaSingleFile": "Downloaden als enkel HTML-bestand",
+      "ariaStartDownload": "Download starten",
+      "ariaDismissWarning": "Waarschuwing sluiten",
+      "error": "Fout"
+    },
+    "actions": {
+      "title": "Acties:",
+      "stop": "Stoppen"
+    },
+    "status": {
+      "waiting": "Wachten op verbinding...",
+      "connected": "Website verbonden!",
+      "scraping": "Website scrapen...",
+      "scraped": "Website gescrapet!",
+      "creating": "Zip-bestand gemaakt!",
+      "complete": "Download voltooid",
+      "failed": "Download mislukt",
+      "cancelled": "Download geannuleerd",
+      "creatingIndex": "Index.html aanmaken",
+      "downloadingCss": "CSS-bestanden downloaden",
+      "cssDownloaded": "CSS-bestanden gedownload",
+      "cssError": "Fout bij downloaden CSS-bestanden - sommige ontbreken mogelijk",
+      "downloadingJs": "JS-bestanden downloaden",
+      "jsDownloaded": "JS-bestanden gedownload",
+      "jsError": "Fout bij downloaden JS-bestanden - sommige ontbreken mogelijk",
+      "downloadingDocuments": "Documenten downloaden",
+      "documentsDownloaded": "Documenten gedownload",
+      "downloadingImages": "Afbeeldingen downloaden",
+      "imagesDownloaded": "Afbeeldingen gedownload",
+      "downloadingLinks": "Gekoppelde html-bestanden downloaden",
+      "linksDownloaded": "Gekoppelde html-bestanden gedownload",
+      "downloadingContent": "Inhoud als tekst downloaden",
+      "contentDownloaded": "Inhoud als tekst gedownload",
+      "singleFileCreated": "Enkel HTML-bestand gemaakt",
+      "zipCreated": "Zip-bestand gemaakt!",
+      "downloadStarted": "Download succesvol gestart",
+      "completeTitle": "Download is voltooid:",
+      "zipLocation": "U vindt het zip-bestand in uw downloadmap",
+      "cssProgress": "Voortgang CSS-bestanden: {{completed}}/{{total}}",
+      "bgImagesProgress": "Voortgang achtergrondafbeeldingen: {{completed}}/{{total}}",
+      "jsProgress": "Voortgang JS-bestanden: {{completed}}/{{total}}",
+      "documentsProgress": "Voortgang documentbestanden: {{completed}}/{{total}}",
+      "imagesProgress": "Voortgang afbeeldingen: {{completed}}/{{total}}",
+      "htmlProgress": "Voortgang HTML-bestanden: {{completed}}/{{total}}",
+      "cssSummary": "CSS-bestanden gedownload: {{succeeded}} geslaagd, {{failed}} mislukt, {{skipped}} overgeslagen",
+      "bgImagesSummary": "Achtergrondafbeeldingen uit CSS gedownload: {{succeeded}} geslaagd, {{failed}} mislukt, {{skipped}} overgeslagen",
+      "jsSummary": "JS-bestanden gedownload: {{succeeded}} geslaagd, {{failed}} mislukt, {{skipped}} overgeslagen",
+      "documentsSummary": "Documentbestanden gedownload: {{succeeded}} geslaagd, {{failed}} mislukt, {{skipped}} overgeslagen",
+      "imagesSummary": "Afbeeldingen gedownload: {{succeeded}} geslaagd, {{failed}} mislukt, {{skipped}} overgeslagen",
+      "htmlSummary": "HTML-bestanden gedownload: {{succeeded}} geslaagd, {{failed}} mislukt, {{skipped}} overgeslagen",
+      "processingCss": "CSS-bestanden verwerken: {{current}}/{{total}}",
+      "streamingCss": "Starten streaming download voor grote CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS streaming voortgang: {{completed}}/{{total}} chunks",
+      "cssStreamingSummary": "Verwerkte CSS-bestanden: {{succeeded}} geslaagd, {{streamed}} gestreamd, {{failed}} mislukt",
+      "processingJs": "JS-bestanden verwerken: {{current}}/{{total}}",
+      "streamingJs": "Starten streaming download voor grote JS: {{current}}/{{total}}",
+      "streamingJsProgress": "JS streaming voortgang: {{completed}}/{{total}} chunks",
+      "jsStreamingSummary": "Verwerkte JS-bestanden: {{succeeded}} geslaagd, {{streamed}} gestreamd, {{failed}} mislukt",
+      "processingImages": "Afbeeldingen verwerken: {{current}}/{{total}}",
+      "streamingImages": "Starten streaming download voor grote afbeelding: {{current}}/{{total}}",
+      "streamingImagesProgress": "Afbeelding streaming voortgang: {{completed}}/{{total}} chunks",
+      "imagesStreamingSummary": "Verwerkte afbeeldingen: {{succeeded}} geslaagd, {{streamed}} gestreamd, {{failed}} mislukt, {{skipped}} overgeslagen",
+      "streamingFailedFallback": "Streaming download mislukt, terugvallen op normale download...",
+      "processingHtmlIncremental": "HTML-inhoud verwerken met incrementele assemblage",
+      "finalizingDownload": "Download afronden",
+      "indexCreated": "Index.html aangemaakt",
+      "htmlTooLarge": "HTML-inhoud is te groot, kan worden afgekapt",
+      "incrementalHtmlAdded": "HTML-inhoud geassembleerd en toegevoegd aan download",
+      "largeHtmlAdded": "Grote HTML-inhoud verwerkt en toegevoegd aan download",
+      "creatingPackage": "Definitief downloadpakket maken",
+      "processingImagesCount": "{{count}} afbeeldingen verwerken",
+      "streamingImageStart": "Starten streaming download voor afbeelding: {{current}}/{{total}}",
+      "waitingForStreaming": "Wachten op voltooiing van {{count}} streaming downloads...",
+      "streamingProgress": "Streaming voortgang: {{completed}}/{{total}} chunks ({{percent}}%)",
+      "streamingCompleted": "Alle streaming downloads voltooid",
+      "creatingStreamingZip": "ZIP-bestand maken met streaming inhoud...",
+      "streamingSuccess": "Streaming download succesvol voltooid",
+      "downloadingWebsiteContent": "Website-inhoud downloaden ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Opslagtoestemming vereist",
+        "description": "Deze extensie heeft opslagtoestemming nodig om je filtervoorkeuren op te slaan en een betere ervaring te bieden.",
+        "grant": "Toestemming geven",
+        "deny": "Misschien later",
+        "benefits": {
+          "title": "Voordelen van het geven van opslagtoestemming:",
+          "savePreferences": "Sla je downloadfiltervoorkeuren op",
+          "persistSettings": "Onthoud je instellingen tussen sessies",
+          "improveExperience": "Bied een meer gepersonaliseerde ervaring"
+        }
+      },
+      "offscreen": {
+        "title": "Extra toestemming vereist",
+        "description": "Deze extensie heeft de offscreen-toestemming nodig om downloads efficiënt te verwerken.",
+        "grant": "Toestemming geven",
+        "why": "Deze toestemming stelt de extensie in staat om achtergronddocumenten te maken voor het verwerken van grote downloads zonder je browse-ervaring te beïnvloeden."
+      },
+      "global": {
+        "title": "Toestemmingen vereist",
+        "description": "Deze extensie heeft opslag- en offscreen-toestemmingen nodig om de beste downloadervaring te bieden.",
+        "storage": {
+          "title": "Opslagtoestemming:",
+          "description": "Hiermee kan de extensie kleine hoeveelheden gegevens lokaal in uw browser opslaan. Dit stelt ons in staat uw voorkeuren te onthouden en een gepersonaliseerde ervaring te bieden via sessies."
+        },
+        "offscreen": {
+          "title": "Offscreen-toestemming:",
+          "description": "Maakt het downloaden van grote bestanden mogelijk door de extensie bestanden op de achtergrond te laten verwerken zonder uw browse-ervaring te beïnvloeden."
+        },
+        "storageDetails": {
+          "title": "Wat we opslaan:",
+          "id": "Unieke gegenereerde ID",
+          "preferences": "Downloadvoorkeuren"
+        },
+        "privacy": {
+          "title": "Privacy:",
+          "personal": "Geen persoonlijke gegevens",
+          "history": "Geen browsegeschiedenis",
+          "local": "Alle gegevens blijven lokaal in uw browser"
+        },
+        "button": {
+          "requesting": "Toestemmingen aanvragen...",
+          "enable": "Toestemmingen inschakelen"
+        },
+        "footer": "Op elk moment intrekken in browserinstellingen"
+      }
+    },
+    "download": {
+      "showInFolder": "Toon in map",
+      "downloadAnother": "Download een andere pagina",
+      "cancel": "Annuleer download"
+    },
+    "language": {
+      "select": "Kies taal",
+      "search": "Zoek talen...",
+      "current": "Huidige taal"
+    },
+    "rating": {
+      "title": "Geniet je van deze extensie?",
+      "description": "Beoordeel ons alsjeblieft in de Chrome Web Store!",
+      "rate": "Beoordeel extensie",
+      "prompt": "Als u tevreden bent, laat dan een positieve recensie achter :)",
+      "ariaLabel_one": "Beoordeel met {{count}} ster",
+      "ariaLabel_other": "Beoordeel met {{count}} sterren"
+    },
+    "featureRequest": {
+      "title": "Vraag een functie aan",
+      "description": "Heb je een idee om deze extensie te verbeteren?",
+      "submit": "Dien verzoek in"
+    }
+  }
+}

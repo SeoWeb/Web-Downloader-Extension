@@ -4,7 +4,7 @@ import { getActiveTab } from "../../common/chrome";
 interface UseActiveTabInfoProps {
   setTabId: (id: number) => void;
   setTabUrl: (url: string) => void;
-  setMessages: React.Dispatch<React.SetStateAction<string[]>>;
+  setMessages: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export function useActiveTabInfo({
@@ -18,7 +18,7 @@ export function useActiveTabInfo({
       if (tab && tab.id && tab.url) {
         setTabId(tab.id);
         setTabUrl(tab.url);
-        setMessages((prev) => [...prev, "Website connected!"]);
+        setMessages((prev) => [...prev, { key: "status.connected" }]);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

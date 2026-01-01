@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "מוריד דפי אינטרנט",
+      "loading": "טוען...",
+      "error": "משהו השתבש:",
+      "tryAgain": "נסה שוב",
+      "iconAlt": "סמל מוריד דפי אינטרנט",
+      "noInternet": "אין חיבור לאינטרנט - לא ניתן להוריד משאבים חיצוניים",
+      "enableHtmlForOffline": "אנא הפעל הורדת HTML או מצב קובץ בודד לשימוש לא מקוון",
+      "networkCheckFailed": "בדיקת קישוריות רשת נכשלה - ממשיך בהורדה",
+      "noUrl": "שגיאה: לא סופק כתובת URL להורדה",
+      "downloadInProgress": "הורדה כבר מתבצעת. אנא המתן.",
+      "memoryPressure": "לא ניתן להתחיל בהורדה עקב לחץ זיכרון קריטי. נסה שוב מאוחר יותר."
+    },
+    "filter": {
+      "title": "סנן את מה שברצונך להוריד",
+      "downloadHTML": "הורד HTML",
+      "downloadImages": "הורד תמונות",
+      "downloadLinks": "הורד קישורים (שמורים כקובצי html)",
+      "downloadAssets": "הורד נכסים (css, js)",
+      "downloadDocuments": "הורד מסמכים (pdf, doc, וכו')",
+      "downloadContentAsText": "הורד תוכן כטקסט",
+      "singleFile": "הורד כקובץ HTML יחיד",
+      "startDownload": "התחל הורדה",
+      "linksWarning": "אם תבחר להוריד קישורים, עליך לקחת בחשבון שזמן ההורדה הכולל עשוי לגדול באופן דרמטי וקובץ ה-zip עשוי להיות גדול משמעותית.",
+      "permissionWarning": "העדפות הסינון לא יישמרו ללא הרשאת אחסון",
+      "dismiss": "התעלם",
+      "loading": "טוען מסננים...",
+      "ariaDownloadHtml": "הורד תוכן HTML",
+      "ariaDownloadImages": "הורד תמונות",
+      "ariaDownloadLinks": "הורד קישורים (נשמרים כקובצי html)",
+      "ariaDownloadAssets": "הורד נכסים (css, js)",
+      "ariaDownloadDocuments": "הורד מסמכים (pdf, doc וכו')",
+      "ariaDownloadContent": "הורד תוכן כטקסט",
+      "ariaSingleFile": "הורד כקובץ HTML בודד",
+      "ariaStartDownload": "התחל הורדה",
+      "ariaDismissWarning": "סגור אזהרה",
+      "error": "שגיאה"
+    },
+    "actions": {
+      "title": "פעולות:",
+      "stop": "עצור"
+    },
+    "status": {
+      "waiting": "ממתין לחיבור...",
+      "connected": "האתר מחובר!",
+      "scraping": "מגרד את האתר...",
+      "scraped": "האתר גורד!",
+      "creating": "קובץ Zip נוצר!",
+      "complete": "ההורדה הושלמה",
+      "failed": "ההורדה נכשלה",
+      "cancelled": "ההורדה בוטלה",
+      "creatingIndex": "יוצר index.html",
+      "downloadingCss": "מוריד קבצי CSS",
+      "cssDownloaded": "קבצי CSS ירדו",
+      "cssError": "שגיאה בהורדת קובצי CSS - ייתכן וחלקם חסרים",
+      "downloadingJs": "מוריד קבצי JS",
+      "jsDownloaded": "קבצי JS ירדו",
+      "jsError": "שגיאה בהורדת קובצי JS - ייתכן וחלקם חסרים",
+      "downloadingDocuments": "מוריד מסמכים",
+      "documentsDownloaded": "מסמכים ירדו",
+      "downloadingImages": "מוריד תמונות",
+      "imagesDownloaded": "תמונות ירדו",
+      "downloadingLinks": "מוריד קובצי html מקושרים",
+      "linksDownloaded": "קובצי html מקושרים ירדו",
+      "downloadingContent": "מוריד תוכן כטקסט",
+      "contentDownloaded": "תוכן כטקסט ירד",
+      "singleFileCreated": "נוצר קובץ HTML בודד",
+      "zipCreated": "קובץ Zip נוצר!",
+      "downloadStarted": "ההורדה החלה בהצלחה",
+      "completeTitle": "ההורדה הושלמה:",
+      "zipLocation": "תוכל למצוא את קובץ ה-zip בתיקיית ההורדות שלך",
+      "cssProgress": "התקדמות קובצי CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "התקדמות תמונות רקע: {{completed}}/{{total}}",
+      "jsProgress": "התקדמות קובצי JS: {{completed}}/{{total}}",
+      "documentsProgress": "התקדמות קובצי מסמכים: {{completed}}/{{total}}",
+      "imagesProgress": "התקדמות תמונות: {{completed}}/{{total}}",
+      "htmlProgress": "התקדמות קובצי HTML: {{completed}}/{{total}}",
+      "cssSummary": "קובצי CSS ירדו: {{succeeded}} הצליחו, {{failed}} נכשלו, {{skipped}} דלגו",
+      "bgImagesSummary": "תמונות רקע מ-CSS ירדו: {{succeeded}} הצליחו, {{failed}} נכשלו, {{skipped}} דלגו",
+      "jsSummary": "קובצי JS ירדו: {{succeeded}} הצליחו, {{failed}} נכשלו, {{skipped}} דלגו",
+      "documentsSummary": "קובצי מסמכים ירדו: {{succeeded}} הצליחו, {{failed}} נכשלו, {{skipped}} דלגו",
+      "imagesSummary": "תמונות ירדו: {{succeeded}} הצליחו, {{failed}} נכשלו, {{skipped}} דלגו",
+      "htmlSummary": "קובצי HTML ירדו: {{succeeded}} הצליחו, {{failed}} נכשלו, {{skipped}} דלגו",
+      "processingCss": "מעבד קובצי CSS: {{current}}/{{total}}",
+      "streamingCss": "מתחיל הורדת זרימה ל-CSS גדול: {{current}}/{{total}}",
+      "streamingCssProgress": "התקדמות זרימת CSS: {{completed}}/{{total}} בלוקים",
+      "cssStreamingSummary": "קובצי CSS עובדו: {{succeeded}} הצליחו, {{streamed}} הוזרמו, {{failed}} נכשלו",
+      "processingJs": "מעבד קובצי JS: {{current}}/{{total}}",
+      "streamingJs": "מתחיל הורדת זרימה ל-JS גדול: {{current}}/{{total}}",
+      "streamingJsProgress": "התקדמות זרימת JS: {{completed}}/{{total}} בלוקים",
+      "jsStreamingSummary": "קובצי JS עובדו: {{succeeded}} הצליחו, {{streamed}} הוזרמו, {{failed}} נכשלו",
+      "processingImages": "מעבד תמונות: {{current}}/{{total}}",
+      "streamingImages": "מתחיל הורדת זרימה לתמונה גדולה: {{current}}/{{total}}",
+      "streamingImagesProgress": "התקדמות זרימת תמונה: {{completed}}/{{total}} בלוקים",
+      "imagesStreamingSummary": "תמונות עובדו: {{succeeded}} הצליחו, {{streamed}} הוזרמו, {{failed}} נכשלו, {{skipped}} דלגו",
+      "streamingFailedFallback": "הורדת זרימה נכשלה, חוזר להורדה רגילה...",
+      "processingHtmlIncremental": "מעבד תוכן HTML עם הרכבה מצטברת",
+      "finalizingDownload": "מסיים הורדה",
+      "indexCreated": "index.html נוצר",
+      "htmlTooLarge": "תוכן HTML גדול מדי, עשוי להיקטע",
+      "incrementalHtmlAdded": "תוכן HTML הורכב ונוסף להורדה",
+      "largeHtmlAdded": "תוכן HTML גדול עובד ונוסף להורדה",
+      "creatingPackage": "יוצר חבילת הורדה סופית",
+      "processingImagesCount": "מעבד {{count}} תמונות",
+      "streamingImageStart": "מתחיל הורדת זרימה לתמונה: {{current}}/{{total}}",
+      "waitingForStreaming": "ממתין ל-{{count}} הורדות זרימה להסתיים...",
+      "streamingProgress": "התקדמות זרימה: {{completed}}/{{total}} בלוקים ({{percent}}%)",
+      "streamingCompleted": "כל הורדות הזרימה הושלמו",
+      "creatingStreamingZip": "יוצר קובץ ZIP עם תוכן זרימה...",
+      "streamingSuccess": "הורדת זרימה הושלמה בהצלחה",
+      "downloadingWebsiteContent": "מוריד תוכן אתר ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "נדרשת הרשאת אחסון",
+        "description": "הרחבה זו זקוקה להרשאת אחסון כדי לשמור את העדפות הסינון שלך ולספק חוויה טובה יותר.",
+        "grant": "הענק הרשאה",
+        "deny": "אולי מאוחר יותר",
+        "benefits": {
+          "title": "יתרונות הענקת הרשאת אחסון:",
+          "savePreferences": "שמור את העדפות סינון ההורדה שלך",
+          "persistSettings": "זכור את ההגדרות שלך בין הפעלות",
+          "improveExperience": "ספק חוויה מותאמת אישית יותר"
+        }
+      },
+      "offscreen": {
+        "title": "נדרשת הרשאה נוספת",
+        "description": "הרחבה זו זקוקה להרשאת offscreen כדי לעבד הורדות ביעילות.",
+        "grant": "הענק הרשאה",
+        "why": "הרשאה זו מאפשרת להרחבה ליצור מסמכי רקע לעיבוד הורדות גדולות מבלי להשפיע על חווית הגלישה שלך."
+      },
+      "global": {
+        "title": "נדרשות הרשאות",
+        "description": "תוסף זה זקוק להרשאות אחסון ו-offscreen כדי לספק את חוויית ההורדה הטובה ביותר.",
+        "storage": {
+          "title": "הרשאת אחסון:",
+          "description": "מאפשר לתוסף לשמור כמויות קטנות של נתונים באופן מקומי בדפדפן שלך. זה מאפשר לנו לזכור את ההעדפות שלך ולספק חוויה מותאמת אישית בין הפעלות."
+        },
+        "offscreen": {
+          "title": "הרשאת Offscreen:",
+          "description": "מאפשר הורדת קבצים גדולים על ידי מתן אפשרות לתוסף לעבד קבצים ברקע מבלי להשפיע על חוויית הגלישה שלך."
+        },
+        "storageDetails": {
+          "title": "מה אנו מאחסנים:",
+          "id": "מזהה ייחודי שנוצר",
+          "preferences": "העדפות הורדה"
+        },
+        "privacy": {
+          "title": "פרטיות:",
+          "personal": "ללא נתונים אישיים",
+          "history": "ללא היסטוריית גלישה",
+          "local": "כל הנתונים נשארים באופן מקומי בדפדפן שלך"
+        },
+        "button": {
+          "requesting": "מבקש הרשאות...",
+          "enable": "הפעל הרשאות"
+        },
+        "footer": "בטל בכל עת בהגדרות הדפדפן"
+      }
+    },
+    "download": {
+      "showInFolder": "הצג בתיקייה",
+      "downloadAnother": "הורד דף אחר",
+      "cancel": "בטל הורדה"
+    },
+    "language": {
+      "select": "בחר שפה",
+      "search": "חפש שפות...",
+      "current": "שפה נוכחית"
+    },
+    "rating": {
+      "title": "נהנה מההרחבה הזו?",
+      "description": "אנא דרג אותנו בחנות האינטרנט של Chrome!",
+      "rate": "דרג הרחבה",
+      "prompt": "אם היית מרוצה, אנא השאר ביקורת חיובית :)",
+      "ariaLabel_one": "דרג {{count}} כוכב",
+      "ariaLabel_other": "דרג {{count}} כוכבים"
+    },
+    "featureRequest": {
+      "title": "בקש תכונה",
+      "description": "יש לך רעיון לשפר את ההרחבה הזו?",
+      "submit": "שלח בקשה"
+    }
+  }
+}

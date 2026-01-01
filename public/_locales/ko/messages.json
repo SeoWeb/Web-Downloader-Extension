@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "웹 페이지 다운로더",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "웹 페이지 다운로더를 사용하면 연결된 리소스를 포함한 전체 웹 페이지를 다운로드하고 저장하여 오프라인에서 볼 수 있습니다.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "웹 페이지 다운로더",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

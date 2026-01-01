@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "网页下载器",
+      "loading": "加载中...",
+      "error": "出错了：",
+      "tryAgain": "重试",
+      "iconAlt": "网页下载器图标",
+      "noInternet": "无互联网连接 - 无法下载外部资源",
+      "enableHtmlForOffline": "请启用 HTML 下载或单文件模式以供离线使用",
+      "networkCheckFailed": "网络连接检查失败 - 继续下载",
+      "noUrl": "错误：未提供下载 URL",
+      "downloadInProgress": "下载已在进行中。请稍候。",
+      "memoryPressure": "由于内存严重不足，无法开始下载。请稍后再试。"
+    },
+    "filter": {
+      "title": "筛选您要下载的内容",
+      "downloadHTML": "下载 HTML",
+      "downloadImages": "下载图片",
+      "downloadLinks": "下载链接（保存为 html 文件）",
+      "downloadAssets": "下载资源 (css, js)",
+      "downloadDocuments": "下载文档 (pdf, doc 等)",
+      "downloadContentAsText": "将内容下载为文本",
+      "singleFile": "在单个 HTML 文件中下载",
+      "startDownload": "开始下载",
+      "linksWarning": "如果您选择下载链接，您必须考虑到总下载时间可能会急剧增加，并且 zip 文件可能会大得多。",
+      "permissionWarning": "如果没有存储权限，将不会保存筛选首选项",
+      "dismiss": "忽略",
+      "loading": "正在加载过滤器...",
+      "ariaDownloadHtml": "下载 HTML 内容",
+      "ariaDownloadImages": "下载图片",
+      "ariaDownloadLinks": "下载链接（保存为 HTML 文件）",
+      "ariaDownloadAssets": "下载资源（如 CSS 和 JS）",
+      "ariaDownloadDocuments": "下载文档（如 PDF 和 DOC）",
+      "ariaDownloadContent": "下载内容为文本",
+      "ariaSingleFile": "下载为单个 HTML 文件",
+      "ariaStartDownload": "开始下载",
+      "ariaDismissWarning": "忽略警告",
+      "error": "错误"
+    },
+    "actions": {
+      "title": "操作：",
+      "stop": "停止"
+    },
+    "status": {
+      "waiting": "等待连接...",
+      "connected": "网站已连接！",
+      "scraping": "正在抓取网站...",
+      "scraped": "网站已抓取！",
+      "creating": "Zip 文件已创建！",
+      "complete": "下载完成",
+      "failed": "下载失败",
+      "cancelled": "下载已取消",
+      "creatingIndex": "正在创建 index.html",
+      "downloadingCss": "正在下载 CSS 文件",
+      "cssDownloaded": "CSS 文件已下载",
+      "cssError": "下载 CSS 文件出错 - 可能丢失部分文件",
+      "downloadingJs": "正在下载 JS 文件",
+      "jsDownloaded": "JS 文件已下载",
+      "jsError": "下载 JS 文件出错 - 可能丢失部分文件",
+      "downloadingDocuments": "正在下载文档",
+      "documentsDownloaded": "文档已下载",
+      "downloadingImages": "正在下载图片",
+      "imagesDownloaded": "图片已下载",
+      "downloadingLinks": "正在下载链接的 HTML 文件",
+      "linksDownloaded": "链接的 HTML 文件已下载",
+      "downloadingContent": "正在下载内容为文本",
+      "contentDownloaded": "内容文本已下载",
+      "singleFileCreated": "单个 HTML 文件已创建",
+      "zipCreated": "Zip 文件已创建！",
+      "downloadStarted": "下载已成功开始",
+      "completeTitle": "下载已完成：",
+      "zipLocation": "您可以在下载文件夹中找到 zip 文件",
+      "cssProgress": "CSS 文件进度：{{completed}}/{{total}}",
+      "bgImagesProgress": "背景图片进度：{{completed}}/{{total}}",
+      "jsProgress": "JS 文件进度：{{completed}}/{{total}}",
+      "documentsProgress": "文档文件进度：{{completed}}/{{total}}",
+      "imagesProgress": "图片进度：{{completed}}/{{total}}",
+      "htmlProgress": "HTML 文件进度：{{completed}}/{{total}}",
+      "cssSummary": "CSS 文件已下载：{{succeeded}} 成功，{{failed}} 失败，{{skipped}} 跳过",
+      "bgImagesSummary": "CSS 背景图片已下载：{{succeeded}} 成功，{{failed}} 失败，{{skipped}} 跳过",
+      "jsSummary": "JS 文件已下载：{{succeeded}} 成功，{{failed}} 失败，{{skipped}} 跳过",
+      "documentsSummary": "文档文件已下载：{{succeeded}} 成功，{{failed}} 失败，{{skipped}} 跳过",
+      "imagesSummary": "图片已下载：{{succeeded}} 成功，{{failed}} 失败，{{skipped}} 跳过",
+      "htmlSummary": "HTML 文件已下载：{{succeeded}} 成功，{{failed}} 失败，{{skipped}} 跳过",
+      "processingCss": "正在处理 CSS 文件：{{current}}/{{total}}",
+      "streamingCss": "开始流式下载大型 CSS：{{current}}/{{total}}",
+      "streamingCssProgress": "CSS 流式传输进度：{{completed}}/{{total}} 块",
+      "cssStreamingSummary": "CSS 文件已处理：{{succeeded}} 成功，{{streamed}} 流式传输，{{failed}} 失败",
+      "processingJs": "正在处理 JS 文件：{{current}}/{{total}}",
+      "streamingJs": "开始流式下载大型 JS：{{current}}/{{total}}",
+      "streamingJsProgress": "JS 流式传输进度：{{completed}}/{{total}} 块",
+      "jsStreamingSummary": "JS 文件已处理：{{succeeded}} 成功，{{streamed}} 流式传输，{{failed}} 失败",
+      "processingImages": "正在处理图片：{{current}}/{{total}}",
+      "streamingImages": "开始流式下载大型图片：{{current}}/{{total}}",
+      "streamingImagesProgress": "图片流式传输进度：{{completed}}/{{total}} 块",
+      "imagesStreamingSummary": "图片已处理：{{succeeded}} 成功，{{streamed}} 流式传输，{{failed}} 失败，{{skipped}} 跳过",
+      "streamingFailedFallback": "流式下载失败，回退到普通下载...",
+      "processingHtmlIncremental": "正在通过增量组装处理 HTML 内容",
+      "finalizingDownload": "正在完成下载",
+      "indexCreated": "Index.html 已创建",
+      "htmlTooLarge": "HTML 内容过大，可能会被截断",
+      "incrementalHtmlAdded": "HTML 内容已组装并添加到下载中",
+      "largeHtmlAdded": "大型 HTML 内容已处理并添加到下载中",
+      "creatingPackage": "正在创建最终下载包",
+      "processingImagesCount": "正在处理 {{count}} 张图片",
+      "streamingImageStart": "开始流式下载图片：{{current}}/{{total}}",
+      "waitingForStreaming": "正在等待 {{count}} 个流式下载完成...",
+      "streamingProgress": "流式传输进度：{{completed}}/{{total}} 块 ({{percent}}%)",
+      "streamingCompleted": "所有流式下载已完成",
+      "creatingStreamingZip": "正在创建包含流式内容的 ZIP 文件...",
+      "streamingSuccess": "流式下载成功完成",
+      "downloadingWebsiteContent": "正在下载网站内容 ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "需要存储权限",
+        "description": "此扩展程序需要存储权限才能保存您的筛选首选项并提供更好的体验。",
+        "grant": "授予权限",
+        "deny": "以后再说",
+        "benefits": {
+          "title": "授予存储权限的好处：",
+          "savePreferences": "保存您的下载筛选首选项",
+          "persistSettings": "记住您的跨会话设置",
+          "improveExperience": "提供更个性化的体验"
+        }
+      },
+      "offscreen": {
+        "title": "需要额外权限",
+        "description": "此扩展程序需要 offscreen 权限才能有效地处理下载。",
+        "grant": "授予权限",
+        "why": "此权限允许扩展程序创建后台文档以处理大型下载，而不会影响您的浏览体验。"
+      },
+      "global": {
+        "title": "需要权限",
+        "description": "此扩展程序需要存储和离线权限才能提供最佳下载体验。",
+        "storage": {
+          "title": "存储权限：",
+          "description": "允许扩展程序在您的浏览器中本地保存少量数据。这使我们要记住您的首选项并在会话之间提供个性化体验。"
+        },
+        "offscreen": {
+          "title": "离线权限：",
+          "description": "通过允许扩展程序在后台处理文件而不影响您的浏览体验，从而实现大文件下载。"
+        },
+        "storageDetails": {
+          "title": "我们存储的内容：",
+          "id": "唯一生成的 ID",
+          "preferences": "下载首选项"
+        },
+        "privacy": {
+          "title": "隐私：",
+          "personal": "无个人数据",
+          "history": "无浏览历史记录",
+          "local": "所有数据都保留在您的浏览器本地"
+        },
+        "button": {
+          "requesting": "正在请求权限...",
+          "enable": "启用权限"
+        },
+        "footer": "随时在浏览器设置中撤销"
+      }
+    },
+    "download": {
+      "showInFolder": "在文件夹中显示",
+      "downloadAnother": "下载另一个页面",
+      "cancel": "取消下载"
+    },
+    "language": {
+      "select": "选择语言",
+      "search": "搜索语言...",
+      "current": "当前语言"
+    },
+    "rating": {
+      "title": "喜欢这个扩展程序吗？",
+      "description": "请在 Chrome 网上应用店给我们评分！",
+      "rate": "评价扩展程序",
+      "prompt": "如果您满意，请留下好评 :)",
+      "ariaLabel_one": "评价 {{count}} 星",
+      "ariaLabel_other": "评价 {{count}} 星"
+    },
+    "featureRequest": {
+      "title": "请求功能",
+      "description": "有改进此扩展程序的想法吗？",
+      "submit": "提交请求"
+    }
+  }
+}

@@ -384,21 +384,21 @@ export async function downloadResources(
   html: string,
   tabUrl: string,
   downloadOptions: FilterOptions,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   assemblyJobId?: string, // Optional job ID for incremental assembly
 ) {
   console.log("Starting downloadResources for URL:", tabUrl);
 
   if (!tabUrl) {
     console.error("No tab URL provided");
-    sendMessage("Error: No URL provided for download");
+    sendMessage({ key: "error.noUrl" });
     return;
   }
 
   // Prevent concurrent downloads
   if (await getDownloadInProgress()) {
     console.warn("Download already in progress, rejecting new request");
-    sendMessage("A download is already in progress. Please wait.");
+    sendMessage({ key: "error.downloadInProgress" });
     return;
   }
 
@@ -407,7 +407,7 @@ export async function downloadResources(
   if (initialMemoryStats.memoryPressureLevel === MemoryPressureLevel.CRITICAL) {
     console.error("Cannot start download - critical memory pressure");
     sendMessage(
-      "Cannot start download due to critical memory pressure. Please try again later.",
+      { key: "error.memoryPressure" },
     );
     return;
   }
@@ -489,7 +489,7 @@ async function executeDownload(
   html: string,
   tabUrl: string,
   downloadOptions: FilterOptions,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   assemblyJobId?: string,
 ) {
   // Check network connectivity
@@ -509,13 +509,13 @@ async function executeDownload(
 
     if (!online) {
       sendMessage(
-        "No internet connection - cannot download external resources",
+        { key: "error.noInternet" },
       );
       console.warn("No internet connection detected");
       // Continue with basic HTML download only
       if (!downloadOptions.downloadHTML && !downloadOptions.singleFile) {
         sendMessage(
-          "Please enable HTML download or single file mode for offline use",
+          { key: "error.enableHtmlForOffline" },
         );
         return;
       }
@@ -523,7 +523,7 @@ async function executeDownload(
   } catch (error) {
     console.warn("Network check failed, continuing with download:", error);
     // Continue with download but warn about potential issues
-    sendMessage("Network connectivity check failed - continuing with download");
+    sendMessage({ key: "error.networkCheckFailed" });
   }
 
   const zip = new JSZip();
@@ -557,7 +557,7 @@ async function executeDownload(
 
   if (downloadOptions.downloadHTML) {
     console.log("Creating index.html");
-    sendMessage("Creating index.html");
+    sendMessage({ key: "status.creatingIndex" });
 
     // Handle incremental assembly if job ID is provided
     if (assemblyJobId) {
@@ -598,30 +598,30 @@ async function executeDownload(
 
   if (downloadOptions.downloadAssets) {
     console.log("Downloading assets");
-    sendMessage("Downloading CSS files");
+    sendMessage({ key: "status.downloadingCss" });
     try {
       await addCssFiles(data.css, zip, tabUrl, sendMessage, downloadId);
       console.log("CSS files downloaded:", data.css.length);
-      sendMessage("CSS files downloaded");
+      sendMessage({ key: "status.cssDownloaded" });
     } catch (error) {
       console.error("Error downloading CSS files:", error);
-      sendMessage("Error downloading CSS files - some may be missing");
+      sendMessage({ key: "status.cssError" });
     }
 
-    sendMessage("Downloading JS files");
+    sendMessage({ key: "status.downloadingJs" });
     try {
       await addJsFiles(data.js, zip, tabUrl, sendMessage, downloadId);
       console.log("JS files downloaded:", data.js.length);
-      sendMessage("JS files downloaded");
+      sendMessage({ key: "status.jsDownloaded" });
     } catch (error) {
       console.error("Error downloading JS files:", error);
-      sendMessage("Error downloading JS files - some may be missing");
+      sendMessage({ key: "status.jsError" });
     }
   }
 
   if (downloadOptions.downloadDocuments) {
     console.log("Downloading documents");
-    sendMessage("Downloading document files");
+    sendMessage({ key: "status.downloadingDocuments" });
     await addDocumentFiles(
       data.documents,
       zip,
@@ -630,31 +630,31 @@ async function executeDownload(
       downloadId,
     );
     console.log("Documents downloaded:", data.documents.length);
-    sendMessage("Document files downloaded");
+    sendMessage({ key: "status.documentsDownloaded" });
   }
 
   if (downloadOptions.downloadImages) {
     console.log("Downloading images");
-    sendMessage("Downloading images");
+    sendMessage({ key: "status.downloadingImages" });
     await addImageFiles(data.images, zip, tabUrl, sendMessage, downloadId);
     console.log("Images downloaded:", data.images.length);
-    sendMessage("Images downloaded");
+    sendMessage({ key: "status.imagesDownloaded" });
   }
 
   if (downloadOptions.downloadLinks) {
     console.log("Downloading linked HTML files");
-    sendMessage("Downloading linked html files");
+    sendMessage({ key: "status.downloadingLinks" });
     await addHtmlFiles(data.links, zip, tabUrl, sendMessage, downloadId);
     console.log("Linked HTML files downloaded:", data.links.length);
-    sendMessage("Linked html files downloaded");
+    sendMessage({ key: "status.linksDownloaded" });
   }
 
   if (downloadOptions.downloadContentAsText) {
     console.log("Downloading content as text");
-    sendMessage("Downloading content as text");
+    sendMessage({ key: "status.downloadingContent" });
     await addContentText(data.text, zip);
     console.log("Content text downloaded");
-    sendMessage("Content as text downloaded");
+    sendMessage({ key: "status.contentDownloaded" });
   }
 
   try {
@@ -662,7 +662,7 @@ async function executeDownload(
     let blob: Blob;
 
     if (downloadOptions.singleFile) {
-      sendMessage("Creating index.html");
+      sendMessage({ key: "status.creatingIndex" });
       const singleFileHtml = await convertToSingleFileHtml(html, tabUrl);
       blob = new Blob([singleFileHtml], { type: "text/html;charset=UTF-8" });
       zipFilename = zipFilename.replace(".zip", ".html");
@@ -763,7 +763,7 @@ async function executeDownload(
             // Track the download for completion monitoring
             trackDownload(dataUrlDownloadId, zipFilename);
             
-            sendMessage("Download started successfully");
+            sendMessage({ key: "status.downloadStarted" });
             return;
           } else {
             console.log(
@@ -938,13 +938,13 @@ export async function downloadResourcesWithStreaming(
   html: string,
   tabUrl: string,
   downloadOptions: FilterOptions,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
 ) {
   console.log("Starting streaming downloadResources for URL:", tabUrl);
 
   if (!tabUrl) {
     console.error("No tab URL provided");
-    sendMessage("Error: No URL provided for download");
+    sendMessage({ key: "error.noUrl" });
     return;
   }
 
@@ -961,7 +961,7 @@ export async function downloadResourcesWithStreaming(
   // Prevent concurrent downloads
   if (await getDownloadInProgress()) {
     console.warn("Download already in progress, rejecting new request");
-    sendMessage("A download is already in progress. Please wait.");
+    sendMessage({ key: "error.downloadInProgress" });
     return;
   }
 
@@ -973,7 +973,7 @@ export async function downloadResourcesWithStreaming(
     console.error("Streaming download failed:", error);
 
     // Fall back to regular download on streaming failure
-    sendMessage("Streaming download failed, falling back to regular download...");
+    sendMessage({ key: "status.streamingFailedFallback" });
     try {
       await downloadResources(html, tabUrl, downloadOptions, sendMessage);
     } catch (fallbackError) {
@@ -992,7 +992,7 @@ async function executeStreamingDownload(
   html: string,
   tabUrl: string,
   downloadOptions: FilterOptions,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   data: ReturnType<typeof getResources>
 ) {
   const u = new URL(tabUrl || "");
@@ -1017,7 +1017,7 @@ async function executeStreamingDownload(
 
   // Download HTML
   if (downloadOptions.downloadHTML) {
-    sendMessage("Processing HTML content");
+    sendMessage({ key: "status.processingHtmlIncremental" });
 
     // For HTML, we'll handle it directly since it's usually not too large
     streamingDownloads.push({
@@ -1108,7 +1108,7 @@ async function executeStreamingDownload(
 
   // Download images with streaming
   if (downloadOptions.downloadImages && data.images.length > 0) {
-    sendMessage(`Processing ${data.images.length} images`);
+    sendMessage({ key: "status.processingImagesCount", options: { count: data.images.length } });
 
     for (let i = 0; i < data.images.length; i++) {
       const imageUrl = data.images[i];
@@ -1118,7 +1118,7 @@ async function executeStreamingDownload(
         const shouldStream = streamingDownloader.shouldUseStreaming(imageUrl);
 
         if (shouldStream) {
-          sendMessage(`Starting streaming download for image: ${i + 1}/${data.images.length}`);
+          sendMessage({ key: "status.streamingImageStart", options: { current: i + 1, total: data.images.length } });
           const download = await streamingDownloader.startDownload(imageUrl, {
             chunkSize: 1024 * 1024, // 1MB chunks for images
             maxParallelChunks: 3,
@@ -1138,7 +1138,7 @@ async function executeStreamingDownload(
 
   // Wait for all streaming downloads to complete
   if (streamingDownloads.length > 0) {
-    sendMessage(`Waiting for ${streamingDownloads.length} streaming downloads to complete...`);
+    sendMessage({ key: "status.waitingForStreaming", options: { count: streamingDownloads.length } });
 
     const completionPromises = streamingDownloads.map(async ({ download }) => {
       while (download.status !== 'completed' && download.status !== 'failed') {
@@ -1149,7 +1149,14 @@ async function executeStreamingDownload(
           const progressPercentage = progress.totalBytes > 0
             ? (progress.bytesDownloaded / progress.totalBytes) * 100
             : 0;
-          sendMessage(`Streaming progress: ${progress.completedChunks}/${progress.totalChunks} chunks (${Math.round(progressPercentage)}%)`);
+          sendMessage({ 
+            key: "status.streamingProgress", 
+            options: { 
+              completed: progress.completedChunks, 
+              total: progress.totalChunks, 
+              percent: Math.round(progressPercentage) 
+            } 
+          });
         }
       }
 
@@ -1161,7 +1168,7 @@ async function executeStreamingDownload(
     });
 
     await Promise.all(completionPromises);
-    sendMessage("All streaming downloads completed");
+    sendMessage({ key: "status.streamingCompleted" });
   }
 
   // Add regular file downloads for non-streamed content
@@ -1170,7 +1177,7 @@ async function executeStreamingDownload(
   }
 
   // Create ZIP with chunked processing
-  sendMessage("Creating ZIP file with streaming content...");
+  sendMessage({ key: "status.creatingStreamingZip" });
 
   try {
     const zipBlob = await createZipFromDownloads(streamingDownloads, {
@@ -1181,7 +1188,7 @@ async function executeStreamingDownload(
     });
 
     await initiateDownload(zipBlob, zipFilename, sendMessage);
-    sendMessage("Streaming download completed successfully");
+    sendMessage({ key: "status.streamingSuccess" });
 
   } catch (error) {
     console.error("Error creating streaming ZIP:", error);
@@ -1224,7 +1231,7 @@ async function addRegularFiles(
   data: ReturnType<typeof getResources>,
   downloadOptions: FilterOptions,
   tabUrl: string,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId: string
 ) {
   const zip = new JSZip();
@@ -1350,17 +1357,17 @@ async function processRegularHtml(
   html: string,
   zip: JSZip,
   tabUrl: string,
-  sendMessage: (message: string) => void
+  sendMessage: (message: string | { key: string; options?: any }) => void
 ) {
   // Check HTML size before processing
   if (html.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
     console.warn(`HTML content too large: ${formatBytes(html.length)}`);
-    sendMessage("HTML content is too large, may be truncated");
+    sendMessage({ key: "status.htmlTooLarge" });
   }
 
   await addIndexHtml(html, zip, tabUrl);
   console.log("index.html created");
-  sendMessage("Index.html created");
+  sendMessage({ key: "status.indexCreated" });
 }
 
 /**
@@ -1395,20 +1402,20 @@ export async function downloadResourcesWithIncrementalAssembly(
   assemblyJobId: string,
   tabUrl: string,
   downloadOptions: FilterOptions,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
 ) {
   console.log(`Starting download with incremental assembly for job: ${assemblyJobId}`);
 
   if (!tabUrl) {
     console.error("No tab URL provided");
-    sendMessage("Error: No URL provided for download");
+    sendMessage({ key: "error.noUrl" });
     return;
   }
 
   // Prevent concurrent downloads
   if (await getDownloadInProgress()) {
     console.warn("Download already in progress, rejecting new request");
-    sendMessage("A download is already in progress. Please wait.");
+    sendMessage({ key: "error.downloadInProgress" });
     return;
   }
 
@@ -1417,7 +1424,7 @@ export async function downloadResourcesWithIncrementalAssembly(
   if (initialMemoryStats.memoryPressureLevel === MemoryPressureLevel.CRITICAL) {
     console.error("Cannot start download - critical memory pressure");
     sendMessage(
-      "Cannot start download due to critical memory pressure. Please try again later.",
+      { key: "error.memoryPressure" },
     );
     return;
   }
@@ -1489,7 +1496,7 @@ async function executeDownloadWithIncrementalAssembly(
   assemblyJobId: string,
   tabUrl: string,
   downloadOptions: FilterOptions,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
 ) {
   const zip = new JSZip();
   
@@ -1512,7 +1519,7 @@ async function executeDownloadWithIncrementalAssembly(
   // Process HTML with incremental assembly
   if (downloadOptions.downloadHTML) {
     console.log("Processing HTML with incremental assembly");
-    sendMessage("Processing HTML content with incremental assembly");
+    sendMessage({ key: "status.processingHtmlIncremental" });
 
     // Finalize the incremental assembly job
     const finalizeResult = finalizeIncrementalMerge(assemblyJobId);
@@ -1524,11 +1531,11 @@ async function executeDownloadWithIncrementalAssembly(
     if (finalizeResult.html) {
       await addIndexHtml(finalizeResult.html, zip, tabUrl);
       console.log("Incrementally assembled HTML added to ZIP");
-      sendMessage("HTML content assembled and added to download");
+      sendMessage({ key: "status.incrementalHtmlAdded" });
     } else if (finalizeResult.blob) {
       await addIndexHtmlFromBlob(finalizeResult.blob, zip);
       console.log("Large HTML content processed and added to download");
-      sendMessage("Large HTML content processed and added to download");
+      sendMessage({ key: "status.largeHtmlAdded" });
     }
   }
 
@@ -1567,29 +1574,29 @@ async function processAssets(
   data: { css: string[]; js: string[] },
   zip: JSZip,
   tabUrl: string,
-  sendMessage: (message: string) => void
+  sendMessage: (message: string | { key: string; options?: any }) => void
 ) {
   if (data.css.length > 0) {
-    sendMessage("Downloading CSS files");
+    sendMessage({ key: "status.downloadingCss" });
     try {
       await addCssFiles(data.css, zip, tabUrl, sendMessage, downloadId);
       console.log("CSS files downloaded:", data.css.length);
-      sendMessage("CSS files downloaded");
+      sendMessage({ key: "status.cssDownloaded" });
     } catch (error) {
       console.error("Error downloading CSS files:", error);
-      sendMessage("Error downloading CSS files - some may be missing");
+      sendMessage({ key: "status.cssError" });
     }
   }
 
   if (data.js.length > 0) {
-    sendMessage("Downloading JS files");
+    sendMessage({ key: "status.downloadingJs" });
     try {
       await addJsFiles(data.js, zip, tabUrl, sendMessage, downloadId);
       console.log("JS files downloaded:", data.js.length);
-      sendMessage("JS files downloaded");
+      sendMessage({ key: "status.jsDownloaded" });
     } catch (error) {
       console.error("Error downloading JS files:", error);
-      sendMessage("Error downloading JS files - some may be missing");
+      sendMessage({ key: "status.jsError" });
     }
   }
 }
@@ -1601,13 +1608,13 @@ async function processDocuments(
   documents: string[],
   zip: JSZip,
   tabUrl: string,
-  sendMessage: (message: string) => void
+  sendMessage: (message: string | { key: string; options?: any }) => void
 ) {
   if (documents.length > 0) {
-    sendMessage("Downloading document files");
+    sendMessage({ key: "status.downloadingDocuments" });
     await addDocumentFiles(documents, zip, tabUrl, sendMessage, downloadId);
     console.log("Documents downloaded:", documents.length);
-    sendMessage("Document files downloaded");
+    sendMessage({ key: "status.documentsDownloaded" });
   }
 }
 
@@ -1618,13 +1625,13 @@ async function processImages(
   images: string[],
   zip: JSZip,
   tabUrl: string,
-  sendMessage: (message: string) => void
+  sendMessage: (message: string | { key: string; options?: any }) => void
 ) {
   if (images.length > 0) {
-    sendMessage("Downloading images");
+    sendMessage({ key: "status.downloadingImages" });
     await addImageFiles(images, zip, tabUrl, sendMessage, downloadId);
     console.log("Images downloaded:", images.length);
-    sendMessage("Images downloaded");
+    sendMessage({ key: "status.imagesDownloaded" });
   }
 }
 
@@ -1635,13 +1642,13 @@ async function processLinks(
   links: string[],
   zip: JSZip,
   tabUrl: string,
-  sendMessage: (message: string) => void
+  sendMessage: (message: string | { key: string; options?: any }) => void
 ) {
   if (links.length > 0) {
-    sendMessage("Downloading linked HTML files");
+    sendMessage({ key: "status.downloadingLinks" });
     await addHtmlFiles(links, zip, tabUrl, sendMessage, downloadId);
     console.log("Linked HTML files downloaded:", links.length);
-    sendMessage("Linked HTML files downloaded");
+    sendMessage({ key: "status.linksDownloaded" });
   }
 }
 
@@ -1651,11 +1658,11 @@ async function processLinks(
 async function createAndInitiateDownload(
   zip: JSZip,
   zipFilename: string,
-  sendMessage: (message: string) => void
+  sendMessage: (message: string | { key: string; options?: any }) => void
 ) {
   try {
     console.log("Creating final download package");
-    sendMessage("Creating final download package");
+    sendMessage({ key: "status.creatingPackage" });
 
     const blob = await zip.generateAsync({
       type: "blob",
@@ -1664,7 +1671,7 @@ async function createAndInitiateDownload(
     });
 
     console.log("ZIP archive created");
-    sendMessage("Finalizing download");
+    sendMessage({ key: "status.finalizingDownload" });
 
     if (!blob || blob.size === 0) {
       throw new Error("No blob data available for download or blob is empty");

@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "iconAlt": "Web Page Downloader Symbol",
+      "noInternet": "Keine Internetverbindung - extere Ressourcen können nicht heruntergeladen werden",
+      "enableHtmlForOffline": "Bitte aktivieren Sie den HTML-Download oder den Einzeldateimodus für die Offline-Nutzung",
+      "networkCheckFailed": "Netzwerkverbindungsprüfung fehlgeschlagen - Download wird fortgesetzt",
+      "noUrl": "Fehler: Keine URL zum Herunterladen angegeben",
+      "downloadInProgress": "Ein Download ist bereits im Gange. Bitte warten.",
+      "memoryPressure": "Download kann aufgrund kritischen Speichermangels nicht gestartet werden. Bitte versuchen Sie es später erneut.",
+      "title": "Webseiten-Downloader",
+      "loading": "Wird geladen...",
+      "error": "Etwas ist schiefgelaufen:",
+      "tryAgain": "Erneut versuchen"
+    },
+    "filter": {
+      "loading": "Filter werden geladen...",
+      "ariaDownloadHtml": "HTML-Inhalt herunterladen",
+      "ariaDownloadImages": "Bilder herunterladen",
+      "ariaDownloadLinks": "Links herunterladen (als HTML-Dateien gespeichert)",
+      "ariaDownloadAssets": "Assets herunterladen (css, js)",
+      "ariaDownloadDocuments": "Dokumente herunterladen (pdf, doc, etc.)",
+      "ariaDownloadContent": "Inhalt als Text herunterladen",
+      "ariaSingleFile": "Als einzelne HTML-Datei herunterladen",
+      "ariaStartDownload": "Download starten",
+      "ariaDismissWarning": "Warnung ausblenden",
+      "error": "Fehler",
+      "title": "Filtern Sie, was Sie herunterladen möchten",
+      "downloadHTML": "HTML herunterladen",
+      "downloadImages": "Bilder herunterladen",
+      "downloadLinks": "Links herunterladen (als HTML-Dateien gespeichert)",
+      "downloadAssets": "Assets herunterladen (CSS, JS)",
+      "downloadDocuments": "Dokumente herunterladen (PDF, DOC, etc.)",
+      "downloadContentAsText": "Inhalt als Text herunterladen",
+      "singleFile": "In einer einzelnen HTML-Datei herunterladen",
+      "startDownload": "Download starten",
+      "linksWarning": "Wenn Sie Links herunterladen möchten, müssen Sie berücksichtigen, dass die gesamte Downloadzeit drastisch steigen kann und die Zip-Datei deutlich größer sein kann.",
+      "permissionWarning": "Filtereinstellungen werden ohne Speicherberechtigung nicht gespeichert",
+      "dismiss": "Verwerfen"
+    },
+    "actions": {
+      "title": "Aktionen:",
+      "stop": "Stopp"
+    },
+    "status": {
+      "creatingIndex": "Erstelle index.html",
+      "downloadingCss": "Lade CSS-Dateien herunter",
+      "cssDownloaded": "CSS-Dateien heruntergeladen",
+      "cssError": "Fehler beim Herunterladen von CSS-Dateien - einige fehlen möglicherweise",
+      "downloadingJs": "Lade JS-Dateien herunter",
+      "jsDownloaded": "JS-Dateien heruntergeladen",
+      "jsError": "Fehler beim Herunterladen von JS-Dateien - einige fehlen möglicherweise",
+      "downloadingDocuments": "Lade Dokumentdateien herunter",
+      "documentsDownloaded": "Dokumentdateien heruntergeladen",
+      "downloadingImages": "Lade Bilder herunter",
+      "imagesDownloaded": "Bilder heruntergeladen",
+      "downloadingLinks": "Verlinkte HTML-Dateien werden heruntergeladen",
+      "linksDownloaded": "Verlinkte HTML-Dateien heruntergeladen",
+      "downloadingContent": "Inhalt wird als Text heruntergeladen",
+      "contentDownloaded": "Inhalt als Text heruntergeladen",
+      "singleFileCreated": "Einzelne HTML-Datei erstellt",
+      "zipCreated": "Zip-Datei erstellt!",
+      "downloadStarted": "Download erfolgreich gestartet",
+      "completeTitle": "Download ist abgeschlossen:",
+      "zipLocation": "Sie finden die Zip-Datei in Ihrem Download-Ordner",
+      "streamingSuccess": "Streaming-Download erfolgreich abgeschlossen",
+      "waiting": "Warte auf Verbindung...",
+      "connected": "Webseite verbunden!",
+      "scraping": "Webseite wird gescrapt...",
+      "scraped": "Webseite gescrapt!",
+      "creating": "Zip-Datei erstellt!",
+      "complete": "Download abgeschlossen",
+      "failed": "Download fehlgeschlagen",
+      "cancelled": "Download wurde abgebrochen",
+      "cssProgress": "CSS-Dateien Fortschritt: {{completed}}/{{total}}",
+      "bgImagesProgress": "Hintergrundbilder Fortschritt: {{completed}}/{{total}}",
+      "jsProgress": "JS-Dateien Fortschritt: {{completed}}/{{total}}",
+      "documentsProgress": "Dokumentdateien Fortschritt: {{completed}}/{{total}}",
+      "imagesProgress": "Bilder Fortschritt: {{completed}}/{{total}}",
+      "htmlProgress": "HTML-Dateien Fortschritt: {{completed}}/{{total}}",
+      "cssSummary": "CSS-Dateien heruntergeladen: {{succeeded}} erfolgreich, {{failed}} fehlgeschlagen, {{skipped}} übersprungen",
+      "bgImagesSummary": "Hintergrundbilder aus CSS heruntergeladen: {{succeeded}} erfolgreich, {{failed}} fehlgeschlagen, {{skipped}} übersprungen",
+      "jsSummary": "JS-Dateien heruntergeladen: {{succeeded}} erfolgreich, {{failed}} fehlgeschlagen, {{skipped}} übersprungen",
+      "documentsSummary": "Dokumentdateien heruntergeladen: {{succeeded}} erfolgreich, {{failed}} fehlgeschlagen, {{skipped}} übersprungen",
+      "imagesSummary": "Bilder heruntergeladen: {{succeeded}} erfolgreich, {{failed}} fehlgeschlagen, {{skipped}} übersprungen",
+      "htmlSummary": "HTML-Dateien heruntergeladen: {{succeeded}} erfolgreich, {{failed}} fehlgeschlagen, {{skipped}} übersprungen",
+      "processingCss": "Verarbeite CSS-Dateien: {{current}}/{{total}}",
+      "streamingCss": "Starte Streaming-Download für große CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS Streaming-Fortschritt: {{completed}}/{{total}} Chunks",
+      "cssStreamingSummary": "Verarbeitete CSS-Dateien: {{succeeded}} erfolgreich, {{streamed}} gestreamt, {{failed}} fehlgeschlagen",
+      "processingJs": "Verarbeite JS-Dateien: {{current}}/{{total}}",
+      "streamingJs": "Starte Streaming-Download für große JS: {{current}}/{{total}}",
+      "streamingJsProgress": "JS Streaming-Fortschritt: {{completed}}/{{total}} Chunks",
+      "jsStreamingSummary": "Verarbeitete JS-Dateien: {{succeeded}} erfolgreich, {{streamed}} gestreamt, {{failed}} fehlgeschlagen",
+      "processingImages": "Verarbeite Bilder: {{current}}/{{total}}",
+      "streamingImages": "Starte Streaming-Download für großes Bild: {{current}}/{{total}}",
+      "streamingImagesProgress": "Bild Streaming-Fortschritt: {{completed}}/{{total}} Chunks",
+      "imagesStreamingSummary": "Verarbeitete Bilder: {{succeeded}} erfolgreich, {{streamed}} gestreamt, {{failed}} fehlgeschlagen, {{skipped}} übersprungen",
+      "streamingFailedFallback": "Streaming-Download fehlgeschlagen, falle auf normalen Download zurück...",
+      "processingHtmlIncremental": "Verarbeite HTML-Inhalt mit inkrementeller Zusammensetzung",
+      "finalizingDownload": "Download wird abgeschlossen",
+      "indexCreated": "Index.html erstellt",
+      "htmlTooLarge": "HTML-Inhalt ist zu groß, kann abgeschnitten werden",
+      "incrementalHtmlAdded": "HTML-Inhalt zusammengestellt und zum Download hinzugefügt",
+      "largeHtmlAdded": "Großer HTML-Inhalt verarbeitet und zum Download hinzugefügt",
+      "creatingPackage": "Erstelle finales Download-Paket",
+      "processingImagesCount": "Verarbeite {{count}} Bilder",
+      "streamingImageStart": "Starte Streaming-Download für Bild: {{current}}/{{total}}",
+      "waitingForStreaming": "Warte auf Abschluss von {{count}} Streaming-Downloads...",
+      "streamingProgress": "Streaming-Fortschritt: {{completed}}/{{total}} Chunks ({{percent}}%)",
+      "streamingCompleted": "Alle Streaming-Downloads abgeschlossen",
+      "creatingStreamingZip": "Erstelle ZIP-Datei mit Streaming-Inhalten...",
+      "downloadingWebsiteContent": "Webseiten-Inhalt wird heruntergeladen ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Speicherberechtigung erforderlich",
+        "description": "Diese Erweiterung benötigt eine Speicherberechtigung, um Ihre Filtereinstellungen zu speichern und ein besseres Erlebnis zu bieten.",
+        "grant": "Berechtigung erteilen",
+        "deny": "Vielleicht später",
+        "benefits": {
+          "title": "Vorteile der Erteilung der Speicherberechtigung:",
+          "savePreferences": "Speichern Sie Ihre Download-Filtereinstellungen",
+          "persistSettings": "Merken Sie sich Ihre Einstellungen über Sitzungen hinweg",
+          "improveExperience": "Bieten Sie ein persönlicheres Erlebnis"
+        }
+      },
+      "offscreen": {
+        "title": "Zusätzliche Berechtigung erforderlich",
+        "description": "Diese Erweiterung benötigt die Offscreen-Berechtigung, um Downloads effizient zu verarbeiten.",
+        "grant": "Berechtigung erteilen",
+        "why": "Diese Berechtigung ermöglicht es der Erweiterung, Hintergrunddokumente für die Verarbeitung großer Downloads zu erstellen, ohne Ihr Surferlebnis zu beeinträchtigen."
+      },
+      "global": {
+        "title": "Berechtigungen erforderlich",
+        "description": "Diese Erweiterung benötigt Speicher- und Offscreen-Berechtigungen, um das beste Download-Erlebnis zu bieten.",
+        "storage": {
+          "title": "Speicherberechtigung:",
+          "description": "Erlaubt der Erweiterung, kleine Datenmengen lokal in Ihrem Browser zu speichern. Dies ermöglicht uns, Ihre Einstellungen zu speichern und ein personalisiertes Erlebnis über Sitzungen hinweg zu bieten."
+        },
+        "offscreen": {
+          "title": "Offscreen-Berechtigung:",
+          "description": "Ermöglicht das Herunterladen großer Dateien, indem die Erweiterung Dateien im Hintergrund verarbeiten kann, ohne Ihr Surferlebnis zu beeinträchtigen."
+        },
+        "storageDetails": {
+          "title": "Was wir speichern:",
+          "id": "Eindeutige generierte ID",
+          "preferences": "Download-Einstellungen"
+        },
+        "privacy": {
+          "title": "Datenschutz:",
+          "personal": "Keine persönlichen Daten",
+          "history": "Kein Browserverlauf",
+          "local": "Alle Daten bleiben lokal in Ihrem Browser"
+        },
+        "button": {
+          "requesting": "Berechtigungen werden angefordert...",
+          "enable": "Berechtigungen aktivieren"
+        },
+        "footer": "Jederzeit in den Browsereinstellungen widerrufbar"
+      }
+    },
+    "download": {
+      "showInFolder": "Im Ordner anzeigen",
+      "downloadAnother": "Andere Seite herunterladen",
+      "cancel": "Download abbrechen"
+    },
+    "language": {
+      "select": "Sprache auswählen",
+      "search": "Sprachen suchen...",
+      "current": "Aktuelle Sprache"
+    },
+    "rating": {
+      "title": "Gefällt Ihnen diese Erweiterung?",
+      "description": "Bitte bewerten Sie uns im Chrome Web Store!",
+      "rate": "Erweiterung bewerten",
+      "prompt": "Wenn Sie zufrieden waren, hinterlassen Sie bitte eine positive Bewertung :)",
+      "ariaLabel_one": "Bewerte mit {{count}} Stern",
+      "ariaLabel_other": "Bewerte mit {{count}} Sternen"
+    },
+    "featureRequest": {
+      "title": "Funktion anfordern",
+      "description": "Haben Sie eine Idee, um diese Erweiterung zu verbessern?",
+      "submit": "Anfrage senden"
+    }
+  }
+}

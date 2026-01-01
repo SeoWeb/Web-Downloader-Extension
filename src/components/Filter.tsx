@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Checkbox } from "./Checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Button } from "./Button";
@@ -33,6 +34,7 @@ export default function Filter({
   userId: number | null;
   tabUrl: string;
 }) {
+  const { t } = useTranslation();
   const [showPermissionBanner, setShowPermissionBanner] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [hasOffscreenPerm, setHasOffscreenPerm] = useState<boolean | null>(
@@ -214,14 +216,14 @@ export default function Filter({
               />
             </svg>
             <span className="text-sm text-yellow-800">
-              Filter preferences won't be saved without storage permission
+              {t('filter.permissionWarning')}
             </span>
           </div>
         </div>
       )}
 
       <h3 className="text-lg font-bold mb-4">
-        Filter out what you want to download
+        {t('filter.title')}
       </h3>
       <div className="space-y-4">
         <div className="flex items-center space-x-2">
@@ -229,13 +231,13 @@ export default function Filter({
             id="downloadHTML"
             checked={options.downloadHTML}
             onCheckedChange={handleDownloadHTMLChange}
-            aria-label="Download HTML content"
+            aria-label={t('filter.ariaDownloadHtml')}
           />
           <label
             htmlFor="downloadHTML"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            Download HTML
+            {t('filter.downloadHTML')}
           </label>
         </div>
 
@@ -246,13 +248,13 @@ export default function Filter({
             onCheckedChange={(checked: CheckedState) =>
               setDownloadImages(!!checked)
             }
-            aria-label="Download images"
+            aria-label={t('filter.ariaDownloadImages')}
           />
           <label
             htmlFor="downloadImages"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            Download images
+            {t('filter.downloadImages')}
           </label>
         </div>
 
@@ -261,13 +263,13 @@ export default function Filter({
             id="downloadLinks"
             checked={options.downloadLinks}
             onCheckedChange={handleDownloadLinksChange}
-            aria-label="Download links as HTML files"
+            aria-label={t('filter.ariaDownloadLinks')}
           />
           <label
             htmlFor="downloadLinks"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            Download links (saved as html files)
+            {t('filter.downloadLinks')}
           </label>
         </div>
 
@@ -277,14 +279,12 @@ export default function Filter({
             role="alert"
           >
             <span className="block sm:inline pr-16">
-              If you choose to download links, you have to take into account
-              that the total download time can increase dramatically and the zip
-              file can be significantly larger.
+              {t('filter.linksWarning')}
             </span>
             <button
               onClick={() => setDownloadLinks(false)}
               className="absolute top-0 bottom-0 right-0 px-4 py-3"
-              aria-label="Dismiss warning"
+              aria-label={t('filter.ariaDismissWarning')}
             >
               <span className="sr-only">Dismiss</span>
               <svg
@@ -312,13 +312,13 @@ export default function Filter({
             onCheckedChange={(checked: CheckedState) =>
               setDownloadAssets(!!checked)
             }
-            aria-label="Download assets like CSS and JS"
+            aria-label={t('filter.ariaDownloadAssets')}
           />
           <label
             htmlFor="downloadAssets"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            Download assets (css, js)
+            {t('filter.downloadAssets')}
           </label>
         </div>
 
@@ -329,13 +329,13 @@ export default function Filter({
             onCheckedChange={(checked: CheckedState) =>
               setDownloadDocuments(!!checked)
             }
-            aria-label="Download documents like PDF and DOC"
+            aria-label={t('filter.ariaDownloadDocuments')}
           />
           <label
             htmlFor="downloadDocuments"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            Download documents (pdf, doc, etc.)
+            {t('filter.downloadDocuments')}
           </label>
         </div>
 
@@ -346,13 +346,13 @@ export default function Filter({
             onCheckedChange={(checked: CheckedState) =>
               setDownloadContentAsText(!!checked)
             }
-            aria-label="Download content as text"
+            aria-label={t('filter.ariaDownloadContent')}
           />
           <label
             htmlFor="downloadContentAsText"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            Download content as text
+            {t('filter.downloadContentAsText')}
           </label>
         </div>
 
@@ -361,13 +361,13 @@ export default function Filter({
             id="singleFile"
             checked={options.singleFile}
             onCheckedChange={handleSingleFileChange}
-            aria-label="Download as a single HTML file"
+            aria-label={t('filter.ariaSingleFile')}
           />
           <label
             htmlFor="singleFile"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            Download in single HTML file
+            {t('filter.singleFile')}
           </label>
         </div>
       </div>
@@ -376,9 +376,9 @@ export default function Filter({
         className="mt-4"
         onClick={handleDownload}
         disabled={hasOffscreenPerm === false}
-        aria-label="Start download process"
+        aria-label={t('filter.startDownload')}
       >
-        Start download
+        {t('filter.startDownload')}
       </Button>
     </div>
   );

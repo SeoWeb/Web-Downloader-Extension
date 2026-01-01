@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "أداة تحميل صفحات الويب",
+      "loading": "جار التحميل...",
+      "error": "حدث خطأ ما:",
+      "tryAgain": "حاول مرة أخرى",
+      "iconAlt": "أيقونة أداة تنزيل صفحات الويب",
+      "noInternet": "لا يوجد اتصال بالإنترنت - لا يمكن تنزيل الموارد الخارجية",
+      "enableHtmlForOffline": "يرجى تمكين تنزيل HTML أو وضع الملف الواحد للاستخدام دون اتصال",
+      "networkCheckFailed": "فشل التحقق من الاتصال بالشبكة - متابعة التنزيل",
+      "noUrl": "خطأ: لم يتم توفير رابط للتنزيل",
+      "downloadInProgress": "التنزيل قيد التقدم بالفعل. يرجى الانتظار.",
+      "memoryPressure": "لا يمكن بدء التنزيل بسبب ضغط الذاكرة الحرج. يرجى المحاولة مرة أخرى لاحقًا."
+    },
+    "filter": {
+      "title": "تصفية ما تريد تحميله",
+      "downloadHTML": "تحميل HTML",
+      "downloadImages": "تحميل الصور",
+      "downloadLinks": "تحميل الروابط (محفوظة كملفات HTML)",
+      "downloadAssets": "تحميل الملفات المساعدة (css, js)",
+      "downloadDocuments": "تحميل المستندات (pdf, doc, إلخ)",
+      "downloadContentAsText": "تحميل المحتوى كنص",
+      "singleFile": "تحميل في ملف HTML واحد",
+      "startDownload": "بدء التحميل",
+      "linksWarning": "إذا اخترت تحميل الروابط، يجب أن تأخذ في الاعتبار أن وقت التحميل الإجمالي قد يزداد بشكل كبير وقد يكون ملف zip أكبر بكثير.",
+      "permissionWarning": "لن يتم حفظ تفضيلات التصفية بدون إذن التخزين",
+      "dismiss": "تجاهل",
+      "loading": "حمل المرشحات...",
+      "ariaDownloadHtml": "تنزيل محتوى HTML",
+      "ariaDownloadImages": "تنزيل الصور",
+      "ariaDownloadLinks": "تنزيل الروابط (محفوظة كملفات html)",
+      "ariaDownloadAssets": "تنزيل الأصول (css، js)",
+      "ariaDownloadDocuments": "تنزيل المستندات (pdf، doc، إلخ)",
+      "ariaDownloadContent": "تنزيل المحتوى كنص",
+      "ariaSingleFile": "تنزيل كملف HTML واحد",
+      "ariaStartDownload": "بدء التنزيل",
+      "ariaDismissWarning": "تجاهل التحذير",
+      "error": "خطأ"
+    },
+    "actions": {
+      "title": "الإجراءات:",
+      "stop": "توقف"
+    },
+    "status": {
+      "waiting": "في انتظار الاتصال...",
+      "connected": "تم الاتصال بالموقع!",
+      "scraping": "جار استخراج بيانات الموقع...",
+      "scraped": "تم استخراج البيانات!",
+      "creating": "تم إنشاء ملف Zip!",
+      "complete": "اكتمل التحميل",
+      "failed": "فشل التحميل",
+      "cancelled": "تم إلغاء التحميل",
+      "creatingIndex": "جاري إنشاء index.html",
+      "downloadingCss": "جاري تنزيل ملفات CSS",
+      "cssDownloaded": "تم تنزيل ملفات CSS",
+      "cssError": "خطأ في تنزيل ملفات CSS - قد يكون بعضها مفقودًا",
+      "downloadingJs": "جاري تنزيل ملفات JS",
+      "jsDownloaded": "تم تنزيل ملفات JS",
+      "jsError": "خطأ في تنزيل ملفات JS - قد يكون بعضها مفقودًا",
+      "downloadingDocuments": "جاري تنزيل ملفات المستندات",
+      "documentsDownloaded": "تم تنزيل ملفات المستندات",
+      "downloadingImages": "جاري تنزيل الصور",
+      "imagesDownloaded": "تم تنزيل الصور",
+      "downloadingLinks": "تنزيل ملفات html المرتبطة",
+      "linksDownloaded": "تم تنزيل ملفات html المرتبطة",
+      "downloadingContent": "تنزيل المحتوى كنص",
+      "contentDownloaded": "تم تنزيل المحتوى كنص",
+      "singleFileCreated": "تم إنشاء ملف HTML واحد",
+      "zipCreated": "تم إنشاء ملف Zip!",
+      "downloadStarted": "بدأ التنزيل بنجاح",
+      "completeTitle": "اكتمل التنزيل:",
+      "zipLocation": "يمكنك العثور على ملف zip في مجلد التنزيلات الخاص بك",
+      "cssProgress": "تقدم ملفات CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "تقدم صور الخلفية: {{completed}}/{{total}}",
+      "jsProgress": "تقدم ملفات JS: {{completed}}/{{total}}",
+      "documentsProgress": "تقدم ملفات المستندات: {{completed}}/{{total}}",
+      "imagesProgress": "تقدم الصور: {{completed}}/{{total}}",
+      "htmlProgress": "تقدم ملفات HTML: {{completed}}/{{total}}",
+      "cssSummary": "ملفات CSS التي تم تنزيلها: {{succeeded}} نجح، {{failed}} فشل، {{skipped}} تم تخطي",
+      "bgImagesSummary": "صور الخلفية التي تم تنزيلها من CSS: {{succeeded}} نجح، {{failed}} فشل، {{skipped}} تم تخطي",
+      "jsSummary": "ملفات JS التي تم تنزيلها: {{succeeded}} نجح، {{failed}} فشل، {{skipped}} تم تخطي",
+      "documentsSummary": "ملفات المستندات التي تم تنزيلها: {{succeeded}} نجح، {{failed}} فشل، {{skipped}} تم تخطي",
+      "imagesSummary": "الصور التي تم تنزيلها: {{succeeded}} نجح، {{failed}} فشل، {{skipped}} تم تخطي",
+      "htmlSummary": "ملفات HTML التي تم تنزيلها: {{succeeded}} نجح، {{failed}} فشل، {{skipped}} تم تخطي",
+      "processingCss": "معالجة ملفات CSS: {{current}}/{{total}}",
+      "streamingCss": "بدء التنزيل المتدفق لـ CSS الكبير: {{current}}/{{total}}",
+      "streamingCssProgress": "تقدم تدفق CSS: {{completed}}/{{total}} جزء",
+      "cssStreamingSummary": "ملفات CSS المعالجة: {{succeeded}} نجح، {{streamed}} تم دفقه، {{failed}} فشل",
+      "processingJs": "معالجة ملفات JS: {{current}}/{{total}}",
+      "streamingJs": "بدء التنزيل المتدفق لـ JS الكبير: {{current}}/{{total}}",
+      "streamingJsProgress": "تقدم تدفق JS: {{completed}}/{{total}} جزء",
+      "jsStreamingSummary": "ملفات JS المعالجة: {{succeeded}} نجح، {{streamed}} تم دفقه، {{failed}} فشل",
+      "processingImages": "معالجة الصور: {{current}}/{{total}}",
+      "streamingImages": "بدء التنزيل المتدفق للصورة الكبيرة: {{current}}/{{total}}",
+      "streamingImagesProgress": "تقدم تدفق الصورة: {{completed}}/{{total}} جزء",
+      "imagesStreamingSummary": "الصور المعالجة: {{succeeded}} نجح، {{streamed}} تم دفقه، {{failed}} فشل، {{skipped}} تم تخطي",
+      "streamingFailedFallback": "فشل التنزيل المتدفق، العودة إلى التنزيل العادي...",
+      "processingHtmlIncremental": "معالجة محتوى HTML بتجميع تزايدي",
+      "finalizingDownload": "إتمام التنزيل",
+      "indexCreated": "تم إنشاء index.html",
+      "htmlTooLarge": "محتوى HTML كبير جدًا، قد يتم اقتطاعه",
+      "incrementalHtmlAdded": "تم تجميع محتوى HTML وإضافته إلى التنزيل",
+      "largeHtmlAdded": "تمت معالجة محتوى HTML الكبير وإضافته إلى التنزيل",
+      "creatingPackage": "إنشاء حزمة التنزيل النهائية",
+      "processingImagesCount": "معالجة {{count}} صورة",
+      "streamingImageStart": "بدء التنزيل المتدفق للصورة: {{current}}/{{total}}",
+      "waitingForStreaming": "في انتظار اكتمال {{count}} تنزيلات متدفقة...",
+      "streamingProgress": "تقدم التدفق: {{completed}}/{{total}} جزء ({{percent}}%)",
+      "streamingCompleted": "اكتملت جميع التنزيلات المتدفقة",
+      "creatingStreamingZip": "جاري إنشاء ملف ZIP بمحتوى متدفق...",
+      "streamingSuccess": "اكتمل التنزيل المتدفق بنجاح",
+      "downloadingWebsiteContent": "جارٍ تنزيل محتوى الموقع ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "مطلوب إذن التخزين",
+        "description": "تحتاج هذه الإضافة إلى إذن التخزين لحفظ تفضيلات التصفية الخاصة بك وتوفير تجربة أفضل.",
+        "grant": "منح الإذن",
+        "deny": "ربما لاحقًا",
+        "benefits": {
+          "title": "فوائد منح إذن التخزين:",
+          "savePreferences": "حفظ تفضيلات تصفية التحميل الخاصة بك",
+          "persistSettings": "تذكر إعداداتك عبر الجلسات",
+          "improveExperience": "توفير تجربة أكثر تخصيصًا"
+        }
+      },
+      "offscreen": {
+        "title": "مطلوب إذن إضافي",
+        "description": "تحتاج هذه الإضافة إلى إذن offscreen لمعالجة التنزيلات بكفاءة.",
+        "grant": "منح الإذن",
+        "why": "يسمح هذا الإذن للإضافة بإنشاء مستندات في الخلفية لمعالجة التنزيلات الكبيرة دون التأثير على تجربة التصفح الخاصة بك."
+      },
+      "global": {
+        "title": "مطلوب أذونات",
+        "description": "يحتاج هذا الامتداد إلى أذونات التخزين وخارج الشاشة لتوفير أفضل تجربة تنزيل.",
+        "storage": {
+          "title": "إذن التخزين:",
+          "description": "يسمح للامتداد بحفظ كميات صغيرة من البيانات محليًا في متصفحك. يتيح لنا هذا تذكر تفضيلاتك وتوفير تجربة مخصصة عبر الجلسات."
+        },
+        "offscreen": {
+          "title": "إذن خارج الشاشة:",
+          "description": "يتيح تنزيل الملفات الكبيرة من خلال السماح للامتداد بمعالجة الملفات في الخلفية دون التأثير على تجربة التصفح الخاصة بك."
+        },
+        "storageDetails": {
+          "title": "ما نخزنه:",
+          "id": "معرف فريد تم إنشاؤه",
+          "preferences": "تفضيلات التنزيل"
+        },
+        "privacy": {
+          "title": "الخصوصية:",
+          "personal": "لا توجد بيانات شخصية",
+          "history": "لا يوجد سجل تصفح",
+          "local": "تبقى جميع البيانات محليًا في متصفحك"
+        },
+        "button": {
+          "requesting": "جاري طلب الأذونات...",
+          "enable": "تفعيل الأذونات"
+        },
+        "footer": "يمكنك الإلغاء في أي وقت في إعدادات المتصفح"
+      }
+    },
+    "download": {
+      "showInFolder": "عرض في المجلد",
+      "downloadAnother": "تحميل صفحة أخرى",
+      "cancel": "إلغاء التحميل"
+    },
+    "language": {
+      "select": "اختر اللغة",
+      "search": "بحث عن اللغات...",
+      "current": "اللغة الحالية"
+    },
+    "rating": {
+      "title": "هل تستمتع بهذه الإضافة؟",
+      "description": "يرجى تقييمنا على متجر Chrome الإلكتروني!",
+      "rate": "قيم الإضافة",
+      "prompt": "إذا كنت راضياً، يرجى ترك تقييم إيجابي :)",
+      "ariaLabel_one": "قيم بنجمة {{count}}",
+      "ariaLabel_other": "قيم بـ {{count}} نجوم"
+    },
+    "featureRequest": {
+      "title": "طلب ميزة",
+      "description": "هل لديك فكرة لتحسين هذه الإضافة؟",
+      "submit": "إرسال طلب"
+    }
+  }
+}

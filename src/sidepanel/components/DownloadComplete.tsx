@@ -1,6 +1,7 @@
 import React from "react";
 // import { Button } from "../../components/Button";
 import { MessageAction, messageActions } from "../../common/message";
+import { useTranslation } from "react-i18next";
 
 const ChromeExtensionRating = React.lazy(
   () => import("../../components/ChromeExtensionRating"),
@@ -21,19 +22,21 @@ export function DownloadComplete({
   action,
   // reset,
 }: DownloadCompleteProps) {
+  const { t } = useTranslation();
+
   if (action !== messageActions.DOWNLOAD_DONE) {
     return null;
   }
 
   return (
     <div className="pt-8">
-      <div className="pb-2 font-bold">Download is complete:</div>
+      <div className="pb-2 font-bold">{t('status.completeTitle')}</div>
       <div className="pb-4">
-        You can find the zip file in your downloads folder
+        {t('status.zipLocation')}
       </div>
       <div className="pb-4">
         <h3 className="pb-4 font-bold">
-          If you were satisfied, please leave a positive review :)
+          {t('rating.prompt')}
         </h3>
         <React.Suspense>
           <ChromeExtensionRating />

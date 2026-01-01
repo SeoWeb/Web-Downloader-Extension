@@ -90,7 +90,7 @@ export async function addCssFiles(
   csss: string[],
   zip: JSZip,
   tabUrl: string,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ) {
   if (!csss?.length) return;
@@ -114,7 +114,7 @@ export async function addCssFiles(
     ...originalListeners,
     onComplete: (result: any) => {
       completedCount++;
-      sendMessage(`CSS files progress: ${completedCount}/${count}`);
+      sendMessage({ key: "status.cssProgress", options: { completed: completedCount, total: count } });
       // Call original listener if it exists
       if (originalListeners.onComplete) {
         originalListeners.onComplete(result);
@@ -258,7 +258,7 @@ export async function addCssFiles(
   );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
-      `CSS files downloaded: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
+      { key: "status.cssSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
     );
   }
 }
@@ -286,7 +286,7 @@ async function downloadBackgroundImages(
   imageUrls: string[],
   zip: JSZip,
   baseUrl: string,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ): Promise<void> {
   const zimages = zip.folder("images") || zip;
@@ -308,7 +308,7 @@ async function downloadBackgroundImages(
     ...originalListeners,
     onComplete: (result: any) => {
       completedCount++;
-      sendMessage(`Background images progress: ${completedCount}/${count}`);
+      sendMessage({ key: "status.bgImagesProgress", options: { completed: completedCount, total: count } });
       // Call original listener if it exists
       if (originalListeners.onComplete) {
         originalListeners.onComplete(result);
@@ -406,7 +406,7 @@ async function downloadBackgroundImages(
   );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
-      `Background images from CSS downloaded: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
+      { key: "status.bgImagesSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
     );
   }
 }
@@ -463,7 +463,7 @@ export async function addJsFiles(
   jss: string[],
   zip: JSZip,
   tabUrl: string,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ) {
   if (!jss?.length) return;
@@ -487,7 +487,7 @@ export async function addJsFiles(
     ...originalListeners,
     onComplete: (result: any) => {
       completedCount++;
-      sendMessage(`JS files progress: ${completedCount}/${count}`);
+      sendMessage({ key: "status.jsProgress", options: { completed: completedCount, total: count } });
       // Call original listener if it exists
       if (originalListeners.onComplete) {
         originalListeners.onComplete(result);
@@ -585,7 +585,7 @@ export async function addJsFiles(
   );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
-      `JS files downloaded: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
+      { key: "status.jsSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
     );
   }
 }
@@ -594,7 +594,7 @@ export async function addDocumentFiles(
   documents: string[],
   zip: JSZip,
   tabUrl: string,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ) {
   if (!documents?.length) {
@@ -620,7 +620,7 @@ export async function addDocumentFiles(
     ...originalListeners,
     onComplete: (result: any) => {
       completedCount++;
-      sendMessage(`Document files progress: ${completedCount}/${count}`);
+      sendMessage({ key: "status.documentsProgress", options: { completed: completedCount, total: count } });
       // Call original listener if it exists
       if (originalListeners.onComplete) {
         originalListeners.onComplete(result);
@@ -720,7 +720,7 @@ export async function addDocumentFiles(
   );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
-      `Document files downloaded: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
+      { key: "status.documentsSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
     );
   }
 }
@@ -729,7 +729,7 @@ export async function addImageFiles(
   images: string[],
   zip: JSZip,
   tabUrl: string,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ) {
   if (!images?.length) return;
@@ -753,7 +753,7 @@ export async function addImageFiles(
     ...originalListeners,
     onComplete: (result: any) => {
       completedCount++;
-      sendMessage(`Images progress: ${completedCount}/${count}`);
+      sendMessage({ key: "status.imagesProgress", options: { completed: completedCount, total: count } });
       // Call original listener if it exists
       if (originalListeners.onComplete) {
         originalListeners.onComplete(result);
@@ -857,7 +857,7 @@ export async function addImageFiles(
   );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
-      `Images downloaded: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
+      { key: "status.imagesSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
     );
   }
 }
@@ -866,7 +866,7 @@ export async function addHtmlFiles(
   links: string[],
   zip: JSZip,
   tabUrl: string,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ) {
   if (!links?.length) return;
@@ -890,7 +890,7 @@ export async function addHtmlFiles(
     ...originalListeners,
     onComplete: (result: any) => {
       completedCount++;
-      sendMessage(`HTML files progress: ${completedCount}/${count}`);
+      sendMessage({ key: "status.htmlProgress", options: { completed: completedCount, total: count } });
       // Call original listener if it exists
       if (originalListeners.onComplete) {
         originalListeners.onComplete(result);
@@ -1007,7 +1007,7 @@ export async function addHtmlFiles(
   );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
-      `HTML files downloaded: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
+      { key: "status.htmlSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
     );
   }
 }
@@ -1020,7 +1020,7 @@ export async function addCssFilesWithStreaming(
   csss: string[],
   zipProcessor: ChunkedZipProcessor,
   tabUrl: string,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ) {
   if (!csss?.length) return;
@@ -1047,7 +1047,7 @@ export async function addCssFilesWithStreaming(
     const fullCssUrl = new URL(css, tabUrl).href;
 
     try {
-      sendMessage(`Processing CSS files: ${i + 1}/${count}`);
+      sendMessage({ key: "status.processingCss", options: { current: i + 1, total: count } });
 
       // Check if file should be streamed
       const metadata = await streamingFetcher.getMetadata(fullCssUrl);
@@ -1055,7 +1055,7 @@ export async function addCssFilesWithStreaming(
 
       if (shouldStream && metadata.size > 0) {
         // Use streaming download
-        sendMessage(`Starting streaming download for large CSS: ${i + 1}/${count}`);
+        sendMessage({ key: "status.streamingCss", options: { current: i + 1, total: count } });
         const download = await streamingDownloader.startDownload(fullCssUrl, {
           chunkSize: 512 * 1024, // 512KB chunks for CSS
           maxParallelChunks: 2,
@@ -1067,7 +1067,7 @@ export async function addCssFilesWithStreaming(
           await new Promise(resolve => setTimeout(resolve, 100));
           const progress = streamingDownloader.getProgress(download.id);
           if (progress) {
-            sendMessage(`CSS streaming progress: ${progress.completedChunks}/${progress.totalChunks} chunks`);
+            sendMessage({ key: "status.streamingCssProgress", options: { completed: progress.completedChunks, total: progress.totalChunks } });
           }
         }
 
@@ -1097,7 +1097,7 @@ export async function addCssFilesWithStreaming(
   );
   if (failCount > 0) {
     sendMessage(
-      `CSS files processed: ${successCount} succeeded, ${streamedCount} streamed, ${failCount} failed`,
+      { key: "status.cssStreamingSummary", options: { succeeded: successCount, streamed: streamedCount, failed: failCount } },
     );
   }
 }
@@ -1109,7 +1109,7 @@ export async function addJsFilesWithStreaming(
   jss: string[],
   zipProcessor: ChunkedZipProcessor,
   tabUrl: string,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ) {
   if (!jss?.length) return;
@@ -1136,7 +1136,7 @@ export async function addJsFilesWithStreaming(
     const fullJsUrl = new URL(js, tabUrl).href;
 
     try {
-      sendMessage(`Processing JS files: ${i + 1}/${count}`);
+      sendMessage({ key: "status.processingJs", options: { current: i + 1, total: count } });
 
       // Check if file should be streamed
       const metadata = await streamingFetcher.getMetadata(fullJsUrl);
@@ -1144,7 +1144,7 @@ export async function addJsFilesWithStreaming(
 
       if (shouldStream && metadata.size > 0) {
         // Use streaming download
-        sendMessage(`Starting streaming download for large JS: ${i + 1}/${count}`);
+        sendMessage({ key: "status.streamingJs", options: { current: i + 1, total: count } });
         const download = await streamingDownloader.startDownload(fullJsUrl, {
           chunkSize: 512 * 1024, // 512KB chunks for JS
           maxParallelChunks: 2,
@@ -1156,7 +1156,7 @@ export async function addJsFilesWithStreaming(
           await new Promise(resolve => setTimeout(resolve, 100));
           const progress = streamingDownloader.getProgress(download.id);
           if (progress) {
-            sendMessage(`JS streaming progress: ${progress.completedChunks}/${progress.totalChunks} chunks`);
+            sendMessage({ key: "status.streamingJsProgress", options: { completed: progress.completedChunks, total: progress.totalChunks } });
           }
         }
 
@@ -1186,7 +1186,7 @@ export async function addJsFilesWithStreaming(
   );
   if (failCount > 0) {
     sendMessage(
-      `JS files processed: ${successCount} succeeded, ${streamedCount} streamed, ${failCount} failed`,
+      { key: "status.jsStreamingSummary", options: { succeeded: successCount, streamed: streamedCount, failed: failCount } },
     );
   }
 }
@@ -1198,7 +1198,7 @@ export async function addImageFilesWithStreaming(
   images: string[],
   zipProcessor: ChunkedZipProcessor,
   tabUrl: string,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ) {
   if (!images?.length) return;
@@ -1229,7 +1229,7 @@ export async function addImageFilesWithStreaming(
     const fullImageUrl = new URL(image, tabUrl).href;
 
     try {
-      sendMessage(`Processing images: ${i + 1}/${count}`);
+      sendMessage({ key: "status.processingImages", options: { current: i + 1, total: count } });
 
       // Check if file should be streamed
       const metadata = await streamingFetcher.getMetadata(fullImageUrl);
@@ -1237,7 +1237,7 @@ export async function addImageFilesWithStreaming(
 
       if (shouldStream && metadata.size > 0) {
         // Use streaming download
-        sendMessage(`Starting streaming download for large image: ${i + 1}/${count}`);
+        sendMessage({ key: "status.streamingImages", options: { current: i + 1, total: count } });
         const download = await streamingDownloader.startDownload(fullImageUrl, {
           chunkSize: 1024 * 1024, // 1MB chunks for images
           maxParallelChunks: 3,
@@ -1249,7 +1249,7 @@ export async function addImageFilesWithStreaming(
           await new Promise(resolve => setTimeout(resolve, 100));
           const progress = streamingDownloader.getProgress(download.id);
           if (progress) {
-            sendMessage(`Image streaming progress: ${progress.completedChunks}/${progress.totalChunks} chunks`);
+            sendMessage({ key: "status.streamingImagesProgress", options: { completed: progress.completedChunks, total: progress.totalChunks } });
           }
         }
 
@@ -1279,7 +1279,7 @@ export async function addImageFilesWithStreaming(
   );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
-      `Images processed: ${successCount} succeeded, ${streamedCount} streamed, ${failCount} failed, ${skippedCount} skipped`,
+      { key: "status.imagesStreamingSummary", options: { succeeded: successCount, streamed: streamedCount, failed: failCount, skipped: skippedCount } },
     );
   }
 }

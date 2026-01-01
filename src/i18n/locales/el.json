@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Λήψη Ιστοσελίδας",
+      "loading": "Φόρτωση...",
+      "error": "Κάτι πήγε στραβά:",
+      "tryAgain": "Δοκιμάστε ξανά",
+      "iconAlt": "Εικονίδιο Web Page Downloader",
+      "noInternet": "Δεν υπάρχει σύνδεση στο διαδίκτυο - αδυναμία λήψης εξωτερικών πόρων",
+      "enableHtmlForOffline": "Ενεργοποιήστε τη λήψη HTML ή τη λειτουργία μονού αρχείου για χρήση εκτός σύνδεσης",
+      "networkCheckFailed": "Ο έλεγχος σύνδεσης δικτύου απέτυχε - συνέχεια με τη λήψη",
+      "noUrl": "Σφάλμα: Δεν παρέχεται URL για λήψη",
+      "downloadInProgress": "Μια λήψη βρίσκεται ήδη σε εξέλιξη. Παρακαλώ περιμένετε.",
+      "memoryPressure": "Αδυναμία έναρξης λήψης λόγω κρίσιμης πίεσης μνήμης. Δοκιμάστε ξανά αργότερα."
+    },
+    "filter": {
+      "title": "Φιλτράρετε τι θέλετε να κατεβάσετε",
+      "downloadHTML": "Λήψη HTML",
+      "downloadImages": "Λήψη εικόνων",
+      "downloadLinks": "Λήψη συνδέσμων (αποθηκευμένοι ως αρχεία html)",
+      "downloadAssets": "Λήψη πόρων (css, js)",
+      "downloadDocuments": "Λήψη εγγράφων (pdf, doc, κλπ.)",
+      "downloadContentAsText": "Λήψη περιεχομένου ως κείμενο",
+      "singleFile": "Λήψη σε μεμονωμένο αρχείο HTML",
+      "startDownload": "Έναρξη λήψης",
+      "linksWarning": "Εάν επιλέξετε να κατεβάσετε συνδέσμους, πρέπει να λάβετε υπόψη ότι ο συνολικός χρόνος λήψης μπορεί να αυξηθεί δραματικά και το αρχείο zip μπορεί να είναι σημαντικά μεγαλύτερο.",
+      "permissionWarning": "Οι προτιμήσεις φίλτρου δεν θα αποθηκευτούν χωρίς άδεια αποθήκευσης",
+      "dismiss": "Απόρριψη",
+      "loading": "Φόρτωση φίλτρων...",
+      "ariaDownloadHtml": "Λήψη περιεχομένου HTML",
+      "ariaDownloadImages": "Λήψη εικόνων",
+      "ariaDownloadLinks": "Λήψη συνδέσμων ως αρχεία HTML",
+      "ariaDownloadAssets": "Λήψη πόρων όπως CSS και JS",
+      "ariaDownloadDocuments": "Λήψη εγγράφων όπως PDF και DOC",
+      "ariaDownloadContent": "Λήψη περιεχομένου ως κείμενο",
+      "ariaSingleFile": "Λήψη ως μεμονωμένο αρχείο HTML",
+      "ariaStartDownload": "Έναρξη λήψης",
+      "ariaDismissWarning": "Απόρριψη προειδοποίησης",
+      "error": "Σφάλμα"
+    },
+    "actions": {
+      "title": "Ενέργειες:",
+      "stop": "Διακοπή"
+    },
+    "status": {
+      "waiting": "Αναμονή σύνδεσης...",
+      "connected": "Η ιστοσελίδα συνδέθηκε!",
+      "scraping": "Απόξεση ιστοσελίδας...",
+      "scraped": "Η ιστοσελίδα αποξέστηκε!",
+      "creating": "Το αρχείο Zip δημιουργήθηκε!",
+      "complete": "Η λήψη ολοκληρώθηκε",
+      "failed": "Η λήψη απέτυχε",
+      "cancelled": "Η λήψη ακυρώθηκε",
+      "creatingIndex": "Δημιουργία index.html",
+      "downloadingCss": "Λήψη αρχείων CSS",
+      "cssDownloaded": "Τα αρχεία CSS κατέβηκαν",
+      "cssError": "Σφάλμα κατά τη λήψη αρχείων CSS - κάποια μπορεί να λείπουν",
+      "downloadingJs": "Λήψη αρχείων JS",
+      "jsDownloaded": "Τα αρχεία JS κατέβηκαν",
+      "jsError": "Σφάλμα κατά τη λήψη αρχείων JS - κάποια μπορεί να λείπουν",
+      "downloadingDocuments": "Λήψη εγγράφων",
+      "documentsDownloaded": "Τα έγγραφα κατέβηκαν",
+      "downloadingImages": "Λήψη εικόνων",
+      "imagesDownloaded": "Οι εικόνες κατέβηκαν",
+      "downloadingLinks": "Λήψη συνδεδεμένων αρχείων html",
+      "linksDownloaded": "Τα συνδεδεμένα αρχεία html κατέβηκαν",
+      "downloadingContent": "Λήψη περιεχομένου ως κείμενο",
+      "contentDownloaded": "Το περιεχόμενο ως κείμενο κατέβηκε",
+      "singleFileCreated": "Δημιουργήθηκε μεμονωμένο αρχείο HTML",
+      "zipCreated": "Το αρχείο Zip δημιουργήθηκε!",
+      "downloadStarted": "Η λήψη ξεκίνησε με επιτυχία",
+      "completeTitle": "Η λήψη ολοκληρώθηκε:",
+      "zipLocation": "Μπορείτε να βρείτε το αρχείο zip στον φάκελο λήψεων",
+      "cssProgress": "Πρόοδος αρχείων CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "Πρόοδος εικόνων φόντου: {{completed}}/{{total}}",
+      "jsProgress": "Πρόοδος αρχείων JS: {{completed}}/{{total}}",
+      "documentsProgress": "Πρόοδος αρχείων εγγράφων: {{completed}}/{{total}}",
+      "imagesProgress": "Πρόοδος εικόνων: {{completed}}/{{total}}",
+      "htmlProgress": "Πρόοδος αρχείων HTML: {{completed}}/{{total}}",
+      "cssSummary": "Αρχεία CSS κατέβηκαν: {{succeeded}} επιτυχημένα, {{failed}} απέτυχαν, {{skipped}} παραλείφθηκαν",
+      "bgImagesSummary": "Εικόνες φόντου από CSS κατέβηκαν: {{succeeded}} επιτυχημένα, {{failed}} απέτυχαν, {{skipped}} παραλείφθηκαν",
+      "jsSummary": "Αρχεία JS κατέβηκαν: {{succeeded}} επιτυχημένα, {{failed}} απέτυχαν, {{skipped}} παραλείφθηκαν",
+      "documentsSummary": "Αρχεία εγγράφων κατέβηκαν: {{succeeded}} επιτυχημένα, {{failed}} απέτυχαν, {{skipped}} παραλείφθηκαν",
+      "imagesSummary": "Εικόνες κατέβηκαν: {{succeeded}} επιτυχημένα, {{failed}} απέτυχαν, {{skipped}} παραλείφθηκαν",
+      "htmlSummary": "Αρχεία HTML κατέβηκαν: {{succeeded}} επιτυχημένα, {{failed}} απέτυχαν, {{skipped}} παραλείφθηκαν",
+      "processingCss": "Επεξεργασία αρχείων CSS: {{current}}/{{total}}",
+      "streamingCss": "Έναρξη ροής λήψης για μεγάλο αρχείο CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "Πρόοδος ροής CSS: {{completed}}/{{total}} κομμάτια",
+      "cssStreamingSummary": "Αρχεία CSS επεξεργάστηκαν: {{succeeded}} επιτυχημένα, {{streamed}} με ροή, {{failed}} απέτυχαν",
+      "processingJs": "Επεξεργασία αρχείων JS: {{current}}/{{total}}",
+      "streamingJs": "Έναρξη ροής λήψης για μεγάλο αρχείο JS: {{current}}/{{total}}",
+      "streamingJsProgress": "Πρόοδος ροής JS: {{completed}}/{{total}} κομμάτια",
+      "jsStreamingSummary": "Αρχεία JS επεξεργάστηκαν: {{succeeded}} επιτυχημένα, {{streamed}} με ροή, {{failed}} απέτυχαν",
+      "processingImages": "Επεξεργασία εικόνων: {{current}}/{{total}}",
+      "streamingImages": "Έναρξη ροής λήψης για μεγάλη εικόνα: {{current}}/{{total}}",
+      "streamingImagesProgress": "Πρόοδος ροής εικόνας: {{completed}}/{{total}} κομμάτια",
+      "imagesStreamingSummary": "Εικόνες επεξεργάστηκαν: {{succeeded}} επιτυχημένα, {{streamed}} με ροή, {{failed}} απέτυχαν, {{skipped}} παραλείφθηκαν",
+      "streamingFailedFallback": "Η λήψη ροής απέτυχε, επιστροφή στην κανονική λήψη...",
+      "processingHtmlIncremental": "Επεξεργασία περιεχομένου HTML με σταδιακή συναρμολόγηση",
+      "finalizingDownload": "Ολοκλήρωση λήψης",
+      "indexCreated": "Το index.html δημιουργήθηκε",
+      "htmlTooLarge": "Το περιεχόμενο HTML είναι πολύ μεγάλο, μπορεί να περικοπεί",
+      "incrementalHtmlAdded": "Το περιεχόμενο HTML συναρμολογήθηκε και προστέθηκε στη λήψη",
+      "largeHtmlAdded": "Μεγάλο περιεχόμενο HTML επεξεργάστηκε και προστέθηκε στη λήψη",
+      "creatingPackage": "Δημιουργία τελικού πακέτου λήψης",
+      "processingImagesCount": "Επεξεργασία {{count}} εικόνων",
+      "streamingImageStart": "Έναρξη ροής λήψης για εικόνα: {{current}}/{{total}}",
+      "waitingForStreaming": "Αναμονή για ολοκλήρωση {{count}} λήψεων ροής...",
+      "streamingProgress": "Πρόοδος ροής: {{completed}}/{{total}} κομμάτια ({{percent}}%)",
+      "streamingCompleted": "Όλες οι λήψεις ροής ολοκληρώθηκαν",
+      "creatingStreamingZip": "Δημιουργία αρχείου ZIP με περιεχόμενο ροής...",
+      "streamingSuccess": "Η λήψη ροής ολοκληρώθηκε με επιτυχία",
+      "downloadingWebsiteContent": "Λήψη περιεχομένου ιστοσελίδας..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Απαιτείται Άδεια Αποθήκευσης",
+        "description": "Αυτή η επέκταση χρειάζεται άδεια αποθήκευσης για να αποθηκεύσει τις προτιμήσεις φίλτρου σας και να παρέχει μια καλύτερη εμπειρία.",
+        "grant": "Χορήγηση Άδειας",
+        "deny": "Ίσως Αργότερα",
+        "benefits": {
+          "title": "Οφέλη χορήγησης άδειας αποθήκευσης:",
+          "savePreferences": "Αποθηκεύστε τις προτιμήσεις φίλτρου λήψης σας",
+          "persistSettings": "Να θυμάται τις ρυθμίσεις σας μεταξύ των συνεδριών",
+          "improveExperience": "Παροχή μιας πιο εξατομικευμένης εμπειρίας"
+        }
+      },
+      "offscreen": {
+        "title": "Απαιτείται Πρόσθετη Άδεια",
+        "description": "Αυτή η επέκταση χρειάζεται την άδεια offscreen για την αποτελεσματική επεξεργασία των λήψεων.",
+        "grant": "Χορήγηση Άδειας",
+        "why": "Αυτή η άδεια επιτρέπει στην επέκταση να δημιουργεί έγγραφα στο παρασκήνιο για την επεξεργασία μεγάλων λήψεων χωρίς να επηρεάζει την εμπειρία περιήγησής σας."
+      },
+      "global": {
+        "title": "Απαιτούνται Άδειες",
+        "description": "Αυτή η επέκταση χρειάζεται άδειες αποθήκευσης και offscreen για να παρέχει την καλύτερη εμπειρία λήψης.",
+        "storage": {
+          "title": "Άδεια Αποθήκευσης:",
+          "description": "Επιτρέπει στην επέκταση να αποθηκεύει μικρές ποσότητες δεδομένων τοπικά στο πρόγραμμα περιήγησής σας. Αυτό μας επιτρέπει να θυμόμαστε τις προτιμήσεις σας και να παρέχουμε μια εξατομικευμένη εμπειρία."
+        },
+        "offscreen": {
+          "title": "Άδεια Offscreen:",
+          "description": "Επιτρέπει τη λήψη μεγάλων αρχείων επιτρέποντας στην επέκταση να επεξεργάζεται αρχεία στο παρασκήνιο χωρίς να επηρεάζει την εμπειρία περιήγησής σας."
+        },
+        "storageDetails": {
+          "title": "Τι αποθηκεύουμε:",
+          "id": "Μοναδικό αναγνωριστικό",
+          "preferences": "Προτιμήσεις λήψης"
+        },
+        "privacy": {
+          "title": "Απόρρητο:",
+          "personal": "Όχι προσωπικά δεδομένα",
+          "history": "Όχι ιστορικό περιήγησης",
+          "local": "Όλα τα δεδομένα παραμένουν τοπικά στο πρόγραμμα περιήγησής σας"
+        },
+        "button": {
+          "requesting": "Αίτηση Αδειών...",
+          "enable": "Ενεργοποίηση Αδειών"
+        },
+        "footer": "Ανάκληση ανά πάσα στιγμή στις ρυθμίσεις του προγράμματος περιήγησης"
+      }
+    },
+    "download": {
+      "showInFolder": "Εμφάνιση στο φάκελο",
+      "downloadAnother": "Λήψη άλλης σελίδας",
+      "cancel": "Ακύρωση λήψης"
+    },
+    "language": {
+      "select": "Επιλογή Γλώσσας",
+      "search": "Αναζήτηση γλωσσών...",
+      "current": "Τρέχουσα γλώσσα"
+    },
+    "rating": {
+      "title": "Σας αρέσει αυτή η επέκταση;",
+      "description": "Παρακαλούμε αξιολογήστε μας στο Chrome Web Store!",
+      "rate": "Αξιολόγηση Επέκτασης",
+      "prompt": "Αν μείνατε ικανοποιημένοι, αφήστε μια θετική κριτική :)",
+      "ariaLabel_one": "Αξιολόγηση με {{count}} αστέρι",
+      "ariaLabel_other": "Αξιολόγηση με {{count}} αστέρια"
+    },
+    "featureRequest": {
+      "title": "Αίτημα για Λειτουργία",
+      "description": "Έχετε κάποια ιδέα για τη βελτίωση αυτής της επέκτασης;",
+      "submit": "Υποβολή Αιτήματος"
+    }
+  }
+}

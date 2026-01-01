@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "網頁下載器",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "網頁下載器允許您下載並儲存整個網頁（包括連結的資源），以便離線查看。",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "網頁下載器",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

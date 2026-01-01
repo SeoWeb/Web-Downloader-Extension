@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Webbsidenedladdare",
+      "loading": "Laddar...",
+      "error": "Något gick fel:",
+      "tryAgain": "Försök igen",
+      "iconAlt": "Webbsida Nedladdare ikon",
+      "noInternet": "Ingen internetanslutning - kan inte ladda ner externa resurser",
+      "enableHtmlForOffline": "Vänligen aktivera HTML-nedladdning eller enkelfilsläge för offlineanvändning",
+      "networkCheckFailed": "Nätverksanslutningskontroll misslyckades - fortsätter nedladdning",
+      "noUrl": "Fel: Ingen URL angiven för nedladdning",
+      "downloadInProgress": "En nedladdning pågår redan. Vänta.",
+      "memoryPressure": "Kan inte starta nedladdning på grund av kritiskt minnestryck. Försök igen senare."
+    },
+    "filter": {
+      "title": "Filtrera vad du vill ladda ner",
+      "downloadHTML": "Ladda ner HTML",
+      "downloadImages": "Ladda ner bilder",
+      "downloadLinks": "Ladda ner länkar (sparade som html-filer)",
+      "downloadAssets": "Ladda ner tillgångar (css, js)",
+      "downloadDocuments": "Ladda ner dokument (pdf, doc, etc.)",
+      "downloadContentAsText": "Ladda ner innehåll som text",
+      "singleFile": "Ladda ner i en enda HTML-fil",
+      "startDownload": "Starta nedladdning",
+      "linksWarning": "Om du väljer att ladda ner länkar måste du ta hänsyn till att den totala nedladdningstiden kan öka dramatiskt och zip-filen kan bli betydligt större.",
+      "permissionWarning": "Filterinställningar sparas inte utan lagringsbehörighet",
+      "dismiss": "Avvisa",
+      "loading": "Laddar filter...",
+      "ariaDownloadHtml": "Ladda ner HTML-innehåll",
+      "ariaDownloadImages": "Ladda ner bilder",
+      "ariaDownloadLinks": "Ladda ner länkar (sparade som html-filer)",
+      "ariaDownloadAssets": "Ladda ner tillgångar (css, js)",
+      "ariaDownloadDocuments": "Ladda ner dokument (pdf, doc, etc.)",
+      "ariaDownloadContent": "Ladda ner innehåll som text",
+      "ariaSingleFile": "Ladda ner som en enda HTML-fil",
+      "ariaStartDownload": "Starta nedladdning",
+      "ariaDismissWarning": "Stäng varning",
+      "error": "Fel"
+    },
+    "actions": {
+      "title": "Åtgärder:",
+      "stop": "Stoppa"
+    },
+    "status": {
+      "waiting": "Väntar på anslutning...",
+      "connected": "Webbplats ansluten!",
+      "scraping": "Skrapar webbplats...",
+      "scraped": "Webbplats skrapad!",
+      "creating": "Zip-fil skapad!",
+      "complete": "Nedladdning klar",
+      "failed": "Nedladdning misslyckades",
+      "cancelled": "Nedladdning avbruten",
+      "creatingIndex": "Skapar index.html",
+      "downloadingCss": "Laddar ner CSS-filer",
+      "cssDownloaded": "CSS-filer nedladdade",
+      "cssError": "Fel vid nedladdning av CSS-filer - vissa kan saknas",
+      "downloadingJs": "Laddar ner JS-filer",
+      "jsDownloaded": "JS-filer nedladdade",
+      "jsError": "Fel vid nedladdning av JS-filer - vissa kan saknas",
+      "downloadingDocuments": "Laddar ner dokument",
+      "documentsDownloaded": "Dokument nedladdade",
+      "downloadingImages": "Laddar ner bilder",
+      "imagesDownloaded": "Bilder nedladdade",
+      "downloadingLinks": "Laddar ner länkade html-filer",
+      "linksDownloaded": "Länkade html-filer nedladdade",
+      "downloadingContent": "Laddar ner innehåll som text",
+      "contentDownloaded": "Innehåll som text nedladdat",
+      "singleFileCreated": "Enskild HTML-fil skapad",
+      "zipCreated": "Zip-fil skapad!",
+      "downloadStarted": "Nedladdning startades",
+      "completeTitle": "Nedladdningen är klar:",
+      "zipLocation": "Du hittar zip-filen i din nedladdningsmapp",
+      "cssProgress": "CSS-filer framsteg: {{completed}}/{{total}}",
+      "bgImagesProgress": "Bakgrundsbilder framsteg: {{completed}}/{{total}}",
+      "jsProgress": "JS-filer framsteg: {{completed}}/{{total}}",
+      "documentsProgress": "Dokumentfiler framsteg: {{completed}}/{{total}}",
+      "imagesProgress": "Bilder framsteg: {{completed}}/{{total}}",
+      "htmlProgress": "HTML-filer framsteg: {{completed}}/{{total}}",
+      "cssSummary": "CSS-filer nedladdade: {{succeeded}} lyckades, {{failed}} misslyckades, {{skipped}} hoppades över",
+      "bgImagesSummary": "Bakgrundsbilder från CSS nedladdade: {{succeeded}} lyckades, {{failed}} misslyckades, {{skipped}} hoppades över",
+      "jsSummary": "JS-filer nedladdade: {{succeeded}} lyckades, {{failed}} misslyckades, {{skipped}} hoppades över",
+      "documentsSummary": "Dokumentfiler nedladdade: {{succeeded}} lyckades, {{failed}} misslyckades, {{skipped}} hoppades över",
+      "imagesSummary": "Bilder nedladdade: {{succeeded}} lyckades, {{failed}} misslyckades, {{skipped}} hoppades över",
+      "htmlSummary": "HTML-filer nedladdade: {{succeeded}} lyckades, {{failed}} misslyckades, {{skipped}} hoppades över",
+      "processingCss": "Bearbetar CSS-filer: {{current}}/{{total}}",
+      "streamingCss": "Startar strömmande nedladdning för stor CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS strömningsframsteg: {{completed}}/{{total}} bitar",
+      "cssStreamingSummary": "Bearbetade CSS-filer: {{succeeded}} lyckades, {{streamed}} strömmade, {{failed}} misslyckades",
+      "processingJs": "Bearbetar JS-filer: {{current}}/{{total}}",
+      "streamingJs": "Startar strömmande nedladdning för stor JS: {{current}}/{{total}}",
+      "streamingJsProgress": "JS strömningsframsteg: {{completed}}/{{total}} bitar",
+      "jsStreamingSummary": "Bearbetade JS-filer: {{succeeded}} lyckades, {{streamed}} strömmade, {{failed}} misslyckades",
+      "processingImages": "Bearbetar bilder: {{current}}/{{total}}",
+      "streamingImages": "Startar strömmande nedladdning för stor bild: {{current}}/{{total}}",
+      "streamingImagesProgress": "Bild strömningsframsteg: {{completed}}/{{total}} bitar",
+      "imagesStreamingSummary": "Bearbetade bilder: {{succeeded}} lyckades, {{streamed}} strömmade, {{failed}} misslyckades, {{skipped}} hoppades över",
+      "streamingFailedFallback": "Strömmande nedladdning misslyckades, återgår till vanlig nedladdning...",
+      "processingHtmlIncremental": "Bearbetar HTML-innehåll med inkrementell montering",
+      "finalizingDownload": "Slutför nedladdning",
+      "indexCreated": "Index.html skapad",
+      "htmlTooLarge": "HTML-innehåll är för stort, kan bli trunkerat",
+      "incrementalHtmlAdded": "HTML-innehåll monterat och tillagt i nedladdning",
+      "largeHtmlAdded": "Stort HTML-innehåll bearbetat och tillagt i nedladdning",
+      "creatingPackage": "Skapar slutligt nedladdningspaket",
+      "processingImagesCount": "Bearbetar {{count}} bilder",
+      "streamingImageStart": "Startar strömmande nedladdning för bild: {{current}}/{{total}}",
+      "waitingForStreaming": "Väntar på att {{count}} strömmande nedladdningar ska slutföras...",
+      "streamingProgress": "Strömningsframsteg: {{completed}}/{{total}} bitar ({{percent}}%)",
+      "streamingCompleted": "Alla strömmande nedladdningar slutförda",
+      "creatingStreamingZip": "Skapar ZIP-fil med strömmande innehåll...",
+      "streamingSuccess": "Strömmande nedladdning slutförd",
+      "downloadingWebsiteContent": "Laddar ner webbplatsinnehåll ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Lagringsbehörighet krävs",
+        "description": "Detta tillägg behöver lagringsbehörighet för att spara dina filterinställningar och ge en bättre upplevelse.",
+        "grant": "Ge behörighet",
+        "deny": "Kanske senare",
+        "benefits": {
+          "title": "Fördelar med att ge lagringsbehörighet:",
+          "savePreferences": "Spara dina nedladdningsfilterinställningar",
+          "persistSettings": "Kom ihåg dina inställningar mellan sessioner",
+          "improveExperience": "Ge en mer personlig upplevelse"
+        }
+      },
+      "offscreen": {
+        "title": "Ytterligare behörighet krävs",
+        "description": "Detta tillägg behöver offscreen-behörighet för att bearbeta nedladdningar effektivt.",
+        "grant": "Ge behörighet",
+        "why": "Denna behörighet tillåter tillägget att skapa bakgrundsdokument för att bearbeta stora nedladdningar utan att påverka din surfupplevelse."
+      },
+      "global": {
+        "title": "Behörigheter krävs",
+        "description": "Detta tillägg behöver lagrings- och offscreen-behörigheter för att ge den bästa nedladdningsupplevelsen.",
+        "storage": {
+          "title": "Lagringsbehörighet:",
+          "description": "Tillåter tillägget att spara små mängder data lokalt i din webbläsare. Detta gör att vi kan komma ihåg dina preferenser och ge en personlig upplevelse över sessioner."
+        },
+        "offscreen": {
+          "title": "Offscreen-behörighet:",
+          "description": "Möjliggör nedladdning av stora filer genom att låta tillägget bearbeta filer i bakgrunden utan att påverka din surfupplevelse."
+        },
+        "storageDetails": {
+          "title": "Vad vi lagrar:",
+          "id": "Unikt genererat ID",
+          "preferences": "Nedladdningspreferenser"
+        },
+        "privacy": {
+          "title": "Integritet:",
+          "personal": "Inga personuppgifter",
+          "history": "Ingen webbhistorik",
+          "local": "All data stannar lokalt i din webbläsare"
+        },
+        "button": {
+          "requesting": "Begär behörigheter...",
+          "enable": "Aktivera behörigheter"
+        },
+        "footer": "Återkalla när som helst i webbläsarinställningar"
+      }
+    },
+    "download": {
+      "showInFolder": "Visa i mapp",
+      "downloadAnother": "Ladda ner en annan sida",
+      "cancel": "Avbryt nedladdning"
+    },
+    "language": {
+      "select": "Välj språk",
+      "search": "Sök språk...",
+      "current": "Nuvarande språk"
+    },
+    "rating": {
+      "title": "Gillar du det här tillägget?",
+      "description": "Betygsätt oss gärna i Chrome Web Store!",
+      "rate": "Betygsätt tillägg",
+      "prompt": "Om du var nöjd, lämna gärna en positiv recension :)",
+      "ariaLabel_one": "Betygsätt {{count}} stjärna",
+      "ariaLabel_other": "Betygsätt {{count}} stjärnor"
+    },
+    "featureRequest": {
+      "title": "Begär en funktion",
+      "description": "Har du en idé för att förbättra det här tillägget?",
+      "submit": "Skicka förfrågan"
+    }
+  }
+}

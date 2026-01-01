@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Tīmekļa lapu lejupielādētājs",
+      "loading": "Notiek ielāde...",
+      "error": "Kaut kas nogāja greizi:",
+      "tryAgain": "Mēģināt vēlreiz",
+      "iconAlt": "Tīmekļa lapu lejupielādētāja ikona",
+      "noInternet": "Nav interneta savienojuma - nevar lejupielādēt ārējos resursus",
+      "enableHtmlForOffline": "Lūdzu, iespējojiet HTML lejupielādi vai viena faila režīmu bezsaistes lietošanai",
+      "networkCheckFailed": "Tīkla savienojamības pārbaude neizdevās - lejupielāde turpinās",
+      "noUrl": "Kļūda: Lejupielādei nav norādīts URL",
+      "downloadInProgress": "Lejupielāde jau notiek. Lūdzu, uzgaidiet.",
+      "memoryPressure": "Nevar sākt lejupielādi kritiskā atmiņas trūkuma dēļ. Lūdzu, mēģiniet vēlāk."
+    },
+    "filter": {
+      "title": "Filtrējiet to, ko vēlaties lejupielādēt",
+      "downloadHTML": "Lejupielādēt HTML",
+      "downloadImages": "Lejupielādēt attēlus",
+      "downloadLinks": "Lejupielādēt saites (saglabātas kā html faili)",
+      "downloadAssets": "Lejupielādēt aktīvus (css, js)",
+      "downloadDocuments": "Lejupielādēt dokumentus (pdf, doc utt.)",
+      "downloadContentAsText": "Lejupielādēt saturu kā tekstu",
+      "singleFile": "Lejupielādēt vienā HTML failā",
+      "startDownload": "Sākt lejupielādi",
+      "linksWarning": "Ja izvēlaties lejupielādēt saites, jums jāņem vērā, ka kopējais lejupielādes laiks var ievērojami palielināties, un zip fails var būt ievērojami lielāks.",
+      "permissionWarning": "Filtra preferences netiks saglabātas bez krātuves atļaujas",
+      "dismiss": "Nerādīt",
+      "loading": "Ielādē filtrus...",
+      "ariaDownloadHtml": "Lejupielādēt HTML saturu",
+      "ariaDownloadImages": "Lejupielādēt attēlus",
+      "ariaDownloadLinks": "Lejupielādēt saites (saglabātas kā html faili)",
+      "ariaDownloadAssets": "Lejupielādēt aktīvus (css, js)",
+      "ariaDownloadDocuments": "Lejupielādēt dokumentus (pdf, doc utt.)",
+      "ariaDownloadContent": "Lejupielādēt saturu kā tekstu",
+      "ariaSingleFile": "Lejupielādēt kā vienu HTML failu",
+      "ariaStartDownload": "Sākt lejupielādi",
+      "ariaDismissWarning": "Nerādīt brīdinājumu",
+      "error": "Kļūda"
+    },
+    "actions": {
+      "title": "Darbības:",
+      "stop": "Apturēt"
+    },
+    "status": {
+      "waiting": "Gaida savienojumu...",
+      "connected": "Vietne pievienota!",
+      "scraping": "Vietne tiek nokasīta...",
+      "scraped": "Vietne nokasīta!",
+      "creating": "Zip fails izveidots!",
+      "complete": "Lejupielāde pabeigta",
+      "failed": "Lejupielāde neizdevās",
+      "cancelled": "Lejupielāde tika atcelta",
+      "creatingIndex": "Tiek veidots index.html",
+      "downloadingCss": "Lejupielādē CSS failus",
+      "cssDownloaded": "CSS faili lejupielādēti",
+      "cssError": "Kļūda, lejupielādējot CSS failus - daži var trūkt",
+      "downloadingJs": "Lejupielādē JS failus",
+      "jsDownloaded": "JS faili lejupielādēti",
+      "jsError": "Kļūda, lejupielādējot JS failus - daži var trūkt",
+      "downloadingDocuments": "Lejupielādē dokumentus",
+      "documentsDownloaded": "Dokumenti lejupielādēti",
+      "downloadingImages": "Lejupielādē attēlus",
+      "imagesDownloaded": "Attēli lejupielādēti",
+      "downloadingLinks": "Lejupielādē saistītos html failus",
+      "linksDownloaded": "Saistītie html faili lejupielādēti",
+      "downloadingContent": "Lejupielādē saturu kā tekstu",
+      "contentDownloaded": "Saturs kā teksts lejupielādēts",
+      "singleFileCreated": "Izveidots viens HTML fails",
+      "zipCreated": "Zip fails izveidots!",
+      "downloadStarted": "Lejupielāde veiksmīgi uzsākta",
+      "completeTitle": "Lejupielāde ir pabeigta:",
+      "zipLocation": "Zip failu varat atrast savā lejupielāžu mapē",
+      "cssProgress": "CSS failu progress: {{completed}}/{{total}}",
+      "bgImagesProgress": "Fona attēlu progress: {{completed}}/{{total}}",
+      "jsProgress": "JS failu progress: {{completed}}/{{total}}",
+      "documentsProgress": "Dokumentu failu progress: {{completed}}/{{total}}",
+      "imagesProgress": "Attēlu progress: {{completed}}/{{total}}",
+      "htmlProgress": "HTML failu progress: {{completed}}/{{total}}",
+      "cssSummary": "Lejupielādēti CSS faili: {{succeeded}} veiksmīgi, {{failed}} neizdevās, {{skipped}} izlaisti",
+      "bgImagesSummary": "Lejupielādēti fona attēli no CSS: {{succeeded}} veiksmīgi, {{failed}} neizdevās, {{skipped}} izlaisti",
+      "jsSummary": "Lejupielādēti JS faili: {{succeeded}} veiksmīgi, {{failed}} neizdevās, {{skipped}} izlaisti",
+      "documentsSummary": "Lejupielādēti dokumentu faili: {{succeeded}} veiksmīgi, {{failed}} neizdevās, {{skipped}} izlaisti",
+      "imagesSummary": "Lejupielādēti attēli: {{succeeded}} veiksmīgi, {{failed}} neizdevās, {{skipped}} izlaisti",
+      "htmlSummary": "Lejupielādēti HTML faili: {{succeeded}} veiksmīgi, {{failed}} neizdevās, {{skipped}} izlaisti",
+      "processingCss": "Apstrādā CSS failus: {{current}}/{{total}}",
+      "streamingCss": "Sāk straumēšanas lejupielādi lielam CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS straumēšanas progress: {{completed}}/{{total}} gabali",
+      "cssStreamingSummary": "Apstrādāti CSS faili: {{succeeded}} veiksmīgi, {{streamed}} straumēti, {{failed}} neizdevās",
+      "processingJs": "Apstrādā JS failus: {{current}}/{{total}}",
+      "streamingJs": "Sāk straumēšanas lejupielādi lielam JS: {{current}}/{{total}}",
+      "streamingJsProgress": "JS straumēšanas progress: {{completed}}/{{total}} gabali",
+      "jsStreamingSummary": "Apstrādāti JS faili: {{succeeded}} veiksmīgi, {{streamed}} straumēti, {{failed}} neizdevās",
+      "processingImages": "Apstrādā attēlus: {{current}}/{{total}}",
+      "streamingImages": "Sāk straumēšanas lejupielādi lielam attēlam: {{current}}/{{total}}",
+      "streamingImagesProgress": "Attēlu straumēšanas progress: {{completed}}/{{total}} gabali",
+      "imagesStreamingSummary": "Apstrādāti attēli: {{succeeded}} veiksmīgi, {{streamed}} straumēti, {{failed}} neizdevās, {{skipped}} izlaisti",
+      "streamingFailedFallback": "Straumēšanas lejupielāde neizdevās, atgriežas pie parastās lejupielādes...",
+      "processingHtmlIncremental": "Apstrādā HTML saturu ar pakāpenisku montāžu",
+      "finalizingDownload": "Pabeidz lejupielādi",
+      "indexCreated": "Index.html izveidots",
+      "htmlTooLarge": "HTML saturs ir pārāk liels, var tikt apgriezts",
+      "incrementalHtmlAdded": "HTML saturs samontēts un pievienots lejupielādei",
+      "largeHtmlAdded": "Liels HTML saturs apstrādāts un pievienots lejupielādei",
+      "creatingPackage": "Veido gala lejupielādes pakotni",
+      "processingImagesCount": "Apstrādā {{count}} attēlus",
+      "streamingImageStart": "Sāk straumēšanas lejupielādi attēlam: {{current}}/{{total}}",
+      "waitingForStreaming": "Gaida {{count}} straumēšanas lejupielāžu pabeigšanu...",
+      "streamingProgress": "Straumēšanas progress: {{completed}}/{{total}} gabali ({{percent}}%)",
+      "streamingCompleted": "Visas straumēšanas lejupielādes pabeigtas",
+      "creatingStreamingZip": "Veido ZIP failu ar straumēšanas saturu...",
+      "streamingSuccess": "Straumēšanas lejupielāde veiksmīgi pabeigta",
+      "downloadingWebsiteContent": "Tiek lejupielādēts vietnes saturs ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Nepieciešama krātuves atļauja",
+        "description": "Šim paplašinājumam nepieciešama krātuves atļauja, lai saglabātu jūsu filtra preferences un nodrošinātu labāku pieredzi.",
+        "grant": "Piešķirt atļauju",
+        "deny": "Varbūt vēlāk",
+        "benefits": {
+          "title": "Krātuves atļaujas piešķiršanas priekšrocības:",
+          "savePreferences": "Saglabājiet lejupielādes filtra preferences",
+          "persistSettings": "Atcerieties savus iestatījumus starp sesijām",
+          "improveExperience": "Nodrošiniet personalizētāku pieredzi"
+        }
+      },
+      "offscreen": {
+        "title": "Nepieciešama papildu atļauja",
+        "description": "Šim paplašinājumam nepieciešama offscreen atļauja, lai efektīvi apstrādātu lejupielādes.",
+        "grant": "Piešķirt atļauju",
+        "why": "Šī atļauja ļauj paplašinājumam izveidot fona dokumentus lielu lejupielāžu apstrādei, neietekmējot jūsu pārlūkošanas pieredzi."
+      },
+      "global": {
+        "title": "Nepieciešamas atļaujas",
+        "description": "Šim paplašinājumam ir nepieciešamas krātuves un ārpusekrāna atļaujas, lai nodrošinātu labāko lejupielādes pieredzi.",
+        "storage": {
+          "title": "Krātuves atļauja:",
+          "description": "Ļauj paplašinājumam saglabāt nelielus datu apjomus lokāli jūsu pārlūkprogrammā. Tas ļauj mums atcerēties jūsu preferences un nodrošināt personalizētu pieredzi."
+        },
+        "offscreen": {
+          "title": "Ārpusekrāna atļauja:",
+          "description": "Ļauj lejupielādēt lielus failus, ļaujot paplašinājumam apstrādāt failus fonā, neietekmējot jūsu pārlūkošanas pieredzi."
+        },
+        "storageDetails": {
+          "title": "Ko mēs glabājam:",
+          "id": "Unikāls ģenerēts ID",
+          "preferences": "Lejupielādes preferences"
+        },
+        "privacy": {
+          "title": "Privātums:",
+          "personal": "Nav personas datu",
+          "history": "Nav pārlūkošanas vēstures",
+          "local": "Visi dati paliek lokāli jūsu pārlūkprogrammā"
+        },
+        "button": {
+          "requesting": "Pieprasa atļaujas...",
+          "enable": "Iespējot atļaujas"
+        },
+        "footer": "Atsaukt jebkurā laikā pārlūkprogrammas iestatījumos"
+      }
+    },
+    "download": {
+      "showInFolder": "Rādīt mapē",
+      "downloadAnother": "Lejupielādēt citu lapu",
+      "cancel": "Atcelt lejupielādi"
+    },
+    "language": {
+      "select": "Izvēlēties valodu",
+      "search": "Meklēt valodas...",
+      "current": "Pašreizējā valoda"
+    },
+    "rating": {
+      "title": "Vai jums patīk šis paplašinājums?",
+      "description": "Lūdzu, novērtējiet mūs Chrome interneta veikalā!",
+      "rate": "Novērtēt paplašinājumu",
+      "prompt": "Ja esat apmierināts, lūdzu, atstājiet pozitīvu atsauksmi :)",
+      "ariaLabel_one": "Novērtēt ar {{count}} zvaigzni",
+      "ariaLabel_other": "Novērtēt ar {{count}} zvaigznēm"
+    },
+    "featureRequest": {
+      "title": "Pieprasīt funkciju",
+      "description": "Vai jums ir ideja, kā uzlabot šo paplašinājumu?",
+      "submit": "Iesniegt pieprasījumu"
+    }
+  }
+}

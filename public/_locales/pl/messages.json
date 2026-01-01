@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Pobieracz Stron WWW",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Pobieracz Stron WWW pozwala na pobieranie i zapisywanie całych stron internetowych, w tym połączonych zasobów, do przeglądania w trybie offline.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Pobieracz Stron WWW",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

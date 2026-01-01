@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Web Page Downloader",
-  "description": "Web Page Downloader allows you to download and save entire web pages, including linked resources, for offline viewing.",
-  "version": "2.6.3",
+  "name": "__MSG_extensionName__",
+  "description": "__MSG_extensionDescription__",
+  "version": "3.0.0",
+  "default_locale": "en",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApTyUPl8CfSZdoX1Pi5q+MoARgDSL8dO6BuoFX+wuAxsi+tA89OhxnsH4NvdcYJGyOhbzMFdhbJ7EXsVDIhZz5i5SVSlq23iA/vXJcJfm/eJh+B/4fm3jB8ziOASZ0XshzwV8VFgXMTeOVTyV8SCs12tP2HO8yCx+4ldcqBzf7aqtJX+YtULuYsvQIvj8b58pLJwu6KsM1j9A7DFjAYNVjAZmJMzyygQSXQ/fGM9wMbqnaFtW3uKGFYJ8q3REKXZhFDiOjH9HJGvpvAfz30BFBSV9vl4IQZW9Vn+D7678mh5xsIBej05+ygS7jMNVyTRtuhsK2p3tXUz2LlQKqj9/WQIDAQAB",
   "action": {
     "default_icon": "icons/128x128.png",
-    "default_title": "Web Page Downloader"
+    "default_title": "__MSG_extensionActionTitle__"
   },
   "permissions": ["activeTab", "tabs", "scripting", "sidePanel", "downloads"],
   "optional_permissions": ["storage", "offscreen"],

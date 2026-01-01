@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "वेब पेज डाउनलोडर",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "वेब पेज डाउनलोडर आपको ऑफ़लाइन देखने के लिए लिंक किए गए संसाधनों सहित पूरे वेब पेज डाउनलोड और सहेजने की अनुमति देता है।",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "वेब पेज डाउनलोडर",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

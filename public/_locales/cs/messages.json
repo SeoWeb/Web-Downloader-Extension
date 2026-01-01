@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Stahovač webových stránek",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Stahovač webových stránek vám umožňuje stahovat a ukládat celé webové stránky, včetně propojených zdrojů, pro offline prohlížení.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Stahovač webových stránek",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

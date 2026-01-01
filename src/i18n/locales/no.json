@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Nettside Nedlaster",
+      "loading": "Laster...",
+      "error": "Noe gikk galt:",
+      "tryAgain": "Prøv igjen",
+      "iconAlt": "Nettside Nedlaster-ikon",
+      "noInternet": "Ingen internettforbindelse - kan ikke laste ned eksterne ressurser",
+      "enableHtmlForOffline": "Vennligst aktiver HTML-nedlasting eller enkeltfilmodus for offline bruk",
+      "networkCheckFailed": "Nettverkstilkoblingssjekk feilet - fortsetter nedlasting",
+      "noUrl": "Feil: Ingen URL oppgitt for nedlasting",
+      "downloadInProgress": "En nedlasting pågår allerede. Vennligst vent.",
+      "memoryPressure": "Kan ikke starte nedlasting på grunn av kritisk minnepress. Vennligst prøv igjen senere."
+    },
+    "filter": {
+      "title": "Filtrer ut hva du vil laste ned",
+      "downloadHTML": "Last ned HTML",
+      "downloadImages": "Last ned bilder",
+      "downloadLinks": "Last ned lenker (lagret som html-filer)",
+      "downloadAssets": "Last ned ressurser (css, js)",
+      "downloadDocuments": "Last ned dokumenter (pdf, doc, etc.)",
+      "downloadContentAsText": "Last ned innhold som tekst",
+      "singleFile": "Last ned i en enkelt HTML-fil",
+      "startDownload": "Start nedlasting",
+      "linksWarning": "Hvis du velger å laste ned lenker, må du ta i betraktning at den totale nedlastingstiden kan øke dramatisk og zip-filen kan bli betydelig større.",
+      "permissionWarning": "Filterpreferanser vil ikke bli lagret uten lagringstillatelse",
+      "dismiss": "Avvis",
+      "loading": "Laster filtre...",
+      "ariaDownloadHtml": "Last ned HTML-innhold",
+      "ariaDownloadImages": "Last ned bilder",
+      "ariaDownloadLinks": "Last ned lenker (lagret som html-filer)",
+      "ariaDownloadAssets": "Last ned ressurser (css, js)",
+      "ariaDownloadDocuments": "Last ned dokumenter (pdf, doc, osv.)",
+      "ariaDownloadContent": "Last ned innhold som tekst",
+      "ariaSingleFile": "Last ned som én enkelt HTML-fil",
+      "ariaStartDownload": "Start nedlasting",
+      "ariaDismissWarning": "Lukk advarsel",
+      "error": "Feil"
+    },
+    "actions": {
+      "title": "Handlinger:",
+      "stop": "Stopp"
+    },
+    "status": {
+      "waiting": "Venter på tilkobling...",
+      "connected": "Nettsted tilkoblet!",
+      "scraping": "Skraper nettsted...",
+      "scraped": "Nettsted skrapt!",
+      "creating": "Zip-fil opprettet!",
+      "complete": "Nedlasting fullført",
+      "failed": "Nedlasting mislyktes",
+      "cancelled": "Nedlasting ble kansellert",
+      "creatingIndex": "Oppretter index.html",
+      "downloadingCss": "Laster ned CSS-filer",
+      "cssDownloaded": "CSS-filer lastet ned",
+      "cssError": "Feil ved nedlasting av CSS-filer - noen kan mangle",
+      "downloadingJs": "Laster ned JS-filer",
+      "jsDownloaded": "JS-filer lastet ned",
+      "jsError": "Feil ved nedlasting av JS-filer - noen kan mangle",
+      "downloadingDocuments": "Laster ned dokumentfiler",
+      "documentsDownloaded": "Dokumentfiler lastet ned",
+      "downloadingImages": "Laster ned bilder",
+      "imagesDownloaded": "Bilder lastet ned",
+      "downloadingLinks": "Laster ned koblede html-filer",
+      "linksDownloaded": "Koblede html-filer lastet ned",
+      "downloadingContent": "Laster ned innhold som tekst",
+      "contentDownloaded": "Innhold som tekst lastet ned",
+      "singleFileCreated": "Enkelt HTML-fil opprettet",
+      "zipCreated": "Zip-fil opprettet!",
+      "downloadStarted": "Nedlasting startet",
+      "completeTitle": "Nedlastingen er fullført:",
+      "zipLocation": "Du finner zip-filen i nedlastingsmappen din",
+      "cssProgress": "CSS-filer fremdrift: {{completed}}/{{total}}",
+      "bgImagesProgress": "Bakgrunnsbilder fremdrift: {{completed}}/{{total}}",
+      "jsProgress": "JS-filer fremdrift: {{completed}}/{{total}}",
+      "documentsProgress": "Dokumentfiler fremdrift: {{completed}}/{{total}}",
+      "imagesProgress": "Bilder fremdrift: {{completed}}/{{total}}",
+      "htmlProgress": "HTML-filer fremdrift: {{completed}}/{{total}}",
+      "cssSummary": "CSS-filer lastet ned: {{succeeded}} vellykket, {{failed}} feilet, {{skipped}} hoppet over",
+      "bgImagesSummary": "Bakgrunnsbilder fra CSS lastet ned: {{succeeded}} vellykket, {{failed}} feilet, {{skipped}} hoppet over",
+      "jsSummary": "JS-filer lastet ned: {{succeeded}} vellykket, {{failed}} feilet, {{skipped}} hoppet over",
+      "documentsSummary": "Dokumentfiler lastet ned: {{succeeded}} vellykket, {{failed}} feilet, {{skipped}} hoppet over",
+      "imagesSummary": "Bilder lastet ned: {{succeeded}} vellykket, {{failed}} feilet, {{skipped}} hoppet over",
+      "htmlSummary": "HTML-filer lastet ned: {{succeeded}} vellykket, {{failed}} feilet, {{skipped}} hoppet over",
+      "processingCss": "Behandler CSS-filer: {{current}}/{{total}}",
+      "streamingCss": "Starter strømmenedlasting for stor CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS strømmefremdrift: {{completed}}/{{total}} biter",
+      "cssStreamingSummary": "Behandlede CSS-filer: {{succeeded}} vellykket, {{streamed}} strømmet, {{failed}} feilet",
+      "processingJs": "Behandler JS-filer: {{current}}/{{total}}",
+      "streamingJs": "Starter strømmenedlasting for stor JS: {{current}}/{{total}}",
+      "streamingJsProgress": "JS strømmefremdrift: {{completed}}/{{total}} biter",
+      "jsStreamingSummary": "Behandlede JS-filer: {{succeeded}} vellykket, {{streamed}} strømmet, {{failed}} feilet",
+      "processingImages": "Behandler bilder: {{current}}/{{total}}",
+      "streamingImages": "Starter strømmenedlasting for stort bilde: {{current}}/{{total}}",
+      "streamingImagesProgress": "Bilde strømmefremdrift: {{completed}}/{{total}} biter",
+      "imagesStreamingSummary": "Behandlede bilder: {{succeeded}} vellykket, {{streamed}} strømmet, {{failed}} feilet, {{skipped}} hoppet over",
+      "streamingFailedFallback": "Strømmenedlasting feilet, faller tilbake til vanlig nedlasting...",
+      "processingHtmlIncremental": "Behandler HTML-innhold med inkrementell montering",
+      "finalizingDownload": "Fullfører nedlasting",
+      "indexCreated": "Index.html opprettet",
+      "htmlTooLarge": "HTML-innhold er for stort, kan bli avkortet",
+      "incrementalHtmlAdded": "HTML-innhold montert og lagt til nedlasting",
+      "largeHtmlAdded": "Stort HTML-innhold behandlet og lagt til nedlasting",
+      "creatingPackage": "Oppretter endelig nedlastingspakke",
+      "processingImagesCount": "Behandler {{count}} bilder",
+      "streamingImageStart": "Starter strømmenedlasting for bilde: {{current}}/{{total}}",
+      "waitingForStreaming": "Venter på at {{count}} strømmenedlastinger skal fullføres...",
+      "streamingProgress": "Strømmefremdrift: {{completed}}/{{total}} biter ({{percent}}%)",
+      "streamingCompleted": "Alle strømmenedlastinger fullført",
+      "creatingStreamingZip": "Oppretter ZIP-fil med strømmet innhold...",
+      "streamingSuccess": "Strømmenedlasting fullført med suksess",
+      "downloadingWebsiteContent": "Laster ned innhold fra nettstedet ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Lagringstillatelse påkrevd",
+        "description": "Denne utvidelsen trenger lagringstillatelse for å lagre filterpreferansene dine og gi en bedre opplevelse.",
+        "grant": "Gi tillatelse",
+        "deny": "Kanskje senere",
+        "benefits": {
+          "title": "Fordeler med å gi lagringstillatelse:",
+          "savePreferences": "Lagre nedlastingsfilterpreferansene dine",
+          "persistSettings": "Husk innstillingene dine mellom økter",
+          "improveExperience": "Gi en mer personlig opplevelse"
+        }
+      },
+      "offscreen": {
+        "title": "Ytterligere tillatelse påkrevd",
+        "description": "Denne utvidelsen trenger offscreen-tillatelsen for å behandle nedlastinger effektivt.",
+        "grant": "Gi tillatelse",
+        "why": "Denne tillatelsen lar utvidelsen opprette bakgrunnsdokumenter for behandling av store nedlastinger uten å påvirke nettleseropplevelsen din."
+      },
+      "global": {
+        "title": "Tillatelser kreves",
+        "description": "Denne utvidelsen trenger lagrings- og offscreen-tillatelser for å gi den beste nedlastingsopplevelsen.",
+        "storage": {
+          "title": "Lagringstillatelse:",
+          "description": "Lar utvidelsen lagre små mengder data lokalt i nettleseren din. Dette gjør at vi kan huske preferansene dine og gi en personlig opplevelse på tvers av økter."
+        },
+        "offscreen": {
+          "title": "Offscreen-tillatelse:",
+          "description": "Muliggjør nedlasting av store filer ved å la utvidelsen behandle filer i bakgrunnen uten å påvirke nettleseropplevelsen din."
+        },
+        "storageDetails": {
+          "title": "Hva vi lagrer:",
+          "id": "Unik generert ID",
+          "preferences": "Nedlastingspreferanser"
+        },
+        "privacy": {
+          "title": "Personvern:",
+          "personal": "Ingen personlige data",
+          "history": "Ingen nettleserhistorikk",
+          "local": "Alle data forblir lokalt i nettleseren din"
+        },
+        "button": {
+          "requesting": "Forespør tillatelser...",
+          "enable": "Aktiver tillatelser"
+        },
+        "footer": "Tilbakekall når som helst i nettleserinnstillingene"
+      }
+    },
+    "download": {
+      "showInFolder": "Vis i mappe",
+      "downloadAnother": "Last ned en annen side",
+      "cancel": "Avbryt nedlasting"
+    },
+    "language": {
+      "select": "Velg språk",
+      "search": "Søk språk...",
+      "current": "Gjeldende språk"
+    },
+    "rating": {
+      "title": "Liker du denne utvidelsen?",
+      "description": "Vennligst ranger oss i Chrome Web Store!",
+      "rate": "Ranger utvidelse",
+      "prompt": "Hvis du var fornøyd, vennligst legg igjen en positiv anmeldelse :)",
+      "ariaLabel_one": "Vurder {{count}} stjerne",
+      "ariaLabel_other": "Vurder {{count}} stjerner"
+    },
+    "featureRequest": {
+      "title": "Be om en funksjon",
+      "description": "Har du en idé for å forbedre denne utvidelsen?",
+      "submit": "Send forespørsel"
+    }
+  }
+}

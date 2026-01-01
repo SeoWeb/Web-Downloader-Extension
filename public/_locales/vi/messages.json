@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Trình tải xuống trang web",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Trình tải xuống trang web cho phép bạn tải xuống và lưu toàn bộ trang web, bao gồm cả các tài nguyên được liên kết, để xem ngoại tuyến.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Trình tải xuống trang web",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

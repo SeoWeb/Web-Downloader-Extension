@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Web Page Downloader",
+      "loading": "Loading...",
+      "error": "Something went wrong:",
+      "tryAgain": "Try again",
+      "iconAlt": "Web Page Downloader icon",
+      "noInternet": "No internet connection - cannot download external resources",
+      "enableHtmlForOffline": "Please enable HTML download or single file mode for offline use",
+      "networkCheckFailed": "Network connectivity check failed - continuing with download",
+      "noUrl": "Error: No URL provided for download",
+      "downloadInProgress": "A download is already in progress. Please wait.",
+      "memoryPressure": "Cannot start download due to critical memory pressure. Please try again later."
+    },
+    "filter": {
+      "title": "Filter out what you want to download",
+      "downloadHTML": "Download HTML",
+      "downloadImages": "Download images",
+      "downloadLinks": "Download links (saved as html files)",
+      "downloadAssets": "Download assets (css, js)",
+      "downloadDocuments": "Download documents (pdf, doc, etc.)",
+      "downloadContentAsText": "Download content as text",
+      "singleFile": "Download in single HTML file",
+      "startDownload": "Start download",
+      "linksWarning": "If you choose to download links, you have to take into account that the total download time can increase dramatically and the zip file can be significantly larger.",
+      "permissionWarning": "Filter preferences won't be saved without storage permission",
+      "dismiss": "Dismiss",
+      "loading": "Loading filters...",
+      "ariaDownloadHtml": "Download HTML content",
+      "ariaDownloadImages": "Download images",
+      "ariaDownloadLinks": "Download links as HTML files",
+      "ariaDownloadAssets": "Download assets like CSS and JS",
+      "ariaDownloadDocuments": "Download documents like PDF and DOC",
+      "ariaDownloadContent": "Download content as text",
+      "ariaSingleFile": "Download as a single HTML file",
+      "ariaStartDownload": "Start download",
+      "ariaDismissWarning": "Dismiss warning",
+      "error": "Error"
+    },
+    "actions": {
+      "title": "Actions:",
+      "stop": "Stop"
+    },
+    "status": {
+      "waiting": "Waiting connection...",
+      "connected": "Website connected!",
+      "scraping": "Scraping website...",
+      "scraped": "Website scraped!",
+      "creating": "Zip file created!",
+      "complete": "Download complete",
+      "failed": "Download failed",
+      "cancelled": "Download was cancelled",
+      "creatingIndex": "Creating index.html",
+      "downloadingCss": "Downloading CSS files",
+      "cssDownloaded": "CSS files downloaded",
+      "cssError": "Error downloading CSS files - some may be missing",
+      "downloadingJs": "Downloading JS files",
+      "jsDownloaded": "JS files downloaded",
+      "jsError": "Error downloading JS files - some may be missing",
+      "downloadingDocuments": "Downloading document files",
+      "documentsDownloaded": "Document files downloaded",
+      "downloadingImages": "Downloading images",
+      "imagesDownloaded": "Images downloaded",
+      "downloadingLinks": "Downloading linked html files",
+      "linksDownloaded": "Linked html files downloaded",
+      "downloadingContent": "Downloading content as text",
+      "contentDownloaded": "Content as text downloaded",
+      "singleFileCreated": "Single HTML file created",
+      "zipCreated": "Zip file created!",
+      "downloadStarted": "Download started successfully",
+      "completeTitle": "Download is complete:",
+      "zipLocation": "You can find the zip file in your downloads folder",
+      "cssProgress": "CSS files progress: {{completed}}/{{total}}",
+      "bgImagesProgress": "Background images progress: {{completed}}/{{total}}",
+      "jsProgress": "JS files progress: {{completed}}/{{total}}",
+      "documentsProgress": "Document files progress: {{completed}}/{{total}}",
+      "imagesProgress": "Images progress: {{completed}}/{{total}}",
+      "htmlProgress": "HTML files progress: {{completed}}/{{total}}",
+      "cssSummary": "CSS files downloaded: {{succeeded}} succeeded, {{failed}} failed, {{skipped}} skipped",
+      "bgImagesSummary": "Background images from CSS downloaded: {{succeeded}} succeeded, {{failed}} failed, {{skipped}} skipped",
+      "jsSummary": "JS files downloaded: {{succeeded}} succeeded, {{failed}} failed, {{skipped}} skipped",
+      "documentsSummary": "Document files downloaded: {{succeeded}} succeeded, {{failed}} failed, {{skipped}} skipped",
+      "imagesSummary": "Images downloaded: {{succeeded}} succeeded, {{failed}} failed, {{skipped}} skipped",
+      "htmlSummary": "HTML files downloaded: {{succeeded}} succeeded, {{failed}} failed, {{skipped}} skipped",
+      "processingCss": "Processing CSS files: {{current}}/{{total}}",
+      "streamingCss": "Starting streaming download for large CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS streaming progress: {{completed}}/{{total}} chunks",
+      "cssStreamingSummary": "CSS files processed: {{succeeded}} succeeded, {{streamed}} streamed, {{failed}} failed",
+      "processingJs": "Processing JS files: {{current}}/{{total}}",
+      "streamingJs": "Starting streaming download for large JS: {{current}}/{{total}}",
+      "streamingJsProgress": "JS streaming progress: {{completed}}/{{total}} chunks",
+      "jsStreamingSummary": "JS files processed: {{succeeded}} succeeded, {{streamed}} streamed, {{failed}} failed",
+      "processingImages": "Processing images: {{current}}/{{total}}",
+      "streamingImages": "Starting streaming download for large image: {{current}}/{{total}}",
+      "streamingImagesProgress": "Image streaming progress: {{completed}}/{{total}} chunks",
+      "imagesStreamingSummary": "Images processed: {{succeeded}} succeeded, {{streamed}} streamed, {{failed}} failed, {{skipped}} skipped",
+      "streamingFailedFallback": "Streaming download failed, falling back to regular download...",
+      "processingHtmlIncremental": "Processing HTML content with incremental assembly",
+      "finalizingDownload": "Finalizing download",
+      "indexCreated": "Index.html created",
+      "htmlTooLarge": "HTML content is too large, may be truncated",
+      "incrementalHtmlAdded": "HTML content assembled and added to download",
+      "largeHtmlAdded": "Large HTML content processed and added to download",
+      "creatingPackage": "Creating final download package",
+      "processingImagesCount": "Processing {{count}} images",
+      "streamingImageStart": "Starting streaming download for image: {{current}}/{{total}}",
+      "waitingForStreaming": "Waiting for {{count}} streaming downloads to complete...",
+      "streamingProgress": "Streaming progress: {{completed}}/{{total}} chunks ({{percent}}%)",
+      "streamingCompleted": "All streaming downloads completed",
+      "creatingStreamingZip": "Creating ZIP file with streaming content...",
+      "streamingSuccess": "Streaming download completed successfully",
+      "downloadingWebsiteContent": "Downloading website content ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Storage Permission Required",
+        "description": "This extension needs storage permission to save your filter preferences and provide a better experience.",
+        "grant": "Grant Permission",
+        "deny": "Maybe Later",
+        "benefits": {
+          "title": "Benefits of granting storage permission:",
+          "savePreferences": "Save your download filter preferences",
+          "persistSettings": "Remember your settings across sessions",
+          "improveExperience": "Provide a more personalized experience"
+        }
+      },
+      "offscreen": {
+        "title": "Additional Permission Required",
+        "description": "This extension needs the offscreen permission to process downloads efficiently.",
+        "grant": "Grant Permission",
+        "why": "This permission allows the extension to create background documents for processing large downloads without affecting your browsing experience."
+      },
+      "global": {
+        "title": "Permissions Required",
+        "description": "This extension needs storage and offscreen permissions to provide the best download experience.",
+        "storage": {
+          "title": "Storage Permission:",
+          "description": "Allows the extension to save small amounts of data locally in your browser. This enables us to remember your preferences and provide a personalized experience across sessions."
+        },
+        "offscreen": {
+          "title": "Offscreen Permission:",
+          "description": "Enables large file downloads by allowing the extension to process files in the background without affecting your browsing experience."
+        },
+        "storageDetails": {
+          "title": "What we store:",
+          "id": "Unique generated ID",
+          "preferences": "Download preferences"
+        },
+        "privacy": {
+          "title": "Privacy:",
+          "personal": "No personal data",
+          "history": "No browsing history",
+          "local": "All data stays local in your browser"
+        },
+        "button": {
+          "requesting": "Requesting Permissions...",
+          "enable": "Enable Permissions"
+        },
+        "footer": "Revoke anytime in browser settings"
+      }
+    },
+    "download": {
+      "showInFolder": "Show in folder",
+      "downloadAnother": "Download another page",
+      "cancel": "Cancel download"
+    },
+    "language": {
+      "select": "Select Language",
+      "search": "Search languages...",
+      "current": "Current language"
+    },
+    "rating": {
+      "title": "Enjoying this extension?",
+      "description": "Please rate us on the Chrome Web Store!",
+      "rate": "Rate Extension",
+      "prompt": "If you were satisfied, please leave a positive review :)",
+      "ariaLabel_one": "Rate {{count}} star",
+      "ariaLabel_other": "Rate {{count}} stars"
+    },
+    "featureRequest": {
+      "title": "Request a Feature",
+      "description": "Have an idea to improve this extension?",
+      "submit": "Submit Request"
+    }
+  }
+}

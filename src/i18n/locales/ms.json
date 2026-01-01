@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Pemuat Turun Halaman Web",
+      "loading": "Memuatkan...",
+      "error": "Sesuatu telah berlaku:",
+      "tryAgain": "Cuba lagi",
+      "iconAlt": "Ikon Pemuat Turun Halaman Web",
+      "noInternet": "Tiada sambungan internet - tidak dapat memuat turun sumber luar",
+      "enableHtmlForOffline": "Sila dayakan muat turun HTML atau mod fail tunggal untuk penggunaan luar talian",
+      "networkCheckFailed": "Semakan sambungan rangkaian gagal - meneruskan muat turun",
+      "noUrl": "Ralat: Tiada URL diberikan untuk muat turun",
+      "downloadInProgress": "Muat turun sedang dijalankan. Sila tunggu.",
+      "memoryPressure": "Tidak dapat memulakan muat turun kerana tekanan memori kritikal. Sila cuba lagi kemudian."
+    },
+    "filter": {
+      "title": "Tapis apa yang anda mahu muat turun",
+      "downloadHTML": "Muat turun HTML",
+      "downloadImages": "Muat turun imej",
+      "downloadLinks": "Muat turun pautan (disimpan sebagai fail html)",
+      "downloadAssets": "Muat turun aset (css, js)",
+      "downloadDocuments": "Muat turun dokumen (pdf, doc, dll.)",
+      "downloadContentAsText": "Muat turun kandungan sebagai teks",
+      "singleFile": "Muat turun dalam satu fail HTML",
+      "startDownload": "Mula muat turun",
+      "linksWarning": "Jika anda memilih untuk memuat turun pautan, anda perlu mengambil kira bahawa jumlah masa muat turun boleh meningkat secara drastik dan fail zip boleh menjadi lebih besar.",
+      "permissionWarning": "Keutamaan penapis tidak akan disimpan tanpa kebenaran storan",
+      "dismiss": "Abaikan",
+      "loading": "Memuatkan penapis...",
+      "ariaDownloadHtml": "Muat turun kandungan HTML",
+      "ariaDownloadImages": "Muat turun imej",
+      "ariaDownloadLinks": "Muat turun pautan (disimpan sebagai fail html)",
+      "ariaDownloadAssets": "Muat turun aset (css, js)",
+      "ariaDownloadDocuments": "Muat turun dokumen (pdf, doc, dll.)",
+      "ariaDownloadContent": "Muat turun kandungan sebagai teks",
+      "ariaSingleFile": "Muat turun sebagai fail HTML tunggal",
+      "ariaStartDownload": "Mulakan muat turun",
+      "ariaDismissWarning": "Tutup amaran",
+      "error": "Ralat"
+    },
+    "actions": {
+      "title": "Tindakan:",
+      "stop": "Berhenti"
+    },
+    "status": {
+      "waiting": "Menunggu sambungan...",
+      "connected": "Laman web disambungkan!",
+      "scraping": "Mengeruk laman web...",
+      "scraped": "Laman web dikeruk!",
+      "creating": "Fail Zip dicipta!",
+      "complete": "Muat turun selesai",
+      "failed": "Muat turun gagal",
+      "cancelled": "Muat turun dibatalkan",
+      "creatingIndex": "Mencipta index.html",
+      "downloadingCss": "Memuat turun fail CSS",
+      "cssDownloaded": "Fail CSS dimuat turun",
+      "cssError": "Ralat memuat turun fail CSS - sesetengah mungkin hilang",
+      "downloadingJs": "Memuat turun fail JS",
+      "jsDownloaded": "Fail JS dimuat turun",
+      "jsError": "Ralat memuat turun fail JS - sesetengah mungkin hilang",
+      "downloadingDocuments": "Memuat turun dokumen",
+      "documentsDownloaded": "Dokumen dimuat turun",
+      "downloadingImages": "Memuat turun imej",
+      "imagesDownloaded": "Imej dimuat turun",
+      "downloadingLinks": "Memuat turun fail html pautan",
+      "linksDownloaded": "Fail html pautan dimuat turun",
+      "downloadingContent": "Memuat turun kandungan sebagai teks",
+      "contentDownloaded": "Kandungan sebagai teks dimuat turun",
+      "singleFileCreated": "Fail HTML tunggal dicipta",
+      "zipCreated": "Fail Zip dicipta!",
+      "downloadStarted": "Muat turun berjaya dimulakan",
+      "completeTitle": "Muat turun selesai:",
+      "zipLocation": "Anda boleh mencari fail zip dalam folder muat turun anda",
+      "cssProgress": "Kemajuan fail CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "Kemajuan imej latar belakang: {{completed}}/{{total}}",
+      "jsProgress": "Kemajuan fail JS: {{completed}}/{{total}}",
+      "documentsProgress": "Kemajuan fail dokumen: {{completed}}/{{total}}",
+      "imagesProgress": "Kemajuan imej: {{completed}}/{{total}}",
+      "htmlProgress": "Kemajuan fail HTML: {{completed}}/{{total}}",
+      "cssSummary": "Fail CSS dimuat turun: {{succeeded}} berjaya, {{failed}} gagal, {{skipped}} dilangkau",
+      "bgImagesSummary": "Imej latar belakang dari CSS dimuat turun: {{succeeded}} berjaya, {{failed}} gagal, {{skipped}} dilangkau",
+      "jsSummary": "Fail JS dimuat turun: {{succeeded}} berjaya, {{failed}} gagal, {{skipped}} dilangkau",
+      "documentsSummary": "Fail dokumen dimuat turun: {{succeeded}} berjaya, {{failed}} gagal, {{skipped}} dilangkau",
+      "imagesSummary": "Imej dimuat turun: {{succeeded}} berjaya, {{failed}} gagal, {{skipped}} dilangkau",
+      "htmlSummary": "Fail HTML dimuat turun: {{succeeded}} berjaya, {{failed}} gagal, {{skipped}} dilangkau",
+      "processingCss": "Memproses fail CSS: {{current}}/{{total}}",
+      "streamingCss": "Memulakan muat turun penstriman untuk CSS besar: {{current}}/{{total}}",
+      "streamingCssProgress": "Kemajuan penstriman CSS: {{completed}}/{{total}} ketul",
+      "cssStreamingSummary": "Fail CSS diproses: {{succeeded}} berjaya, {{streamed}} distrim, {{failed}} gagal",
+      "processingJs": "Memproses fail JS: {{current}}/{{total}}",
+      "streamingJs": "Memulakan muat turun penstriman untuk JS besar: {{current}}/{{total}}",
+      "streamingJsProgress": "Kemajuan penstriman JS: {{completed}}/{{total}} ketul",
+      "jsStreamingSummary": "Fail JS diproses: {{succeeded}} berjaya, {{streamed}} distrim, {{failed}} gagal",
+      "processingImages": "Memproses imej: {{current}}/{{total}}",
+      "streamingImages": "Memulakan muat turun penstriman untuk imej besar: {{current}}/{{total}}",
+      "streamingImagesProgress": "Kemajuan penstriman imej: {{completed}}/{{total}} ketul",
+      "imagesStreamingSummary": "Imej diproses: {{succeeded}} berjaya, {{streamed}} distrim, {{failed}} gagal, {{skipped}} dilangkau",
+      "streamingFailedFallback": "Muat turun penstriman gagal, kembali kepada muat turun biasa...",
+      "processingHtmlIncremental": "Memproses kandungan HTML dengan pemasangan tambahan",
+      "finalizingDownload": "Menyelesaikan muat turun",
+      "indexCreated": "Index.html dicipta",
+      "htmlTooLarge": "Kandungan HTML terlalu besar, mungkin dipotong",
+      "incrementalHtmlAdded": "Kandungan HTML dipasang dan ditambah ke muat turun",
+      "largeHtmlAdded": "Kandungan HTML besar diproses dan ditambah ke muat turun",
+      "creatingPackage": "Mencipta pakej muat turun akhir",
+      "processingImagesCount": "Memproses {{count}} imej",
+      "streamingImageStart": "Memulakan muat turun penstriman untuk imej: {{current}}/{{total}}",
+      "waitingForStreaming": "Menunggu {{count}} muat turun penstriman selesai...",
+      "streamingProgress": "Kemajuan penstriman: {{completed}}/{{total}} ketul ({{percent}}%)",
+      "streamingCompleted": "Semua muat turun penstriman selesai",
+      "creatingStreamingZip": "Mencipta fail ZIP dengan kandungan penstriman...",
+      "streamingSuccess": "Muat turun penstriman berjaya diselesaikan",
+      "downloadingWebsiteContent": "Memuat turun kandungan laman web ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Kebenaran Storan Diperlukan",
+        "description": "Sambungan ini memerlukan kebenaran storan untuk menyimpan keutamaan penapis anda dan memberikan pengalaman yang lebih baik.",
+        "grant": "Berikan Kebenaran",
+        "deny": "Mungkin Nanti",
+        "benefits": {
+          "title": "Faedah memberikan kebenaran storan:",
+          "savePreferences": "Simpan keutamaan penapis muat turun anda",
+          "persistSettings": "Ingat tetapan anda merentas sesi",
+          "improveExperience": "Berikan pengalaman yang lebih peribadi"
+        }
+      },
+      "offscreen": {
+        "title": "Kebenaran Tambahan Diperlukan",
+        "description": "Sambungan ini memerlukan kebenaran luar skrin untuk memproses muat turun dengan cekap.",
+        "grant": "Berikan Kebenaran",
+        "why": "Kebenaran ini membolehkan sambungan membuat dokumen latar belakang untuk memproses muat turun besar tanpa menjejaskan pengalaman penyemakan imbas anda."
+      },
+      "global": {
+        "title": "Kebenaran Diperlukan",
+        "description": "Sambungan ini memerlukan kebenaran penyimpanan dan luar skrin untuk memberikan pengalaman muat turun terbaik.",
+        "storage": {
+          "title": "Kebenaran Penyimpanan:",
+          "description": "Membenarkan sambungan menyimpan sejumlah kecil data secara tempatan dalam penyemak imbas anda. Ini membolehkan kami mengingati pilihan anda dan memberikan pengalaman yang diperibadikan merentas sesi."
+        },
+        "offscreen": {
+          "title": "Kebenaran Luar Skrin:",
+          "description": "Membolehkan muat turun fail besar dengan membenarkan sambungan memproses fail di latar belakang tanpa menjejaskan pengalaman penyemakan imbas anda."
+        },
+        "storageDetails": {
+          "title": "Apa yang kami simpan:",
+          "id": "ID unik yang dijana",
+          "preferences": "Pilihan muat turun"
+        },
+        "privacy": {
+          "title": "Privasi:",
+          "personal": "Tiada data peribadi",
+          "history": "Tiada sejarah penyemakan imbas",
+          "local": "Semua data kekal secara tempatan dalam penyemak imbas anda"
+        },
+        "button": {
+          "requesting": "Meminta Kebenaran...",
+          "enable": "Dayakan Kebenaran"
+        },
+        "footer": "Tarik balik pada bila-bila masa dalam tetapan penyemak imbas"
+      }
+    },
+    "download": {
+      "showInFolder": "Tunjukkan dalam folder",
+      "downloadAnother": "Muat turun halaman lain",
+      "cancel": "Batalkan muat turun"
+    },
+    "language": {
+      "select": "Pilih Bahasa",
+      "search": "Cari bahasa...",
+      "current": "Bahasa semasa"
+    },
+    "rating": {
+      "title": "Menikmati sambungan ini?",
+      "description": "Sila nilaikan kami di Chrome Web Store!",
+      "rate": "Nilaikan Sambungan",
+      "prompt": "Jika anda berpuas hati, sila tinggalkan ulasan positif :)",
+      "ariaLabel_one": "Nilaikan {{count}} bintang",
+      "ariaLabel_other": "Nilaikan {{count}} bintang"
+    },
+    "featureRequest": {
+      "title": "Minta Ciri",
+      "description": "Ada idea untuk menambah baik sambungan ini?",
+      "submit": "Hantar Permintaan"
+    }
+  }
+}

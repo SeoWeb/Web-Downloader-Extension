@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "iconAlt": "Ícone do baixador de páginas da Web",
+      "noInternet": "Sem conexão com a internet - não é possível baixar recursos externos",
+      "enableHtmlForOffline": "Por favor, ative o download de HTML ou modo de arquivo único para uso offline",
+      "networkCheckFailed": "Falha na verificação de conectividade de rede - continuando o download",
+      "noUrl": "Erro: Nenhuma URL fornecida para download",
+      "downloadInProgress": "Um download já está em andamento. Por favor, aguarde.",
+      "memoryPressure": "Não é possível iniciar o download devido à pressão crítica de memória. Por favor, tente novamente mais tarde.",
+      "title": "Descarregador de Web Pages",
+      "loading": "A carregar...",
+      "error": "Algo correu mal:",
+      "tryAgain": "Tentar novamente"
+    },
+    "filter": {
+      "loading": "Carregando filtros...",
+      "ariaDownloadHtml": "Baixar conteúdo HTML",
+      "ariaDownloadImages": "Baixar imagens",
+      "ariaDownloadLinks": "Baixar links (salvos como arquivos html)",
+      "ariaDownloadAssets": "Baixar ativos (css, js)",
+      "ariaDownloadDocuments": "Baixar documentos (pdf, doc, etc.)",
+      "ariaDownloadContent": "Baixar conteúdo como texto",
+      "ariaSingleFile": "Baixar como um único arquivo HTML",
+      "ariaStartDownload": "Iniciar download",
+      "ariaDismissWarning": "Dispensar aviso",
+      "error": "Erro",
+      "title": "Filtre o que pretende descarregar",
+      "downloadHTML": "Descarregar HTML",
+      "downloadImages": "Descarregar imagens",
+      "downloadLinks": "Descarregar links (guardados como ficheiros html)",
+      "downloadAssets": "Descarregar ficheiros (css, js)",
+      "downloadDocuments": "Descarregar documentos (pdf, doc, etc.)",
+      "downloadContentAsText": "Descarregar conteúdo como texto",
+      "singleFile": "Descarregar num único ficheiro HTML",
+      "startDownload": "Iniciar descarga",
+      "linksWarning": "Se escolher descarregar links, deve ter em conta que o tempo total de descarga pode aumentar drasticamente e o ficheiro zip pode ser significativamente maior.",
+      "permissionWarning": "As preferências de filtro não serão guardadas sem permissão de armazenamento",
+      "dismiss": "Dispensar"
+    },
+    "actions": {
+      "title": "Ações:",
+      "stop": "Parar"
+    },
+    "status": {
+      "creatingIndex": "A criar index.html",
+      "downloadingCss": "A descarregar ficheiros CSS",
+      "cssDownloaded": "Ficheiros CSS descarregados",
+      "cssError": "Erro ao baixar arquivos CSS - alguns podem estar faltando",
+      "downloadingJs": "A descarregar ficheiros JS",
+      "jsDownloaded": "Ficheiros JS descarregados",
+      "jsError": "Erro ao baixar arquivos JS - alguns podem estar faltando",
+      "downloadingDocuments": "A descarregar documentos",
+      "documentsDownloaded": "Documentos descarregados",
+      "downloadingImages": "A descarregar imagens",
+      "imagesDownloaded": "Imagens descarregadas",
+      "downloadingLinks": "Baixando arquivos html vinculados",
+      "linksDownloaded": "Arquivos html vinculados baixados",
+      "downloadingContent": "Baixando conteúdo como texto",
+      "contentDownloaded": "Conteúdo como texto baixado",
+      "singleFileCreated": "Arquivo HTML único criado",
+      "zipCreated": "Arquivo Zip criado!",
+      "downloadStarted": "Transferência iniciada com sucesso",
+      "completeTitle": "A transferência está concluída:",
+      "zipLocation": "Pode encontrar o ficheiro zip na sua pasta de transferências",
+      "streamingSuccess": "Download via streaming concluído com sucesso",
+      "waiting": "A aguardar ligação...",
+      "connected": "Web site ligado!",
+      "scraping": "A fazer scrape do web site...",
+      "scraped": "Web site com scrape feito!",
+      "creating": "Ficheiro Zip criado!",
+      "complete": "Descarga completa",
+      "failed": "Falha na descarga",
+      "cancelled": "A descarga foi cancelada",
+      "cssProgress": "Progresso dos arquivos CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "Progresso das imagens de fundo: {{completed}}/{{total}}",
+      "jsProgress": "Progresso dos arquivos JS: {{completed}}/{{total}}",
+      "documentsProgress": "Progresso dos arquivos de documento: {{completed}}/{{total}}",
+      "imagesProgress": "Progresso das imagens: {{completed}}/{{total}}",
+      "htmlProgress": "Progresso dos arquivos HTML: {{completed}}/{{total}}",
+      "cssSummary": "Arquivos CSS baixados: {{succeeded}} com sucesso, {{failed}} falharam, {{skipped}} ignorados",
+      "bgImagesSummary": "Imagens de fundo do CSS baixadas: {{succeeded}} com sucesso, {{failed}} falharam, {{skipped}} ignoradas",
+      "jsSummary": "Arquivos JS baixados: {{succeeded}} com sucesso, {{failed}} falharam, {{skipped}} ignorados",
+      "documentsSummary": "Arquivos de documento baixados: {{succeeded}} com sucesso, {{failed}} falharam, {{skipped}} ignorados",
+      "imagesSummary": "Imagens baixadas: {{succeeded}} com sucesso, {{failed}} falharam, {{skipped}} ignoradas",
+      "htmlSummary": "Arquivos HTML baixados: {{succeeded}} com sucesso, {{failed}} falharam, {{skipped}} ignorados",
+      "processingCss": "Processando arquivos CSS: {{current}}/{{total}}",
+      "streamingCss": "Iniciando download via streaming para CSS grande: {{current}}/{{total}}",
+      "streamingCssProgress": "Progresso do streaming CSS: {{completed}}/{{total}} pedaços",
+      "cssStreamingSummary": "Arquivos CSS processados: {{succeeded}} com sucesso, {{streamed}} transmitidos, {{failed}} falharam",
+      "processingJs": "Processando arquivos JS: {{current}}/{{total}}",
+      "streamingJs": "Iniciando download via streaming para JS grande: {{current}}/{{total}}",
+      "streamingJsProgress": "Progresso do streaming JS: {{completed}}/{{total}} pedaços",
+      "jsStreamingSummary": "Arquivos JS processados: {{succeeded}} com sucesso, {{streamed}} transmitidos, {{failed}} falharam",
+      "processingImages": "Processando imagens: {{current}}/{{total}}",
+      "streamingImages": "Iniciando download via streaming para imagem grande: {{current}}/{{total}}",
+      "streamingImagesProgress": "Progresso do streaming de imagem: {{completed}}/{{total}} pedaços",
+      "imagesStreamingSummary": "Imagens processadas: {{succeeded}} com sucesso, {{streamed}} transmitidas, {{failed}} falharam, {{skipped}} ignoradas",
+      "streamingFailedFallback": "Download via streaming falhou, voltando para o download normal...",
+      "processingHtmlIncremental": "Processando conteúdo HTML com montagem incremental",
+      "finalizingDownload": "Finalizando download",
+      "indexCreated": "Index.html criado",
+      "htmlTooLarge": "Conteúdo HTML muito grande, pode ser truncado",
+      "incrementalHtmlAdded": "Conteúdo HTML montado e adicionado ao download",
+      "largeHtmlAdded": "Conteúdo HTML grande processado e adicionado ao download",
+      "creatingPackage": "Criando pacote de download final",
+      "processingImagesCount": "Processando {{count}} imagens",
+      "streamingImageStart": "Iniciando download via streaming para imagem: {{current}}/{{total}}",
+      "waitingForStreaming": "Aguardando conclusão de {{count}} downloads via streaming...",
+      "streamingProgress": "Progresso do streaming: {{completed}}/{{total}} pedaços ({{percent}}%)",
+      "streamingCompleted": "Todos os downloads via streaming concluídos",
+      "creatingStreamingZip": "Criando arquivo ZIP com conteúdo transmitido...",
+      "downloadingWebsiteContent": "A descarregar conteúdo do website ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Permissão de Armazenamento Necessária",
+        "description": "Esta extensão necessita de permissão de armazenamento para guardar as suas preferências de filtro e fornecer uma experiência melhor.",
+        "grant": "Conceder Permissão",
+        "deny": "Talvez Mais Tarde",
+        "benefits": {
+          "title": "Benefícios de conceder permissão de armazenamento:",
+          "savePreferences": "Guarde as suas preferências de filtro de descarga",
+          "persistSettings": "Relembrar as suas definições entre sessões",
+          "improveExperience": "Fornecer uma experiência mais personalizada"
+        }
+      },
+      "offscreen": {
+        "title": "Permissão Adicional Necessária",
+        "description": "Esta extensão necessita da permissão offscreen para processar descargas de forma eficiente.",
+        "grant": "Conceder Permissão",
+        "why": "Esta permissão permite que a extensão crie documentos em segundo plano para processar grandes descargas sem afetar a sua experiência de navegação."
+      },
+      "global": {
+        "title": "Permissões Necessárias",
+        "description": "Esta extensão precisa de permissões de armazenamento e offscreen para fornecer a melhor experiência de download.",
+        "storage": {
+          "title": "Permissão de Armazenamento:",
+          "description": "Permite que a extensão guarde pequenas quantidades de dados localmente no seu navegador. Isso permite-nos lembrar as suas preferências e fornecer uma experiência personalizada entre sessões."
+        },
+        "offscreen": {
+          "title": "Permissão Offscreen:",
+          "description": "Permite o download de ficheiros grandes, permitindo que a extensão processe ficheiros em segundo plano sem afetar a sua experiência de navegação."
+        },
+        "storageDetails": {
+          "title": "O que guardamos:",
+          "id": "ID único gerado",
+          "preferences": "Preferências de download"
+        },
+        "privacy": {
+          "title": "Privacidade:",
+          "personal": "Sem dados pessoais",
+          "history": "Sem histórico de navegação",
+          "local": "Todos os dados permanecem localmente no seu navegador"
+        },
+        "button": {
+          "requesting": "A solicitar permissões...",
+          "enable": "Ativar Permissões"
+        },
+        "footer": "Revogar a qualquer momento nas definições do navegador"
+      }
+    },
+    "download": {
+      "showInFolder": "Mostrar na pasta",
+      "downloadAnother": "Descarregar outra página",
+      "cancel": "Cancelar descarga"
+    },
+    "language": {
+      "select": "Selecionar Idioma",
+      "search": "Procurar idiomas...",
+      "current": "Idioma atual"
+    },
+    "rating": {
+      "title": "A gostar desta extensão?",
+      "description": "Por favor, avalie-nos na Chrome Web Store!",
+      "rate": "Avaliar Extensão",
+      "prompt": "Se ficou satisfeito, por favor deixe uma avaliação positiva :)",
+      "ariaLabel_one": "Avaliar {{count}} estrela",
+      "ariaLabel_other": "Avaliar {{count}} estrelas"
+    },
+    "featureRequest": {
+      "title": "Solicitar uma Funcionalidade",
+      "description": "Tem uma ideia para melhorar esta extensão?",
+      "submit": "Enviar Solicitação"
+    }
+  }
+}

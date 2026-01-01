@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Sťahovač webových stránok",
+      "loading": "Načítava sa...",
+      "error": "Niečo sa pokazilo:",
+      "tryAgain": "Skúsiť znova",
+      "iconAlt": "Ikona sťahovača webových stránok",
+      "noInternet": "Žiadne internetové pripojenie - externé zdroje nie je možné stiahnuť",
+      "enableHtmlForOffline": "Povoľte sťahovanie HTML alebo režim jedného súboru pre offline použitie",
+      "networkCheckFailed": "Kontrola sieťového pripojenia zlyhala - sťahovanie pokračuje",
+      "noUrl": "Chyba: Nebola poskytnutá žiadna URL na stiahnutie",
+      "downloadInProgress": "Sťahovanie už prebieha. Čakajte prosím.",
+      "memoryPressure": "Nie je možné spustiť sťahovanie kvôli kritickému nedostatku pamäte. Skúste to prosím neskôr."
+    },
+    "filter": {
+      "title": "Filtrujte, čo chcete stiahnuť",
+      "downloadHTML": "Stiahnuť HTML",
+      "downloadImages": "Stiahnuť obrázky",
+      "downloadLinks": "Stiahnuť odkazy (uložené ako súbory html)",
+      "downloadAssets": "Stiahnuť aktíva (css, js)",
+      "downloadDocuments": "Stiahnuť dokumenty (pdf, doc atď.)",
+      "downloadContentAsText": "Stiahnuť obsah ako text",
+      "singleFile": "Stiahnuť v jednom súbore HTML",
+      "startDownload": "Spustiť sťahovanie",
+      "linksWarning": "Ak sa rozhodnete sťahovať odkazy, musíte počítať s tým, že celkový čas sťahovania sa môže dramaticky zvýšiť a súbor zip môže byť výrazne väčší.",
+      "permissionWarning": "Predvoľby filtra nebudú uložené bez povolenia úložiska",
+      "dismiss": "Zrušiť",
+      "loading": "Načítavanie filtrov...",
+      "ariaDownloadHtml": "Stiahnuť obsah HTML",
+      "ariaDownloadImages": "Stiahnuť obrázky",
+      "ariaDownloadLinks": "Stiahnuť odkazy (uložené ako html súbory)",
+      "ariaDownloadAssets": "Stiahnuť prostriedky (css, js)",
+      "ariaDownloadDocuments": "Stiahnuť dokumenty (pdf, doc atď.)",
+      "ariaDownloadContent": "Stiahnuť obsah ako text",
+      "ariaSingleFile": "Stiahnuť ako jeden súbor HTML",
+      "ariaStartDownload": "Spustiť sťahovanie",
+      "ariaDismissWarning": "Zavrieť upozornenie",
+      "error": "Chyba"
+    },
+    "actions": {
+      "title": "Akcie:",
+      "stop": "Zastaviť"
+    },
+    "status": {
+      "waiting": "Čakanie na pripojenie...",
+      "connected": "Webová stránka pripojená!",
+      "scraping": "Sťahovanie webovej stránky...",
+      "scraped": "Webová stránka stiahnutá!",
+      "creating": "Súbor zip vytvorený!",
+      "complete": "Sťahovanie dokončené",
+      "failed": "Sťahovanie zlyhalo",
+      "cancelled": "Sťahovanie bolo zrušené",
+      "creatingIndex": "Vytváranie index.html",
+      "downloadingCss": "Sťahovanie súborov CSS",
+      "cssDownloaded": "Súbory CSS stiahnuté",
+      "cssError": "Chyba pri sťahovaní súborov CSS - niektoré môžu chýbať",
+      "downloadingJs": "Sťahovanie súborov JS",
+      "jsDownloaded": "Súbory JS stiahnuté",
+      "jsError": "Chyba pri sťahovaní súborov JS - niektoré môžu chýbať",
+      "downloadingDocuments": "Sťahovanie dokumentov",
+      "documentsDownloaded": "Dokumenty stiahnuté",
+      "downloadingImages": "Sťahovanie obrázkov",
+      "imagesDownloaded": "Obrázky stiahnuté",
+      "downloadingLinks": "Sťahovanie odkazovaných html súborov",
+      "linksDownloaded": "Odkazované html súbory stiahnuté",
+      "downloadingContent": "Sťahovanie obsahu ako text",
+      "contentDownloaded": "Obsah ako text stiahnutý",
+      "singleFileCreated": "Vytvorený jeden súbor HTML",
+      "zipCreated": "Súbor Zip vytvorený!",
+      "downloadStarted": "Sťahovanie úspešne začalo",
+      "completeTitle": "Sťahovanie je dokončené:",
+      "zipLocation": "Súbor zip nájdete v priečinku stiahnutých súborov",
+      "cssProgress": "Priebeh súborov CSS: {{completed}}/{{total}}",
+      "bgImagesProgress": "Priebeh obrázkov na pozadí: {{completed}}/{{total}}",
+      "jsProgress": "Priebeh súborov JS: {{completed}}/{{total}}",
+      "documentsProgress": "Priebeh súborov dokumentov: {{completed}}/{{total}}",
+      "imagesProgress": "Priebeh obrázkov: {{completed}}/{{total}}",
+      "htmlProgress": "Priebeh súborov HTML: {{completed}}/{{total}}",
+      "cssSummary": "Stiahnuté súbory CSS: {{succeeded}} úspešne, {{failed}} zlyhalo, {{skipped}} preskočené",
+      "bgImagesSummary": "Stiahnuté obrázky na pozadí z CSS: {{succeeded}} úspešne, {{failed}} zlyhalo, {{skipped}} preskočené",
+      "jsSummary": "Stiahnuté súbory JS: {{succeeded}} úspešne, {{failed}} zlyhalo, {{skipped}} preskočené",
+      "documentsSummary": "Stiahnuté súbory dokumentov: {{succeeded}} úspešne, {{failed}} zlyhalo, {{skipped}} preskočené",
+      "imagesSummary": "Stiahnuté obrázky: {{succeeded}} úspešne, {{failed}} zlyhalo, {{skipped}} preskočené",
+      "htmlSummary": "Stiahnuté súbory HTML: {{succeeded}} úspešne, {{failed}} zlyhalo, {{skipped}} preskočené",
+      "processingCss": "Spracovanie súborov CSS: {{current}}/{{total}}",
+      "streamingCss": "Spustenie streamovaného sťahovania pre veľké CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "Priebeh streamovania CSS: {{completed}}/{{total}} blokov",
+      "cssStreamingSummary": "Spracované súbory CSS: {{succeeded}} úspešne, {{streamed}} streamované, {{failed}} zlyhalo",
+      "processingJs": "Spracovanie súborov JS: {{current}}/{{total}}",
+      "streamingJs": "Spustenie streamovaného sťahovania pre veľké JS: {{current}}/{{total}}",
+      "streamingJsProgress": "Priebeh streamovania JS: {{completed}}/{{total}} blokov",
+      "jsStreamingSummary": "Spracované súbory JS: {{succeeded}} úspešne, {{streamed}} streamované, {{failed}} zlyhalo",
+      "processingImages": "Spracovanie obrázkov: {{current}}/{{total}}",
+      "streamingImages": "Spustenie streamovaného sťahovania pre veľký obrázok: {{current}}/{{total}}",
+      "streamingImagesProgress": "Priebeh streamovania obrázkov: {{completed}}/{{total}} blokov",
+      "imagesStreamingSummary": "Spracované obrázky: {{succeeded}} úspešne, {{streamed}} streamované, {{failed}} zlyhalo, {{skipped}} preskočené",
+      "streamingFailedFallback": "Streamované sťahovanie zlyhalo, návrat k normálnemu sťahovaniu...",
+      "processingHtmlIncremental": "Spracovanie obsahu HTML s inkrementálnym zostavovaním",
+      "finalizingDownload": "Dokončovanie sťahovania",
+      "indexCreated": "Index.html vytvorený",
+      "htmlTooLarge": "Obsah HTML je príliš veľký, môže byť orezaný",
+      "incrementalHtmlAdded": "Obsah HTML zostavený a pridaný do sťahovania",
+      "largeHtmlAdded": "Veľký obsah HTML spracovaný a pridaný do sťahovania",
+      "creatingPackage": "Vytváranie finálneho balíka na stiahnutie",
+      "processingImagesCount": "Spracovanie {{count}} obrázkov",
+      "streamingImageStart": "Spustenie streamovaného sťahovania pre obrázok: {{current}}/{{total}}",
+      "waitingForStreaming": "Čakanie na dokončenie {{count}} streamovaných sťahovaní...",
+      "streamingProgress": "Priebeh streamovania: {{completed}}/{{total}} blokov ({{percent}}%)",
+      "streamingCompleted": "Všetky streamované sťahovania dokončené",
+      "creatingStreamingZip": "Vytváranie súboru ZIP so streamovaným obsahom...",
+      "streamingSuccess": "Streamované sťahovanie úspešne dokončené",
+      "downloadingWebsiteContent": "Sťahovanie obsahu webovej stránky ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Vyžaduje sa povolenie úložiska",
+        "description": "Toto rozšírenie potrebuje povolenie úložiska na uloženie vašich predvolieb filtra a poskytnutie lepšieho zážitku.",
+        "grant": "Udeliť povolenie",
+        "deny": "Možno neskôr",
+        "benefits": {
+          "title": "Výhody udelenia povolenia úložiska:",
+          "savePreferences": "Uložte si svoje predvoľby filtra sťahovania",
+          "persistSettings": "Zapamätajte si svoje nastavenia medzi reláciami",
+          "improveExperience": "Poskytnite prispôsobenejší zážitok"
+        }
+      },
+      "offscreen": {
+        "title": "Vyžaduje sa dodatočné povolenie",
+        "description": "Toto rozšírenie potrebuje povolenie offscreen na efektívne spracovanie sťahovania.",
+        "grant": "Udeliť povolenie",
+        "why": "Toto povolenie umožňuje rozšíreniu vytvárať dokumenty na pozadí na spracovanie veľkých sťahovaní bez ovplyvnenia vášho zážitku z prehliadania."
+      },
+      "global": {
+        "title": "Vyžadujú sa povolenia",
+        "description": "Toto rozšírenie vyžaduje povolenia na ukladanie a offscreen pre poskytnutie najlepšieho zážitku zo sťahovania.",
+        "storage": {
+          "title": "Povolenie na ukladanie:",
+          "description": "Umožňuje rozšíreniu ukladať malé množstvá údajov lokálne vo vašom prehliadači. To nám umožňuje zapamätať si vaše preferencie a poskytnúť personalizovaný zážitok."
+        },
+        "offscreen": {
+          "title": "Offscreen povolenie:",
+          "description": "Umožňuje sťahovanie veľkých súborov tým, že dovoľuje rozšíreniu spracovávať súbory na pozadí bez ovplyvnenia vášho prehliadania."
+        },
+        "storageDetails": {
+          "title": "Čo ukladáme:",
+          "id": "Unikátne vygenerované ID",
+          "preferences": "Preferencie sťahovania"
+        },
+        "privacy": {
+          "title": "Súkromie:",
+          "personal": "Žiadne osobné údaje",
+          "history": "Žiadna história prehliadania",
+          "local": "Všetky údaje zostávajú lokálne vo vašom prehliadači"
+        },
+        "button": {
+          "requesting": "Žiadosť o povolenia...",
+          "enable": "Povoliť povolenia"
+        },
+        "footer": "Kedykoľvek odvolať v nastaveniach prehliadača"
+      }
+    },
+    "download": {
+      "showInFolder": "Zobraziť v priečinku",
+      "downloadAnother": "Stiahnuť inú stránku",
+      "cancel": "Zrušiť sťahovanie"
+    },
+    "language": {
+      "select": "Vyberte jazyk",
+      "search": "Hľadať jazyky...",
+      "current": "Aktuálny jazyk"
+    },
+    "rating": {
+      "title": "Páči sa vám toto rozšírenie?",
+      "description": "Ohodnoťte nás v internetovom obchode Chrome!",
+      "rate": "Ohodnotiť rozšírenie",
+      "prompt": "Ak ste boli spokojní, zanechajte prosím pozitívnu recenziu :)",
+      "ariaLabel_one": "Hodnotiť {{count}} hviezdičkou",
+      "ariaLabel_other": "Hodnotiť {{count}} hviezdičkami"
+    },
+    "featureRequest": {
+      "title": "Požiadať o funkciu",
+      "description": "Máte nápad na vylepšenie tohto rozšírenia?",
+      "submit": "Odoslať žiadosť"
+    }
+  }
+}

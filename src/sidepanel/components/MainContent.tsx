@@ -1,7 +1,7 @@
 import React from "react";
 import { MessageAction, messageActions } from "../../common/message";
 import Heading from "../../components/Heading";
-import Actions from "../../components/Actions";
+import Actions, { Message } from "../../components/Actions";
 // import { FeatureRequestButton } from "../../components/FeatureRequestButton";
 import { ScrollingResponse } from "../hooks/useScrapingDownloader";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
@@ -9,7 +9,7 @@ import { ErrorBoundary } from "../../components/ErrorBoundary";
 const Filter = React.lazy(() => import("../../components/Filter"));
 
 interface MainContentProps {
-  messages: string[];
+  messages: Message[];
   tabId: number;
   isScraping: boolean;
   action: MessageAction | null;

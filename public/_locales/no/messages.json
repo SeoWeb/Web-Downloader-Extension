@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Nettside Nedlaster",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Nettside Nedlaster lar deg laste ned og lagre hele nettsider, inkludert tilkoblede ressurser, for offline visning.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Nettside Nedlaster",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

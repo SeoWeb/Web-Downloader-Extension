@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Descărcător de Pagini Web",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Descărcător de Pagini Web vă permite să descărcați și să salvați pagini web întregi, inclusiv resursele conectate, pentru vizualizare offline.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Descărcător de Pagini Web",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

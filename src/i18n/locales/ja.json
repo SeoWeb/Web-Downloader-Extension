@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "ウェブページダウンローダー",
+      "loading": "読み込み中...",
+      "error": "何か問題が発生しました：",
+      "tryAgain": "再試行",
+      "iconAlt": "Web Page Downloader アイコン",
+      "noInternet": "インターネット接続がありません - 外部リソースをダウンロードできません",
+      "enableHtmlForOffline": "オフラインで使用するには、HTML ダウンロードまたは単一ファイルモードを有効にしてください",
+      "networkCheckFailed": "ネットワーク接続チェックに失敗しました - ダウンロードを続行します",
+      "noUrl": "エラー: ダウンロード用の URL が提供されていません",
+      "downloadInProgress": "ダウンロードはすでに進行中です。お待ちください。",
+      "memoryPressure": "重大なメモリ不足のため、ダウンロードを開始できません。後でもう一度お試しください。"
+    },
+    "filter": {
+      "title": "ダウンロードしたい内容をフィルタリング",
+      "downloadHTML": "HTMLをダウンロード",
+      "downloadImages": "画像をダウンロード",
+      "downloadLinks": "リンクをダウンロード（htmlファイルとして保存）",
+      "downloadAssets": "アセットをダウンロード（css, js）",
+      "downloadDocuments": "ドキュメントをダウンロード（pdf, docなど）",
+      "downloadContentAsText": "コンテンツをテキストとしてダウンロード",
+      "singleFile": "単一のHTMLファイルでダウンロード",
+      "startDownload": "ダウンロード開始",
+      "linksWarning": "リンクをダウンロードすることを選択した場合、合計ダウンロード時間が大幅に増加する可能性があり、zipファイルがかなり大きくなる可能性があることを考慮する必要があります。",
+      "permissionWarning": "ストレージ権限なしではフィルター設定は保存されません",
+      "dismiss": "閉じる",
+      "loading": "フィルタを読み込み中...",
+      "ariaDownloadHtml": "HTML コンテンツをダウンロード",
+      "ariaDownloadImages": "画像をダウンロード",
+      "ariaDownloadLinks": "リンクをダウンロード (HTML ファイルとして保存)",
+      "ariaDownloadAssets": "アセット (css, js) をダウンロード",
+      "ariaDownloadDocuments": "ドキュメント (pdf, doc など) をダウンロード",
+      "ariaDownloadContent": "コンテンツをテキストとしてダウンロード",
+      "ariaSingleFile": "単一の HTML ファイルとしてダウンロード",
+      "ariaStartDownload": "ダウンロードを開始",
+      "ariaDismissWarning": "警告を閉じる",
+      "error": "エラー"
+    },
+    "actions": {
+      "title": "アクション:",
+      "stop": "停止"
+    },
+    "status": {
+      "waiting": "接続待機中...",
+      "connected": "ウェブサイト接続済み！",
+      "scraping": "ウェブサイトをスクレイピング中...",
+      "scraped": "ウェブサイトをスクレイピングしました！",
+      "creating": "Zipファイル作成済み！",
+      "complete": "ダウンロード完了",
+      "failed": "ダウンロード失敗",
+      "cancelled": "ダウンロードがキャンセルされました",
+      "creatingIndex": "index.htmlを作成中",
+      "downloadingCss": "CSSファイルをダウンロード中",
+      "cssDownloaded": "CSSファイルをダウンロードしました",
+      "cssError": "CSS ファイルのダウンロードエラー - 一部が欠落している可能性があります",
+      "downloadingJs": "JSファイルをダウンロード中",
+      "jsDownloaded": "JSファイルをダウンロードしました",
+      "jsError": "JS ファイルのダウンロードエラー - 一部が欠落している可能性があります",
+      "downloadingDocuments": "ドキュメントファイルをダウンロード中",
+      "documentsDownloaded": "ドキュメントファイルをダウンロードしました",
+      "downloadingImages": "画像をダウンロード中",
+      "imagesDownloaded": "画像をダウンロードしました",
+      "downloadingLinks": "リンク先の HTML ファイルをダウンロード中",
+      "linksDownloaded": "リンク先の HTML ファイルをダウンロードしました",
+      "downloadingContent": "コンテンツをテキストとしてダウンロード中",
+      "contentDownloaded": "コンテンツをテキストとしてダウンロードしました",
+      "singleFileCreated": "単一の HTML ファイルが作成されました",
+      "zipCreated": "Zip ファイルが作成されました！",
+      "downloadStarted": "ダウンロードが正常に開始されました",
+      "completeTitle": "ダウンロードが完了しました：",
+      "zipLocation": "ダウンロードフォルダにzipファイルがあります",
+      "cssProgress": "CSS ファイルの進行状況: {{completed}}/{{total}}",
+      "bgImagesProgress": "背景画像の進行状況: {{completed}}/{{total}}",
+      "jsProgress": "JS ファイルの進行状況: {{completed}}/{{total}}",
+      "documentsProgress": "ドキュメントファイルの進行状況: {{completed}}/{{total}}",
+      "imagesProgress": "画像の進行状況: {{completed}}/{{total}}",
+      "htmlProgress": "HTML ファイルの進行状況: {{completed}}/{{total}}",
+      "cssSummary": "CSS ファイルのダウンロード: {{succeeded}} 成功, {{failed}} 失敗, {{skipped}} スキップ",
+      "bgImagesSummary": "CSS からの背景画像のダウンロード: {{succeeded}} 成功, {{failed}} 失敗, {{skipped}} スキップ",
+      "jsSummary": "JS ファイルのダウンロード: {{succeeded}} 成功, {{failed}} 失敗, {{skipped}} スキップ",
+      "documentsSummary": "ドキュメントファイルのダウンロード: {{succeeded}} 成功, {{failed}} 失敗, {{skipped}} スキップ",
+      "imagesSummary": "画像のダウンロード: {{succeeded}} 成功, {{failed}} 失敗, {{skipped}} スキップ",
+      "htmlSummary": "HTML ファイルのダウンロード: {{succeeded}} 成功, {{failed}} 失敗, {{skipped}} スキップ",
+      "processingCss": "CSS ファイルを処理中: {{current}}/{{total}}",
+      "streamingCss": "大きな CSS のストリーミングダウンロードを開始: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS ストリーミングの進行状況: {{completed}}/{{total}} チャンク",
+      "cssStreamingSummary": "処理された CSS ファイル: {{succeeded}} 成功, {{streamed}} ストリーミング, {{failed}} 失敗",
+      "processingJs": "JS ファイルを処理中: {{current}}/{{total}}",
+      "streamingJs": "大きな JS のストリーミングダウンロードを開始: {{current}}/{{total}}",
+      "streamingJsProgress": "JS ストリーミングの進行状況: {{completed}}/{{total}} チャンク",
+      "jsStreamingSummary": "処理された JS ファイル: {{succeeded}} 成功, {{streamed}} ストリーミング, {{failed}} 失敗",
+      "processingImages": "画像を処理中: {{current}}/{{total}}",
+      "streamingImages": "大きな画像のストリーミングダウンロードを開始: {{current}}/{{total}}",
+      "streamingImagesProgress": "画像ストリーミングの進行状況: {{completed}}/{{total}} チャンク",
+      "imagesStreamingSummary": "処理された画像: {{succeeded}} 成功, {{streamed}} ストリーミング, {{failed}} 失敗, {{skipped}} スキップ",
+      "streamingFailedFallback": "ストリーミングダウンロードに失敗しました。通常のダウンロードに戻ります...",
+      "processingHtmlIncremental": "増分アセンブリで HTML コンテンツを処理中",
+      "finalizingDownload": "ダウンロードを完了しています",
+      "indexCreated": "index.htmlが作成されました",
+      "htmlTooLarge": "HTML コンテンツが大きすぎるため、切り捨てられる可能性があります",
+      "incrementalHtmlAdded": "HTML コンテンツが組み立てられ、ダウンロードに追加されました",
+      "largeHtmlAdded": "大きな HTML コンテンツが処理され、ダウンロードに追加されました",
+      "creatingPackage": "最終ダウンロードパッケージを作成中",
+      "processingImagesCount": "{{count}} 枚の画像を処理中",
+      "streamingImageStart": "画像のストリーミングダウンロードを開始: {{current}}/{{total}}",
+      "waitingForStreaming": "{{count}} 件のストリーミングダウンロードの完了を待機中...",
+      "streamingProgress": "ストリーミングの進行状況: {{completed}}/{{total}} チャンク ({{percent}}%)",
+      "streamingCompleted": "すべてのストリーミングダウンロードが完了しました",
+      "creatingStreamingZip": "ストリーミングコンテンツを含む ZIP ファイルを作成中...",
+      "streamingSuccess": "ストリーミングダウンロードが正常に完了しました",
+      "downloadingWebsiteContent": "ウェブサイトのコンテンツをダウンロード中..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "ストレージ権限が必要です",
+        "description": "この拡張機能は、フィルター設定を保存し、より良い体験を提供するためにストレージ権限が必要です。",
+        "grant": "権限を付与",
+        "deny": "後で",
+        "benefits": {
+          "title": "ストレージ権限を付与するメリット：",
+          "savePreferences": "ダウンロードフィルター設定を保存",
+          "persistSettings": "セッション間で設定を記憶",
+          "improveExperience": "よりパーソナライズされた体験を提供"
+        }
+      },
+      "offscreen": {
+        "title": "追加の権限が必要です",
+        "description": "この拡張機能は、ダウンロードを効率的に処理するためにオフスクリーン権限が必要です。",
+        "grant": "権限を付与",
+        "why": "この権限により、拡張機能はブラウジング体験に影響を与えることなく、大規模なダウンロードを処理するためのバックグラウンドドキュメントを作成できます。"
+      },
+      "global": {
+        "title": "許可が必要です",
+        "description": "この拡張機能は、最高のダウンロード体験を提供するためにストレージとオフスクリーンの許可が必要です。",
+        "storage": {
+          "title": "ストレージ許可:",
+          "description": "拡張機能がブラウザーに少量のデータをローカルに保存できるようにします。これにより、設定を記憶し、セッション間でパーソナライズされた体験を提供できます。"
+        },
+        "offscreen": {
+          "title": "オフスクリーン許可:",
+          "description": "拡張機能がバックグラウンドでファイルを処理できるようにすることで、ブラウジング体験に影響を与えることなく大きなファイルのダウンロードを可能にします。"
+        },
+        "storageDetails": {
+          "title": "保存内容:",
+          "id": "生成された一意のID",
+          "preferences": "ダウンロード設定"
+        },
+        "privacy": {
+          "title": "プライバシー:",
+          "personal": "個人データなし",
+          "history": "閲覧履歴なし",
+          "local": "すべてのデータはブラウザーにローカルに残ります"
+        },
+        "button": {
+          "requesting": "許可をリクエスト中...",
+          "enable": "許可を有効にする"
+        },
+        "footer": "ブラウザの設定でいつでも取り消せます"
+      }
+    },
+    "download": {
+      "showInFolder": "フォルダに表示",
+      "downloadAnother": "別のページをダウンロード",
+      "cancel": "ダウンロードをキャンセル"
+    },
+    "language": {
+      "select": "言語を選択",
+      "search": "言語を検索...",
+      "current": "現在の言語"
+    },
+    "rating": {
+      "title": "この拡張機能を楽しんでいますか？",
+      "description": "Chromeウェブストアで評価してください！",
+      "rate": "拡張機能を評価",
+      "prompt": "満足いただけましたら、肯定的なレビューをお願いします :)",
+      "ariaLabel_one": "{{count}}つ星で評価",
+      "ariaLabel_other": "{{count}}つ星で評価"
+    },
+    "featureRequest": {
+      "title": "機能をリクエスト",
+      "description": "この拡張機能を改善するアイデアはありますか？",
+      "submit": "リクエストを送信"
+    }
+  }
+}

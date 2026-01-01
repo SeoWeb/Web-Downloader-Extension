@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Sťahovač webových stránok",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Sťahovač webových stránok vám umožňuje sťahovať a ukladať celé webové stránky, vrátane prepojených zdrojov, na prezeranie offline.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Sťahovač webových stránok",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

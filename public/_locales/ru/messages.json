@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Загрузчик веб-страниц",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Загрузчик веб-страниц позволяет скачивать и сохранять целые веб-страницы, включая связанные ресурсы, для просмотра в автономном режиме.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Загрузчик веб-страниц",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

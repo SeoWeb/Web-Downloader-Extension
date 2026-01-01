@@ -1,0 +1,192 @@
+{
+  "translation": {
+    "app": {
+      "iconAlt": "Icône du téléchargeur de pages Web",
+      "noInternet": "Pas de connexion internet - impossible de télécharger les ressources externes",
+      "enableHtmlForOffline": "Veuillez activer le téléchargement HTML ou le mode fichier unique pour une utilisation hors ligne",
+      "networkCheckFailed": "Échec de la vérification de la connectivité réseau - poursuite du téléchargement",
+      "noUrl": "Erreur : Aucune URL fournie pour le téléchargement",
+      "downloadInProgress": "Un téléchargement est déjà en cours. Veuillez patienter.",
+      "memoryPressure": "Impossible de démarrer le téléchargement en raison d'un manque critique de mémoire. Veuillez réessayer plus tard.",
+      "title": "Téléchargeur de Pages Web",
+      "loading": "Chargement...",
+      "error": "Une erreur est survenue :",
+      "tryAgain": "Réessayer"
+    },
+    "filter": {
+      "loading": "Chargement des filtres...",
+      "ariaDownloadHtml": "Télécharger le contenu HTML",
+      "ariaDownloadImages": "Télécharger les images",
+      "ariaDownloadLinks": "Télécharger les liens (sauvegardés comme fichiers html)",
+      "ariaDownloadAssets": "Télécharger les ressources (css, js)",
+      "ariaDownloadDocuments": "Télécharger les documents (pdf, doc, etc.)",
+      "ariaDownloadContent": "Télécharger le contenu sous forme de texte",
+      "ariaSingleFile": "Télécharger en un seul fichier HTML",
+      "ariaStartDownload": "Démarrer le téléchargement",
+      "ariaDismissWarning": "Ignorer l'avertissement",
+      "error": "Erreur",
+      "title": "Filtrez ce que vous voulez télécharger",
+      "downloadHTML": "Télécharger HTML",
+      "downloadImages": "Télécharger les images",
+      "downloadLinks": "Télécharger les liens (enregistrés en fichiers html)",
+      "downloadAssets": "Télécharger les ressources (css, js)",
+      "downloadDocuments": "Télécharger les documents (pdf, doc, etc.)",
+      "downloadContentAsText": "Télécharger le contenu en texte",
+      "singleFile": "Télécharger en un seul fichier HTML",
+      "startDownload": "Commencer le téléchargement",
+      "linksWarning": "Si vous choisissez de télécharger les liens, sachez que le temps total de téléchargement peut augmenter considérablement et le fichier zip peut être beaucoup plus volumineux.",
+      "permissionWarning": "Les préférences de filtre ne seront pas enregistrées sans l'autorisation de stockage",
+      "dismiss": "Ignorer"
+    },
+    "actions": {
+      "title": "Actions :",
+      "stop": "Arrêter"
+    },
+    "status": {
+      "creatingIndex": "Création de index.html",
+      "downloadingCss": "Téléchargement des fichiers CSS",
+      "cssDownloaded": "Fichiers CSS téléchargés",
+      "cssError": "Erreur lors du téléchargement des fichiers CSS - certains peuvent manquer",
+      "downloadingJs": "Téléchargement des fichiers JS",
+      "jsDownloaded": "Fichiers JS téléchargés",
+      "jsError": "Erreur lors du téléchargement des fichiers JS - certains peuvent manquer",
+      "downloadingDocuments": "Téléchargement des documents",
+      "documentsDownloaded": "Documents téléchargés",
+      "downloadingImages": "Téléchargement des images",
+      "imagesDownloaded": "Images téléchargées",
+      "downloadingLinks": "Téléchargement des fichiers html liés",
+      "linksDownloaded": "Fichiers html liés téléchargés",
+      "downloadingContent": "Téléchargement du contenu sous forme de texte",
+      "contentDownloaded": "Contenu texte téléchargé",
+      "singleFileCreated": "Fichier HTML unique créé",
+      "zipCreated": "Fichier Zip créé !",
+      "downloadStarted": "Le téléchargement a commencé avec succès",
+      "completeTitle": "Le téléchargement est terminé :",
+      "zipLocation": "Vous pouvez trouver le fichier zip dans votre dossier de téléchargements",
+      "streamingSuccess": "Téléchargement en streaming terminé avec succès",
+      "rating": {
+        "prompt": "Si vous êtes satisfait, laissez un avis positif :)",
+        "ariaLabel_one": "Noter {{count}} étoile",
+        "ariaLabel_other": "Noter {{count}} étoiles"
+      },
+      "waiting": "En attente de connexion...",
+      "connected": "Site web connecté !",
+      "scraping": "Scraping du site web...",
+      "scraped": "Site web scrapé !",
+      "creating": "Fichier Zip créé !",
+      "complete": "Téléchargement terminé",
+      "failed": "Échec du téléchargement",
+      "cancelled": "Téléchargement annulé",
+      "cssProgress": "Progression des fichiers CSS : {{completed}}/{{total}}",
+      "bgImagesProgress": "Progression des images d'arrière-plan : {{completed}}/{{total}}",
+      "jsProgress": "Progression des fichiers JS : {{completed}}/{{total}}",
+      "documentsProgress": "Progression des fichiers documents : {{completed}}/{{total}}",
+      "imagesProgress": "Progression des images : {{completed}}/{{total}}",
+      "htmlProgress": "Progression des fichiers HTML : {{completed}}/{{total}}",
+      "cssSummary": "Fichiers CSS téléchargés : {{succeeded}} réussis, {{failed}} échoués, {{skipped}} ignorés",
+      "bgImagesSummary": "Images d'arrière-plan CSS téléchargées : {{succeeded}} réussis, {{failed}} échoués, {{skipped}} ignorés",
+      "jsSummary": "Fichiers JS téléchargés : {{succeeded}} réussis, {{failed}} échoués, {{skipped}} ignorés",
+      "documentsSummary": "Fichiers documents téléchargés : {{succeeded}} réussis, {{failed}} échoués, {{skipped}} ignorés",
+      "imagesSummary": "Images téléchargées : {{succeeded}} réussis, {{failed}} échoués, {{skipped}} ignorés",
+      "htmlSummary": "Fichiers HTML téléchargés : {{succeeded}} réussis, {{failed}} échoués, {{skipped}} ignorés",
+      "processingCss": "Traitement des fichiers CSS : {{current}}/{{total}}",
+      "streamingCss": "Démarrage du téléchargement en streaming pour gros CSS : {{current}}/{{total}}",
+      "streamingCssProgress": "Progression du streaming CSS : {{completed}}/{{total}} morceaux",
+      "cssStreamingSummary": "Fichiers CSS traités : {{succeeded}} réussis, {{streamed}} streamés, {{failed}} échoués",
+      "processingJs": "Traitement des fichiers JS : {{current}}/{{total}}",
+      "streamingJs": "Démarrage du téléchargement en streaming pour gros JS : {{current}}/{{total}}",
+      "streamingJsProgress": "Progression du streaming JS : {{completed}}/{{total}} morceaux",
+      "jsStreamingSummary": "Fichiers JS traités : {{succeeded}} réussis, {{streamed}} streamés, {{failed}} échoués",
+      "processingImages": "Traitement des images : {{current}}/{{total}}",
+      "streamingImages": "Démarrage du téléchargement en streaming pour grosse image : {{current}}/{{total}}",
+      "streamingImagesProgress": "Progression du streaming image : {{completed}}/{{total}} morceaux",
+      "imagesStreamingSummary": "Images traitées : {{succeeded}} réussis, {{streamed}} streamés, {{failed}} échoués, {{skipped}} ignorés",
+      "streamingFailedFallback": "Le téléchargement en streaming a échoué, retour au téléchargement normal...",
+      "processingHtmlIncremental": "Traitement du contenu HTML avec assemblage incrémentiel",
+      "finalizingDownload": "Finalisation du téléchargement",
+      "indexCreated": "Index.html créé",
+      "htmlTooLarge": "Le contenu HTML est trop volumineux, il peut être tronqué",
+      "incrementalHtmlAdded": "Contenu HTML assemblé et ajouté au téléchargement",
+      "largeHtmlAdded": "Gros contenu HTML traité et ajouté au téléchargement",
+      "creatingPackage": "Création du paquet de téléchargement final",
+      "processingImagesCount": "Traitement de {{count}} images",
+      "streamingImageStart": "Démarrage du téléchargement en streaming pour l'image : {{current}}/{{total}}",
+      "waitingForStreaming": "En attente de la fin de {{count}} téléchargements en streaming...",
+      "streamingProgress": "Progression du streaming : {{completed}}/{{total}} morceaux ({{percent}}%)",
+      "streamingCompleted": "Tous les téléchargements en streaming sont terminés",
+      "creatingStreamingZip": "Création du fichier ZIP avec le contenu streamé...",
+      "downloadingWebsiteContent": "Téléchargement du contenu du site Web ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Autorisation de Stockage Requise",
+        "description": "Cette extension nécessite une autorisation de stockage pour enregistrer vos préférences de filtre et offrir une meilleure expérience.",
+        "grant": "Accorder l'autorisation",
+        "deny": "Peut-être plus tard",
+        "benefits": {
+          "title": "Avantages de l'accord de l'autorisation de stockage :",
+          "savePreferences": "Enregistrez vos préférences de filtre de téléchargement",
+          "persistSettings": "Mémorisez vos paramètres entre les sessions",
+          "improveExperience": "Offrez une expérience plus personnalisée"
+        }
+      },
+      "offscreen": {
+        "title": "Autorisation Supplémentaire Requise",
+        "description": "Cette extension nécessite l'autorisation offscreen pour traiter les téléchargements efficacement.",
+        "grant": "Accorder l'autorisation",
+        "why": "Cette autorisation permet à l'extension de créer des documents en arrière-plan pour traiter les gros téléchargements sans affecter votre expérience de navigation."
+      },
+      "global": {
+        "title": "Autorisations requises",
+        "description": "Cette extension a besoin des autorisations de stockage et hors écran pour offrir la meilleure expérience de téléchargement.",
+        "storage": {
+          "title": "Autorisation de stockage :",
+          "description": "Permet à l'extension d'enregistrer de petites quantités de données localement dans votre navigateur. Cela nous permet de mémoriser vos préférences et de fournir une expérience personnalisée entre les sessions."
+        },
+        "offscreen": {
+          "title": "Autorisation hors écran :",
+          "description": "Active le téléchargement de fichiers volumineux en permettant à l'extension de traiter les fichiers en arrière-plan sans affecter votre expérience de navigation."
+        },
+        "storageDetails": {
+          "title": "Ce que nous stockons :",
+          "id": "Identifiant unique généré",
+          "preferences": "Préférences de téléchargement"
+        },
+        "privacy": {
+          "title": "Confidentialité :",
+          "personal": "Aucune donnée personnelle",
+          "history": "Aucun historique de navigation",
+          "local": "Toutes les données restent localement dans votre navigateur"
+        },
+        "button": {
+          "requesting": "Demande d'autorisations...",
+          "enable": "Activer les autorisations"
+        },
+        "footer": "Révoquer à tout moment dans les paramètres du navigateur"
+      }
+    },
+    "download": {
+      "showInFolder": "Afficher dans le dossier",
+      "downloadAnother": "Télécharger une autre page",
+      "cancel": "Annuler le téléchargement"
+    },
+    "language": {
+      "select": "Sélectionner la langue",
+      "search": "Rechercher des langues...",
+      "current": "Langue actuelle"
+    },
+    "rating": {
+      "title": "Vous aimez cette extension ?",
+      "description": "Veuillez nous noter sur le Chrome Web Store !",
+      "rate": "Noter l'extension",
+      "prompt": "Si vous êtes satisfait, merci de laisser un avis positif :)",
+      "ariaLabel_one": "Noter {{count}} étoile",
+      "ariaLabel_other": "Noter {{count}} étoiles"
+    },
+    "featureRequest": {
+      "title": "Demander une fonctionnalité",
+      "description": "Vous avez une idée pour améliorer cette extension ?",
+      "submit": "Soumettre une demande"
+    }
+  }
+}

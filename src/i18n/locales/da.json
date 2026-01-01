@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Webside Downloader",
+      "loading": "Indlæser...",
+      "error": "Noget gik galt:",
+      "tryAgain": "Prøv igen",
+      "iconAlt": "Webside Downloader ikon",
+      "noInternet": "Ingen internetforbindelse - kan ikke downloade eksterne ressourcer",
+      "enableHtmlForOffline": "Aktiver venligst HTML-download eller enkeltfiltilstand til offline brug",
+      "networkCheckFailed": "Netværksforbindelsestjek mislykkedes - fortsætter download",
+      "noUrl": "Fejl: Ingen URL angivet til download",
+      "downloadInProgress": "En download er allerede i gang. Vent venligst.",
+      "memoryPressure": "Kan ikke starte download på grund af kritisk hukommelsespres. Prøv igen senere."
+    },
+    "filter": {
+      "title": "Filtrer hvad du vil downloade",
+      "downloadHTML": "Hent HTML-fil",
+      "downloadImages": "Download billeder",
+      "downloadLinks": "Download links (gemt som html-filer)",
+      "downloadAssets": "Download aktiver (css, js)",
+      "downloadDocuments": "Download dokumenter (pdf, doc, osv.)",
+      "downloadContentAsText": "Download indhold som tekst",
+      "singleFile": "Download i enkelt HTML-fil",
+      "startDownload": "Start hentning",
+      "linksWarning": "Hvis du vælger at downloade links, skal du tage højde for, at den samlede downloadtid kan stige dramatisk, og zip-filen kan blive betydeligt større.",
+      "permissionWarning": "Filterindstillinger gemmes ikke uden lagringstilladelse",
+      "dismiss": "Afvis",
+      "loading": "Indlæser filtre...",
+      "ariaDownloadHtml": "Download HTML-indhold",
+      "ariaDownloadImages": "Download billeder",
+      "ariaDownloadLinks": "Download links (gemt som html-filer)",
+      "ariaDownloadAssets": "Download aktiver (css, js)",
+      "ariaDownloadDocuments": "Download dokumenter (pdf, doc, osv.)",
+      "ariaDownloadContent": "Download indhold som tekst",
+      "ariaSingleFile": "Download som en enkelt HTML-fil",
+      "ariaStartDownload": "Start hentning",
+      "ariaDismissWarning": "Luk advarsel",
+      "error": "Fejl"
+    },
+    "actions": {
+      "title": "Handlinger:",
+      "stop": "Afbryd"
+    },
+    "status": {
+      "waiting": "Venter på forbindelse...",
+      "connected": "Webside forbundet!",
+      "scraping": "Skraber webside...",
+      "scraped": "Webside skrabet!",
+      "creating": "Zip-fil oprettet!",
+      "complete": "Download fuldført",
+      "failed": "Download mislykkedes",
+      "cancelled": "Download blev annulleret",
+      "creatingIndex": "Opretter index.html",
+      "downloadingCss": "Downloader CSS-filer",
+      "cssDownloaded": "CSS-filer downloadet",
+      "cssError": "Fejl ved download af CSS-filer - nogle mangler muligvis",
+      "downloadingJs": "Downloader JS-filer",
+      "jsDownloaded": "JS-filer downloadet",
+      "jsError": "Fejl ved download af JS-filer - nogle mangler muligvis",
+      "downloadingDocuments": "Downloader dokumentfiler",
+      "documentsDownloaded": "Dokumentfiler downloadet",
+      "downloadingImages": "Downloader billeder",
+      "imagesDownloaded": "Billeder downloadet",
+      "downloadingLinks": "Downloader linkede html-filer",
+      "linksDownloaded": "Linkede html-filer downloadet",
+      "downloadingContent": "Downloader indhold som tekst",
+      "contentDownloaded": "Indhold som tekst downloadet",
+      "singleFileCreated": "Enkelt HTML-fil oprettet",
+      "zipCreated": "Zip-fil oprettet!",
+      "downloadStarted": "Download startede succesfuldt",
+      "completeTitle": "Download er færdig:",
+      "zipLocation": "Du kan finde zip-filen i din download-mappe",
+      "cssProgress": "CSS-filer status: {{completed}}/{{total}}",
+      "bgImagesProgress": "Baggrundsbilleder status: {{completed}}/{{total}}",
+      "jsProgress": "JS-filer status: {{completed}}/{{total}}",
+      "documentsProgress": "Dokumentfiler status: {{completed}}/{{total}}",
+      "imagesProgress": "Billeder status: {{completed}}/{{total}}",
+      "htmlProgress": "HTML-filer status: {{completed}}/{{total}}",
+      "cssSummary": "CSS-filer downloadet: {{succeeded}} lykkedes, {{failed}} mislykkedes, {{skipped}} sprunget over",
+      "bgImagesSummary": "Baggrundsbilleder fra CSS downloadet: {{succeeded}} lykkedes, {{failed}} mislykkedes, {{skipped}} sprunget over",
+      "jsSummary": "JS-filer downloadet: {{succeeded}} lykkedes, {{failed}} mislykkedes, {{skipped}} sprunget over",
+      "documentsSummary": "Dokumentfiler downloadet: {{succeeded}} lykkedes, {{failed}} mislykkedes, {{skipped}} sprunget over",
+      "imagesSummary": "Billeder downloadet: {{succeeded}} lykkedes, {{failed}} mislykkedes, {{skipped}} sprunget over",
+      "htmlSummary": "HTML-filer downloadet: {{succeeded}} lykkedes, {{failed}} mislykkedes, {{skipped}} sprunget over",
+      "processingCss": "Behandler CSS-filer: {{current}}/{{total}}",
+      "streamingCss": "Starter streaming-download for stor CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS streaming status: {{completed}}/{{total}} bidder",
+      "cssStreamingSummary": "Behandlede CSS-filer: {{succeeded}} lykkedes, {{streamed}} streamet, {{failed}} mislykkedes",
+      "processingJs": "Behandler JS-filer: {{current}}/{{total}}",
+      "streamingJs": "Starter streaming-download for stor JS: {{current}}/{{total}}",
+      "streamingJsProgress": "JS streaming status: {{completed}}/{{total}} bidder",
+      "jsStreamingSummary": "Behandlede JS-filer: {{succeeded}} lykkedes, {{streamed}} streamet, {{failed}} mislykkedes",
+      "processingImages": "Behandler billeder: {{current}}/{{total}}",
+      "streamingImages": "Starter streaming-download for stort billede: {{current}}/{{total}}",
+      "streamingImagesProgress": "Billede streaming status: {{completed}}/{{total}} bidder",
+      "imagesStreamingSummary": "Behandlede billeder: {{succeeded}} lykkedes, {{streamed}} streamet, {{failed}} mislykkedes, {{skipped}} sprunget over",
+      "streamingFailedFallback": "Streaming-download mislykkedes, falder tilbage til normal download...",
+      "processingHtmlIncremental": "Behandler HTML-indhold med inkrementel samling",
+      "finalizingDownload": "Afslutter download",
+      "indexCreated": "Index.html oprettet",
+      "htmlTooLarge": "HTML-indhold er for stort, kan blive afkortet",
+      "incrementalHtmlAdded": "HTML-indhold samlet og tilføjet til download",
+      "largeHtmlAdded": "Stort HTML-indhold behandlet og tilføjet til download",
+      "creatingPackage": "Opretter endelig downloadpakke",
+      "processingImagesCount": "Behandler {{count}} billeder",
+      "streamingImageStart": "Starter streaming-download for billede: {{current}}/{{total}}",
+      "waitingForStreaming": "Venter på at {{count}} streaming-downloads afsluttes...",
+      "streamingProgress": "Streaming status: {{completed}}/{{total}} bidder ({{percent}}%)",
+      "streamingCompleted": "Alle streaming-downloads afsluttet",
+      "creatingStreamingZip": "Opretter ZIP-fil med streaming-indhold...",
+      "streamingSuccess": "Streaming-download afsluttet med succes",
+      "downloadingWebsiteContent": "Downloader indhold fra hjemmesiden ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Lagringstilladelse påkrævet",
+        "description": "Denne udvidelse har brug for lagringstilladelse for at gemme dine filterindstillinger og give en bedre oplevelse.",
+        "grant": "Giv tilladelse",
+        "deny": "Måske senere",
+        "benefits": {
+          "title": "Fordele ved at give lagringstilladelse:",
+          "savePreferences": "Gem dine download-filterindstillinger",
+          "persistSettings": "Husk dine indstillinger på tværs af sessioner",
+          "improveExperience": "Giv en mere personlig oplevelse"
+        }
+      },
+      "offscreen": {
+        "title": "Yderligere tilladelse påkrævet",
+        "description": "Denne udvidelse har brug for offscreen-tilladelsen til at behandle downloads effektivt.",
+        "grant": "Giv tilladelse",
+        "why": "Denne tilladelse gør det muligt for udvidelsen at oprette baggrundsdokumenter til behandling af store downloads uden at påvirke din browsingoplevelse."
+      },
+      "global": {
+        "title": "Tilladelser påkrævet",
+        "description": "Denne udvidelse har brug for lager- og offscreen-tilladelser for at give den bedste downloadoplevelse.",
+        "storage": {
+          "title": "Lagertilladelse:",
+          "description": "Giver udvidelsen lov til at gemme små mængder data lokalt i din browser. Dette gør det muligt for os at huske dine præferencer og give en personlig oplevelse på tværs af sessioner."
+        },
+        "offscreen": {
+          "title": "Offscreen-tilladelse:",
+          "description": "Muliggør download af store filer ved at lade udvidelsen behandle filer i baggrunden uden at påvirke din browsingoplevelse."
+        },
+        "storageDetails": {
+          "title": "Hvad vi gemmer:",
+          "id": "Unikt genereret ID",
+          "preferences": "Download-præferencer"
+        },
+        "privacy": {
+          "title": "Privatliv:",
+          "personal": "Ingen personlige data",
+          "history": "Ingen browsinghistorik",
+          "local": "Alle data forbliver lokalt i din browser"
+        },
+        "button": {
+          "requesting": "Anmoder om tilladelser...",
+          "enable": "Aktiver tilladelser"
+        },
+        "footer": "Tilbagekald når som helst i browserindstillinger"
+      }
+    },
+    "download": {
+      "showInFolder": "Vis i mappe",
+      "downloadAnother": "Download en anden side",
+      "cancel": "Annuller download"
+    },
+    "language": {
+      "select": "Vælg sprog",
+      "search": "Søg sprog...",
+      "current": "Nuværende sprog"
+    },
+    "rating": {
+      "title": "Kan du lide denne udvidelse?",
+      "description": "Bedøm os venligst i Chrome Web Store!",
+      "rate": "Bedøm udvidelse",
+      "prompt": "Hvis du var tilfreds, så efterlad venligst en positiv anmeldelse :)",
+      "ariaLabel_one": "Bedøm med {{count}} stjerne",
+      "ariaLabel_other": "Bedøm med {{count}} stjerner"
+    },
+    "featureRequest": {
+      "title": "Anmod om en funktion",
+      "description": "Har du en idé til at forbedre denne udvidelse?",
+      "submit": "Indsend anmodning"
+    }
+  }
+}

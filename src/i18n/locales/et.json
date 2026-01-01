@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Veebilehe allalaadija",
+      "loading": "Laadimine...",
+      "error": "Midagi läks valesti:",
+      "tryAgain": "Proovi uuesti",
+      "iconAlt": "Veebilehe allalaadija ikoon",
+      "noInternet": "Internetiühendus puudub - väliseid ressursse ei saa alla laadida",
+      "enableHtmlForOffline": "Palun lubage võrguühenduseta kasutamiseks HTML-i allalaadimine või ühe faili režiim",
+      "networkCheckFailed": "Võrguühenduse kontroll ebaõnnestus - allalaadimine jätkub",
+      "noUrl": "Viga: Allalaadimiseks pole URL-i antud",
+      "downloadInProgress": "Allalaadimine on juba pooleli. Palun oodake.",
+      "memoryPressure": "Kriitilise mälupuuduse tõttu ei saa allalaadimist alustada. Palun proovige hiljem uuesti."
+    },
+    "filter": {
+      "title": "Filtreeri, mida soovid alla laadida",
+      "downloadHTML": "Laadi alla HTML",
+      "downloadImages": "Laadi alla pildid",
+      "downloadLinks": "Laadi alla lingid (salvestatud html-failidena)",
+      "downloadAssets": "Laadi alla varad (css, js)",
+      "downloadDocuments": "Laadi alla dokumendid (pdf, doc jne)",
+      "downloadContentAsText": "Laadi alla sisu tekstina",
+      "singleFile": "Laadi alla ühe HTML-failina",
+      "startDownload": "Alusta allalaadimist",
+      "linksWarning": "Kui valite linkide allalaadimise, peate arvestama, et kogu allalaadimisaeg võib märkimisväärselt pikeneda ja ZIP-fail võib olla oluliselt suurem.",
+      "permissionWarning": "Filtrieelistusi ei salvestata ilma salvestusruumi loata",
+      "dismiss": "Loobu",
+      "loading": "Filtrite laadimine...",
+      "ariaDownloadHtml": "Laadi alla HTML-sisu",
+      "ariaDownloadImages": "Laadi alla pildid",
+      "ariaDownloadLinks": "Laadi alla lingid (salvestatud html-failidena)",
+      "ariaDownloadAssets": "Laadi alla varad (css, js)",
+      "ariaDownloadDocuments": "Laadi alla dokumendid (pdf, doc jne)",
+      "ariaDownloadContent": "Laadi sisu tekstina",
+      "ariaSingleFile": "Laadi alla ühe HTML-failina",
+      "ariaStartDownload": "Alusta allalaadimist",
+      "ariaDismissWarning": "Loobu hoiatusest",
+      "error": "Viga"
+    },
+    "actions": {
+      "title": "Tegevused:",
+      "stop": "Peata"
+    },
+    "status": {
+      "waiting": "Ühenduse ootel...",
+      "connected": "Veebileht on ühendatud!",
+      "scraping": "Veebilehe kraapimine...",
+      "scraped": "Veebileht on kraabitud!",
+      "creating": "ZIP-fail on loodud!",
+      "complete": "Allalaadimine on lõpetatud",
+      "failed": "Allalaadimine ebaõnnestus",
+      "cancelled": "Allalaadimine tühistati",
+      "creatingIndex": "Faili index.html loomine",
+      "downloadingCss": "CSS-failide allalaadimine",
+      "cssDownloaded": "CSS-failid allalaaditud",
+      "cssError": "Viga CSS-failide allalaadimisel - mõned võivad puududa",
+      "downloadingJs": "JS-failide allalaadimine",
+      "jsDownloaded": "JS-failid allalaaditud",
+      "jsError": "Viga JS-failide allalaadimisel - mõned võivad puududa",
+      "downloadingDocuments": "Dokumendifailide allalaadimine",
+      "documentsDownloaded": "Dokumendifailid allalaaditud",
+      "downloadingImages": "Piltide allalaadimine",
+      "imagesDownloaded": "Pildid allalaaditud",
+      "downloadingLinks": "Seotud html-failide allalaadimine",
+      "linksDownloaded": "Seotud html-failid alla laaditud",
+      "downloadingContent": "Sisu allalaadimine tekstina",
+      "contentDownloaded": "Sisu tekstina alla laaditud",
+      "singleFileCreated": "Üksik HTML-fail loodud",
+      "zipCreated": "Zip-fail loodud!",
+      "downloadStarted": "Allalaadimine algas edukalt",
+      "completeTitle": "Allalaadimine on lõpetatud:",
+      "zipLocation": "Leiate zip-faili oma allalaadimiste kaustast",
+      "cssProgress": "CSS-failide edenemine: {{completed}}/{{total}}",
+      "bgImagesProgress": "Taustapiltide edenemine: {{completed}}/{{total}}",
+      "jsProgress": "JS-failide edenemine: {{completed}}/{{total}}",
+      "documentsProgress": "Dokumendifailide edenemine: {{completed}}/{{total}}",
+      "imagesProgress": "Piltide edenemine: {{completed}}/{{total}}",
+      "htmlProgress": "HTML-failide edenemine: {{completed}}/{{total}}",
+      "cssSummary": "Allalaaditud CSS-failid: {{succeeded}} õnnestus, {{failed}} ebaõnnestus, {{skipped}} vahele jäetud",
+      "bgImagesSummary": "Allalaaditud taustapildid CSS-ist: {{succeeded}} õnnestus, {{failed}} ebaõnnestus, {{skipped}} vahele jäetud",
+      "jsSummary": "Allalaaditud JS-failid: {{succeeded}} õnnestus, {{failed}} ebaõnnestus, {{skipped}} vahele jäetud",
+      "documentsSummary": "Allalaaditud dokumendifailid: {{succeeded}} õnnestus, {{failed}} ebaõnnestus, {{skipped}} vahele jäetud",
+      "imagesSummary": "Allalaaditud pildid: {{succeeded}} õnnestus, {{failed}} ebaõnnestus, {{skipped}} vahele jäetud",
+      "htmlSummary": "Allalaaditud HTML-failid: {{succeeded}} õnnestus, {{failed}} ebaõnnestus, {{skipped}} vahele jäetud",
+      "processingCss": "CSS-failide töötlemine: {{current}}/{{total}}",
+      "streamingCss": "Voogedastuse allalaadimise alustamine suure CSS-i jaoks: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS-i voogedastuse edenemine: {{completed}}/{{total}} tükki",
+      "cssStreamingSummary": "Töödeldud CSS-failid: {{succeeded}} õnnestus, {{streamed}} voogedastatud, {{failed}} ebaõnnestus",
+      "processingJs": "JS-failide töötlemine: {{current}}/{{total}}",
+      "streamingJs": "Voogedastuse allalaadimise alustamine suure JS-i jaoks: {{current}}/{{total}}",
+      "streamingJsProgress": "JS-i voogedastuse edenemine: {{completed}}/{{total}} tükki",
+      "jsStreamingSummary": "Töödeldud JS-failid: {{succeeded}} õnnestus, {{streamed}} voogedastatud, {{failed}} ebaõnnestus",
+      "processingImages": "Piltide töötlemine: {{current}}/{{total}}",
+      "streamingImages": "Voogedastuse allalaadimise alustamine suure pildi jaoks: {{current}}/{{total}}",
+      "streamingImagesProgress": "Pildi voogedastuse edenemine: {{completed}}/{{total}} tükki",
+      "imagesStreamingSummary": "Töödeldud pildid: {{succeeded}} õnnestus, {{streamed}} voogedastatud, {{failed}} ebaõnnestus, {{skipped}} vahele jäetud",
+      "streamingFailedFallback": "Voogedastuse allalaadimine ebaõnnestus, tavalisele allalaadimisele tagasipöördumine...",
+      "processingHtmlIncremental": "HTML-sisu töötlemine inkrementaalse koostamisega",
+      "finalizingDownload": "Allalaadimise lõpuleviimine",
+      "indexCreated": "Index.html on loodud",
+      "htmlTooLarge": "HTML-sisu on liiga suur, võib kärpida",
+      "incrementalHtmlAdded": "HTML-sisu kokku pandud ja allalaadimisse lisatud",
+      "largeHtmlAdded": "Suur HTML-sisu töödeldud ja allalaadimisse lisatud",
+      "creatingPackage": "Lõpliku allalaadimispaketi loomine",
+      "processingImagesCount": "{{count}} pildi töötlemine",
+      "streamingImageStart": "Pildi voogedastuse allalaadimise alustamine: {{current}}/{{total}}",
+      "waitingForStreaming": "{{count}} voogedastuse allalaadimise lõpuleviimise ootamine...",
+      "streamingProgress": "Voogedastuse edenemine: {{completed}}/{{total}} tükki ({{percent}}%)",
+      "streamingCompleted": "Kõik voogedastuse allalaadimised on lõpetatud",
+      "creatingStreamingZip": "ZIP-faili loomine voogedastuse sisuga...",
+      "streamingSuccess": "Voogedastuse allalaadimine edukalt lõpule viidud",
+      "downloadingWebsiteContent": "Veebisaidi sisu allalaadimine ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Salvestusruumi luba on vajalik",
+        "description": "See laiendus vajab filtrieelistuste salvestamiseks ja parema kogemuse pakkumiseks salvestusruumi luba.",
+        "grant": "Anna luba",
+        "deny": "Võib-olla hiljem",
+        "benefits": {
+          "title": "Salvestusruumi loa andmise eelised:",
+          "savePreferences": "Salvesta oma allalaadimise filtrieelistused",
+          "persistSettings": "Jäta oma seaded seansside vahel meelde",
+          "improveExperience": "Paku isikupärasemat kogemust"
+        }
+      },
+      "offscreen": {
+        "title": "Vajalik on täiendav luba",
+        "description": "See laiendus vajab offscreen luba allalaadimiste tõhusaks töötlemiseks.",
+        "grant": "Anna luba",
+        "why": "See luba võimaldab laiendusel luua taustadokumente suurte allalaadimiste töötlemiseks, ilma et see mõjutaks teie sirvimiskogemust."
+      },
+      "global": {
+        "title": "Load on vajalikud",
+        "description": "See laiendus vajab parima allalaadimiskogemuse pakkumiseks salvestusruumi ja offscreen lubasid.",
+        "storage": {
+          "title": "Salvestusruumi luba:",
+          "description": "Võimaldab laiendusel salvestada väikeseid andmekoguseid lokaalselt teie brauserisse. See võimaldab meil teie eelistusi meeles pidada ja pakkuda isikupärastatud kogemust erinevate seansside vahel."
+        },
+        "offscreen": {
+          "title": "Offscreen luba:",
+          "description": "Võimaldab suurte failide allalaadimist, lubades laiendusel töödelda faile taustal ilma teie sirvimiskogemust mõjutamata."
+        },
+        "storageDetails": {
+          "title": "Mida me salvestame:",
+          "id": "Unikaalne genereeritud ID",
+          "preferences": "Allalaadimise eelistused"
+        },
+        "privacy": {
+          "title": "Privaatsus:",
+          "personal": "Isikuandmeid pole",
+          "history": "Sirvimisajalugu pole",
+          "local": "Kõik andmed jäävad lokaalselt teie brauserisse"
+        },
+        "button": {
+          "requesting": "Lubade taotlemine...",
+          "enable": "Luba load"
+        },
+        "footer": "Tühistage igal ajal brauseri seadetes"
+      }
+    },
+    "download": {
+      "showInFolder": "Näita kaustas",
+      "downloadAnother": "Laadi alla teine leht",
+      "cancel": "Tühista allalaadimine"
+    },
+    "language": {
+      "select": "Vali keel",
+      "search": "Otsi keeli...",
+      "current": "Praegune keel"
+    },
+    "rating": {
+      "title": "Kas naudite seda laiendust?",
+      "description": "Palun hinnake meid Chrome'i veebipoes!",
+      "rate": "Hinda laiendust",
+      "prompt": "Kui jäite rahule, jätke palun positiivne arvustus :)",
+      "ariaLabel_one": "Hinda {{count}} tärniga",
+      "ariaLabel_other": "Hinda {{count}} tärniga"
+    },
+    "featureRequest": {
+      "title": "Taotle funktsiooni",
+      "description": "Kas teil on idee selle laienduse täiustamiseks?",
+      "submit": "Esita taotlus"
+    }
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "Prenosnik spletnih strani",
+      "loading": "Nalaganje...",
+      "error": "Nekaj je šlo narobe:",
+      "tryAgain": "Poskusite znova",
+      "iconAlt": "Ikona prenosnika spletnih strani",
+      "noInternet": "Ni internetne povezave - zunanjih virov ni mogoče prenesti",
+      "enableHtmlForOffline": "Prosimo, omogočite prenos HTML ali način posamezne datoteke za uporabo brez povezave",
+      "networkCheckFailed": "Preverjanje omrežne povezljivosti ni uspelo - prenos se nadaljuje",
+      "noUrl": "Napaka: Za prenos ni naveden URL",
+      "downloadInProgress": "Prenos že poteka. Prosimo, počakajte.",
+      "memoryPressure": "Prenosa ni mogoče začeti zaradi kritičnega pomanjkanja pomnilnika. Poskusite znova pozneje."
+    },
+    "filter": {
+      "title": "Filtrirajte, kaj želite prenesti",
+      "downloadHTML": "Prenesi HTML",
+      "downloadImages": "Prenesi slike",
+      "downloadLinks": "Prenesi povezave (shranjene kot datoteke html)",
+      "downloadAssets": "Prenesi sredstva (css, js)",
+      "downloadDocuments": "Prenesi dokumente (pdf, doc itd.)",
+      "downloadContentAsText": "Prenesi vsebino kot besedilo",
+      "singleFile": "Prenesi v eni datoteki HTML",
+      "startDownload": "Začni prenos",
+      "linksWarning": "Če se odločite za prenos povezav, morate upoštevati, da se lahko skupni čas prenosa dramatično poveča in da je lahko datoteka zip znatno večja.",
+      "permissionWarning": "Nastavitve filtra ne bodo shranjene brez dovoljenja za shranjevanje",
+      "dismiss": "Zavrni",
+      "loading": "Nalaganje filtrov...",
+      "ariaDownloadHtml": "Prenesi HTML vsebino",
+      "ariaDownloadImages": "Prenesi slike",
+      "ariaDownloadLinks": "Prenesi povezave (shranjene kot html datoteke)",
+      "ariaDownloadAssets": "Prenesi sredstva (css, js)",
+      "ariaDownloadDocuments": "Prenesi dokumente (pdf, doc, itd.)",
+      "ariaDownloadContent": "Prenesi vsebino kot besedilo",
+      "ariaSingleFile": "Prenesi kot eno HTML datoteko",
+      "ariaStartDownload": "Začni prenos",
+      "ariaDismissWarning": "Opusti opozorilo",
+      "error": "Napaka"
+    },
+    "actions": {
+      "title": "Dejanja:",
+      "stop": "Ustavi"
+    },
+    "status": {
+      "waiting": "Čakanje na povezavo...",
+      "connected": "Spletna stran povezana!",
+      "scraping": "Strganje spletne strani...",
+      "scraped": "Spletna stran postrgana!",
+      "creating": "Datoteka zip ustvarjena!",
+      "complete": "Prenos končan",
+      "failed": "Prenos ni uspel",
+      "cancelled": "Prenos je bil preklican",
+      "creatingIndex": "Ustvarjanje index.html",
+      "downloadingCss": "Prenos datotek CSS",
+      "cssDownloaded": "Datoteke CSS prenesene",
+      "cssError": "Napaka pri prenosu CSS datotek - nekatere morda manjkajo",
+      "downloadingJs": "Prenos datotek JS",
+      "jsDownloaded": "Datoteke JS prenesene",
+      "jsError": "Napaka pri prenosu JS datotek - nekatere morda manjkajo",
+      "downloadingDocuments": "Prenos dokumentov",
+      "documentsDownloaded": "Dokumenti preneseni",
+      "downloadingImages": "Prenos slik",
+      "imagesDownloaded": "Slike prenesene",
+      "downloadingLinks": "Prenašanje povezanih html datotek",
+      "linksDownloaded": "Povezane html datoteke prenesene",
+      "downloadingContent": "Prenašanje vsebine kot besedila",
+      "contentDownloaded": "Vsebina kot besedilo prenesena",
+      "singleFileCreated": "Ustvarjena ena HTML datoteka",
+      "zipCreated": "Zip datoteka ustvarjena!",
+      "downloadStarted": "Prenos se je uspešno začel",
+      "completeTitle": "Prenos je končan:",
+      "zipLocation": "Zip datoteko najdete v mapi za prenose",
+      "cssProgress": "Napredek CSS datotek: {{completed}}/{{total}}",
+      "bgImagesProgress": "Napredek slik ozadja: {{completed}}/{{total}}",
+      "jsProgress": "Napredek JS datotek: {{completed}}/{{total}}",
+      "documentsProgress": "Napredek datotek dokumentov: {{completed}}/{{total}}",
+      "imagesProgress": "Napredek slik: {{completed}}/{{total}}",
+      "htmlProgress": "Napredek HTML datotek: {{completed}}/{{total}}",
+      "cssSummary": "Prenesene CSS datoteke: {{succeeded}} uspelo, {{failed}} ni uspelo, {{skipped}} preskočeno",
+      "bgImagesSummary": "Prenesene slike ozadja iz CSS: {{succeeded}} uspelo, {{failed}} ni uspelo, {{skipped}} preskočeno",
+      "jsSummary": "Prenesene JS datoteke: {{succeeded}} uspelo, {{failed}} ni uspelo, {{skipped}} preskočeno",
+      "documentsSummary": "Prenesene datoteke dokumentov: {{succeeded}} uspelo, {{failed}} ni uspelo, {{skipped}} preskočeno",
+      "imagesSummary": "Prenesene slike: {{succeeded}} uspelo, {{failed}} ni uspelo, {{skipped}} preskočeno",
+      "htmlSummary": "Prenesene HTML datoteke: {{succeeded}} uspelo, {{failed}} ni uspelo, {{skipped}} preskočeno",
+      "processingCss": "Obdelava CSS datotek: {{current}}/{{total}}",
+      "streamingCss": "Začenjanje pretočnega prenosa za velik CSS: {{current}}/{{total}}",
+      "streamingCssProgress": "Napredek pretakanja CSS: {{completed}}/{{total}} kosov",
+      "cssStreamingSummary": "Obdelane CSS datoteke: {{succeeded}} uspelo, {{streamed}} pretočeno, {{failed}} ni uspelo",
+      "processingJs": "Obdelava JS datotek: {{current}}/{{total}}",
+      "streamingJs": "Začenjanje pretočnega prenosa za velik JS: {{current}}/{{total}}",
+      "streamingJsProgress": "Napredek pretakanja JS: {{completed}}/{{total}} kosov",
+      "jsStreamingSummary": "Obdelane JS datoteke: {{succeeded}} uspelo, {{streamed}} pretočeno, {{failed}} ni uspelo",
+      "processingImages": "Obdelava slik: {{current}}/{{total}}",
+      "streamingImages": "Začenjanje pretočnega prenosa za veliko sliko: {{current}}/{{total}}",
+      "streamingImagesProgress": "Napredek pretakanja slike: {{completed}}/{{total}} kosov",
+      "imagesStreamingSummary": "Obdelane slike: {{succeeded}} uspelo, {{streamed}} pretočeno, {{failed}} ni uspelo, {{skipped}} preskočeno",
+      "streamingFailedFallback": "Pretočni prenos ni uspel, vračanje na navaden prenos...",
+      "processingHtmlIncremental": "Obdelava HTML vsebine z inkrementalnim sestavljanjem",
+      "finalizingDownload": "Dokončevanje prenosa",
+      "indexCreated": "Index.html ustvarjen",
+      "htmlTooLarge": "HTML vsebina je prevelika, lahko bo odrezana",
+      "incrementalHtmlAdded": "HTML vsebina sestavljena in dodana v prenos",
+      "largeHtmlAdded": "Velika HTML vsebina obdelana in dodana v prenos",
+      "creatingPackage": "Ustvarjanje končnega paketa za prenos",
+      "processingImagesCount": "Obdelava {{count}} slik",
+      "streamingImageStart": "Začenjanje pretočnega prenosa za sliko: {{current}}/{{total}}",
+      "waitingForStreaming": "Čakanje na dokončanje {{count}} pretočnih prenosov...",
+      "streamingProgress": "Napredek pretakanja: {{completed}}/{{total}} kosov ({{percent}}%)",
+      "streamingCompleted": "Vsi pretočni prenosi končani",
+      "creatingStreamingZip": "Ustvarjanje ZIP datoteke s pretočno vsebino...",
+      "streamingSuccess": "Pretočni prenos uspešno zaključen",
+      "downloadingWebsiteContent": "Prenos vsebine spletne strani ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "Zahtevano dovoljenje za shranjevanje",
+        "description": "Ta razširitev potrebuje dovoljenje za shranjevanje, da shrani vaše nastavitve filtra in zagotovi boljšo izkušnjo.",
+        "grant": "Dovoli",
+        "deny": "Morda kasneje",
+        "benefits": {
+          "title": "Prednosti dovoljenja za shranjevanje:",
+          "savePreferences": "Shranite nastavitve filtra za prenos",
+          "persistSettings": "Zapomni si nastavitve med sejami",
+          "improveExperience": "Zagotavljanje bolj prilagojene izkušnje"
+        }
+      },
+      "offscreen": {
+        "title": "Zahtevano dodatno dovoljenje",
+        "description": "Ta razširitev potrebuje dovoljenje offscreen za učinkovito obdelavo prenosov.",
+        "grant": "Dovoli",
+        "why": "To dovoljenje omogoča razširitvi ustvarjanje dokumentov v ozadju za obdelavo velikih prenosov, ne da bi to vplivalo na vašo izkušnjo brskanja."
+      },
+      "global": {
+        "title": "Zahtevana dovoljenja",
+        "description": "Ta razširitev potrebuje dovoljenja za shranjevanje in offscreen za zagotavljanje najboljše izkušnje prenašanja.",
+        "storage": {
+          "title": "Dovoljenje za shranjevanje:",
+          "description": "Dovoljuje razširitvi shranjevanje majhnih količin podatkov lokalno v vašem brskalniku. To nam omogoča, da si zapomnimo vaše nastavitve in zagotovimo prilagojeno izkušnjo."
+        },
+        "offscreen": {
+          "title": "Dovoljenje Offscreen:",
+          "description": "Omogoča prenos velikih datotek z dovoljenjem, da razširitev obdeluje datoteke v ozadju, ne da bi vplivala na vašo izkušnjo brskanja."
+        },
+        "storageDetails": {
+          "title": "Kaj shranjujemo:",
+          "id": "Edinstven ustvarjen ID",
+          "preferences": "Nastavitve prenosa"
+        },
+        "privacy": {
+          "title": "Zasebnost:",
+          "personal": "Ni osebnih podatkov",
+          "history": "Ni zgodovine brskanja",
+          "local": "Vsi podatki ostanejo lokalno v vašem brskalniku"
+        },
+        "button": {
+          "requesting": "Zahtevanje dovoljenj...",
+          "enable": "Omogoči dovoljenja"
+        },
+        "footer": "Preklicati kadarkoli v nastavitvah brskalnika"
+      }
+    },
+    "download": {
+      "showInFolder": "Prikaži v mapi",
+      "downloadAnother": "Prenesi drugo stran",
+      "cancel": "Prekliči prenos"
+    },
+    "language": {
+      "select": "Izberi jezik",
+      "search": "Išči jezike...",
+      "current": "Trenutni jezik"
+    },
+    "rating": {
+      "title": "Vam je ta razširitev všeč?",
+      "description": "Ocenite nas v spletni trgovini Chrome!",
+      "rate": "Oceni razširitev",
+      "prompt": "Če ste bili zadovoljni, pustite pozitivno oceno :)",
+      "ariaLabel_one": "Oceni z {{count}} zvezdico",
+      "ariaLabel_other": "Oceni z {{count}} zvezdicami"
+    },
+    "featureRequest": {
+      "title": "Zahtevaj funkcijo",
+      "description": "Imate idejo za izboljšavo te razširitve?",
+      "submit": "Pošlji zahtevo"
+    }
+  }
+}

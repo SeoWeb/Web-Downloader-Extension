@@ -44,7 +44,7 @@ export async function messageWorker(
         data.html,
         data.tabUrl,
         data.downloadOptions,
-        (message: string) =>
+        (message: string | { key: string; options?: any }) =>
           addMessage({
             action: messageActions.PANEL_MESSAGE,
             data: { message },
@@ -102,7 +102,7 @@ export async function messageWorker(
         data.assemblyJobId,
         data.tabUrl,
         data.downloadOptions,
-        (message: string) =>
+        (message: string | { key: string; options?: any }) =>
           addMessage({
             action: messageActions.PANEL_MESSAGE,
             data: { message },

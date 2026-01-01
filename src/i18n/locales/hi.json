@@ -1,0 +1,187 @@
+{
+  "translation": {
+    "app": {
+      "title": "वेब पेज डाउनलोडर",
+      "loading": "लोड हो रहा है...",
+      "error": "कुछ गलत हो गया:",
+      "tryAgain": "पुनः प्रयास करें",
+      "iconAlt": "वेब पेज डाउनलोडर आइकन",
+      "noInternet": "इंटरनेट कनेक्शन नहीं है - बाहरी संसाधन डाउनलोड नहीं किए जा सकते",
+      "enableHtmlForOffline": "ऑफ़लाइन उपयोग के लिए कृपया HTML डाउनलोड या एकल फ़ाइल मोड सक्षम करें",
+      "networkCheckFailed": "नेटवर्क कनेक्टिविटी जांच विफल - डाउनलोड जारी है",
+      "noUrl": "त्रुटि: डाउनलोड के लिए कोई URL प्रदान नहीं किया गया",
+      "downloadInProgress": "एक डाउनलोड पहले से ही प्रगति पर है। कृपया प्रतीक्षा करें।",
+      "memoryPressure": "महत्वपूर्ण मेमोरी दबाव के कारण डाउनलोड शुरू नहीं किया जा सकता है। कृपया बाद में पुनः प्रयास करें।"
+    },
+    "filter": {
+      "title": "आप जो डाउनलोड करना चाहते हैं उसे फ़िल्टर करें",
+      "downloadHTML": "HTML डाउनलोड करें",
+      "downloadImages": "चित्र डाउनलोड करें",
+      "downloadLinks": "लिंक डाउनलोड करें (html फ़ाइलों के रूप में सहेजे गए)",
+      "downloadAssets": "एसेट्स डाउनलोड करें (css, js)",
+      "downloadDocuments": "दस्तावेज़ डाउनलोड करें (pdf, doc, आदि)",
+      "downloadContentAsText": "सामग्री को टेक्स्ट के रूप में डाउनलोड करें",
+      "singleFile": "एकल HTML फ़ाइल में डाउनलोड करें",
+      "startDownload": "डाउनलोड प्रारंभ करें",
+      "linksWarning": "यदि आप लिंक डाउनलोड करना चुनते हैं, तो आपको यह ध्यान रखना होगा कि कुल डाउनलोड समय नाटकीय रूप से बढ़ सकता है और ज़िप फ़ाइल काफी बड़ी हो सकती है।",
+      "permissionWarning": "स्टोरेज अनुमति के बिना फ़िल्टर प्राथमिकताएँ सहेजी नहीं जाएँगी",
+      "dismiss": "खारिज करें",
+      "loading": "फ़िल्टर लोड हो रहे हैं...",
+      "ariaDownloadHtml": "HTML सामग्री डाउनलोड करें",
+      "ariaDownloadImages": "चित्र डाउनलोड करें",
+      "ariaDownloadLinks": "लिंक डाउनलोड करें (html फ़ाइलों के रूप में सहेजे गए)",
+      "ariaDownloadAssets": "संसाधन डाउनलोड करें (css, js)",
+      "ariaDownloadDocuments": "दस्तावेज़ डाउनलोड करें (pdf, doc, आदि)",
+      "ariaDownloadContent": "सामग्री को पाठ के रूप में डाउनलोड करें",
+      "ariaSingleFile": "एकल HTML फ़ाइल के रूप में डाउनलोड करें",
+      "ariaStartDownload": "डाउनलोड शुरू करें",
+      "ariaDismissWarning": "चेतावनी खारिज करें",
+      "error": "त्रुटि"
+    },
+    "actions": {
+      "title": "क्रियाएं:",
+      "stop": "रुकें"
+    },
+    "status": {
+      "waiting": "कनेक्शन की प्रतीक्षा कर रहा है...",
+      "connected": "वेबसाइट कनेक्ट हो गई!",
+      "scraping": "वेबसाइट स्क्रैप की जा रही है...",
+      "scraped": "वेबसाइट स्क्रैप हो गई!",
+      "creating": "ज़िप फ़ाइल बनाई गई!",
+      "complete": "डाउनलोड पूरा हुआ",
+      "failed": "डाउनलोड विफल रहा",
+      "cancelled": "डाउनलोड रद्द कर दिया गया",
+      "creatingIndex": "index.html बना रहा है",
+      "downloadingCss": "CSS फाइलें डाउनलोड हो रही हैं",
+      "cssDownloaded": "CSS फाइलें डाउनलोड हो गईं",
+      "cssError": "CSS फ़ाइलें डाउनलोड करने में त्रुटि - कुछ गायब हो सकती हैं",
+      "downloadingJs": "JS फाइलें डाउनलोड हो रही हैं",
+      "jsDownloaded": "JS फाइलें डाउनलोड हो गईं",
+      "jsError": "JS फ़ाइलें डाउनलोड करने में त्रुटि - कुछ गायब हो सकती हैं",
+      "downloadingDocuments": "दस्तावेज़ फाइलें डाउनलोड हो रही हैं",
+      "documentsDownloaded": "दस्तावेज़ फाइलें डाउनलोड हो गईं",
+      "downloadingImages": "छवियां डाउनलोड हो रही हैं",
+      "imagesDownloaded": "छवियां डाउनलोड हो गईं",
+      "downloadingLinks": "लिंक की गई html फ़ाइलें डाउनलोड हो रही हैं",
+      "linksDownloaded": "लिंक की गई html फ़ाइलें डाउनलोड हो गईं",
+      "downloadingContent": "सामग्री को पाठ के रूप में डाउनलोड किया जा रहा है",
+      "contentDownloaded": "सामग्री पाठ के रूप में डाउनलोड हो गई",
+      "singleFileCreated": "एकल HTML फ़ाइल बनाई गई",
+      "zipCreated": "ज़िप फ़ाइल बनाई गई!",
+      "downloadStarted": "डाउनलोड सफलतापूर्वक शुरू हुआ",
+      "completeTitle": "डाउनलोड पूरा हो गया है:",
+      "zipLocation": "आप डाउनलोड फोल्डर में ज़िप फ़ाइल पा सकते हैं",
+      "cssProgress": "CSS फ़ाइलें प्रगति: {{completed}}/{{total}}",
+      "bgImagesProgress": "पृष्ठभूमि चित्र प्रगति: {{completed}}/{{total}}",
+      "jsProgress": "JS फ़ाइलें प्रगति: {{completed}}/{{total}}",
+      "documentsProgress": "दस्तावेज़ फ़ाइलें प्रगति: {{completed}}/{{total}}",
+      "imagesProgress": "चित्र प्रगति: {{completed}}/{{total}}",
+      "htmlProgress": "HTML फ़ाइलें प्रगति: {{completed}}/{{total}}",
+      "cssSummary": "CSS फ़ाइलें डाउनलोड की गईं: {{succeeded}} सफल, {{failed}} विफल, {{skipped}} छोड़ी गईं",
+      "bgImagesSummary": "CSS से पृष्ठभूमि चित्र डाउनलोड किए गए: {{succeeded}} सफल, {{failed}} विफल, {{skipped}} छोड़ी गईं",
+      "jsSummary": "JS फ़ाइलें डाउनलोड की गईं: {{succeeded}} सफल, {{failed}} विफल, {{skipped}} छोड़ी गईं",
+      "documentsSummary": "दस्तावेज़ फ़ाइलें डाउनलोड की गईं: {{succeeded}} सफल, {{failed}} विफल, {{skipped}} छोड़ी गईं",
+      "imagesSummary": "चित्र डाउनलोड किए गए: {{succeeded}} सफल, {{failed}} विफल, {{skipped}} छोड़ी गईं",
+      "htmlSummary": "HTML फ़ाइलें डाउनलोड की गईं: {{succeeded}} सफल, {{failed}} विफल, {{skipped}} छोड़ी गईं",
+      "processingCss": "CSS फ़ाइलें संसाधित की जा रही हैं: {{current}}/{{total}}",
+      "streamingCss": "बड़ी CSS के लिए स्ट्रीमिंग डाउनलोड शुरू हो रहा है: {{current}}/{{total}}",
+      "streamingCssProgress": "CSS स्ट्रीमिंग प्रगति: {{completed}}/{{total}} खंड",
+      "cssStreamingSummary": "संसाधित CSS फ़ाइलें: {{succeeded}} सफल, {{streamed}} स्ट्रीम की गईं, {{failed}} विफल",
+      "processingJs": "JS फ़ाइलें संसाधित की जा रही हैं: {{current}}/{{total}}",
+      "streamingJs": "बड़ी JS के लिए स्ट्रीमिंग डाउनलोड शुरू हो रहा है: {{current}}/{{total}}",
+      "streamingJsProgress": "JS स्ट्रीमिंग प्रगति: {{completed}}/{{total}} खंड",
+      "jsStreamingSummary": "संसाधित JS फ़ाइलें: {{succeeded}} सफल, {{streamed}} स्ट्रीम की गईं, {{failed}} विफल",
+      "processingImages": "चित्र संसाधित किए जा रहे हैं: {{current}}/{{total}}",
+      "streamingImages": "बड़ी छवि के लिए स्ट्रीमिंग डाउनलोड शुरू हो रहा है: {{current}}/{{total}}",
+      "streamingImagesProgress": "छवि स्ट्रीमिंग प्रगति: {{completed}}/{{total}} खंड",
+      "imagesStreamingSummary": "संसाधित चित्र: {{succeeded}} सफल, {{streamed}} स्ट्रीम की गईं, {{failed}} विफल, {{skipped}} छोड़ी गईं",
+      "streamingFailedFallback": "स्ट्रीमिंग डाउनलोड विफल, सामान्य डाउनलोड पर वापस जा रहा है...",
+      "processingHtmlIncremental": "वृद्धिशील असेंबली के साथ HTML सामग्री संसाधित की जा रही है",
+      "finalizingDownload": "डाउनलोड को अंतिम रूप दिया जा रहा है",
+      "indexCreated": "index.html बन गया",
+      "htmlTooLarge": "HTML सामग्री बहुत बड़ी है, काटी जा सकती है",
+      "incrementalHtmlAdded": "HTML सामग्री को इकट्ठा किया गया और डाउनलोड में जोड़ा गया",
+      "largeHtmlAdded": "बड़ी HTML सामग्री संसाधित की गई और डाउनलोड में जोड़ी गई",
+      "creatingPackage": "अंतिम डाउनलोड पैकेज बनाया जा रहा है",
+      "processingImagesCount": "{{count}} छवियों को संसाधित किया जा रहा है",
+      "streamingImageStart": "छवि के लिए स्ट्रीमिंग डाउनलोड शुरू हो रहा है: {{current}}/{{total}}",
+      "waitingForStreaming": "{{count}} स्ट्रीमिंग डाउनलोड पूरा होने की प्रतीक्षा की जा रही है...",
+      "streamingProgress": "स्ट्रीमिंग प्रगति: {{completed}}/{{total}} खंड ({{percent}}%)",
+      "streamingCompleted": "सभी स्ट्रीमिंग डाउनलोड पूरे हुए",
+      "creatingStreamingZip": "स्ट्रीमिंग सामग्री के साथ ज़िप फ़ाइल बनाई जा रही है...",
+      "streamingSuccess": "स्ट्रीमिंग डाउनलोड सफलतापूर्वक पूरा हुआ",
+      "downloadingWebsiteContent": "वेबसाइट सामग्री डाउनलोड हो रही है ..."
+    },
+    "permissions": {
+      "storage": {
+        "title": "स्टोरेज अनुमति आवश्यक है",
+        "description": "इस एक्सटेंशन को आपकी फ़िल्टर प्राथमिकताओं को सहेजने और बेहतर अनुभव प्रदान करने के लिए स्टोरेज अनुमति की आवश्यकता है।",
+        "grant": "अनुमति दें",
+        "deny": "शायद बाद में",
+        "benefits": {
+          "title": "स्टोरेज अनुमति देने के लाभ:",
+          "savePreferences": "अपनी डाउनलोड फ़िल्टर प्राथमिकताएँ सहेजें",
+          "persistSettings": "सत्रों के बीच अपनी सेटिंग्स याद रखें",
+          "improveExperience": "अधिक व्यक्तिगत अनुभव प्रदान करें"
+        }
+      },
+      "offscreen": {
+        "title": "अतिरिक्त अनुमति आवश्यक है",
+        "description": "इस एक्सटेंशन को कुशलतापूर्वक डाउनलोड संसाधित करने के लिए ऑफस्क्रीन अनुमति की आवश्यकता है।",
+        "grant": "अनुमति दें",
+        "why": "यह अनुमति एक्सटेंशन को आपके ब्राउज़िंग अनुभव को प्रभावित किए बिना बड़े डाउनलोड को संसाधित करने के लिए पृष्ठभूमि दस्तावेज़ बनाने की अनुमति देती है।"
+      },
+      "global": {
+        "title": "अनुमतियाँ आवश्यक",
+        "description": "इस एक्सटेंशन को सर्वश्रेष्ठ डाउनलोड अनुभव प्रदान करने के लिए स्टोरेज और ऑफस्क्रीन अनुमतियों की आवश्यकता है।",
+        "storage": {
+          "title": "स्टोरेज अनुमति:",
+          "description": "एक्सटेंशन को आपके ब्राउज़र में स्थानीय रूप से डेटा की छोटी मात्रा को सहेजने की अनुमति देता है। यह हमें आपकी प्राथमिकताओं को याद रखने और सत्रों में एक व्यक्तिगत अनुभव प्रदान करने में सक्षम बनाता है।"
+        },
+        "offscreen": {
+          "title": "ऑफस्क्रीन अनुमति:",
+          "description": "बड़ी फ़ाइलों को डाउनलोड करने में सक्षम बनाता है, जिससे एक्सटेंशन को आपके ब्राउज़िंग अनुभव को प्रभावित किए बिना पृष्ठभूमि में फ़ाइलों को संसाधित करने की अनुमति मिलती है।"
+        },
+        "storageDetails": {
+          "title": "हम क्या स्टोर करते हैं:",
+          "id": "अद्वितीय जनरेट की गई आईडी",
+          "preferences": "डाउनलोड प्राथमिकताएँ"
+        },
+        "privacy": {
+          "title": "गोपनीयता:",
+          "personal": "कोई व्यक्तिगत डेटा नहीं",
+          "history": "कोई ब्राउज़िंग इतिहास नहीं",
+          "local": "सभी डेटा स्थानीय रूप से आपके ब्राउज़र में रहता है"
+        },
+        "button": {
+          "requesting": "अनुमतियाँ का अनुरोध कर रहा है...",
+          "enable": "अनुमतियाँ सक्षम करें"
+        },
+        "footer": "ब्राउज़र सेटिंग्स में कभी भी रद्द करें"
+      }
+    },
+    "download": {
+      "showInFolder": "फ़ोल्डर में दिखाएँ",
+      "downloadAnother": "दूसरा पेज डाउनलोड करें",
+      "cancel": "डाउनलोड रद्द करें"
+    },
+    "language": {
+      "select": "भाषा चुनें",
+      "search": "भाषाएँ खोजें...",
+      "current": "वर्तमान भाषा"
+    },
+    "rating": {
+      "title": "क्या आप इस एक्सटेंशन का आनंद ले रहे हैं?",
+      "description": "कृपया क्रोम वेब स्टोर पर हमें रेट करें!",
+      "rate": "एक्सटेंशन रेट करें",
+      "prompt": "यदि आप संतुष्ट थे, तो कृपया सकारात्मक समीक्षा छोड़ें :)",
+      "ariaLabel_one": "{{count}} स्टार दें",
+      "ariaLabel_other": "{{count}} स्टार दें"
+    },
+    "featureRequest": {
+      "title": "सुविधा का अनुरोध करें",
+      "description": "क्या आपके पास इस एक्सटेंशन को बेहतर बनाने का कोई विचार है?",
+      "submit": "अनुरोध सबमिट करें"
+    }
+  }
+}
