@@ -57,6 +57,8 @@ export const LanguageSwitcher: React.FC = () => {
     }
   };
 
+  const isRTL = i18n.dir() === 'rtl';
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -73,24 +75,24 @@ export const LanguageSwitcher: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 w-72 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-96 overflow-hidden flex flex-col"
-          style={{ 
-            right: document.documentElement.dir === 'rtl' ? 'auto' : '0',
-            left: document.documentElement.dir === 'rtl' ? '0' : 'auto'
-          }}
+        <div 
+          className="absolute top-full mt-2 w-72 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-96 overflow-hidden flex !flex-col"
+          style={{ insetInlineEnd: 0 }}
         >
           {/* Search input */}
           <div className="p-3 border-b border-gray-200">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className={`absolute top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 ${isRTL ? 'right-3' : 'left-3'}`} />
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('language.search')}
-                className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isRTL ? 'pr-10' : 'pl-10 pr-3'}`}
+                style={isRTL ? { paddingLeft: '0.75rem' } : undefined}
                 aria-label={t('language.search')}
+                dir={isRTL ? 'rtl' : 'ltr'}
               />
             </div>
           </div>
@@ -103,11 +105,14 @@ export const LanguageSwitcher: React.FC = () => {
                   key={lang.code}
                   onClick={() => handleLanguageChange(lang.code)}
                   onKeyDown={(e) => handleKeyDown(e, lang.code)}
-                  className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none transition-colors ${
+                  className={`w-full px-4 py-2.5 text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none transition-colors ${
+                    isRTL ? 'text-right' : 'text-left'
+                  } ${
                     lang.code === i18n.language ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
                   }`}
                   role="option"
                   aria-selected={lang.code === i18n.language}
+                  dir={isRTL ? 'rtl' : 'ltr'}
                 >
                   <div className="flex items-center justify-between">
                     <div>

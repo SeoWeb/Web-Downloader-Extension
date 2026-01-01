@@ -60,12 +60,6 @@
   margin-right: 0;
 }
 
-/* Ensure dropdowns align correctly */
-[dir="rtl"] .absolute.right-0 {
-  right: auto;
-  left: 0;
-}
-
 /* Flip justify-end to justify-start for RTL */
 [dir="rtl"] .justify-end {
   justify-content: flex-start;
