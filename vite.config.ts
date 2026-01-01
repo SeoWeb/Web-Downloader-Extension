@@ -86,6 +86,44 @@ export default defineConfig({
         },
         entryFileNames: "[name].js",
         dir: "dist",
+        manualChunks: (id) => {
+          // Split large dependencies into separate chunks for better caching
+          if (id.includes('node_modules')) {
+            // React core
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'vendor-react';
+            }
+            // i18n libraries
+            if (id.includes('i18next') || id.includes('react-i18next')) {
+              return 'vendor-i18n';
+            }
+            // JSZip for file compression
+            if (id.includes('jszip')) {
+              return 'vendor-zip';
+            }
+            // HTML parsers
+            if (id.includes('cheerio') || id.includes('linkedom')) {
+              return 'vendor-parser';
+            }
+            // Radix UI components
+            if (id.includes('@radix-ui')) {
+              return 'vendor-ui';
+            }
+            // Lucide icons
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            // All other node_modules
+            return 'vendor';
+          }
+          // Locale files - each language gets its own chunk
+          if (id.includes('/i18n/locales/')) {
+            const match = id.match(/locales\/([^.]+)\.json/);
+            if (match) {
+              return `locale-${match[1]}`;
+            }
+          }
+        },
       },
     },
   },
