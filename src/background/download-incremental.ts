@@ -18,8 +18,9 @@ export async function downloadResourcesWithIncrementalAssembly(
   tabUrl: string,
   downloadOptions: FilterOptions,
   sendMessage: (message: string | { key: string; options?: any }) => void,
+  tabId?: number,
 ) {
-  console.log(`Starting download with incremental assembly for job: ${assemblyJobId}`);
+  console.log(`Starting download with incremental assembly for job: ${assemblyJobId}, tabId: ${tabId}`);
 
   if (!tabUrl) {
     console.error("No tab URL provided");
@@ -51,7 +52,7 @@ export async function downloadResourcesWithIncrementalAssembly(
     await performInitialCleanup();
 
     // Execute download with incremental assembly
-    await executeDownloadWithIncrementalAssembly(assemblyJobId, tabUrl, downloadOptions, sendMessage);
+    await executeDownloadWithIncrementalAssembly(assemblyJobId, tabUrl, downloadOptions, sendMessage, tabId);
   } catch (error) {
     console.error("Incremental download failed:", error);
 
@@ -112,6 +113,7 @@ async function executeDownloadWithIncrementalAssembly(
   tabUrl: string,
   downloadOptions: FilterOptions,
   sendMessage: (message: string | { key: string; options?: any }) => void,
+  tabId?: number,
 ) {
   const zip = new JSZip();
   
@@ -190,5 +192,5 @@ async function executeDownloadWithIncrementalAssembly(
   }
 
   // Create and initiate download
-  await createAndInitiateDownload(zip, zipFilename, sendMessage);
+  await createAndInitiateDownload(zip, zipFilename, sendMessage, tabId);
 }

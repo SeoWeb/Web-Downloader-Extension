@@ -34,7 +34,7 @@ function ErrorFallback({
   resetErrorBoundary: () => void;
 }) {
   const { t } = useTranslation();
-  
+
   return (
     <div role="alert" className="p-4 bg-red-100 rounded">
       <p className="font-bold text-red-800">{t('app.error')}</p>
@@ -114,6 +114,8 @@ export default function SidePanel() {
           }
           // Reset downloadResponse to allow filter to show again
           setDownloadResponse(null);
+          // Stop scraping state to show completion UI
+          setIsScraping(false);
           break;
 
         case messageActions.DOWNLOAD_FAILED:
@@ -166,15 +168,18 @@ export default function SidePanel() {
           setAction(messageActions.DOWNLOAD_DONE);
           setMessages((prev) => [...prev, { key: "status.creating" }]);
           setMessages((prev) => [...prev, { key: "status.complete" }]);
-          
+
           // Store download ID for "Show in folder" functionality
           if (downloadComplete.downloadId) {
             chrome.storage.local.set({ lastDownloadId: downloadComplete.downloadId });
           }
-          
+
           // Reset downloadResponse to allow filter to show again
           setDownloadResponse(null);
-          
+
+          // Stop scraping state to show completion UI
+          setIsScraping(false);
+
           // Clear the downloadComplete flag
           chrome.storage.local.remove("downloadComplete");
         }
@@ -186,7 +191,7 @@ export default function SidePanel() {
     return () => {
       chrome.storage.onChanged.removeListener(handleStorageChange);
     };
-  }, [hasPermission, setMessages, setAction, setDownloadResponse]);
+  }, [hasPermission, setMessages, setAction, setDownloadResponse, setIsScraping]);
 
   // Memoize setDownloadDone to stabilize useScrapingDownloader dependency
   // const setDownloadDone = useCallback((newLinks: string[]) => {
@@ -272,7 +277,7 @@ export default function SidePanel() {
       <div className="mb-4 flex justify-end">
         <LanguageSwitcher />
       </div>
-      
+
       <MainContent
         messages={messages}
         tabId={tabId}

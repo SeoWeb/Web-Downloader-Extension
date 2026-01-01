@@ -49,6 +49,7 @@ export async function messageWorker(
             action: messageActions.PANEL_MESSAGE,
             data: { message },
           }),
+        data.tabId,
       );
 
     case messageActions.INITIALIZE_DIFFERENTIAL_SCRAPING:
@@ -107,6 +108,7 @@ export async function messageWorker(
             action: messageActions.PANEL_MESSAGE,
             data: { message },
           }),
+        data.tabId,
       );
 
     case messageActions.CHECK_ONLINE_STATUS:

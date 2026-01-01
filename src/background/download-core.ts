@@ -30,8 +30,9 @@ export async function downloadResources(
   downloadOptions: FilterOptions,
   sendMessage: (message: string | { key: string; options?: any }) => void,
   assemblyJobId?: string, // Optional job ID for incremental assembly
+  tabId?: number, // Tab ID for tracking downloads
 ) {
-  console.log("Starting downloadResources for URL:", tabUrl);
+  console.log("Starting downloadResources for URL:", tabUrl, "tabId:", tabId);
 
   if (!tabUrl) {
     console.error("No tab URL provided");
@@ -63,7 +64,7 @@ export async function downloadResources(
     await performInitialCleanup();
 
     // Execute the download within a try-catch-finally block
-    await executeDownload(html, tabUrl, downloadOptions, sendMessage, assemblyJobId);
+    await executeDownload(html, tabUrl, downloadOptions, sendMessage, assemblyJobId, tabId);
   } catch (error) {
     console.error("Download failed:", error);
 
@@ -135,6 +136,7 @@ async function executeDownload(
   downloadOptions: FilterOptions,
   sendMessage: (message: string | { key: string; options?: any }) => void,
   assemblyJobId?: string,
+  tabId?: number,
 ) {
   // Check network connectivity
   try {
@@ -293,7 +295,7 @@ async function executeDownload(
     await initiateDownload(blob, zipFilename, (msg) => {
         if (typeof msg === 'string') sendMessage(msg);
         else sendMessage(msg);
-    });
+    }, tabId);
 
   } catch (error) {
     console.error("Error creating download package:", error);

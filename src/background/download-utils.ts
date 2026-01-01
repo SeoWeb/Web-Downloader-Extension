@@ -92,9 +92,10 @@ export async function performInitialCleanup(): Promise<void> {
 export async function initiateDownload(
   blob: Blob,
   filename: string,
-  sendMessage: (message: string) => void
+  sendMessage: (message: string) => void,
+  tabId?: number
 ): Promise<void> {
-  console.log("Preparing to initiate download:", filename);
+  console.log("Preparing to initiate download:", filename, "for tabId:", tabId);
 
   if (!blob || blob.size === 0) {
     throw new Error("No blob data available for download or blob is empty");
@@ -116,12 +117,15 @@ export async function initiateDownload(
         reader.readAsDataURL(blob);
       });
 
-      await chrome.downloads.download({
+      const downloadId = await chrome.downloads.download({
         url: dataUrl,
         filename,
         saveAs: true,
         conflictAction: "uniquify",
       });
+      
+      // Track this download so completion is detected
+      trackDownload(downloadId, filename, tabId);
     } else {
       // Use offscreen document for large files
       const key = `download-${Date.now()}`;
@@ -150,7 +154,7 @@ export async function initiateDownload(
       downloadMap[downloadId] = response.url;
       await chrome.storage.local.set({ downloads: downloadMap });
       
-      trackDownload(downloadId, filename);
+      trackDownload(downloadId, filename, tabId);
     }
   } else {
     // Regular download with object URL
@@ -168,7 +172,7 @@ export async function initiateDownload(
     downloadMap[downloadId] = objectUrl;
     await chrome.storage.local.set({ downloads: downloadMap });
     
-    trackDownload(downloadId, filename);
+    trackDownload(downloadId, filename, tabId);
   }
 
   console.log("Download initiated successfully");
@@ -181,7 +185,8 @@ export async function initiateDownload(
 export async function createAndInitiateDownload(
   zip: JSZip,
   zipFilename: string,
-  sendMessage: (message: string | { key: string; options?: any }) => void
+  sendMessage: (message: string | { key: string; options?: any }) => void,
+  tabId?: number
 ) {
   try {
     console.log("Creating final download package");
@@ -203,7 +208,7 @@ export async function createAndInitiateDownload(
     await initiateDownload(blob, zipFilename, (msg) => {
         if (typeof msg === 'string') sendMessage(msg);
         else sendMessage(msg);
-    });
+    }, tabId);
   } catch (error) {
     console.error("Error creating download package:", error);
     const errorMessage =

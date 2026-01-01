@@ -18,8 +18,9 @@ export async function downloadResourcesWithStreaming(
   tabUrl: string,
   downloadOptions: FilterOptions,
   sendMessage: (message: string | { key: string; options?: any }) => void,
+  tabId?: number,
 ) {
-  console.log("Starting streaming downloadResources for URL:", tabUrl);
+  console.log("Starting streaming downloadResources for URL:", tabUrl, "tabId:", tabId);
 
   if (!tabUrl) {
     console.error("No tab URL provided");
@@ -34,7 +35,7 @@ export async function downloadResourcesWithStreaming(
   if (!hasLargeFiles) {
     // Fall back to regular download for small files
     console.log("No large files detected, using regular download");
-    return downloadResources(html, tabUrl, downloadOptions, sendMessage);
+    return downloadResources(html, tabUrl, downloadOptions, sendMessage, undefined, tabId);
   }
 
   // Prevent concurrent downloads
@@ -47,14 +48,14 @@ export async function downloadResourcesWithStreaming(
   await setDownloadInProgress(true);
 
   try {
-    await executeStreamingDownload(html, tabUrl, downloadOptions, sendMessage, data);
+    await executeStreamingDownload(html, tabUrl, downloadOptions, sendMessage, data, tabId);
   } catch (error) {
     console.error("Streaming download failed:", error);
 
     // Fall back to regular download on streaming failure
     sendMessage({ key: "status.streamingFailedFallback" });
     try {
-      await downloadResources(html, tabUrl, downloadOptions, sendMessage);
+      await downloadResources(html, tabUrl, downloadOptions, sendMessage, undefined, tabId);
     } catch (fallbackError) {
       console.error("Fallback download also failed:", fallbackError);
       sendMessage(`Download failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
@@ -72,7 +73,8 @@ async function executeStreamingDownload(
   tabUrl: string,
   downloadOptions: FilterOptions,
   sendMessage: (message: string | { key: string; options?: any }) => void,
-  data: ReturnType<typeof getResources>
+  data: ReturnType<typeof getResources>,
+  tabId?: number,
 ) {
   const u = new URL(tabUrl || "");
 
@@ -269,7 +271,7 @@ async function executeStreamingDownload(
     await initiateDownload(zipBlob, zipFilename, (msg) => {
         if (typeof msg === 'string') sendMessage(msg);
         else sendMessage(msg);
-    });
+    }, tabId);
     sendMessage({ key: "status.streamingSuccess" });
 
   } catch (error) {
