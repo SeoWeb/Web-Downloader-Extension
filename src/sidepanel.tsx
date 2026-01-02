@@ -121,8 +121,9 @@ export default function SidePanel() {
         case messageActions.DOWNLOAD_FAILED:
           // Download failed or was interrupted
           console.error("Download failed:", data);
-          setMessages((prev) => [
-            ...prev,
+          // Reset messages to connected status with error message
+          setMessages([
+            { key: "status.connected" },
             `Download failed: ${data.error || "Unknown error"}`,
           ]);
           setIsScraping(false);
@@ -134,7 +135,8 @@ export default function SidePanel() {
         case messageActions.DOWNLOAD_CANCELLED:
           // User cancelled the download
           console.log("Download cancelled:", data);
-          setMessages((prev) => [...prev, { key: "status.cancelled" }]);
+          // Reset messages to just show connected status
+          setMessages([{ key: "status.connected" }]);
           setIsScraping(false);
           setAction(null);
           // Reset downloadResponse to allow filter to show again

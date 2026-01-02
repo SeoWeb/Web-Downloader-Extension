@@ -98,9 +98,10 @@ export function listenMessage(
       callback(message.message as Message, (message: Message) => {
         sendMessageToPanel(message.action, message.data, true);
       }).then(sendResponse);
+      return true; // Only return true if we're handling this message
     }
-
-    return true;
+    // Don't return true if the message isn't for us
+    return false;
   };
 
   chrome.runtime.onMessage.addListener(listener);
