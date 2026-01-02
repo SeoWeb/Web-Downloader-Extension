@@ -232,34 +232,6 @@ export class ChunkedZipProcessor {
   }
 
   /**
-   * Clear all entries and reset progress
-   */
-  reset(): void {
-    this.entries = [];
-    this.processedEntries = [];
-    this.zip = new JSZip();
-    this.currentProgress = {
-      totalEntries: 0,
-      completedEntries: 0,
-      totalBytes: 0,
-      completedBytes: 0,
-      currentOperation: 'adding',
-    };
-  }
-
-  /**
-   * Estimate final ZIP size
-   */
-  estimateFinalSize(): number {
-    const uncompressedSize = this.currentProgress.totalBytes;
-    const compressionRatio = this.options.compressionLevel
-      ? Math.max(0.3, 1 - (this.options.compressionLevel * 0.1))
-      : 1.0;
-
-    return Math.round(uncompressedSize * compressionRatio * 1.1); // 10% overhead
-  }
-
-  /**
    * Process current batch of entries
    */
   private async processCurrentBatch(): Promise<void> {
@@ -405,84 +377,4 @@ export async function createZipFromDownloads(
   }
 
   return processor.generateZip();
-}
-
-/**
- * Utility function to create ZIP from mixed content
- */
-export async function createZipFromContent(
-  entries: ZipEntry[],
-  downloads: Array<{ download: StreamingDownload; path: string }>,
-  options: Partial<ChunkedZipOptions> = {}
-): Promise<Blob> {
-  const processor = new ChunkedZipProcessor(options);
-
-  // Add regular entries first
-  await processor.addEntries(entries);
-
-  // Add streaming downloads
-  for (const { download, path } of downloads) {
-    await processor.addStreamingDownload(download, path);
-  }
-
-  return processor.generateZip();
-}
-
-/**
- * Memory-efficient ZIP creation for large content
- */
-export class MemoryEfficientZipCreator {
-  private processor: ChunkedZipProcessor;
-  private maxMemoryUsage: number;
-
-  constructor(maxMemoryUsage: number = 100 * 1024 * 1024) { // 100MB default
-    this.maxMemoryUsage = maxMemoryUsage;
-    this.processor = new ChunkedZipProcessor({
-      progressive: true,
-      maxMemoryUsage,
-      enableStreaming: true,
-    });
-  }
-
-  async addFile(path: string, data: Blob | ArrayBuffer): Promise<void> {
-    await this.checkMemoryUsage();
-
-    await this.processor.addEntry({
-      path,
-      data,
-      compress: true,
-    });
-  }
-
-  async addDownload(path: string, download: StreamingDownload): Promise<void> {
-    await this.checkMemoryUsage();
-    await this.processor.addStreamingDownload(download, path);
-  }
-
-  async finalize(): Promise<Blob> {
-    return this.processor.generateZip();
-  }
-
-  async finalizeStream(): Promise<ReadableStream> {
-    return this.processor.generateZipStream();
-  }
-
-  getProgress(): ZipCreationProgress {
-    return this.processor.getProgress();
-  }
-
-  private async checkMemoryUsage(): Promise<void> {
-    const currentUsage = memoryManager.getMemoryStats().totalMemoryUsed;
-
-    if (currentUsage > this.maxMemoryUsage * 0.8) {
-      console.warn('High memory usage detected, performing cleanup');
-      await memoryManager.forceCleanup();
-
-      // Check again after cleanup
-      const newUsage = memoryManager.getMemoryStats().totalMemoryUsed;
-      if (newUsage > this.maxMemoryUsage * 0.9) {
-        throw new Error('Insufficient memory to continue ZIP creation');
-      }
-    }
-  }
 }

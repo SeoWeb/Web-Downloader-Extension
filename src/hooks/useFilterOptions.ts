@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useFilterStore } from "../stores/filterStore";
-import { FilterOptions } from "../types/filterTypes";
 
 /**
  * Hook for accessing and managing filter options
@@ -61,36 +60,6 @@ export function useFilterOptions() {
       setFilterOption("downloadDocuments", value),
     setSingleFile: (value: boolean) => setFilterOption("singleFile", value),
   };
-}
-
-/**
- * Hook for accessing individual filter option
- * @param key - The filter option key
- * @returns [value, setter] tuple
- */
-export function useFilterOption<K extends keyof FilterOptions>(
-  key: K,
-): [FilterOptions[K], (value: FilterOptions[K]) => void, boolean] {
-  const {
-    options,
-    setFilterOption,
-    isInitialized,
-    initializeFromStorage,
-    hasStorageError,
-  } = useFilterStore();
-
-  // Initialize from storage on mount
-  useEffect(() => {
-    if (!isInitialized) {
-      initializeFromStorage();
-    }
-  }, [isInitialized, initializeFromStorage]);
-
-  const setValue = (value: FilterOptions[K]) => {
-    setFilterOption(key, value);
-  };
-
-  return [options[key], setValue, hasStorageError];
 }
 
 /**

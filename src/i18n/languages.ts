@@ -74,23 +74,7 @@ export const isRTLLanguage = (languageCode: string): boolean => {
   return RTL_LANGUAGES.includes(languageCode);
 };
 
-// Get text direction for a language
-export const getTextDirection = (languageCode: string): 'rtl' | 'ltr' => {
-  return isRTLLanguage(languageCode) ? 'rtl' : 'ltr';
-};
-
 // Get language by code
 export const getLanguageByCode = (code: string): Language | undefined => {
   return languages.find(lang => lang.code === code);
-};
-
-// Group languages by region
-export const getLanguagesByRegion = (): Record<string, Language[]> => {
-  return languages.reduce((acc, lang) => {
-    if (!acc[lang.region]) {
-      acc[lang.region] = [];
-    }
-    acc[lang.region].push(lang);
-    return acc;
-  }, {} as Record<string, Language[]>);
 };

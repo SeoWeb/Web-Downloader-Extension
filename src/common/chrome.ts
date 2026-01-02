@@ -43,11 +43,6 @@ export async function getActiveTab(): Promise<{
   return null;
 }
 
-export function setBadge(text: string, color: string) {
-  chrome.action.setBadgeText({ text });
-  chrome.action.setBadgeBackgroundColor({ color });
-}
-
 type Message = {
   action: MessageAction;
   data: any;

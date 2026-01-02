@@ -503,33 +503,6 @@ export function finalizeIncrementalMerge(jobId: string): { success: boolean; htm
 }
 
 /**
- * Get statistics for an incremental assembly job
- */
-export function getIncrementalMergeStats(jobId: string): { success: boolean; stats?: any; error?: string } {
-  try {
-    const result = htmlAssembler.getJobStats(jobId);
-    
-    if (!result.success) {
-      return {
-        success: false,
-        error: result.reason || 'Failed to get job stats',
-      };
-    }
-
-    return {
-      success: true,
-      stats: result.stats,
-    };
-  } catch (error) {
-    console.error(`Failed to get stats for incremental HTML assembly job ${jobId}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-}
-
-/**
  * Clean up old incremental assembly jobs
  */
 export function cleanupIncrementalMerges(maxAge: number = 30 * 60 * 1000): number {

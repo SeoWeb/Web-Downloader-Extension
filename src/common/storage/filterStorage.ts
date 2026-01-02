@@ -5,7 +5,6 @@ import {
 } from "../../types/filterTypes";
 import {
   hasStoragePermission,
-  requestStoragePermission,
 } from "../permissions";
 import {
   validateFilterOptions,
@@ -96,78 +95,6 @@ export async function saveFilterOptions(
     },
     false,
     "saveFilterOptions",
-  );
-}
-
-/**
- * Clears filter options from Chrome storage (resets to defaults)
- * @returns Promise<boolean> - Success status
- */
-export async function clearFilterOptions(): Promise<boolean> {
-  return safeStorageOperation(
-    async () => {
-      // Check if we have storage permission
-      const hasPermission = await hasStoragePermission();
-      if (!hasPermission) {
-        console.log(
-          "Storage permission not granted, cannot clear filter options",
-        );
-        return false;
-      }
-
-      await chrome.storage.local.remove([FILTER_OPTIONS_STORAGE_KEY]);
-      console.log("Filter options cleared from storage");
-      return true;
-    },
-    false,
-    "clearFilterOptions",
-  );
-}
-
-/**
- * Checks if filter options exist in storage
- * @returns Promise<boolean> - Whether filter options exist
- */
-export async function hasFilterOptions(): Promise<boolean> {
-  return safeStorageOperation(
-    async () => {
-      // Check if we have storage permission
-      const hasPermission = await hasStoragePermission();
-      if (!hasPermission) {
-        return false;
-      }
-
-      const result = await chrome.storage.local.get([
-        FILTER_OPTIONS_STORAGE_KEY,
-      ]);
-      const storedData = result[FILTER_OPTIONS_STORAGE_KEY];
-
-      // Check if data exists and is valid
-      return !!(storedData && validateFilterOptions(storedData));
-    },
-    false,
-    "hasFilterOptions",
-  );
-}
-
-/**
- * Requests storage permission and attempts to save filter options
- * @param options - Filter options to save
- * @returns Promise<boolean> - Success status
- */
-export async function requestPermissionAndSave(
-  options: FilterOptions,
-): Promise<boolean> {
-  return safeStorageOperation(
-    async () => {
-      const granted = await requestStoragePermission();
-      if (granted) {
-        return await saveFilterOptions(options);
-      }
-      return false;
-    },
-    false,
-    "requestPermissionAndSave",
   );
 }
 

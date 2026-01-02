@@ -229,31 +229,6 @@ export interface StreamingDownloaderConfig {
   };
 }
 
-// Utility types for type guards
-export function isStreamingDownload(obj: any): obj is StreamingDownload {
-  return obj &&
-    typeof obj.id === 'string' &&
-    typeof obj.url === 'string' &&
-    typeof obj.totalSize === 'number' &&
-    typeof obj.downloadedSize === 'number' &&
-    typeof obj.progress === 'number' &&
-    Array.isArray(obj.chunks) &&
-    typeof obj.status === 'string';
-}
-
-export function isValidStreamingStatus(status: string): status is StreamingDownloadStatus {
-  return [
-    'pending',
-    'starting',
-    'streaming',
-    'paused',
-    'completed',
-    'failed',
-    'aborted',
-    'resuming'
-  ].includes(status);
-}
-
 // Default constants
 export const DEFAULT_STREAMING_OPTIONS: StreamingOptions = {
   chunkSize: 1024 * 1024, // 1MB

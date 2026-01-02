@@ -216,28 +216,6 @@ export class StreamingFetcher {
   }
 
   /**
-   * Cancel an ongoing fetch
-   */
-  cancelFetch(url: string): void {
-    const requestId = this.generateRequestId(url);
-    const controller = this.activeRequests.get(requestId);
-    if (controller) {
-      controller.abort();
-      this.cleanupRequest(requestId);
-    }
-  }
-
-  /**
-   * Cancel all ongoing fetches
-   */
-  cancelAllFetches(): void {
-    for (const [requestId, controller] of this.activeRequests.entries()) {
-      controller.abort();
-      this.cleanupRequest(requestId);
-    }
-  }
-
-  /**
    * Create streaming response with range request support
    */
   private async createStreamingResponse(
@@ -491,42 +469,4 @@ export class StreamingFetcher {
   private cleanupRequest(requestId: string): void {
     this.activeRequests.delete(requestId);
   }
-}
-
-/**
- * Utility function to download file with streaming
- */
-export async function downloadFileStream(
-  url: string,
-  options: Partial<StreamingFetchOptions> = {}
-): Promise<ChunkedDownloadResult> {
-  const fetcher = new StreamingFetcher(options);
-  return fetcher.downloadChunked(url, options);
-}
-
-/**
- * Utility function to get file metadata
- */
-export async function getFileMetadata(
-  url: string,
-  options: Partial<StreamingFetchOptions> = {}
-): Promise<FileMetadata> {
-  const fetcher = new StreamingFetcher(options);
-  return fetcher.getMetadata(url, options);
-}
-
-/**
- * Create a streaming URL fetcher with memory management
- */
-export function createManagedStreamer(
-  options: Partial<StreamingFetchOptions> = {}
-): StreamingFetcher {
-  return new StreamingFetcher({
-    chunkSize: 512 * 1024, // 512KB default chunks
-    maxParallelChunks: 2, // Conservative parallelism
-    chunkTimeout: 60000, // 1 minute timeout
-    maxRetries: 5, // More retries for better reliability
-    enableRangeRequests: true,
-    ...options,
-  });
 }

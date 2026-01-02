@@ -12,7 +12,7 @@ interface BlobMetadata {
   downloadId?: string;
 }
 
-export async function initDB(): Promise<IDBDatabase> {
+async function initDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -141,47 +141,6 @@ export async function deleteBlob(key: string): Promise<void> {
       resolve();
     };
     transaction.onerror = () => reject(transaction.error);
-  });
-}
-
-/**
- * Get storage statistics for monitoring
- */
-export async function getStorageStats(): Promise<{
-  totalBlobs: number;
-  totalSize: number;
-  oldestBlob: number;
-  averageAccessCount: number;
-}> {
-  const db = await initDB();
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(METADATA_STORE_NAME, "readonly");
-    const store = transaction.objectStore(METADATA_STORE_NAME);
-    const request = store.getAll();
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      const metadata = request.result as BlobMetadata[];
-      const totalBlobs = metadata.length;
-      const totalSize = metadata.reduce((sum, blob) => sum + blob.size, 0);
-      const oldestBlob =
-        metadata.length > 0
-          ? Math.min(...metadata.map((blob) => blob.timestamp))
-          : 0;
-      const averageAccessCount =
-        totalBlobs > 0
-          ? metadata.reduce((sum, blob) => sum + blob.accessCount, 0) /
-            totalBlobs
-          : 0;
-
-      resolve({
-        totalBlobs,
-        totalSize,
-        oldestBlob,
-        averageAccessCount,
-      });
-    };
   });
 }
 

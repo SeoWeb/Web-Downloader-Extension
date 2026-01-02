@@ -24,7 +24,7 @@ interface StoredStreamingDownload extends Omit<StreamingDownload, 'chunks'> {
   chunks: StoredChunkInfo[];
 }
 
-export class IndexedDBProgressPersistence implements ProgressPersistence {
+class IndexedDBProgressPersistence implements ProgressPersistence {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 
@@ -510,7 +510,7 @@ export class IndexedDBProgressPersistence implements ProgressPersistence {
 /**
  * Memory-based progress persistence for testing or temporary storage
  */
-export class MemoryProgressPersistence implements ProgressPersistence {
+class MemoryProgressPersistence implements ProgressPersistence {
   private storage = new Map<string, StreamingDownload>();
 
   async saveProgress(download: StreamingDownload): Promise<void> {
