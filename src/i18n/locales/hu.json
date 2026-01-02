@@ -36,11 +36,16 @@
       "ariaSingleFile": "Letöltés egyetlen HTML fájlként",
       "ariaStartDownload": "Letöltés indítása",
       "ariaDismissWarning": "Figyelmeztetés elvetése",
-      "error": "Hiba"
+      "error": "Hiba",
+      "configuration": "Konfiguráció",
+      "singleFileDescription": "Legjobb egyszerű archiváláshoz",
+      "zipDescription": "A teljes oldalstruktúrát ZIP archívumként menti"
     },
     "actions": {
       "title": "Műveletek:",
-      "stop": "Állj"
+      "stop": "Állj",
+      "showInFolder": "Megjelenítés mappában",
+      "downloadAnother": "Másik letöltése"
     },
     "status": {
       "waiting": "Várakozás a kapcsolatra...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Egyetlen HTML fájl létrehozva",
       "zipCreated": "Zip fájl létrehozva!",
       "downloadStarted": "A letöltés sikeresen elindult",
-      "completeTitle": "A letöltés befejeződött:",
-      "zipLocation": "A zip fájlt a letöltések mappában találja",
+      "completeTitle": "Letöltés befejeződött!",
+      "zipLocation": "A fájl helyileg mentve.",
       "cssProgress": "CSS fájlok folyamata: {{completed}}/{{total}}",
       "bgImagesProgress": "Háttérképek folyamata: {{completed}}/{{total}}",
       "jsProgress": "JS fájlok folyamata: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Minden streaming letöltés befejeződött",
       "creatingStreamingZip": "ZIP fájl létrehozása streaming tartalommal...",
       "streamingSuccess": "Streaming letöltés sikeresen befejeződött",
-      "downloadingWebsiteContent": "Weboldal tartalmának letöltése ..."
+      "downloadingWebsiteContent": "Weboldal tartalmának letöltése ...",
+      "done": "Kész!",
+      "packing": "Csomagolás...",
+      "downloading": "Letöltés...",
+      "ready": "Kész"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Tetszik ez a bővítmény?",
       "description": "Kérjük, értékeljen minket a Chrome Webáruházban!",
       "rate": "Bővítmény értékelése",
-      "prompt": "Ha elégedett volt, kérjük, hagyjon pozitív értékelést :)",
+      "prompt": "Tetszik a bővítmény?",
       "ariaLabel_one": "Értékelés {{count}} csillaggal",
       "ariaLabel_other": "Értékelés {{count}} csillaggal"
     },

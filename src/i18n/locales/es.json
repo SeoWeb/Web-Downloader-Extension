@@ -36,11 +36,16 @@
       "ariaSingleFile": "Descargar como un solo archivo HTML",
       "ariaStartDownload": "Iniciar descarga",
       "ariaDismissWarning": "Descartar advertencia",
-      "error": "¡Error!"
+      "error": "¡Error!",
+      "configuration": "Configuración",
+      "singleFileDescription": "Mejor para archivado simple",
+      "zipDescription": "Guarda la estructura completa de la página como un archivo ZIP"
     },
     "actions": {
       "title": "Acciones:",
-      "stop": "Detener"
+      "stop": "Detener",
+      "showInFolder": "Mostrar en carpeta",
+      "downloadAnother": "Descargar otro"
     },
     "status": {
       "waiting": "Esperando conexión...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Archivo HTML único creado",
       "zipCreated": "¡Archivo Zip creado!",
       "downloadStarted": "Descarga iniciada con éxito",
-      "completeTitle": "La descarga está completa:",
-      "zipLocation": "Puede encontrar el archivo zip en su carpeta de descargas",
+      "completeTitle": "¡Descarga completada!",
+      "zipLocation": "Tu archivo se ha guardado localmente.",
       "cssProgress": "Progreso de archivos CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "Progreso de imágenes de fondo: {{completed}}/{{total}}",
       "jsProgress": "Progreso de archivos JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Todas las descargas de transmisión completadas",
       "creatingStreamingZip": "Creando archivo ZIP con contenido de transmisión...",
       "streamingSuccess": "Descarga de transmisión completada con éxito",
-      "downloadingWebsiteContent": "Descargando contenido del sitio web ..."
+      "downloadingWebsiteContent": "Descargando contenido del sitio web ...",
+      "done": "¡Hecho!",
+      "packing": "Empaquetando...",
+      "downloading": "Descargando...",
+      "ready": "Listo"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "¿Disfrutas de esta extensión?",
       "description": "¡Por favor califícanos en Chrome Web Store!",
       "rate": "Calificar Extensión",
-      "prompt": "Si estuviste satisfecho, por favor deja una reseña positiva :)",
+      "prompt": "¿Disfrutas de la extensión?",
       "ariaLabel_one": "Calificar {{count}} estrella",
       "ariaLabel_other": "Calificar {{count}} estrellas"
     },

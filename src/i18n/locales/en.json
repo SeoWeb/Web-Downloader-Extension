@@ -15,6 +15,7 @@
     },
     "filter": {
       "title": "Filter out what you want to download",
+      "configuration": "Configuration",
       "downloadHTML": "Download HTML",
       "downloadImages": "Download images",
       "downloadLinks": "Download links (saved as html files)",
@@ -22,6 +23,8 @@
       "downloadDocuments": "Download documents (pdf, doc, etc.)",
       "downloadContentAsText": "Download content as text",
       "singleFile": "Download in single HTML file",
+      "singleFileDescription": "Best for simple archiving",
+      "zipDescription": "Saves the full page structure as a ZIP archive",
       "startDownload": "Start download",
       "linksWarning": "If you choose to download links, you have to take into account that the total download time can increase dramatically and the zip file can be significantly larger.",
       "permissionWarning": "Filter preferences won't be saved without storage permission",
@@ -40,7 +43,9 @@
     },
     "actions": {
       "title": "Actions:",
-      "stop": "Stop"
+      "stop": "Stop",
+      "showInFolder": "Show in Folder",
+      "downloadAnother": "Download Another"
     },
     "status": {
       "waiting": "Waiting connection...",
@@ -49,6 +54,10 @@
       "scraped": "Website scraped!",
       "creating": "Zip file created!",
       "complete": "Download complete",
+      "done": "Done!",
+      "packing": "Packing...",
+      "downloading": "Downloading...",
+      "ready": "Ready",
       "failed": "Download failed",
       "cancelled": "Download was cancelled",
       "creatingIndex": "Creating index.html",
@@ -69,8 +78,8 @@
       "singleFileCreated": "Single HTML file created",
       "zipCreated": "Zip file created!",
       "downloadStarted": "Download started successfully",
-      "completeTitle": "Download is complete:",
-      "zipLocation": "You can find the zip file in your downloads folder",
+      "completeTitle": "Download Complete!",
+      "zipLocation": "Your file has been saved locally.",
       "cssProgress": "CSS files progress: {{completed}}/{{total}}",
       "bgImagesProgress": "Background images progress: {{completed}}/{{total}}",
       "jsProgress": "JS files progress: {{completed}}/{{total}}",
@@ -174,7 +183,7 @@
       "title": "Enjoying this extension?",
       "description": "Please rate us on the Chrome Web Store!",
       "rate": "Rate Extension",
-      "prompt": "If you were satisfied, please leave a positive review :)",
+      "prompt": "Enjoying the extension?",
       "ariaLabel_one": "Rate {{count}} star",
       "ariaLabel_other": "Rate {{count}} stars"
     }

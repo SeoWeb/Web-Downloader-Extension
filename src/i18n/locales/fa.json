@@ -36,11 +36,16 @@
       "ariaSingleFile": "دانلود به عنوان یک فایل HTML",
       "ariaStartDownload": "شروع دانلود",
       "ariaDismissWarning": "رد هشدار",
-      "error": "خطا"
+      "error": "خطا",
+      "configuration": "پیکربندی",
+      "singleFileDescription": "بهترین برای آرشیو ساده",
+      "zipDescription": "ساختار کامل صفحه را به عنوان آرشیو ZIP ذخیره می کند"
     },
     "actions": {
       "title": "اقدامات:",
-      "stop": "توقف"
+      "stop": "توقف",
+      "showInFolder": "نمایش در پوشه",
+      "downloadAnother": "دانلود یکی دیگر"
     },
     "status": {
       "waiting": "در انتظار اتصال...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "فایل HTML تکی ایجاد شد",
       "zipCreated": "فایل Zip ایجاد شد!",
       "downloadStarted": "دانلود با موفقیت شروع شد",
-      "completeTitle": "دانلود کامل شد:",
-      "zipLocation": "می‌توانید فایل zip را در پوشه دانلودهای خود پیدا کنید",
+      "completeTitle": "دانلود کامل شد!",
+      "zipLocation": "فایل شما به صورت محلی ذخیره شده است.",
       "cssProgress": "پیشرفت فایل‌های CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "پیشرفت تصاویر پس‌زمینه: {{completed}}/{{total}}",
       "jsProgress": "پیشرفت فایل‌های JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "تمام دانلودهای استریم کامل شد",
       "creatingStreamingZip": "ایجاد فایل ZIP با محتوای استریم...",
       "streamingSuccess": "دانلود استریم با موفقیت کامل شد",
-      "downloadingWebsiteContent": "در حال دانلود محتوای وب سایت ..."
+      "downloadingWebsiteContent": "در حال دانلود محتوای وب سایت ...",
+      "done": "انجام شد!",
+      "packing": "در حال بسته بندی...",
+      "downloading": "در حال دانلود...",
+      "ready": "آماده"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "از این افزونه لذت می برید؟",
       "description": "لطفاً در فروشگاه وب Chrome به ما امتیاز دهید!",
       "rate": "امتیاز به افزونه",
-      "prompt": "اگر راضی بودید، لطفا یک نظر مثبت بگذارید :)",
+      "prompt": "از افزونه راضی هستید؟",
       "ariaLabel_one": "امتیاز {{count}} ستاره",
       "ariaLabel_other": "امتیاز {{count}} ستاره"
     },

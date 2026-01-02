@@ -36,11 +36,16 @@
       "ariaSingleFile": "Unduh dalam satu file HTML",
       "ariaStartDownload": "Mulai unduhan",
       "ariaDismissWarning": "Tutup peringatan",
-      "error": "Kesalahan"
+      "error": "Kesalahan",
+      "configuration": "Konfigurasi",
+      "singleFileDescription": "Terbaik untuk pengarsipan sederhana",
+      "zipDescription": "Menyimpan struktur halaman penuh sebagai arsip ZIP"
     },
     "actions": {
       "title": "Tindakan:",
-      "stop": "Berhenti"
+      "stop": "Berhenti",
+      "showInFolder": "Tampilkan di folder",
+      "downloadAnother": "Unduh yang lain"
     },
     "status": {
       "waiting": "Menunggu koneksi...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "File HTML tunggal dibuat",
       "zipCreated": "File Zip dibuat!",
       "downloadStarted": "Unduhan berhasil dimulai",
-      "completeTitle": "Unduhan selesai:",
-      "zipLocation": "Anda dapat menemukan file zip di folder unduhan Anda",
+      "completeTitle": "Unduhan selesai!",
+      "zipLocation": "File Anda telah disimpan secara lokal.",
       "cssProgress": "Kemajuan file CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "Kemajuan gambar latar belakang: {{completed}}/{{total}}",
       "jsProgress": "Kemajuan file JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Semua unduhan streaming selesai",
       "creatingStreamingZip": "Membuat file ZIP dengan konten streaming...",
       "streamingSuccess": "Unduhan streaming berhasil diselesaikan",
-      "downloadingWebsiteContent": "Mengunduh konten situs web ..."
+      "downloadingWebsiteContent": "Mengunduh konten situs web ...",
+      "done": "Selesai!",
+      "packing": "Mempack...",
+      "downloading": "Mengunduh...",
+      "ready": "Siap"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Menikmati ekstensi ini?",
       "description": "Silakan beri kami nilai di Chrome Web Store!",
       "rate": "Beri Nilai Ekstensi",
-      "prompt": "Jika Anda puas, silakan tinggalkan ulasan positif :)",
+      "prompt": "Menikmati ekstensi ini?",
       "ariaLabel_one": "Beri nilai {{count}} bintang",
       "ariaLabel_other": "Beri nilai {{count}} bintang"
     },

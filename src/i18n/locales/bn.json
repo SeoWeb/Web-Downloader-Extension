@@ -36,11 +36,16 @@
       "ariaSingleFile": "একক HTML ফাইল হিসাবে ডাউনলোড করুন",
       "ariaStartDownload": "ডাউনলোড শুরু করুন",
       "ariaDismissWarning": "সতর্কতা খারিজ করুন",
-      "error": "ত্রুটি"
+      "error": "ত্রুটি",
+      "configuration": "কনফিগারেশন",
+      "singleFileDescription": "সাধারণ আর্কাইভের জন্য সেরা",
+      "zipDescription": "সম্পূর্ণ পৃষ্ঠার কাঠামো একটি জিপ আর্কাইভ হিসেবে সংরক্ষণ করে"
     },
     "actions": {
       "title": "অ্যাকশন:",
-      "stop": "থামুন"
+      "stop": "থামুন",
+      "showInFolder": "ফোল্ডারে দেখান",
+      "downloadAnother": "অন্যটি ডাউনলোড করুন"
     },
     "status": {
       "waiting": "সংযোগের জন্য অপেক্ষা করা হচ্ছে...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "একক HTML ফাইল তৈরি হয়েছে",
       "zipCreated": "জিপ ফাইল তৈরি হয়েছে!",
       "downloadStarted": "ডাউনলোড সফলভাবে শুরু হয়েছে",
-      "completeTitle": "ডাউনলোড সম্পন্ন হয়েছে:",
-      "zipLocation": "আপনি আপনার ডাউনলোড ফোল্ডারে জিপ ফাইলটি খুঁজে পেতে পারেন",
+      "completeTitle": "ডাউনলোড সম্পন্ন!",
+      "zipLocation": "আপনার ফাইলটি স্থানীয়ভাবে সংরক্ষিত হয়েছে।",
       "cssProgress": "CSS ফাইল অগ্রগতি: {{completed}}/{{total}}",
       "bgImagesProgress": "ব্যাকগ্রাউন্ড ইমেজ অগ্রগতি: {{completed}}/{{total}}",
       "jsProgress": "JS ফাইল অগ্রগতি: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "সমস্ত স্ট্রিমিং ডাউনলোড সম্পন্ন হয়েছে",
       "creatingStreamingZip": "স্ট্রিমিং বিষয়বস্তু সহ ZIP ফাইল তৈরি করা হচ্ছে...",
       "streamingSuccess": "স্ট্রিমিং ডাউনলোড সফলভাবে সম্পন্ন হয়েছে",
-      "downloadingWebsiteContent": "ওয়েবসাইট কন্টেন্ট ডাউনলোড হচ্ছে ..."
+      "downloadingWebsiteContent": "ওয়েবসাইট কন্টেন্ট ডাউনলোড হচ্ছে ...",
+      "done": "সম্পন্ন!",
+      "packing": "প্যাকিং...",
+      "downloading": "ডাউনলোড হচ্ছে...",
+      "ready": "প্রস্তুত"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "এই এক্সটেনশনটি উপভোগ করছেন?",
       "description": "অনুগ্রহ করে ক্রোম ওয়েব স্টোরে আমাদের রেট দিন!",
       "rate": "এক্সটেনশন রেট করুন",
-      "prompt": "আপনি যদি সন্তুষ্ট হন তবে দয়া করে একটি ইতিবাচক পর্যালোচনা দিন :)",
+      "prompt": "এক্সটেনশনটি উপভোগ করছেন?",
       "ariaLabel_one": "{{count}} তারা দিয়ে রেট করুন",
       "ariaLabel_other": "{{count}} তারা দিয়ে রেট করুন"
     },

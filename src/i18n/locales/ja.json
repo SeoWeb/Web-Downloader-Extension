@@ -36,11 +36,16 @@
       "ariaSingleFile": "単一の HTML ファイルとしてダウンロード",
       "ariaStartDownload": "ダウンロードを開始",
       "ariaDismissWarning": "警告を閉じる",
-      "error": "エラー"
+      "error": "エラー",
+      "configuration": "設定",
+      "singleFileDescription": "単純なアーカイブに最適",
+      "zipDescription": "ページ構造全体をZIPアーカイブとして保存"
     },
     "actions": {
       "title": "アクション:",
-      "stop": "停止"
+      "stop": "停止",
+      "showInFolder": "フォルダで表示",
+      "downloadAnother": "別をダウンロード"
     },
     "status": {
       "waiting": "接続待機中...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "単一の HTML ファイルが作成されました",
       "zipCreated": "Zip ファイルが作成されました！",
       "downloadStarted": "ダウンロードが正常に開始されました",
-      "completeTitle": "ダウンロードが完了しました：",
-      "zipLocation": "ダウンロードフォルダにzipファイルがあります",
+      "completeTitle": "ダウンロード完了！",
+      "zipLocation": "ファイルはローカルに保存されました。",
       "cssProgress": "CSS ファイルの進行状況: {{completed}}/{{total}}",
       "bgImagesProgress": "背景画像の進行状況: {{completed}}/{{total}}",
       "jsProgress": "JS ファイルの進行状況: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "すべてのストリーミングダウンロードが完了しました",
       "creatingStreamingZip": "ストリーミングコンテンツを含む ZIP ファイルを作成中...",
       "streamingSuccess": "ストリーミングダウンロードが正常に完了しました",
-      "downloadingWebsiteContent": "ウェブサイトのコンテンツをダウンロード中..."
+      "downloadingWebsiteContent": "ウェブサイトのコンテンツをダウンロード中...",
+      "done": "完了！",
+      "packing": "梱包中...",
+      "downloading": "ダウンロード中...",
+      "ready": "準備完了"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "この拡張機能を楽しんでいますか？",
       "description": "Chromeウェブストアで評価してください！",
       "rate": "拡張機能を評価",
-      "prompt": "満足いただけましたら、肯定的なレビューをお願いします :)",
+      "prompt": "拡張機能を楽しんでいますか？",
       "ariaLabel_one": "{{count}}つ星で評価",
       "ariaLabel_other": "{{count}}つ星で評価"
     },

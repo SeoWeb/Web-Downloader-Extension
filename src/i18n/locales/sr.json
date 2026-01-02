@@ -36,11 +36,16 @@
       "ariaSingleFile": "Preuzmi kao jednu HTML datoteku",
       "ariaStartDownload": "Započni preuzimanje",
       "ariaDismissWarning": "Odbaci upozorenje",
-      "error": "Greška"
+      "error": "Greška",
+      "configuration": "Konfiguracija",
+      "singleFileDescription": "Najbolje za jednostavno arhiviranje",
+      "zipDescription": "Čuva kompletnu strukturu stranice kao ZIP arhivu"
     },
     "actions": {
       "title": "Акције:",
-      "stop": "Стани"
+      "stop": "Стани",
+      "showInFolder": "Prikaži u fascikli",
+      "downloadAnother": "Preuzmi drugo"
     },
     "status": {
       "waiting": "Чекање везе...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Kreirana jedna HTML datoteka",
       "zipCreated": "Zip datoteka kreirana!",
       "downloadStarted": "Преузимање је успешно започело",
-      "completeTitle": "Преузимање је завршено:",
-      "zipLocation": "Зип датотеку можете пронаћи у фасцикли преузимања",
+      "completeTitle": "Preuzimanje završeno!",
+      "zipLocation": "Vaša datoteka je sačuvana lokalno.",
       "cssProgress": "Napredak CSS datoteka: {{completed}}/{{total}}",
       "bgImagesProgress": "Napredak pozadinskih slika: {{completed}}/{{total}}",
       "jsProgress": "Napredak JS datoteka: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Svi striming preuzimanja završena",
       "creatingStreamingZip": "Stvaranje ZIP datoteke sa sadržajem striminga...",
       "streamingSuccess": "Striming preuzimanje uspešno završeno",
-      "downloadingWebsiteContent": "Преузимање садржаја веб странице ..."
+      "downloadingWebsiteContent": "Преузимање садржаја веб странице ...",
+      "done": "Gotovo!",
+      "packing": "Pakovanje...",
+      "downloading": "Preuzimanje...",
+      "ready": "Spremno"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Уживате ли у овом проширењу?",
       "description": "Молимо оцените нас у Chrome веб продавници!",
       "rate": "Оцени проширење",
-      "prompt": "Ако сте задовољни, оставите позитивну рецензију :)",
+      "prompt": "Uživate li u ekstenziji?",
       "ariaLabel_one": "Оцените са {{count}} звездицом",
       "ariaLabel_other": "Оцените са {{count}} звездица"
     },

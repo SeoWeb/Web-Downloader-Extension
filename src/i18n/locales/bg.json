@@ -36,11 +36,16 @@
       "ariaSingleFile": "Изтегляне като един HTML файл",
       "ariaStartDownload": "Започване на изтеглянето",
       "ariaDismissWarning": "Затваряне на предупреждението",
-      "error": "Грешка"
+      "error": "Грешка",
+      "configuration": "Конфигурация",
+      "singleFileDescription": "Най-добро за просто архивиране",
+      "zipDescription": "Запазва пълната структура на страницата като ZIP архив"
     },
     "actions": {
       "title": "Действия:",
-      "stop": "Стоп"
+      "stop": "Стоп",
+      "showInFolder": "Покажи в папка",
+      "downloadAnother": "Изтегли друг"
     },
     "status": {
       "waiting": "Очакване на връзка...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Създаден е единичен HTML файл",
       "zipCreated": "Zip файлът е създаден!",
       "downloadStarted": "Изтеглянето започна успешно",
-      "completeTitle": "Изтеглянето завърши:",
-      "zipLocation": "Можете да намерите zip файла в папката за изтегляния",
+      "completeTitle": "Изтеглянето завърши!",
+      "zipLocation": "Вашият файл е запазен локално.",
       "cssProgress": "Напредък на CSS файловете: {{completed}}/{{total}}",
       "bgImagesProgress": "Напредък на фоновите изображения: {{completed}}/{{total}}",
       "jsProgress": "Напредък на JS файловете: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Всички поточни изтегляния са завършени",
       "creatingStreamingZip": "Създаване на ZIP файл с поточно съдържание...",
       "streamingSuccess": "Поточното изтегляне завърши успешно",
-      "downloadingWebsiteContent": "Изтегляне на съдържанието на уебсайта ..."
+      "downloadingWebsiteContent": "Изтегляне на съдържанието на уебсайта ...",
+      "done": "Готово!",
+      "packing": "Архивиране...",
+      "downloading": "Изтегляне...",
+      "ready": "Готов"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Харесва ли ви това разширение?",
       "description": "Моля, оценете ни в уеб магазина на Chrome!",
       "rate": "Оцени разширението",
-      "prompt": "Ако сте доволни, моля, оставете положително отзив :)",
+      "prompt": "Харесва ли ви разширението?",
       "ariaLabel_one": "Оценете с {{count}} звезда",
       "ariaLabel_other": "Оценете с {{count}} звезди"
     },

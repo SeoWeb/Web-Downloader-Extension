@@ -36,11 +36,16 @@
       "ariaSingleFile": "Prenesi kot eno HTML datoteko",
       "ariaStartDownload": "Začni prenos",
       "ariaDismissWarning": "Opusti opozorilo",
-      "error": "Napaka"
+      "error": "Napaka",
+      "configuration": "Konfiguracija",
+      "singleFileDescription": "Najbolje za preprosto arhiviranje",
+      "zipDescription": "Shrani celotno strukturo strani kot ZIP arhiv"
     },
     "actions": {
       "title": "Dejanja:",
-      "stop": "Ustavi"
+      "stop": "Ustavi",
+      "showInFolder": "Prikaži v mapi",
+      "downloadAnother": "Prenesi drugo"
     },
     "status": {
       "waiting": "Čakanje na povezavo...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Ustvarjena ena HTML datoteka",
       "zipCreated": "Zip datoteka ustvarjena!",
       "downloadStarted": "Prenos se je uspešno začel",
-      "completeTitle": "Prenos je končan:",
-      "zipLocation": "Zip datoteko najdete v mapi za prenose",
+      "completeTitle": "Prenos končan!",
+      "zipLocation": "Vaša datoteka je shranjena lokalno.",
       "cssProgress": "Napredek CSS datotek: {{completed}}/{{total}}",
       "bgImagesProgress": "Napredek slik ozadja: {{completed}}/{{total}}",
       "jsProgress": "Napredek JS datotek: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Vsi pretočni prenosi končani",
       "creatingStreamingZip": "Ustvarjanje ZIP datoteke s pretočno vsebino...",
       "streamingSuccess": "Pretočni prenos uspešno zaključen",
-      "downloadingWebsiteContent": "Prenos vsebine spletne strani ..."
+      "downloadingWebsiteContent": "Prenos vsebine spletne strani ...",
+      "done": "Končano!",
+      "packing": "Pakiranje...",
+      "downloading": "Prenašanje...",
+      "ready": "Pripravljen"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Vam je ta razširitev všeč?",
       "description": "Ocenite nas v spletni trgovini Chrome!",
       "rate": "Oceni razširitev",
-      "prompt": "Če ste bili zadovoljni, pustite pozitivno oceno :)",
+      "prompt": "Vam je razširitev všeč?",
       "ariaLabel_one": "Oceni z {{count}} zvezdico",
       "ariaLabel_other": "Oceni z {{count}} zvezdicami"
     },

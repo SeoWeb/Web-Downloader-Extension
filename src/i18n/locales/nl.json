@@ -36,11 +36,16 @@
       "ariaSingleFile": "Downloaden als enkel HTML-bestand",
       "ariaStartDownload": "Download starten",
       "ariaDismissWarning": "Waarschuwing sluiten",
-      "error": "Fout"
+      "error": "Fout",
+      "configuration": "Configuratie",
+      "singleFileDescription": "Beste voor eenvoudige archivering",
+      "zipDescription": "Slaat de volledige paginastructuur op als een ZIP-archief"
     },
     "actions": {
       "title": "Acties:",
-      "stop": "Stoppen"
+      "stop": "Stoppen",
+      "showInFolder": "Toon in map",
+      "downloadAnother": "Download een andere"
     },
     "status": {
       "waiting": "Wachten op verbinding...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Enkel HTML-bestand gemaakt",
       "zipCreated": "Zip-bestand gemaakt!",
       "downloadStarted": "Download succesvol gestart",
-      "completeTitle": "Download is voltooid:",
-      "zipLocation": "U vindt het zip-bestand in uw downloadmap",
+      "completeTitle": "Download voltooid!",
+      "zipLocation": "Uw bestand is lokaal opgeslagen.",
       "cssProgress": "Voortgang CSS-bestanden: {{completed}}/{{total}}",
       "bgImagesProgress": "Voortgang achtergrondafbeeldingen: {{completed}}/{{total}}",
       "jsProgress": "Voortgang JS-bestanden: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Alle streaming downloads voltooid",
       "creatingStreamingZip": "ZIP-bestand maken met streaming inhoud...",
       "streamingSuccess": "Streaming download succesvol voltooid",
-      "downloadingWebsiteContent": "Website-inhoud downloaden ..."
+      "downloadingWebsiteContent": "Website-inhoud downloaden ...",
+      "done": "Klaar!",
+      "packing": "Inpakken...",
+      "downloading": "Downloaden...",
+      "ready": "Gereed"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Geniet je van deze extensie?",
       "description": "Beoordeel ons alsjeblieft in de Chrome Web Store!",
       "rate": "Beoordeel extensie",
-      "prompt": "Als u tevreden bent, laat dan een positieve recensie achter :)",
+      "prompt": "Geniet u van de extensie?",
       "ariaLabel_one": "Beoordeel met {{count}} ster",
       "ariaLabel_other": "Beoordeel met {{count}} sterren"
     },

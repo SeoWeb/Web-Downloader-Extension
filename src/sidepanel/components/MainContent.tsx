@@ -1,5 +1,6 @@
 import React from "react";
 import { MessageAction, messageActions } from "../../common/message";
+import { useTranslation } from "react-i18next";
 import Heading from "../../components/Heading";
 import Actions, { Message } from "../../components/Actions";
 
@@ -27,6 +28,7 @@ export function MainContent({
   onClickStartDownload,
   tabUrl,
 }: MainContentProps) {
+  const { t } = useTranslation();
   return (
     <>
       <Heading />
@@ -37,9 +39,9 @@ export function MainContent({
         !isScraping &&
         action !== messageActions.DOWNLOAD_DONE &&
         !downloadResponse?.html && (
-          <div className="pt-8">
+          <div className="pt-4">
             <ErrorBoundary name="Filter">
-              <React.Suspense fallback={<div className="p-4">Loading filters...</div>}>
+              <React.Suspense fallback={<div className="p-4">{t('filter.loading')}</div>}>
                 <Filter
                   download={onClickStartDownload}
                   tabUrl={tabUrl}

@@ -36,11 +36,16 @@
       "ariaSingleFile": "Last ned som én enkelt HTML-fil",
       "ariaStartDownload": "Start nedlasting",
       "ariaDismissWarning": "Lukk advarsel",
-      "error": "Feil"
+      "error": "Feil",
+      "configuration": "Konfigurasjon",
+      "singleFileDescription": "Best for enkel arkivering",
+      "zipDescription": "Lagrer hele sidestrukturen som et ZIP-arkiv"
     },
     "actions": {
       "title": "Handlinger:",
-      "stop": "Stopp"
+      "stop": "Stopp",
+      "showInFolder": "Vis i mappe",
+      "downloadAnother": "Last ned en annen"
     },
     "status": {
       "waiting": "Venter på tilkobling...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Enkelt HTML-fil opprettet",
       "zipCreated": "Zip-fil opprettet!",
       "downloadStarted": "Nedlasting startet",
-      "completeTitle": "Nedlastingen er fullført:",
-      "zipLocation": "Du finner zip-filen i nedlastingsmappen din",
+      "completeTitle": "Nedlasting fullført!",
+      "zipLocation": "Filen din er lagret lokalt.",
       "cssProgress": "CSS-filer fremdrift: {{completed}}/{{total}}",
       "bgImagesProgress": "Bakgrunnsbilder fremdrift: {{completed}}/{{total}}",
       "jsProgress": "JS-filer fremdrift: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Alle strømmenedlastinger fullført",
       "creatingStreamingZip": "Oppretter ZIP-fil med strømmet innhold...",
       "streamingSuccess": "Strømmenedlasting fullført med suksess",
-      "downloadingWebsiteContent": "Laster ned innhold fra nettstedet ..."
+      "downloadingWebsiteContent": "Laster ned innhold fra nettstedet ...",
+      "done": "Ferdig!",
+      "packing": "Pakker...",
+      "downloading": "Laster ned...",
+      "ready": "Klar"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Liker du denne utvidelsen?",
       "description": "Vennligst ranger oss i Chrome Web Store!",
       "rate": "Ranger utvidelse",
-      "prompt": "Hvis du var fornøyd, vennligst legg igjen en positiv anmeldelse :)",
+      "prompt": "Liker du utvidelsen?",
       "ariaLabel_one": "Vurder {{count}} stjerne",
       "ariaLabel_other": "Vurder {{count}} stjerner"
     },

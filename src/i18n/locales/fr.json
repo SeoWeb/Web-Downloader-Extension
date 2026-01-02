@@ -36,11 +36,16 @@
       "startDownload": "Commencer le téléchargement",
       "linksWarning": "Si vous choisissez de télécharger les liens, sachez que le temps total de téléchargement peut augmenter considérablement et le fichier zip peut être beaucoup plus volumineux.",
       "permissionWarning": "Les préférences de filtre ne seront pas enregistrées sans l'autorisation de stockage",
-      "dismiss": "Ignorer"
+      "dismiss": "Ignorer",
+      "configuration": "Configuration",
+      "singleFileDescription": "Idéal pour l'archivage simple",
+      "zipDescription": "Enregistre la structure complète de la page sous forme d'archive ZIP"
     },
     "actions": {
       "title": "Actions :",
-      "stop": "Arrêter"
+      "stop": "Arrêter",
+      "showInFolder": "Afficher dans le dossier",
+      "downloadAnother": "Télécharger un autre"
     },
     "status": {
       "creatingIndex": "Création de index.html",
@@ -61,8 +66,8 @@
       "singleFileCreated": "Fichier HTML unique créé",
       "zipCreated": "Fichier Zip créé !",
       "downloadStarted": "Le téléchargement a commencé avec succès",
-      "completeTitle": "Le téléchargement est terminé :",
-      "zipLocation": "Vous pouvez trouver le fichier zip dans votre dossier de téléchargements",
+      "completeTitle": "Téléchargement terminé !",
+      "zipLocation": "Votre fichier a été enregistré localement.",
       "streamingSuccess": "Téléchargement en streaming terminé avec succès",
       "rating": {
         "prompt": "Si vous êtes satisfait, laissez un avis positif :)",
@@ -115,7 +120,11 @@
       "streamingProgress": "Progression du streaming : {{completed}}/{{total}} morceaux ({{percent}}%)",
       "streamingCompleted": "Tous les téléchargements en streaming sont terminés",
       "creatingStreamingZip": "Création du fichier ZIP avec le contenu streamé...",
-      "downloadingWebsiteContent": "Téléchargement du contenu du site Web ..."
+      "downloadingWebsiteContent": "Téléchargement du contenu du site Web ...",
+      "done": "Terminé !",
+      "packing": "Empaquetage...",
+      "downloading": "Téléchargement...",
+      "ready": "Prêt"
     },
     "permissions": {
       "storage": {
@@ -179,7 +188,7 @@
       "title": "Vous aimez cette extension ?",
       "description": "Veuillez nous noter sur le Chrome Web Store !",
       "rate": "Noter l'extension",
-      "prompt": "Si vous êtes satisfait, merci de laisser un avis positif :)",
+      "prompt": "Appréciez-vous l'extension ?",
       "ariaLabel_one": "Noter {{count}} étoile",
       "ariaLabel_other": "Noter {{count}} étoiles"
     },

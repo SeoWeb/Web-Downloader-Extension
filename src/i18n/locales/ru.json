@@ -36,11 +36,16 @@
       "ariaSingleFile": "Скачать как один HTML-файл",
       "ariaStartDownload": "Начать загрузку",
       "ariaDismissWarning": "Закрыть предупреждение",
-      "error": "Ошибка"
+      "error": "Ошибка",
+      "configuration": "Конфигурация",
+      "singleFileDescription": "Лучше всего для простого архивирования",
+      "zipDescription": "Сохраняет полную структуру страницы как ZIP-архив"
     },
     "actions": {
       "title": "Действия:",
-      "stop": "Стоп"
+      "stop": "Стоп",
+      "showInFolder": "Показать в папке",
+      "downloadAnother": "Скачать еще"
     },
     "status": {
       "waiting": "Ожидание подключения...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Создан один HTML файл",
       "zipCreated": "Zip-файл создан!",
       "downloadStarted": "Скачивание успешно началось",
-      "completeTitle": "Загрузка завершена:",
-      "zipLocation": "Вы можете найти zip-файл в папке загрузок",
+      "completeTitle": "Загрузка завершена!",
+      "zipLocation": "Ваш файл сохранен локально.",
       "cssProgress": "Прогресс CSS файлов: {{completed}}/{{total}}",
       "bgImagesProgress": "Прогресс фоновых изображений: {{completed}}/{{total}}",
       "jsProgress": "Прогресс JS файлов: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Все потоковые загрузки завершены",
       "creatingStreamingZip": "Создание ZIP файла с потоковым контентом...",
       "streamingSuccess": "Потоковая загрузка успешно завершена",
-      "downloadingWebsiteContent": "Скачивание содержимого веб-сайта ..."
+      "downloadingWebsiteContent": "Скачивание содержимого веб-сайта ...",
+      "done": "Готово!",
+      "packing": "Упаковка...",
+      "downloading": "Загрузка...",
+      "ready": "Готово"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Вам нравится это расширение?",
       "description": "Пожалуйста, оцените нас в интернет-магазине Chrome!",
       "rate": "Оценить расширение",
-      "prompt": "Если вы остались довольны, пожалуйста, оставьте положительный отзыв :)",
+      "prompt": "Вам нравится расширение?",
       "ariaLabel_one": "Оценить {{count}} звездой",
       "ariaLabel_other": "Оценить {{count}} звездами"
     },

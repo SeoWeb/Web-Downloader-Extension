@@ -36,11 +36,16 @@
       "startDownload": "Download starten",
       "linksWarning": "Wenn Sie Links herunterladen möchten, müssen Sie berücksichtigen, dass die gesamte Downloadzeit drastisch steigen kann und die Zip-Datei deutlich größer sein kann.",
       "permissionWarning": "Filtereinstellungen werden ohne Speicherberechtigung nicht gespeichert",
-      "dismiss": "Verwerfen"
+      "dismiss": "Verwerfen",
+      "configuration": "Konfiguration",
+      "singleFileDescription": "Am besten für einfache Archivierung",
+      "zipDescription": "Speichert die gesamte Seitenstruktur als ZIP-Archiv"
     },
     "actions": {
       "title": "Aktionen:",
-      "stop": "Stopp"
+      "stop": "Stopp",
+      "showInFolder": "Im Ordner anzeigen",
+      "downloadAnother": "Weiteren herunterladen"
     },
     "status": {
       "creatingIndex": "Erstelle index.html",
@@ -61,8 +66,8 @@
       "singleFileCreated": "Einzelne HTML-Datei erstellt",
       "zipCreated": "Zip-Datei erstellt!",
       "downloadStarted": "Download erfolgreich gestartet",
-      "completeTitle": "Download ist abgeschlossen:",
-      "zipLocation": "Sie finden die Zip-Datei in Ihrem Download-Ordner",
+      "completeTitle": "Download abgeschlossen!",
+      "zipLocation": "Ihre Datei wurde lokal gespeichert.",
       "streamingSuccess": "Streaming-Download erfolgreich abgeschlossen",
       "waiting": "Warte auf Verbindung...",
       "connected": "Webseite verbunden!",
@@ -110,7 +115,11 @@
       "streamingProgress": "Streaming-Fortschritt: {{completed}}/{{total}} Chunks ({{percent}}%)",
       "streamingCompleted": "Alle Streaming-Downloads abgeschlossen",
       "creatingStreamingZip": "Erstelle ZIP-Datei mit Streaming-Inhalten...",
-      "downloadingWebsiteContent": "Webseiten-Inhalt wird heruntergeladen ..."
+      "downloadingWebsiteContent": "Webseiten-Inhalt wird heruntergeladen ...",
+      "done": "Fertig!",
+      "packing": "Packen...",
+      "downloading": "Herunterladen...",
+      "ready": "Bereit"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Gefällt Ihnen diese Erweiterung?",
       "description": "Bitte bewerten Sie uns im Chrome Web Store!",
       "rate": "Erweiterung bewerten",
-      "prompt": "Wenn Sie zufrieden waren, hinterlassen Sie bitte eine positive Bewertung :)",
+      "prompt": "Gefällt Ihnen die Erweiterung?",
       "ariaLabel_one": "Bewerte mit {{count}} Stern",
       "ariaLabel_other": "Bewerte mit {{count}} Sternen"
     },

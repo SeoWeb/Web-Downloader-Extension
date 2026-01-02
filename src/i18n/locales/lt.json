@@ -36,11 +36,16 @@
       "ariaSingleFile": "Atsisiųsti kaip vieną HTML failą",
       "ariaStartDownload": "Pradėti atsisiuntimą",
       "ariaDismissWarning": "Atmesti įspėjimą",
-      "error": "Klaida"
+      "error": "Klaida",
+      "configuration": "Konfigūracija",
+      "singleFileDescription": "Geriausia paprastam archyvavimui",
+      "zipDescription": "Išsaugo visą puslapio struktūrą kaip ZIP archyvą"
     },
     "actions": {
       "title": "Veiksmai:",
-      "stop": "Stabdyti"
+      "stop": "Stabdyti",
+      "showInFolder": "Rodyti aplanke",
+      "downloadAnother": "Atsisiųsti kitą"
     },
     "status": {
       "waiting": "Laukiama ryšio...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Sukurtas vienas HTML failas",
       "zipCreated": "Zip failas sukurtas!",
       "downloadStarted": "Atsisiuntimas sėkmingai pradėtas",
-      "completeTitle": "Atsisiuntimas baigtas:",
-      "zipLocation": "Zip failą rasite atsisiuntimų aplanke",
+      "completeTitle": "Atsisiuntimas baigtas!",
+      "zipLocation": "Jūsų failas išsaugotas vietoje.",
       "cssProgress": "CSS failų eiga: {{completed}}/{{total}}",
       "bgImagesProgress": "Fono vaizdų eiga: {{completed}}/{{total}}",
       "jsProgress": "JS failų eiga: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Visi srautiniai atsisiuntimai baigti",
       "creatingStreamingZip": "Kuriamas ZIP failas su srautiniu turiniu...",
       "streamingSuccess": "Srautinis atsisiuntimas sėkmingai baigtas",
-      "downloadingWebsiteContent": "Atsisiunčiamas svetainės turinys ..."
+      "downloadingWebsiteContent": "Atsisiunčiamas svetainės turinys ...",
+      "done": "Atlikta!",
+      "packing": "Pakuojama...",
+      "downloading": "Atsisiunčiama...",
+      "ready": "Paruošta"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Ar jums patinka šis plėtinys?",
       "description": "Prašome įvertinti mus Chrome internetinėje parduotuvėje!",
       "rate": "Įvertinti plėtinį",
-      "prompt": "Jei likote patenkinti, palikite teigiamą atsiliepimą :)",
+      "prompt": "Ar patinka plėtinys?",
       "ariaLabel_one": "Įvertinti {{count}} žvaigždute",
       "ariaLabel_other": "Įvertinti {{count}} žvaigždutėmis"
     },

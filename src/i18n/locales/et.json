@@ -36,11 +36,16 @@
       "ariaSingleFile": "Laadi alla ühe HTML-failina",
       "ariaStartDownload": "Alusta allalaadimist",
       "ariaDismissWarning": "Loobu hoiatusest",
-      "error": "Viga"
+      "error": "Viga",
+      "configuration": "Konfiguratsioon",
+      "singleFileDescription": "Parim lihtsaks arhiveerimiseks",
+      "zipDescription": "Salvestab kogu lehe struktuuri ZIP-arhiivina"
     },
     "actions": {
       "title": "Tegevused:",
-      "stop": "Peata"
+      "stop": "Peata",
+      "showInFolder": "Näita kaustas",
+      "downloadAnother": "Laadi teine alla"
     },
     "status": {
       "waiting": "Ühenduse ootel...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Üksik HTML-fail loodud",
       "zipCreated": "Zip-fail loodud!",
       "downloadStarted": "Allalaadimine algas edukalt",
-      "completeTitle": "Allalaadimine on lõpetatud:",
-      "zipLocation": "Leiate zip-faili oma allalaadimiste kaustast",
+      "completeTitle": "Allalaadimine lõpetatud!",
+      "zipLocation": "Teie fail on salvestatud lokaalselt.",
       "cssProgress": "CSS-failide edenemine: {{completed}}/{{total}}",
       "bgImagesProgress": "Taustapiltide edenemine: {{completed}}/{{total}}",
       "jsProgress": "JS-failide edenemine: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Kõik voogedastuse allalaadimised on lõpetatud",
       "creatingStreamingZip": "ZIP-faili loomine voogedastuse sisuga...",
       "streamingSuccess": "Voogedastuse allalaadimine edukalt lõpule viidud",
-      "downloadingWebsiteContent": "Veebisaidi sisu allalaadimine ..."
+      "downloadingWebsiteContent": "Veebisaidi sisu allalaadimine ...",
+      "done": "Valmis!",
+      "packing": "Pakkimine...",
+      "downloading": "Allalaadimine...",
+      "ready": "Valmis"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Kas naudite seda laiendust?",
       "description": "Palun hinnake meid Chrome'i veebipoes!",
       "rate": "Hinda laiendust",
-      "prompt": "Kui jäite rahule, jätke palun positiivne arvustus :)",
+      "prompt": "Kas naudite laiendust?",
       "ariaLabel_one": "Hinda {{count}} tärniga",
       "ariaLabel_other": "Hinda {{count}} tärniga"
     },

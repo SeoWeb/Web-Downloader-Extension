@@ -36,11 +36,16 @@
       "ariaSingleFile": "Stiahnuť ako jeden súbor HTML",
       "ariaStartDownload": "Spustiť sťahovanie",
       "ariaDismissWarning": "Zavrieť upozornenie",
-      "error": "Chyba"
+      "error": "Chyba",
+      "configuration": "Konfigurácia",
+      "singleFileDescription": "Najlepšie pre jednoduchú archiváciu",
+      "zipDescription": "Uloží kompletnú štruktúru stránky ako ZIP archív"
     },
     "actions": {
       "title": "Akcie:",
-      "stop": "Zastaviť"
+      "stop": "Zastaviť",
+      "showInFolder": "Zobraziť v priečinku",
+      "downloadAnother": "Stiahnuť ďalší"
     },
     "status": {
       "waiting": "Čakanie na pripojenie...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Vytvorený jeden súbor HTML",
       "zipCreated": "Súbor Zip vytvorený!",
       "downloadStarted": "Sťahovanie úspešne začalo",
-      "completeTitle": "Sťahovanie je dokončené:",
-      "zipLocation": "Súbor zip nájdete v priečinku stiahnutých súborov",
+      "completeTitle": "Sťahovanie dokončené!",
+      "zipLocation": "Váš súbor bol uložený lokálne.",
       "cssProgress": "Priebeh súborov CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "Priebeh obrázkov na pozadí: {{completed}}/{{total}}",
       "jsProgress": "Priebeh súborov JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Všetky streamované sťahovania dokončené",
       "creatingStreamingZip": "Vytváranie súboru ZIP so streamovaným obsahom...",
       "streamingSuccess": "Streamované sťahovanie úspešne dokončené",
-      "downloadingWebsiteContent": "Sťahovanie obsahu webovej stránky ..."
+      "downloadingWebsiteContent": "Sťahovanie obsahu webovej stránky ...",
+      "done": "Hotovo!",
+      "packing": "Balenie...",
+      "downloading": "Sťahovanie...",
+      "ready": "Pripravené"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Páči sa vám toto rozšírenie?",
       "description": "Ohodnoťte nás v internetovom obchode Chrome!",
       "rate": "Ohodnotiť rozšírenie",
-      "prompt": "Ak ste boli spokojní, zanechajte prosím pozitívnu recenziu :)",
+      "prompt": "Páči sa vám rozšírenie?",
       "ariaLabel_one": "Hodnotiť {{count}} hviezdičkou",
       "ariaLabel_other": "Hodnotiť {{count}} hviezdičkami"
     },

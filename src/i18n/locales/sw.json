@@ -36,11 +36,16 @@
       "ariaSingleFile": "Pakua kama faili moja ya HTML",
       "ariaStartDownload": "Anza kupakua",
       "ariaDismissWarning": "Ondoa onyo",
-      "error": "Hitilafu"
+      "error": "Hitilafu",
+      "configuration": "Usanidi",
+      "singleFileDescription": "Bora kwa uhifadhi rahisi",
+      "zipDescription": "Hifadhi muundo kamili wa ukurasa kama faili la ZIP"
     },
     "actions": {
       "title": "Vitendo:",
-      "stop": "Simama"
+      "stop": "Simama",
+      "showInFolder": "Onyesha kwenye folda",
+      "downloadAnother": "Pakua nyingine"
     },
     "status": {
       "waiting": "Inasubiri muunganisho...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Faili moja ya HTML imeundwa",
       "zipCreated": "Faili ya Zip imeundwa!",
       "downloadStarted": "Upakuaji umeanza kikamilifu",
-      "completeTitle": "Upakuaji umekamilika:",
-      "zipLocation": "Unaweza kupata faili ya zip kwenye folda yako ya vipakuliwa",
+      "completeTitle": "Upakuaji umekamilika!",
+      "zipLocation": "Faili yako imehifadhiwa kwenye kifaa.",
       "cssProgress": "Maendeleo ya faili za CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "Maendeleo ya picha za usuli: {{completed}}/{{total}}",
       "jsProgress": "Maendeleo ya faili za JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Upakuaji wote wa mtiririko umekamilika",
       "creatingStreamingZip": "Inaunda faili ya ZIP na maudhui ya mtiririko...",
       "streamingSuccess": "Upakuaji wa mtiririko umekamilika kwa mafanikio",
-      "downloadingWebsiteContent": "Inapakua maudhui ya tovuti ..."
+      "downloadingWebsiteContent": "Inapakua maudhui ya tovuti ...",
+      "done": "Imekamilika!",
+      "packing": "Inafunga...",
+      "downloading": "Inapakua...",
+      "ready": "Tayari"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Unafurahia kiendelezi hiki?",
       "description": "Tafadhali tupatie alama kwenye Duka la Wavuti la Chrome!",
       "rate": "Pima Kiendelezi",
-      "prompt": "Ikiwa umeridhika, tafadhali acha maoni mazuri :)",
+      "prompt": "Je, unafurahia kiendelezi?",
       "ariaLabel_one": "Kadiria nyota {{count}}",
       "ariaLabel_other": "Kadiria nyota {{count}}"
     },

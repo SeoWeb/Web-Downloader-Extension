@@ -36,11 +36,16 @@
       "startDownload": "Iniciar download",
       "linksWarning": "Se você optar por baixar links, deve levar em consideração que o tempo total de download pode aumentar drasticamente e o arquivo zip pode ser significativamente maior.",
       "permissionWarning": "As preferências de filtro não serão salvas sem permissão de armazenamento",
-      "dismiss": "Dispensar"
+      "dismiss": "Dispensar",
+      "configuration": "Configuração",
+      "singleFileDescription": "Melhor para arquivamento simples",
+      "zipDescription": "Salva a estrutura completa da página como um arquivo ZIP"
     },
     "actions": {
       "title": "Ações:",
-      "stop": "Parar"
+      "stop": "Parar",
+      "showInFolder": "Mostrar na pasta",
+      "downloadAnother": "Baixar outro"
     },
     "status": {
       "creatingIndex": "Criando index.html",
@@ -61,8 +66,8 @@
       "singleFileCreated": "Arquivo HTML único criado",
       "zipCreated": "Arquivo Zip criado!",
       "downloadStarted": "Download iniciado com sucesso",
-      "completeTitle": "O download foi concluído:",
-      "zipLocation": "Você pode encontrar o arquivo zip na sua pasta de downloads",
+      "completeTitle": "Download concluído!",
+      "zipLocation": "Seu arquivo foi salvo localmente.",
       "streamingSuccess": "Download via streaming concluído com sucesso",
       "waiting": "Aguardando conexão...",
       "connected": "Site conectado!",
@@ -110,7 +115,11 @@
       "streamingProgress": "Progresso do streaming: {{completed}}/{{total}} pedaços ({{percent}}%)",
       "streamingCompleted": "Todos os downloads via streaming concluídos",
       "creatingStreamingZip": "Criando arquivo ZIP com conteúdo transmitido...",
-      "downloadingWebsiteContent": "Baixando conteúdo do site ..."
+      "downloadingWebsiteContent": "Baixando conteúdo do site ...",
+      "done": "Pronto!",
+      "packing": "Empacotando...",
+      "downloading": "Baixando...",
+      "ready": "Pronto"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Gostando desta extensão?",
       "description": "Por favor, avalie-nos na Chrome Web Store!",
       "rate": "Avaliar Extensão",
-      "prompt": "Se você ficou satisfeito, por favor deixe uma avaliação positiva :)",
+      "prompt": "Gostando da extensão?",
       "ariaLabel_one": "Avaliar {{count}} estrela",
       "ariaLabel_other": "Avaliar {{count}} estrelas"
     },

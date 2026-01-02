@@ -36,11 +36,16 @@
       "ariaSingleFile": "Tải xuống dưới dạng một tệp HTML duy nhất",
       "ariaStartDownload": "Bắt đầu tải xuống",
       "ariaDismissWarning": "Bỏ qua cảnh báo",
-      "error": "Lỗi"
+      "error": "Lỗi",
+      "configuration": "Cấu hình",
+      "singleFileDescription": "Tốt nhất để lưu trữ đơn giản",
+      "zipDescription": "Lưu toàn bộ cấu trúc trang dưới dạng tệp lưu trữ ZIP"
     },
     "actions": {
       "title": "Hành động:",
-      "stop": "Dừng"
+      "stop": "Dừng",
+      "showInFolder": "Hiển thị trong thư mục",
+      "downloadAnother": "Tải xuống cái khác"
     },
     "status": {
       "waiting": "Đang chờ kết nối...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Đã tạo một tệp HTML duy nhất",
       "zipCreated": "Đã tạo tệp Zip!",
       "downloadStarted": "Tải xuống đã bắt đầu thành công",
-      "completeTitle": "Tải xuống đã hoàn tất:",
-      "zipLocation": "Bạn có thể tìm thấy tệp zip trong thư mục tải xuống của mình",
+      "completeTitle": "Tải xuống hoàn tất!",
+      "zipLocation": "Tệp của bạn đã được lưu cục bộ.",
       "cssProgress": "Tiến trình tệp CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "Tiến trình hình ảnh nền: {{completed}}/{{total}}",
       "jsProgress": "Tiến trình tệp JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Tất cả tải xuống trực tuyến đã hoàn tất",
       "creatingStreamingZip": "Đang tạo tệp ZIP với nội dung truyền phát...",
       "streamingSuccess": "Tải xuống trực tuyến hoàn tất thành công",
-      "downloadingWebsiteContent": "Đang tải xuống nội dung trang web ..."
+      "downloadingWebsiteContent": "Đang tải xuống nội dung trang web ...",
+      "done": "Xong!",
+      "packing": "Đang đóng gói...",
+      "downloading": "Đang tải xuống...",
+      "ready": "Sẵn sàng"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Bạn có thích tiện ích mở rộng này không?",
       "description": "Vui lòng đánh giá chúng tôi trên Cửa hàng Chrome trực tuyến!",
       "rate": "Đánh giá tiện ích mở rộng",
-      "prompt": "Nếu bạn hài lòng, vui lòng để lại đánh giá tích cực :)",
+      "prompt": "Bạn có thích tiện ích mở rộng không?",
       "ariaLabel_one": "Đánh giá {{count}} sao",
       "ariaLabel_other": "Đánh giá {{count}} sao"
     },

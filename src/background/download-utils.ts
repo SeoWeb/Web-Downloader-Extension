@@ -92,7 +92,7 @@ export async function performInitialCleanup(): Promise<void> {
 export async function initiateDownload(
   blob: Blob,
   filename: string,
-  sendMessage: (message: string) => void,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
   tabId?: number
 ): Promise<void> {
   console.log("Preparing to initiate download:", filename, "for tabId:", tabId);
@@ -176,7 +176,7 @@ export async function initiateDownload(
   }
 
   console.log("Download initiated successfully");
-  sendMessage("Download started successfully");
+  sendMessage({ key: "status.downloadStarted" });
 }
 
 /**

@@ -36,11 +36,16 @@
       "ariaSingleFile": "Descarcă ca un singur fișier HTML",
       "ariaStartDownload": "Începe descărcarea",
       "ariaDismissWarning": "Închide avertismentul",
-      "error": "Eroare"
+      "error": "Eroare",
+      "configuration": "Configurație",
+      "singleFileDescription": "Cel mai bun pentru arhivare simplă",
+      "zipDescription": "Salvează structura completă a paginii ca arhivă ZIP"
     },
     "actions": {
       "title": "Acțiuni:",
-      "stop": "Oprește"
+      "stop": "Oprește",
+      "showInFolder": "Arată în dosar",
+      "downloadAnother": "Descarcă altul"
     },
     "status": {
       "waiting": "Așteptare conexiune...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Fișier HTML unic creat",
       "zipCreated": "Fișier Zip creat!",
       "downloadStarted": "Descărcarea a început cu succes",
-      "completeTitle": "Descărcarea este completă:",
-      "zipLocation": "Puteți găsi fișierul zip în folderul de descărcări",
+      "completeTitle": "Descărcare finalizată!",
+      "zipLocation": "Fișierul dvs. a fost salvat local.",
       "cssProgress": "Progres fișiere CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "Progres imagini de fundal: {{completed}}/{{total}}",
       "jsProgress": "Progres fișiere JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Toate descărcările prin streaming finalizate",
       "creatingStreamingZip": "Creare fișier ZIP cu conținut transmis...",
       "streamingSuccess": "Descărcare prin streaming finalizată cu succes",
-      "downloadingWebsiteContent": "Se descarcă conținutul site-ului web ..."
+      "downloadingWebsiteContent": "Se descarcă conținutul site-ului web ...",
+      "done": "Gata!",
+      "packing": "Se împachetează...",
+      "downloading": "Se descarcă...",
+      "ready": "Pregătit"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Îți place această extensie?",
       "description": "Te rugăm să ne evaluezi pe Chrome Web Store!",
       "rate": "Evaluează Extensia",
-      "prompt": "Dacă ați fost mulțumit, vă rugăm să lăsați o recenzie pozitivă :)",
+      "prompt": "Vă place extensia?",
       "ariaLabel_one": "Evaluează cu {{count}} stea",
       "ariaLabel_other": "Evaluează cu {{count}} stele"
     },

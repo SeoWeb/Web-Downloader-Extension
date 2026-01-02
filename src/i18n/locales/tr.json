@@ -36,11 +36,16 @@
       "ariaSingleFile": "Tek bir HTML dosyası olarak indir",
       "ariaStartDownload": "İndirmeyi başlat",
       "ariaDismissWarning": "Uyarıyı kapat",
-      "error": "Hata"
+      "error": "Hata",
+      "configuration": "Yapılandırma",
+      "singleFileDescription": "Basit arşivleme için en iyisi",
+      "zipDescription": "Tam sayfa yapısını ZIP arşivi olarak kaydeder"
     },
     "actions": {
       "title": "İşlemler:",
-      "stop": "Durdur"
+      "stop": "Durdur",
+      "showInFolder": "Klasörde göster",
+      "downloadAnother": "Başka indir"
     },
     "status": {
       "waiting": "Bağlantı bekleniyor...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Tek HTML dosyası oluşturuldu",
       "zipCreated": "Zip dosyası oluşturuldu!",
       "downloadStarted": "İndirme başarıyla başladı",
-      "completeTitle": "İndirme tamamlandı:",
-      "zipLocation": "Zip dosyasını indirilenler klasörünüzde bulabilirsiniz",
+      "completeTitle": "İndirme tamamlandı!",
+      "zipLocation": "Dosyanız yerel olarak kaydedildi.",
       "cssProgress": "CSS dosyaları ilerlemesi: {{completed}}/{{total}}",
       "bgImagesProgress": "Arka plan resimleri ilerlemesi: {{completed}}/{{total}}",
       "jsProgress": "JS dosyaları ilerlemesi: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Tüm akış indirmeleri tamamlandı",
       "creatingStreamingZip": "Akış içeriğiyle ZIP dosyası oluşturuluyor...",
       "streamingSuccess": "Akış indirme başarıyla tamamlandı",
-      "downloadingWebsiteContent": "Web sitesi içeriği indiriliyor ..."
+      "downloadingWebsiteContent": "Web sitesi içeriği indiriliyor ...",
+      "done": "Bitti!",
+      "packing": "Paketle",
+      "downloading": "İndiriliyor...",
+      "ready": "Hazır"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Bu uzantıyı beğendiniz mi?",
       "description": "Lütfen bizi Chrome Web Mağazası'nda derecelendirin!",
       "rate": "Uzantıyı Derecelendir",
-      "prompt": "Memnun kaldıysanız, lütfen olumlu bir yorum bırakın :)",
+      "prompt": "Uzantıyı beğendiniz mi?",
       "ariaLabel_one": "{{count}} yıldız ver",
       "ariaLabel_other": "{{count}} yıldız ver"
     },

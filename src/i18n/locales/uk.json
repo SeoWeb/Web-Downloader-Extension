@@ -36,11 +36,16 @@
       "ariaSingleFile": "Завантажити як один HTML-файл",
       "ariaStartDownload": "Почати завантаження",
       "ariaDismissWarning": "Закрити попередження",
-      "error": "Помилка"
+      "error": "Помилка",
+      "configuration": "Конфігурація",
+      "singleFileDescription": "Найкраще для простого архівування",
+      "zipDescription": "Зберігає повну структуру сторінки як ZIP-архів"
     },
     "actions": {
       "title": "Дії:",
-      "stop": "Стоп"
+      "stop": "Стоп",
+      "showInFolder": "Показати в папці",
+      "downloadAnother": "Завантажити ще"
     },
     "status": {
       "waiting": "Очікування підключення...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Створено один HTML файл",
       "zipCreated": "Zip-файл створено!",
       "downloadStarted": "Завантаження успішно розпочато",
-      "completeTitle": "Завантаження завершено:",
-      "zipLocation": "Ви можете знайти zip-файл у папці завантажень",
+      "completeTitle": "Завантаження завершено!",
+      "zipLocation": "Ваш файл збережено локально.",
       "cssProgress": "Прогрес CSS файлів: {{completed}}/{{total}}",
       "bgImagesProgress": "Прогрес фонових зображень: {{completed}}/{{total}}",
       "jsProgress": "Прогрес JS файлів: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Всі потокові завантаження завершено",
       "creatingStreamingZip": "Створення ZIP файлу з потоковим контентом...",
       "streamingSuccess": "Потокове завантаження успішно завершено",
-      "downloadingWebsiteContent": "Завантаження вмісту веб-сайту ..."
+      "downloadingWebsiteContent": "Завантаження вмісту веб-сайту ...",
+      "done": "Готово!",
+      "packing": "Пакування...",
+      "downloading": "Завантаження...",
+      "ready": "Готово"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Вам подобається це розширення?",
       "description": "Будь ласка, оцініть нас у веб-магазині Chrome!",
       "rate": "Оцінити розширення",
-      "prompt": "Якщо ви задоволені, будь ласка, залиште позитивний відгук :)",
+      "prompt": "Вам подобається розширення?",
       "ariaLabel_one": "Оцінити {{count}} зіркою",
       "ariaLabel_other": "Оцінити {{count}} зірками"
     },

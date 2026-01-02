@@ -36,11 +36,16 @@
       "ariaSingleFile": "Lataa yhtenä HTML-tiedostona",
       "ariaStartDownload": "Aloita lataus",
       "ariaDismissWarning": "Hylkää varoitus",
-      "error": "Virhe"
+      "error": "Virhe",
+      "configuration": "Määritys",
+      "singleFileDescription": "Paras yksinkertaiseen arkistointiin",
+      "zipDescription": "Tallentaa koko sivun rakenteen ZIP-arkistona"
     },
     "actions": {
       "title": "Toiminnot:",
-      "stop": "Pysäytä"
+      "stop": "Pysäytä",
+      "showInFolder": "Näytä kansiossa",
+      "downloadAnother": "Lataa toinen"
     },
     "status": {
       "waiting": "Odotetaan yhteyttä...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Yksittäinen HTML-tiedosto luotu",
       "zipCreated": "Zip-tiedosto luotu!",
       "downloadStarted": "Lataus aloitettu onnistuneesti",
-      "completeTitle": "Lataus on valmis:",
-      "zipLocation": "Löydät zip-tiedoston latauskansiostasi",
+      "completeTitle": "Lataus valmis!",
+      "zipLocation": "Tiedostosi on tallennettu paikallisesti.",
       "cssProgress": "CSS-tiedostojen edistyminen: {{completed}}/{{total}}",
       "bgImagesProgress": "Taustakuvien edistyminen: {{completed}}/{{total}}",
       "jsProgress": "JS-tiedostojen edistyminen: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Kaikki suoratoistolataukset valmiit",
       "creatingStreamingZip": "Luodaan ZIP-tiedosto suoratoistosisällöllä...",
       "streamingSuccess": "Suoratoistolataus onnistui",
-      "downloadingWebsiteContent": "Ladataan verkkosivuston sisältöä ..."
+      "downloadingWebsiteContent": "Ladataan verkkosivuston sisältöä ...",
+      "done": "Valmis!",
+      "packing": "Pakataan...",
+      "downloading": "Ladataan...",
+      "ready": "Valmis"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Pidätkö tästä laajennuksesta?",
       "description": "Arvioi meidät Chrome Web Storessa!",
       "rate": "Arvioi laajennus",
-      "prompt": "Jos olit tyytyväinen, jätä positiivinen arvostelu :)",
+      "prompt": "Pidätkö laajennuksesta?",
       "ariaLabel_one": "Arvostele {{count}} tähdellä",
       "ariaLabel_other": "Arvostele {{count}} tähdellä"
     },

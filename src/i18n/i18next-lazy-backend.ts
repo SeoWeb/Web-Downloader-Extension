@@ -83,6 +83,7 @@ class LazyLocaleBackend implements BackendModule<object> {
         'vi': () => import('./locales/vi.json'),
         'zh-CN': () => import('./locales/zh-CN.json'),
         'zh-TW': () => import('./locales/zh-TW.json'),
+        'zh': () => import('./locales/zh-CN.json'),
       };
 
       let loader = localeMap[language];

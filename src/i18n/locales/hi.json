@@ -36,11 +36,16 @@
       "ariaSingleFile": "एकल HTML फ़ाइल के रूप में डाउनलोड करें",
       "ariaStartDownload": "डाउनलोड शुरू करें",
       "ariaDismissWarning": "चेतावनी खारिज करें",
-      "error": "त्रुटि"
+      "error": "त्रुटि",
+      "configuration": "विन्यास",
+      "singleFileDescription": "साधारण संग्रह के लिए सर्वोत्तम",
+      "zipDescription": "पूर्ण पृष्ठ संरचना को ज़िप संग्रह के रूप में सहेजता है"
     },
     "actions": {
       "title": "क्रियाएं:",
-      "stop": "रुकें"
+      "stop": "रुकें",
+      "showInFolder": "फ़ोल्डर में दिखाएं",
+      "downloadAnother": "दूसरा डाउनलोड करें"
     },
     "status": {
       "waiting": "कनेक्शन की प्रतीक्षा कर रहा है...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "एकल HTML फ़ाइल बनाई गई",
       "zipCreated": "ज़िप फ़ाइल बनाई गई!",
       "downloadStarted": "डाउनलोड सफलतापूर्वक शुरू हुआ",
-      "completeTitle": "डाउनलोड पूरा हो गया है:",
-      "zipLocation": "आप डाउनलोड फोल्डर में ज़िप फ़ाइल पा सकते हैं",
+      "completeTitle": "डाउनलोड पूरा हुआ!",
+      "zipLocation": "आपकी फ़ाइल स्थानीय रूप से सहेज ली गई है।",
       "cssProgress": "CSS फ़ाइलें प्रगति: {{completed}}/{{total}}",
       "bgImagesProgress": "पृष्ठभूमि चित्र प्रगति: {{completed}}/{{total}}",
       "jsProgress": "JS फ़ाइलें प्रगति: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "सभी स्ट्रीमिंग डाउनलोड पूरे हुए",
       "creatingStreamingZip": "स्ट्रीमिंग सामग्री के साथ ज़िप फ़ाइल बनाई जा रही है...",
       "streamingSuccess": "स्ट्रीमिंग डाउनलोड सफलतापूर्वक पूरा हुआ",
-      "downloadingWebsiteContent": "वेबसाइट सामग्री डाउनलोड हो रही है ..."
+      "downloadingWebsiteContent": "वेबसाइट सामग्री डाउनलोड हो रही है ...",
+      "done": "हो गया!",
+      "packing": "पैकिंग...",
+      "downloading": "डाउनलोड हो रहा है...",
+      "ready": "तैयार"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "क्या आप इस एक्सटेंशन का आनंद ले रहे हैं?",
       "description": "कृपया क्रोम वेब स्टोर पर हमें रेट करें!",
       "rate": "एक्सटेंशन रेट करें",
-      "prompt": "यदि आप संतुष्ट थे, तो कृपया सकारात्मक समीक्षा छोड़ें :)",
+      "prompt": "क्या आप एक्सटेंशन का आनंद ले रहे हैं?",
       "ariaLabel_one": "{{count}} स्टार दें",
       "ariaLabel_other": "{{count}} स्टार दें"
     },

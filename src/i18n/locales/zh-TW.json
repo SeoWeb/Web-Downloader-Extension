@@ -36,11 +36,16 @@
       "ariaSingleFile": "下載為單一 HTML 檔案",
       "ariaStartDownload": "開始下載",
       "ariaDismissWarning": "忽略警告",
-      "error": "錯誤"
+      "error": "錯誤",
+      "configuration": "配置",
+      "singleFileDescription": "最適合簡單歸檔",
+      "zipDescription": "將整個頁面結構儲存為 ZIP 歸檔"
     },
     "actions": {
       "title": "操作：",
-      "stop": "停止"
+      "stop": "停止",
+      "showInFolder": "在資料夾中顯示",
+      "downloadAnother": "下載另一個"
     },
     "status": {
       "waiting": "等待連線...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "單一 HTML 檔案已建立",
       "zipCreated": "Zip 檔案已建立！",
       "downloadStarted": "下載已成功開始",
-      "completeTitle": "下載已完成：",
-      "zipLocation": "您可以在下載資料夾中找到 zip 檔案",
+      "completeTitle": "下載完成！",
+      "zipLocation": "您的檔案已儲存到本機。",
       "cssProgress": "CSS 檔案進度：{{completed}}/{{total}}",
       "bgImagesProgress": "背景圖片進度：{{completed}}/{{total}}",
       "jsProgress": "JS 檔案進度：{{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "所有串流下載已完成",
       "creatingStreamingZip": "正在建立包含串流內容的 ZIP 檔案...",
       "streamingSuccess": "串流下載成功完成",
-      "downloadingWebsiteContent": "正在下載網站內容 ..."
+      "downloadingWebsiteContent": "正在下載網站內容 ...",
+      "done": "完成！",
+      "packing": "打包中...",
+      "downloading": "下載中...",
+      "ready": "就緒"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "喜歡這個擴充功能嗎？",
       "description": "請在 Chrome 線上應用程式商店給我們評分！",
       "rate": "評分擴充功能",
-      "prompt": "如果您滿意，請留下好評 :)",
+      "prompt": "喜歡這個擴充功能嗎？",
       "ariaLabel_one": "評價 {{count}} 星",
       "ariaLabel_other": "評價 {{count}} 星"
     },

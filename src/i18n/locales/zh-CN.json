@@ -36,11 +36,16 @@
       "ariaSingleFile": "下载为单个 HTML 文件",
       "ariaStartDownload": "开始下载",
       "ariaDismissWarning": "忽略警告",
-      "error": "错误"
+      "error": "错误",
+      "configuration": "配置",
+      "singleFileDescription": "最适合简单归档",
+      "zipDescription": "将整个页面结构保存为 ZIP 归档"
     },
     "actions": {
       "title": "操作：",
-      "stop": "停止"
+      "stop": "停止",
+      "showInFolder": "在文件夹中显示",
+      "downloadAnother": "下载另一个"
     },
     "status": {
       "waiting": "等待连接...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "单个 HTML 文件已创建",
       "zipCreated": "Zip 文件已创建！",
       "downloadStarted": "下载已成功开始",
-      "completeTitle": "下载已完成：",
-      "zipLocation": "您可以在下载文件夹中找到 zip 文件",
+      "completeTitle": "下载完成！",
+      "zipLocation": "您的文件已保存到本地。",
       "cssProgress": "CSS 文件进度：{{completed}}/{{total}}",
       "bgImagesProgress": "背景图片进度：{{completed}}/{{total}}",
       "jsProgress": "JS 文件进度：{{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "所有流式下载已完成",
       "creatingStreamingZip": "正在创建包含流式内容的 ZIP 文件...",
       "streamingSuccess": "流式下载成功完成",
-      "downloadingWebsiteContent": "正在下载网站内容 ..."
+      "downloadingWebsiteContent": "正在下载网站内容 ...",
+      "done": "完成！",
+      "packing": "打包中...",
+      "downloading": "下载中...",
+      "ready": "就绪"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "喜欢这个扩展程序吗？",
       "description": "请在 Chrome 网上应用店给我们评分！",
       "rate": "评价扩展程序",
-      "prompt": "如果您满意，请留下好评 :)",
+      "prompt": "喜欢这个扩展吗？",
       "ariaLabel_one": "评价 {{count}} 星",
       "ariaLabel_other": "评价 {{count}} 星"
     },

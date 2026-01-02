@@ -193,22 +193,6 @@ export default function SidePanel() {
     };
   }, [hasPermission, setMessages, setAction, setDownloadResponse, setIsScraping]);
 
-  // Memoize setDownloadDone to stabilize useScrapingDownloader dependency
-  // const setDownloadDone = useCallback((newLinks: string[]) => {
-  //   try {
-  //     setLinks(newLinks);
-  //     setMessages((prev) => [...prev, "Website scraped!"]);
-  //     setAction(messageActions.DOWNLOAD_DONE);
-  //     setMessages((prev) => [...prev, "Zip file created!"]);
-  //     setMessages((prev) => [...prev, "Download complete"]);
-  //   } catch (err) {
-  //     console.error("Error in download completion:", err);
-  //     setError(err instanceof Error ? err : new Error(String(err)));
-  //     setMessages((prev) => [...prev, "Error completing download"]);
-  //   }
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []); // Keep dependencies minimal, setLinks, setMessages, setAction are stable
-
   // Memoize reset function
   const reset = useCallback(
     (newTabUrl: string) => {
@@ -273,11 +257,6 @@ export default function SidePanel() {
 
   return (
     <div className="p-6">
-      {/* Language Switcher */}
-      <div className="mb-4 flex justify-end">
-        <LanguageSwitcher />
-      </div>
-
       <MainContent
         messages={messages}
         tabId={tabId}

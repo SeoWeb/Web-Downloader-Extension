@@ -36,11 +36,16 @@
       "ariaSingleFile": "ดาวน์โหลดเป็นไฟล์ HTML เดียว",
       "ariaStartDownload": "เริ่มดาวน์โหลด",
       "ariaDismissWarning": "ปิดคำเตือน",
-      "error": "ข้อผิดพลาด"
+      "error": "ข้อผิดพลาด",
+      "configuration": "การกำหนดค่า",
+      "singleFileDescription": "ดีที่สุดสำหรับการเก็บถาวรแบบง่าย",
+      "zipDescription": "บันทึกโครงสร้างหน้าทั้งหมดเป็นไฟล์ ZIP"
     },
     "actions": {
       "title": "การดำเนินการ:",
-      "stop": "หยุด"
+      "stop": "หยุด",
+      "showInFolder": "แสดงในโฟลเดอร์",
+      "downloadAnother": "ดาวน์โหลดอื่น"
     },
     "status": {
       "waiting": "กำลังรอการเชื่อมต่อ...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "สร้างไฟล์ HTML เดียวแล้ว",
       "zipCreated": "สร้างไฟล์ Zip แล้ว!",
       "downloadStarted": "เริ่มการดาวน์โหลดสำเร็จ",
-      "completeTitle": "การดาวน์โหลดเสร็จสมบูรณ์:",
-      "zipLocation": "คุณสามารถค้นหาไฟล์ zip ในโฟลเดอร์ดาวน์โหลดของคุณ",
+      "completeTitle": "ดาวน์โหลดเสร็จสมบูรณ์!",
+      "zipLocation": "ไฟล์ของคุณถูกบันทึกไว้ในเครื่องแล้ว",
       "cssProgress": "ความคืบหน้าไฟล์ CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "ความคืบหน้ารูปภาพพื้นหลัง: {{completed}}/{{total}}",
       "jsProgress": "ความคืบหน้าไฟล์ JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "การดาวน์โหลดแบบสตรีมมิ่งทั้งหมดเสร็จสมบูรณ์",
       "creatingStreamingZip": "กำลังสร้างไฟล์ ZIP ที่มีเนื้อหาสตรีมมิ่ง...",
       "streamingSuccess": "การดาวน์โหลดแบบสตรีมมิ่งเสร็จสมบูรณ์",
-      "downloadingWebsiteContent": "กำลังดาวน์โหลดเนื้อหาเว็บไซต์ ..."
+      "downloadingWebsiteContent": "กำลังดาวน์โหลดเนื้อหาเว็บไซต์ ...",
+      "done": "เสร็จสิ้น!",
+      "packing": "กำลังบรรจุ...",
+      "downloading": "กำลังดาวน์โหลด...",
+      "ready": "พร้อม"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "ชอบส่วนขยายนี้ไหม?",
       "description": "โปรดให้คะแนนเราใน Chrome Web Store!",
       "rate": "ให้คะแนนส่วนขยาย",
-      "prompt": "หากคุณพอใจ โปรดเขียนรีวิวเชิงบวก :)",
+      "prompt": "คุณชอบส่วนขยายนี้หรือไม่?",
       "ariaLabel_one": "ให้คะแนน {{count}} ดาว",
       "ariaLabel_other": "ให้คะแนน {{count}} ดาว"
     },

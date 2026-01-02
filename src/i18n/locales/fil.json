@@ -36,11 +36,16 @@
       "ariaSingleFile": "I-download bilang isang solong HTML file",
       "ariaStartDownload": "Simulan ang pag-download",
       "ariaDismissWarning": "I-dismiss ang babala",
-      "error": "May Error"
+      "error": "May Error",
+      "configuration": "Konpigurasyon",
+      "singleFileDescription": "Pinakamahusay para sa simpleng pag-archive",
+      "zipDescription": "Sine-save ang buong istraktura ng pahina bilang isang ZIP archive"
     },
     "actions": {
       "title": "Mga Aksyon:",
-      "stop": "Hinto"
+      "stop": "Hinto",
+      "showInFolder": "Ipakita sa folder",
+      "downloadAnother": "Mag-download ng iba"
     },
     "status": {
       "waiting": "Naghihintay ng koneksyon...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Nalikha ang solong HTML file",
       "zipCreated": "Nalikha na ang Zip file!",
       "downloadStarted": "Matagumpay na nagsimula ang pag-download",
-      "completeTitle": "Tapos na ang pag-download:",
-      "zipLocation": "Makikita mo ang zip file sa iyong downloads folder",
+      "completeTitle": "Kumpleto na ang pag-download!",
+      "zipLocation": "Ang iyong file ay nai-save nang lokal.",
       "cssProgress": "Pag-usad ng mga CSS file: {{completed}}/{{total}}",
       "bgImagesProgress": "Pag-usad ng mga background image: {{completed}}/{{total}}",
       "jsProgress": "Pag-usad ng mga JS file: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Natapos na ang lahat ng streaming downloads",
       "creatingStreamingZip": "Gumagawa ng ZIP file na may streaming content...",
       "streamingSuccess": "Matagumpay na natapos ang streaming download",
-      "downloadingWebsiteContent": "Dina-download ang nilalaman ng website ..."
+      "downloadingWebsiteContent": "Dina-download ang nilalaman ng website ...",
+      "done": "Tapos na!",
+      "packing": "Nagpa-pack...",
+      "downloading": "Nagda-download...",
+      "ready": "Handa na"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Nag-e-enjoy ka ba sa extension na ito?",
       "description": "Mangyaring i-rate kami sa Chrome Web Store!",
       "rate": "I-rate ang Extension",
-      "prompt": "Kung nasiyahan ka, mangyaring mag-iwan ng positibong pagsusuri :)",
+      "prompt": "Nag-eenjoy ka ba sa extension?",
       "ariaLabel_one": "I-rate ng {{count}} bituin",
       "ariaLabel_other": "I-rate ng {{count}} bituin"
     },

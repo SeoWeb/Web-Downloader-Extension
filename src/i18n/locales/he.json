@@ -36,11 +36,16 @@
       "ariaSingleFile": "הורד כקובץ HTML בודד",
       "ariaStartDownload": "התחל הורדה",
       "ariaDismissWarning": "סגור אזהרה",
-      "error": "שגיאה"
+      "error": "שגיאה",
+      "configuration": "תצורה",
+      "singleFileDescription": "הכי טוב לארכיון פשוט",
+      "zipDescription": "שומר את מבנה הדף המלא כארכיון ZIP"
     },
     "actions": {
       "title": "פעולות:",
-      "stop": "עצור"
+      "stop": "עצור",
+      "showInFolder": "הצג בתיקייה",
+      "downloadAnother": "הורד עוד אחד"
     },
     "status": {
       "waiting": "ממתין לחיבור...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "נוצר קובץ HTML בודד",
       "zipCreated": "קובץ Zip נוצר!",
       "downloadStarted": "ההורדה החלה בהצלחה",
-      "completeTitle": "ההורדה הושלמה:",
-      "zipLocation": "תוכל למצוא את קובץ ה-zip בתיקיית ההורדות שלך",
+      "completeTitle": "ההורדה הושלמה!",
+      "zipLocation": "הקובץ שלך נשמר מקומית.",
       "cssProgress": "התקדמות קובצי CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "התקדמות תמונות רקע: {{completed}}/{{total}}",
       "jsProgress": "התקדמות קובצי JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "כל הורדות הזרימה הושלמו",
       "creatingStreamingZip": "יוצר קובץ ZIP עם תוכן זרימה...",
       "streamingSuccess": "הורדת זרימה הושלמה בהצלחה",
-      "downloadingWebsiteContent": "מוריד תוכן אתר ..."
+      "downloadingWebsiteContent": "מוריד תוכן אתר ...",
+      "done": "בוצע!",
+      "packing": "אורז...",
+      "downloading": "מוריד...",
+      "ready": "מוכן"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "נהנה מההרחבה הזו?",
       "description": "אנא דרג אותנו בחנות האינטרנט של Chrome!",
       "rate": "דרג הרחבה",
-      "prompt": "אם היית מרוצה, אנא השאר ביקורת חיובית :)",
+      "prompt": "נהנה מהתוסף?",
       "ariaLabel_one": "דרג {{count}} כוכב",
       "ariaLabel_other": "דרג {{count}} כוכבים"
     },

@@ -36,11 +36,16 @@
       "ariaSingleFile": "Λήψη ως μεμονωμένο αρχείο HTML",
       "ariaStartDownload": "Έναρξη λήψης",
       "ariaDismissWarning": "Απόρριψη προειδοποίησης",
-      "error": "Σφάλμα"
+      "error": "Σφάλμα",
+      "configuration": "Διαμόρφωση",
+      "singleFileDescription": "Καλύτερο για απλή αρχειοθέτηση",
+      "zipDescription": "Αποθηκεύει την πλήρη δομή της σελίδας ως αρχείο ZIP"
     },
     "actions": {
       "title": "Ενέργειες:",
-      "stop": "Διακοπή"
+      "stop": "Διακοπή",
+      "showInFolder": "Εμφάνιση στο φάκελο",
+      "downloadAnother": "Λήψη άλλου"
     },
     "status": {
       "waiting": "Αναμονή σύνδεσης...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Δημιουργήθηκε μεμονωμένο αρχείο HTML",
       "zipCreated": "Το αρχείο Zip δημιουργήθηκε!",
       "downloadStarted": "Η λήψη ξεκίνησε με επιτυχία",
-      "completeTitle": "Η λήψη ολοκληρώθηκε:",
-      "zipLocation": "Μπορείτε να βρείτε το αρχείο zip στον φάκελο λήψεων",
+      "completeTitle": "Η λήψη ολοκληρώθηκε!",
+      "zipLocation": "Το αρχείο σας αποθηκεύτηκε τοπικά.",
       "cssProgress": "Πρόοδος αρχείων CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "Πρόοδος εικόνων φόντου: {{completed}}/{{total}}",
       "jsProgress": "Πρόοδος αρχείων JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Όλες οι λήψεις ροής ολοκληρώθηκαν",
       "creatingStreamingZip": "Δημιουργία αρχείου ZIP με περιεχόμενο ροής...",
       "streamingSuccess": "Η λήψη ροής ολοκληρώθηκε με επιτυχία",
-      "downloadingWebsiteContent": "Λήψη περιεχομένου ιστοσελίδας..."
+      "downloadingWebsiteContent": "Λήψη περιεχομένου ιστοσελίδας...",
+      "done": "Ολοκληρώθηκε!",
+      "packing": "Συσκευασία...",
+      "downloading": "Λήψη...",
+      "ready": "Έτοιμο"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Σας αρέσει αυτή η επέκταση;",
       "description": "Παρακαλούμε αξιολογήστε μας στο Chrome Web Store!",
       "rate": "Αξιολόγηση Επέκτασης",
-      "prompt": "Αν μείνατε ικανοποιημένοι, αφήστε μια θετική κριτική :)",
+      "prompt": "Σας αρέσει η επέκταση;",
       "ariaLabel_one": "Αξιολόγηση με {{count}} αστέρι",
       "ariaLabel_other": "Αξιολόγηση με {{count}} αστέρια"
     },

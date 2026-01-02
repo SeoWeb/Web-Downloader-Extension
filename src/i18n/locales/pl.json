@@ -36,11 +36,16 @@
       "ariaSingleFile": "Pobierz jako pojedynczy plik HTML",
       "ariaStartDownload": "Rozpocznij pobieranie",
       "ariaDismissWarning": "Zamknij ostrzeżenie",
-      "error": "Błąd"
+      "error": "Błąd",
+      "configuration": "Konfiguracja",
+      "singleFileDescription": "Najlepsze do prostego archiwizowania",
+      "zipDescription": "Zapisuje pełną strukturę strony jako archiwum ZIP"
     },
     "actions": {
       "title": "Akcje:",
-      "stop": "Zatrzymaj"
+      "stop": "Zatrzymaj",
+      "showInFolder": "Pokaż w folderze",
+      "downloadAnother": "Pobierz inny"
     },
     "status": {
       "waiting": "Oczekiwanie na połączenie...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Utworzono pojedynczy plik HTML",
       "zipCreated": "Plik Zip utworzony!",
       "downloadStarted": "Pobieranie rozpoczęte pomyślnie",
-      "completeTitle": "Pobieranie zakończone:",
-      "zipLocation": "Plik zip znajdziesz w folderze pobranych",
+      "completeTitle": "Pobieranie zakończone!",
+      "zipLocation": "Twój plik został zapisany lokalnie.",
       "cssProgress": "Postęp plików CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "Postęp obrazów tła: {{completed}}/{{total}}",
       "jsProgress": "Postęp plików JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Wszystkie pobierania strumieniowe zakończone",
       "creatingStreamingZip": "Tworzenie pliku ZIP z zawartością strumieniową...",
       "streamingSuccess": "Pobieranie strumieniowe zakończone pomyślnie",
-      "downloadingWebsiteContent": "Pobieranie zawartości strony internetowej ..."
+      "downloadingWebsiteContent": "Pobieranie zawartości strony internetowej ...",
+      "done": "Gotowe!",
+      "packing": "Pakowanie...",
+      "downloading": "Pobieranie...",
+      "ready": "Gotowy"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Podoba Ci się to rozszerzenie?",
       "description": "Oceń nas w Chrome Web Store!",
       "rate": "Oceń rozszerzenie",
-      "prompt": "Jeśli jesteś zadowolony, zostaw pozytywną opinię :)",
+      "prompt": "Podoba Ci się rozszerzenie?",
       "ariaLabel_one": "Oceń na {{count}} gwiazdkę",
       "ariaLabel_other": "Oceń na {{count}} gwiazdek"
     },

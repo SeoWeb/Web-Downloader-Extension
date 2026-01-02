@@ -36,11 +36,16 @@
       "ariaSingleFile": "Muat turun sebagai fail HTML tunggal",
       "ariaStartDownload": "Mulakan muat turun",
       "ariaDismissWarning": "Tutup amaran",
-      "error": "Ralat"
+      "error": "Ralat",
+      "configuration": "Konfigurasi",
+      "singleFileDescription": "Terbaik untuk pengarkiban mudah",
+      "zipDescription": "Menyimpan struktur halaman penuh sebagai arkib ZIP"
     },
     "actions": {
       "title": "Tindakan:",
-      "stop": "Berhenti"
+      "stop": "Berhenti",
+      "showInFolder": "Tunjukkan dalam folder",
+      "downloadAnother": "Muat turun yang lain"
     },
     "status": {
       "waiting": "Menunggu sambungan...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Fail HTML tunggal dicipta",
       "zipCreated": "Fail Zip dicipta!",
       "downloadStarted": "Muat turun berjaya dimulakan",
-      "completeTitle": "Muat turun selesai:",
-      "zipLocation": "Anda boleh mencari fail zip dalam folder muat turun anda",
+      "completeTitle": "Muat turun selesai!",
+      "zipLocation": "Fail anda telah disimpan secara tempatan.",
       "cssProgress": "Kemajuan fail CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "Kemajuan imej latar belakang: {{completed}}/{{total}}",
       "jsProgress": "Kemajuan fail JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Semua muat turun penstriman selesai",
       "creatingStreamingZip": "Mencipta fail ZIP dengan kandungan penstriman...",
       "streamingSuccess": "Muat turun penstriman berjaya diselesaikan",
-      "downloadingWebsiteContent": "Memuat turun kandungan laman web ..."
+      "downloadingWebsiteContent": "Memuat turun kandungan laman web ...",
+      "done": "Selesai!",
+      "packing": "Sedang mempack...",
+      "downloading": "Sedang memuat turun...",
+      "ready": "Sedia"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Menikmati sambungan ini?",
       "description": "Sila nilaikan kami di Chrome Web Store!",
       "rate": "Nilaikan Sambungan",
-      "prompt": "Jika anda berpuas hati, sila tinggalkan ulasan positif :)",
+      "prompt": "Menikmati sambungan ini?",
       "ariaLabel_one": "Nilaikan {{count}} bintang",
       "ariaLabel_other": "Nilaikan {{count}} bintang"
     },

@@ -36,11 +36,16 @@
       "ariaSingleFile": "Ladda ner som en enda HTML-fil",
       "ariaStartDownload": "Starta nedladdning",
       "ariaDismissWarning": "Stäng varning",
-      "error": "Fel"
+      "error": "Fel",
+      "configuration": "Konfiguration",
+      "singleFileDescription": "Bäst för enkel arkivering",
+      "zipDescription": "Sparar hela sidstrukturen som ett ZIP-arkiv"
     },
     "actions": {
       "title": "Åtgärder:",
-      "stop": "Stoppa"
+      "stop": "Stoppa",
+      "showInFolder": "Visa i mapp",
+      "downloadAnother": "Ladda ner en annan"
     },
     "status": {
       "waiting": "Väntar på anslutning...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Enskild HTML-fil skapad",
       "zipCreated": "Zip-fil skapad!",
       "downloadStarted": "Nedladdning startades",
-      "completeTitle": "Nedladdningen är klar:",
-      "zipLocation": "Du hittar zip-filen i din nedladdningsmapp",
+      "completeTitle": "Neddladdning klar!",
+      "zipLocation": "Din fil har sparats lokalt.",
       "cssProgress": "CSS-filer framsteg: {{completed}}/{{total}}",
       "bgImagesProgress": "Bakgrundsbilder framsteg: {{completed}}/{{total}}",
       "jsProgress": "JS-filer framsteg: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Alla strömmande nedladdningar slutförda",
       "creatingStreamingZip": "Skapar ZIP-fil med strömmande innehåll...",
       "streamingSuccess": "Strömmande nedladdning slutförd",
-      "downloadingWebsiteContent": "Laddar ner webbplatsinnehåll ..."
+      "downloadingWebsiteContent": "Laddar ner webbplatsinnehåll ...",
+      "done": "Klart!",
+      "packing": "Packar...",
+      "downloading": "Laddar ner...",
+      "ready": "Redo"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Gillar du det här tillägget?",
       "description": "Betygsätt oss gärna i Chrome Web Store!",
       "rate": "Betygsätt tillägg",
-      "prompt": "Om du var nöjd, lämna gärna en positiv recension :)",
+      "prompt": "Gillar du tillägget?",
       "ariaLabel_one": "Betygsätt {{count}} stjärna",
       "ariaLabel_other": "Betygsätt {{count}} stjärnor"
     },

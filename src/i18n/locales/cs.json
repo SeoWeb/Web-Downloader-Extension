@@ -36,11 +36,16 @@
       "ariaSingleFile": "Stáhnout jako jeden soubor HTML",
       "ariaStartDownload": "Spustit stahování",
       "ariaDismissWarning": "Zavřít upozornění",
-      "error": "Chyba"
+      "error": "Chyba",
+      "configuration": "Konfigurace",
+      "singleFileDescription": "Nejlepší pro jednoduchou archivaci",
+      "zipDescription": "Uloží kompletní strukturu stránky jako ZIP archiv"
     },
     "actions": {
       "title": "Akce:",
-      "stop": "Zastavit"
+      "stop": "Zastavit",
+      "showInFolder": "Zobrazit ve složce",
+      "downloadAnother": "Stáhnout další"
     },
     "status": {
       "waiting": "Čekání na připojení...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Vytvořen jeden soubor HTML",
       "zipCreated": "Soubor Zip vytvořen!",
       "downloadStarted": "Stahování úspěšně zahájeno",
-      "completeTitle": "Stahování dokončeno:",
-      "zipLocation": "Soubor zip najdete ve složce stažených souborů",
+      "completeTitle": "Stahování dokončeno!",
+      "zipLocation": "Váš soubor byl uložen lokálně.",
       "cssProgress": "Průběh souborů CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "Průběh obrázků na pozadí: {{completed}}/{{total}}",
       "jsProgress": "Průběh souborů JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Všechna streamovaná stahování dokončena",
       "creatingStreamingZip": "Vytváření souboru ZIP se streamovaným obsahem...",
       "streamingSuccess": "Streamované stahování úspěšně dokončeno",
-      "downloadingWebsiteContent": "Stahování obsahu webu ..."
+      "downloadingWebsiteContent": "Stahování obsahu webu ...",
+      "done": "Hotovo!",
+      "packing": "Balení...",
+      "downloading": "Stahování...",
+      "ready": "Připraveno"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Líbí se vám toto rozšíření?",
       "description": "Ohodnoťte nás prosím v internetovém obchodě Chrome!",
       "rate": "Ohodnotit rozšíření",
-      "prompt": "Pokud jste byli spokojeni, zanechte prosím kladnou recenzi :)",
+      "prompt": "Líbí se vám rozšíření?",
       "ariaLabel_one": "Ohodnotit {{count}} hvězdičkou",
       "ariaLabel_other": "Ohodnotit {{count}} hvězdičkami"
     },

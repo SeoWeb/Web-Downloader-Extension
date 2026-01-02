@@ -36,11 +36,16 @@
       "ariaSingleFile": "تنزيل كملف HTML واحد",
       "ariaStartDownload": "بدء التنزيل",
       "ariaDismissWarning": "تجاهل التحذير",
-      "error": "خطأ"
+      "error": "خطأ",
+      "configuration": "تكوين",
+      "singleFileDescription": "الأفضل للأرشفة البسيطة",
+      "zipDescription": "يحفظ هيكل الصفحة الكامل كأرشيف ZIP"
     },
     "actions": {
       "title": "الإجراءات:",
-      "stop": "توقف"
+      "stop": "توقف",
+      "showInFolder": "عرض في المجلد",
+      "downloadAnother": "تحميل آخر"
     },
     "status": {
       "waiting": "في انتظار الاتصال...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "تم إنشاء ملف HTML واحد",
       "zipCreated": "تم إنشاء ملف Zip!",
       "downloadStarted": "بدأ التنزيل بنجاح",
-      "completeTitle": "اكتمل التنزيل:",
-      "zipLocation": "يمكنك العثور على ملف zip في مجلد التنزيلات الخاص بك",
+      "completeTitle": "اكتمل التحميل!",
+      "zipLocation": "تم حفظ ملفك محلياً.",
       "cssProgress": "تقدم ملفات CSS: {{completed}}/{{total}}",
       "bgImagesProgress": "تقدم صور الخلفية: {{completed}}/{{total}}",
       "jsProgress": "تقدم ملفات JS: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "اكتملت جميع التنزيلات المتدفقة",
       "creatingStreamingZip": "جاري إنشاء ملف ZIP بمحتوى متدفق...",
       "streamingSuccess": "اكتمل التنزيل المتدفق بنجاح",
-      "downloadingWebsiteContent": "جارٍ تنزيل محتوى الموقع ..."
+      "downloadingWebsiteContent": "جارٍ تنزيل محتوى الموقع ...",
+      "done": "تم!",
+      "packing": "جاري الحزم...",
+      "downloading": "جاري التحميل...",
+      "ready": "جاهز"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "هل تستمتع بهذه الإضافة؟",
       "description": "يرجى تقييمنا على متجر Chrome الإلكتروني!",
       "rate": "قيم الإضافة",
-      "prompt": "إذا كنت راضياً، يرجى ترك تقييم إيجابي :)",
+      "prompt": "هل تستمتع بالإضافة؟",
       "ariaLabel_one": "قيم بنجمة {{count}}",
       "ariaLabel_other": "قيم بـ {{count}} نجوم"
     },

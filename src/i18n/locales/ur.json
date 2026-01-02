@@ -36,11 +36,16 @@
       "ariaSingleFile": "ایک HTML فائل کے طور پر ڈاؤن لوڈ کریں",
       "ariaStartDownload": "ڈاؤن لوڈ شروع کریں",
       "ariaDismissWarning": "انتباہ مسترد کریں",
-      "error": "غلطی"
+      "error": "غلطی",
+      "configuration": "ترتیب",
+      "singleFileDescription": "سادہ آرکائیونگ کے لیے بہترین",
+      "zipDescription": "پورے صفحے کی ساخت کو زپ آرکائیو کے طور پر محفوظ کرتا ہے"
     },
     "actions": {
       "title": "اقدامات:",
-      "stop": "رکیں"
+      "stop": "رکیں",
+      "showInFolder": "فولڈر میں دکھائیں",
+      "downloadAnother": "ایک اور ڈاؤن لوڈ کریں"
     },
     "status": {
       "waiting": "کنکشن کا انتظار ہے...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "ایک HTML فائل بنائی گئی",
       "zipCreated": "زپ فائل بنائی گئی!",
       "downloadStarted": "ڈاؤن لوڈ کامیابی سے شروع ہوا",
-      "completeTitle": "ڈاؤن لوڈ مکمل ہو گیا ہے:",
-      "zipLocation": "آپ اپنے ڈاؤن لوڈ فولڈر میں زپ فائل تلاش کر سکتے ہیں",
+      "completeTitle": "ڈاؤن لوڈ مکمل!",
+      "zipLocation": "آپ کی فائل مقامی طور پر محفوظ ہو گئی ہے۔",
       "cssProgress": "CSS فائلیں پیشرفت: {{completed}}/{{total}}",
       "bgImagesProgress": "پس منظر کی تصاویر پیشرفت: {{completed}}/{{total}}",
       "jsProgress": "JS فائلیں پیشرفت: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "تمام اسٹریمنگ ڈاؤن لوڈز مکمل ہو گئے",
       "creatingStreamingZip": "اسٹریمنگ مواد کے ساتھ زپ فائل بنائی جا رہی ہے...",
       "streamingSuccess": "اسٹریمنگ ڈاؤن لوڈ کامیابی سے مکمل ہو گیا",
-      "downloadingWebsiteContent": "ویب سائٹ کا مواد ڈاؤن لوڈ ہو رہا ہے ..."
+      "downloadingWebsiteContent": "ویب سائٹ کا مواد ڈاؤن لوڈ ہو رہا ہے ...",
+      "done": "ہو گیا!",
+      "packing": "پیکنگ...",
+      "downloading": "ڈاؤن لوڈ ہو رہا ہے...",
+      "ready": "تیار"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "کیا آپ اس ایکسٹینشن سے لطف اندوز ہو رہے ہیں؟",
       "description": "براہ کرم کروم ویب اسٹور پر ہماری درجہ بندی کریں!",
       "rate": "ایکسٹینشن کی درجہ بندی کریں",
-      "prompt": "اگر آپ مطمئن تھے تو براہ کرم مثبت جائزہ چھوڑیں :)",
+      "prompt": "کیا آپ ایکسٹینشن سے لطف اندوز ہو رہے ہیں؟",
       "ariaLabel_one": "{{count}} ستارہ کی درجہ بندی کریں",
       "ariaLabel_other": "{{count}} ستاروں کی درجہ بندی کریں"
     },

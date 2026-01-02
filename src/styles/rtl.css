@@ -7,9 +7,7 @@
 }
 
 /* Flip flex direction for RTL */
-[dir="rtl"] .flex {
-  flex-direction: row-reverse;
-}
+
 
 /* Reverse spacing for RTL - use logical properties where possible */
 [dir="rtl"] .space-x-2 > * + * {
@@ -42,6 +40,11 @@
 [dir="rtl"] .left-3 {
   left: auto;
   right: 0.75rem;
+}
+
+[dir="rtl"] .left-3\.5 {
+  left: auto;
+  right: 0.875rem;
 }
 
 [dir="rtl"] .right-0 {

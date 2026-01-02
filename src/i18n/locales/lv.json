@@ -36,11 +36,16 @@
       "ariaSingleFile": "Lejupielādēt kā vienu HTML failu",
       "ariaStartDownload": "Sākt lejupielādi",
       "ariaDismissWarning": "Nerādīt brīdinājumu",
-      "error": "Kļūda"
+      "error": "Kļūda",
+      "configuration": "Konfigurācija",
+      "singleFileDescription": "Vislabāk vienkāršai arhivēšanai",
+      "zipDescription": "Saglabā pilnu lapas struktūru kā ZIP arhīvu"
     },
     "actions": {
       "title": "Darbības:",
-      "stop": "Apturēt"
+      "stop": "Apturēt",
+      "showInFolder": "Rādīt mapē",
+      "downloadAnother": "Lejupielādēt citu"
     },
     "status": {
       "waiting": "Gaida savienojumu...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Izveidots viens HTML fails",
       "zipCreated": "Zip fails izveidots!",
       "downloadStarted": "Lejupielāde veiksmīgi uzsākta",
-      "completeTitle": "Lejupielāde ir pabeigta:",
-      "zipLocation": "Zip failu varat atrast savā lejupielāžu mapē",
+      "completeTitle": "Lejupielāde pabeigta!",
+      "zipLocation": "Jūsu fails ir saglabāts lokāli.",
       "cssProgress": "CSS failu progress: {{completed}}/{{total}}",
       "bgImagesProgress": "Fona attēlu progress: {{completed}}/{{total}}",
       "jsProgress": "JS failu progress: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Visas straumēšanas lejupielādes pabeigtas",
       "creatingStreamingZip": "Veido ZIP failu ar straumēšanas saturu...",
       "streamingSuccess": "Straumēšanas lejupielāde veiksmīgi pabeigta",
-      "downloadingWebsiteContent": "Tiek lejupielādēts vietnes saturs ..."
+      "downloadingWebsiteContent": "Tiek lejupielādēts vietnes saturs ...",
+      "done": "Gatavs!",
+      "packing": "Pakošana...",
+      "downloading": "Lejupielāde...",
+      "ready": "Gatavs"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Vai jums patīk šis paplašinājums?",
       "description": "Lūdzu, novērtējiet mūs Chrome interneta veikalā!",
       "rate": "Novērtēt paplašinājumu",
-      "prompt": "Ja esat apmierināts, lūdzu, atstājiet pozitīvu atsauksmi :)",
+      "prompt": "Vai jums patīk paplašinājums?",
       "ariaLabel_one": "Novērtēt ar {{count}} zvaigzni",
       "ariaLabel_other": "Novērtēt ar {{count}} zvaigznēm"
     },

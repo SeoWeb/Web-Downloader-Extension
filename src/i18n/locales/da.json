@@ -36,11 +36,16 @@
       "ariaSingleFile": "Download som en enkelt HTML-fil",
       "ariaStartDownload": "Start hentning",
       "ariaDismissWarning": "Luk advarsel",
-      "error": "Fejl"
+      "error": "Fejl",
+      "configuration": "Konfiguration",
+      "singleFileDescription": "Bedst til simpel arkivering",
+      "zipDescription": "Gemmer den fulde sidestruktur som et ZIP-arkiv"
     },
     "actions": {
       "title": "Handlinger:",
-      "stop": "Afbryd"
+      "stop": "Afbryd",
+      "showInFolder": "Vis i mappe",
+      "downloadAnother": "Download en anden"
     },
     "status": {
       "waiting": "Venter på forbindelse...",
@@ -69,8 +74,8 @@
       "singleFileCreated": "Enkelt HTML-fil oprettet",
       "zipCreated": "Zip-fil oprettet!",
       "downloadStarted": "Download startede succesfuldt",
-      "completeTitle": "Download er færdig:",
-      "zipLocation": "Du kan finde zip-filen i din download-mappe",
+      "completeTitle": "Download fuldført!",
+      "zipLocation": "Din fil er gemt lokalt.",
       "cssProgress": "CSS-filer status: {{completed}}/{{total}}",
       "bgImagesProgress": "Baggrundsbilleder status: {{completed}}/{{total}}",
       "jsProgress": "JS-filer status: {{completed}}/{{total}}",
@@ -110,7 +115,11 @@
       "streamingCompleted": "Alle streaming-downloads afsluttet",
       "creatingStreamingZip": "Opretter ZIP-fil med streaming-indhold...",
       "streamingSuccess": "Streaming-download afsluttet med succes",
-      "downloadingWebsiteContent": "Downloader indhold fra hjemmesiden ..."
+      "downloadingWebsiteContent": "Downloader indhold fra hjemmesiden ...",
+      "done": "Færdig!",
+      "packing": "Pakker...",
+      "downloading": "Downloader...",
+      "ready": "Klar"
     },
     "permissions": {
       "storage": {
@@ -174,7 +183,7 @@
       "title": "Kan du lide denne udvidelse?",
       "description": "Bedøm os venligst i Chrome Web Store!",
       "rate": "Bedøm udvidelse",
-      "prompt": "Hvis du var tilfreds, så efterlad venligst en positiv anmeldelse :)",
+      "prompt": "Nyder du udvidelsen?",
       "ariaLabel_one": "Bedøm med {{count}} stjerne",
       "ariaLabel_other": "Bedøm med {{count}} stjerner"
     },
