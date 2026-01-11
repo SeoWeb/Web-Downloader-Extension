@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import { resolve } from "path";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
-import { writeFileSync, readdirSync, statSync, readFileSync } from "fs";
+import { writeFileSync, readdirSync, statSync, readFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import JSZip from "jszip";
 
@@ -43,14 +43,41 @@ function zipDistContents() {
       
       zip.generateAsync({ type: "nodebuffer" }).then((content) => {
         // Ensure zip directory exists
-        try {
-          readdirSync(zipPath);
-        } catch {
-          require("fs").mkdirSync(zipPath, { recursive: true });
+        if (!existsSync(zipPath)) {
+          mkdirSync(zipPath, { recursive: true });
         }
         
         writeFileSync(join(zipPath, zipName), content);
       });
+    }
+  };
+}
+
+// Custom plugin to copy locale files to dist/locales
+function copyLocaleFiles() {
+  return {
+    name: 'copy-locale-files',
+    writeBundle() {
+      const localesSourcePath = resolve(__dirname, "src/i18n/locales");
+      const localesDestPath = resolve(__dirname, "dist/locales");
+      
+      // Ensure locales directory exists in dist
+      if (!existsSync(localesDestPath)) {
+        mkdirSync(localesDestPath, { recursive: true });
+      }
+      
+      // Copy all locale JSON files
+      const localeFiles = readdirSync(localesSourcePath);
+      for (const file of localeFiles) {
+        if (file.endsWith('.json')) {
+          const sourcePath = join(localesSourcePath, file);
+          const destPath = join(localesDestPath, file);
+          const content = readFileSync(sourcePath);
+          writeFileSync(destPath, content);
+        }
+      }
+      
+      console.log(`Copied ${localeFiles.length} locale files to dist/locales`);
     }
   };
 }
@@ -60,6 +87,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    copyLocaleFiles(),
     zipDistContents(),
   ],
   build: {

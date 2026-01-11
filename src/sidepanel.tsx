@@ -57,6 +57,7 @@ export default function SidePanel() {
   const [action, setAction] = useState<MessageAction | null>(null);
   const [links, setLinks] = useState<string[]>([]);
   const [isScraping, setIsScraping] = useState<boolean>(false);
+  const [isScrapingLinkedPages, setIsScrapingLinkedPages] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   // downloadResponse and scrollAttempts are now managed by useScrapingDownloader hook
@@ -102,6 +103,12 @@ export default function SidePanel() {
           if (data.message?.options?.isPaused !== undefined) {
             setIsPaused(data.message.options.isPaused);
           }
+          // Track linked page scraping state based on message keys
+          if (data.message?.key === "status.scrapingLinkedPages") {
+            setIsScrapingLinkedPages(true);
+          } else if (data.message?.key === "status.creatingPackage") {
+            setIsScrapingLinkedPages(false);
+          }
           // Update completion based on message type if needed
           break;
 
@@ -119,6 +126,7 @@ export default function SidePanel() {
           setDownloadResponse(null);
           // Stop scraping state to show completion UI
           setIsScraping(false);
+          setIsScrapingLinkedPages(false);
           break;
 
         case messageActions.DOWNLOAD_FAILED:
@@ -130,6 +138,7 @@ export default function SidePanel() {
             { key: "status.failedWithError", options: { error: data.error || t("app.unknownError") } },
           ]);
           setIsScraping(false);
+          setIsScrapingLinkedPages(false);
           setAction(null);
           // Reset downloadResponse to allow filter to show again
           setDownloadResponse(null);
@@ -139,6 +148,7 @@ export default function SidePanel() {
           // User cancelled the download
           setMessages([{ key: "status.connected" }]);
           setIsScraping(false);
+          setIsScrapingLinkedPages(false);
           setAction(null);
           setDownloadResponse(null);
           break;
@@ -202,6 +212,7 @@ export default function SidePanel() {
       setAction(null);
       setLinks([]);
       setIsScraping(false);
+      setIsScrapingLinkedPages(false);
       setDownloadResponse(null); // Use setter from hook
       setScrollAttempts(0); // Use setter from hook
       setDownloadOptions(null);
@@ -270,10 +281,12 @@ export default function SidePanel() {
       <DownloadStatus
         tabId={tabId}
         isScraping={isScraping}
+        isScrapingLinkedPages={isScrapingLinkedPages}
         isPaused={isPaused}
         action={action}
         downloadResponse={downloadResponse}
         setIsScraping={setIsScraping}
+        setIsPaused={setIsPaused}
       />
       <DownloadComplete
         tabId={tabId}
