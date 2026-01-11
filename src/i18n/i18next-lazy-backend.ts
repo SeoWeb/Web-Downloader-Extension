@@ -92,7 +92,6 @@ class LazyLocaleBackend implements BackendModule<object> {
       if (!loader && language.includes('-')) {
         const baseLanguage = language.split('-')[0];
         loader = localeMap[baseLanguage];
-        console.log(`Locale ${language} not found, falling back to base language ${baseLanguage}`);
       }
       
       if (!loader) {

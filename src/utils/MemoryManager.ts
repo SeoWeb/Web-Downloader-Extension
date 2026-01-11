@@ -44,10 +44,6 @@ export class MemoryManager {
 
   constructor(config: Partial<MemoryLimitsConfig> = {}) {
     this.config = { ...DEFAULT_MEMORY_LIMITS, ...config };
-    console.log(
-      "MemoryManager initialized with limits:",
-      this.formatBytes(this.config.MAX_TOTAL_MEMORY_USAGE),
-    );
     this.startMemoryMonitoring();
   }
 
@@ -141,9 +137,6 @@ export class MemoryManager {
     };
 
     this.resourceQueue.push(fullRequest);
-    console.log(
-      `Resource queued: ${request.url} (Queue size: ${this.resourceQueue.length})`,
-    );
 
     // Process queue asynchronously
     setTimeout(() => this.processQueue(), 0);
@@ -168,10 +161,6 @@ export class MemoryManager {
       request.status = "downloading";
     }
 
-    console.log(
-      `Memory allocated: ${this.formatBytes(size)} for resource ${resourceId}. Total: ${this.formatBytes(this.currentUsage)}`,
-    );
-
     // Check memory pressure
     const pressureLevel = this.getMemoryPressureLevel();
     if (pressureLevel >= MemoryPressureLevel.HIGH) {
@@ -194,10 +183,6 @@ export class MemoryManager {
         ...request,
         status: "completed",
       });
-
-      console.log(
-        `Memory released: ${this.formatBytes(request.size)} for resource ${resourceId}. Total: ${this.formatBytes(this.currentUsage)}`,
-      );
     }
   }
 
@@ -212,10 +197,6 @@ export class MemoryManager {
       this.activeRequests.delete(resourceId);
       request.status = "failed";
       this.completedRequests.set(resourceId, request);
-
-      console.log(
-        `Resource failed: ${resourceId}. Memory released: ${this.formatBytes(request.size)}`,
-      );
     }
   }
 
@@ -239,8 +220,6 @@ export class MemoryManager {
    * Force immediate cleanup of all resources
    */
   public async forceCleanup(): Promise<void> {
-    console.log("Forcing cleanup of all memory resources...");
-
     // Run all cleanup callbacks
     const cleanupPromises = this.cleanupCallbacks.map((callback) =>
       callback().catch((error) =>
@@ -257,16 +236,12 @@ export class MemoryManager {
     if (typeof gc !== "undefined") {
       gc();
     }
-
-    console.log("Force cleanup completed");
   }
 
   /**
    * Shutdown the memory manager and cleanup all resources
    */
   public async shutdown(): Promise<void> {
-    console.log("Shutting down MemoryManager...");
-
     // Stop monitoring intervals
     if (this.memoryCheckInterval) {
       clearInterval(this.memoryCheckInterval);
@@ -288,8 +263,6 @@ export class MemoryManager {
     this.currentUsage = 0;
     this.cleanupCallbacks = [];
     this.memoryPressureCallbacks = [];
-
-    console.log("MemoryManager shutdown completed");
   }
 
   /**
@@ -310,15 +283,11 @@ export class MemoryManager {
       if (!this.checkMemoryAvailability(request.size)) {
         // Put it back in the queue and stop processing
         this.resourceQueue.unshift(request);
-        console.log(
-          `Insufficient memory for ${request.url}, pausing queue processing`,
-        );
         break;
       }
 
       // Start processing this request
       this.activeRequests.add(request.id);
-      console.log(`Started processing resource: ${request.url}`);
     }
   }
 
@@ -328,10 +297,6 @@ export class MemoryManager {
   private async handleMemoryPressure(
     level: MemoryPressureLevel,
   ): Promise<void> {
-    console.warn(
-      `Memory pressure detected: ${level} (${this.formatBytes(this.currentUsage)}/${this.formatBytes(this.config.MAX_TOTAL_MEMORY_USAGE)})`,
-    );
-
     // Notify callbacks
     this.memoryPressureCallbacks.forEach((callback) => {
       try {
@@ -346,11 +311,7 @@ export class MemoryManager {
       await this.forceCleanup();
 
       // Reduce queue processing
-      const originalLength = this.resourceQueue.length;
       this.resourceQueue.splice(Math.floor(this.resourceQueue.length / 2));
-      console.log(
-        `Removed ${originalLength - this.resourceQueue.length} items from queue due to critical memory pressure`,
-      );
     }
   }
 
@@ -411,10 +372,6 @@ export class MemoryManager {
     });
 
     toDelete.forEach((id) => this.completedRequests.delete(id));
-
-    if (toDelete.length > 0) {
-      console.log(`Cleaned up ${toDelete.length} old completed requests`);
-    }
   }
 
   /**

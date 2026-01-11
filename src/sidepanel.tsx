@@ -57,6 +57,7 @@ export default function SidePanel() {
   const [action, setAction] = useState<MessageAction | null>(null);
   const [links, setLinks] = useState<string[]>([]);
   const [isScraping, setIsScraping] = useState<boolean>(false);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   // downloadResponse and scrollAttempts are now managed by useScrapingDownloader hook
   const [downloadOptions, setDownloadOptions] = useState<{
@@ -98,12 +99,14 @@ export default function SidePanel() {
       switch (action) {
         case messageActions.PANEL_MESSAGE:
           setMessages((prev) => [...prev, data.message]);
+          if (data.message?.options?.isPaused !== undefined) {
+            setIsPaused(data.message.options.isPaused);
+          }
           // Update completion based on message type if needed
           break;
 
         case messageActions.DOWNLOAD_COMPLETE:
           // Download actually completed - file was saved
-          console.log("Download completed:", data);
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
           setMessages((prev) => [...prev, { key: "status.creating" }]);
@@ -134,12 +137,9 @@ export default function SidePanel() {
 
         case messageActions.DOWNLOAD_CANCELLED:
           // User cancelled the download
-          console.log("Download cancelled:", data);
-          // Reset messages to just show connected status
           setMessages([{ key: "status.connected" }]);
           setIsScraping(false);
           setAction(null);
-          // Reset downloadResponse to allow filter to show again
           setDownloadResponse(null);
           break;
 
@@ -165,7 +165,6 @@ export default function SidePanel() {
       if (areaName === "local" && changes.downloadComplete) {
         const downloadComplete = changes.downloadComplete.newValue;
         if (downloadComplete) {
-          console.log("Download completed via storage:", downloadComplete);
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
           setMessages((prev) => [...prev, { key: "status.creating" }]);
@@ -271,6 +270,7 @@ export default function SidePanel() {
       <DownloadStatus
         tabId={tabId}
         isScraping={isScraping}
+        isPaused={isPaused}
         action={action}
         downloadResponse={downloadResponse}
         setIsScraping={setIsScraping}

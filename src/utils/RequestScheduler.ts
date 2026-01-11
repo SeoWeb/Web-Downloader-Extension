@@ -229,6 +229,13 @@ export class RequestScheduler {
   }
 
   /**
+   * Update event listeners
+   */
+  public setEventListeners(listeners: QueueEventListeners): void {
+    this.eventListeners = listeners;
+  }
+
+  /**
    * Clear the queue (cancel all requests)
    */
   public clear(): void {

@@ -1,4 +1,4 @@
-import JSZip from "jszip";
+import { IStorageAdapter } from "../storage/storage-adapter";
 import { fixFilename } from "../urlUtils";
 import { DEFAULT_MEMORY_LIMITS } from "../../utils/memoryLimits";
 import { requestQueue } from "../../utils/RequestQueue";
@@ -6,24 +6,19 @@ import { RequestPriority, ResourceType } from "../../types/queue";
 
 export async function addCssFiles(
   csss: string[],
-  zip: JSZip,
+  storage: IStorageAdapter,
   tabUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ) {
   if (!csss?.length) return;
 
-  const zstyles = zip.folder("styles") || zip;
+  // Using storage adapter directly
   const count = csss.length;
   let successCount = 0;
   let failCount = 0;
   let skippedCount = 0;
   let completedCount = 0;
-
-  // Log download tracking if downloadId is provided
-  if (downloadId) {
-    console.log(`Processing CSS files for download: ${downloadId}`);
-  }
 
   // Set up queue event listeners for this batch
   const originalListeners = requestQueue.getEventListeners() || {};
@@ -114,7 +109,7 @@ export async function addCssFiles(
             if (backgroundImages.length > 0) {
               await downloadBackgroundImages(
                 backgroundImages,
-                zip,
+                storage,
                 fullCssUrl,
                 sendMessage,
                 downloadId,
@@ -137,7 +132,7 @@ export async function addCssFiles(
               return;
             }
 
-            zstyles.file(fixFilename(filename), blob);
+            await storage.addFile(`styles/${fixFilename(filename)}`, blob, "text/css");
             successCount++;
             resolve(css);
           } catch (error) {
@@ -171,9 +166,6 @@ export async function addCssFiles(
     }
   });
 
-  console.log(
-    `CSS download summary: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
-  );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
       { key: "status.cssSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
@@ -202,12 +194,12 @@ function extractBackgroundImagesFromCSS(cssContent: string): string[] {
 // Helper function to download background images found in CSS
 async function downloadBackgroundImages(
   imageUrls: string[],
-  zip: JSZip,
+  storage: IStorageAdapter,
   baseUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ): Promise<void> {
-  const zimages = zip.folder("images") || zip;
+  // Using storage adapter directly
   const count = imageUrls.length;
   let successCount = 0;
   let failCount = 0;
@@ -216,7 +208,7 @@ async function downloadBackgroundImages(
 
   // Log download tracking if downloadId is provided
   if (downloadId) {
-    console.log(`Processing background images for download: ${downloadId}`);
+    // Log download tracking
   }
 
   // Set up queue event listeners for this batch
@@ -285,7 +277,7 @@ async function downloadBackgroundImages(
               return;
             }
 
-            zimages.file(fixFilename(filename), blob);
+            await storage.addFile(`images/${fixFilename(filename)}`, blob);
             successCount++;
             resolve(imageUrl);
           } catch (error) {
@@ -319,9 +311,6 @@ async function downloadBackgroundImages(
     }
   });
 
-  console.log(
-    `Background images from CSS download summary: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
-  );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
       { key: "status.bgImagesSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },

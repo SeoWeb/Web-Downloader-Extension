@@ -62,7 +62,6 @@ export class RequestQueue {
     
     // Check for duplicates
     if (this.throttlingManager.isDuplicateRequest(request.url)) {
-      console.log(`Skipping duplicate request: ${request.url}`);
       const cachedResult = this.throttlingManager.getCachedResult(request.url);
       if (cachedResult && request.onComplete) {
         request.onComplete(cachedResult);
@@ -206,7 +205,12 @@ export class RequestQueue {
    */
   public setEventListeners(listeners: QueueEventListeners): void {
     this.options.eventListeners = listeners;
-    this.throttlingManager.setEventListeners(listeners);
+    // Re-wrap listeners to ensure queue integration
+    this.setupEventListeners();
+    // Update scheduler with wrapped listeners
+    this.scheduler.setEventListeners(this.options.eventListeners);
+    // Update throttling manager
+    this.throttlingManager.setEventListeners(this.options.eventListeners);
   }
 
   /**
@@ -234,6 +238,7 @@ export class RequestQueue {
         if (originalListeners.onQueued) {
           originalListeners.onQueued(request);
         }
+        this.scheduleProcessing();
       },
       
       onStart: (request) => {
@@ -305,9 +310,6 @@ export class RequestQueue {
     try {
       // Get adaptive concurrency limit
       const maxConcurrency = this.throttlingManager.getAdaptiveConcurrency();
-      
-      // Check if we can start new requests
-      // Use a local variable to avoid race conditions with this.activeRequests.size
       const currentActiveRequests = this.activeRequests.size;
       
       // Process multiple requests in parallel up to concurrency limit
@@ -315,6 +317,7 @@ export class RequestQueue {
       
       while (currentActiveRequests + requestsToStart.length < maxConcurrency) {
         const request = this.scheduler.getNextRequest();
+        
         if (!request) {
           break; // No more requests to process
         }
@@ -348,8 +351,10 @@ export class RequestQueue {
       console.error('Error processing queue:', error);
     }
 
-    // Schedule next processing
-    this.scheduleProcessing();
+    // Schedule next processing only if we have more items and not paused
+    if (this.isProcessing && !this.scheduler.isEmpty()) {
+       this.scheduleProcessing();
+    }
   }
 
   /**
@@ -519,6 +524,9 @@ export class RequestQueue {
     if (activeRequest.request.onComplete) {
       activeRequest.request.onComplete(result);
     }
+
+    // Trigger next processing cycle
+    this.scheduleProcessing();
   }
 
   /**
@@ -547,6 +555,9 @@ export class RequestQueue {
     if (activeRequest.request.onError) {
       activeRequest.request.onError(error);
     }
+
+    // Trigger next processing cycle
+    this.scheduleProcessing();
   }
 
   /**

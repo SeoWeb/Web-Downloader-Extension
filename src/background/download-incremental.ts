@@ -6,9 +6,10 @@ import { addIndexHtml, addContentText } from "./fileHandlers";
 import { memoryManager } from "../utils/MemoryManager";
 import { MemoryPressureLevel } from "../utils/memoryLimits";
 import { downloadId, setDownloadInProgress, getDownloadInProgress } from "./download-state";
-import { formatBytes, createAndInitiateDownload, performInitialCleanup } from "./download-utils";
+import { initiateDownload, performInitialCleanup } from "./download-utils";
 import { processAssets, processDocuments, processImages, processLinks, addIndexHtmlFromBlob } from "./download-processors";
 import { cleanupAfterDownload } from "./cleanupHandlers";
+import { JSZipAdapter } from "./storage/storage-adapter";
 
 /**
  * Enhanced download function with incremental HTML assembly support
@@ -20,8 +21,6 @@ export async function downloadResourcesWithIncrementalAssembly(
   sendMessage: (message: string | { key: string; options?: any }) => void,
   tabId?: number,
 ) {
-  console.log(`Starting download with incremental assembly for job: ${assemblyJobId}, tabId: ${tabId}`);
-
   if (!tabUrl) {
     console.error("No tab URL provided");
     sendMessage({ key: "error.noUrl" });
@@ -66,7 +65,6 @@ export async function downloadResourcesWithIncrementalAssembly(
       errorMessage.includes("size") ||
       errorMessage.includes("limit")
     ) {
-      console.log("Memory-related error detected, performing cleanup...");
       await memoryManager.forceCleanup();
       sendMessage(
         "Memory cleanup performed due to download failure. Please try again.",
@@ -85,23 +83,10 @@ export async function downloadResourcesWithIncrementalAssembly(
 
     // Clean up incremental assembly jobs
     try {
-      const cleanedJobs = cleanupIncrementalMerges();
-      if (cleanedJobs > 0) {
-        console.log(`Cleaned up ${cleanedJobs} old assembly jobs`);
-      }
+      cleanupIncrementalMerges();
     } catch (cleanupError) {
-      console.error("Error during assembly job cleanup:", cleanupError);
+      // Ignore cleanup errors
     }
-
-    // Final memory stats
-    const finalMemoryStats = memoryManager.getMemoryStats();
-    console.log("Incremental download process completed. Final memory stats:", {
-      memoryUsed: formatBytes(finalMemoryStats.totalMemoryUsed),
-      memoryPressure: finalMemoryStats.memoryPressureLevel,
-      completedDownloads: finalMemoryStats.completedDownloads,
-    });
-
-    console.log("Incremental download process completed");
   }
 }
 
@@ -116,6 +101,7 @@ async function executeDownloadWithIncrementalAssembly(
   tabId?: number,
 ) {
   const zip = new JSZip();
+  const storage = new JSZipAdapter(zip);
   
   // Generate filename
   const u = new URL(tabUrl || "");
@@ -131,11 +117,8 @@ async function executeDownloadWithIncrementalAssembly(
   const timestamp = Date.now();
   const zipFilename = `${hostname}-${safePath}-${timestamp}.zip`;
 
-  console.log("Generated incremental filename:", zipFilename);
-
   // Process HTML with incremental assembly
   if (downloadOptions.downloadHTML) {
-    console.log("Processing HTML with incremental assembly");
     sendMessage({ key: "status.processingHtmlIncremental" });
 
     // Finalize the incremental assembly job
@@ -146,51 +129,46 @@ async function executeDownloadWithIncrementalAssembly(
     }
 
     if (finalizeResult.html) {
-      await addIndexHtml(finalizeResult.html, zip, tabUrl);
-      console.log("Incrementally assembled HTML added to ZIP");
+      await addIndexHtml(finalizeResult.html, storage, tabUrl);
       sendMessage({ key: "status.incrementalHtmlAdded" });
     } else if (finalizeResult.blob) {
-      await addIndexHtmlFromBlob(finalizeResult.blob, zip);
-      console.log("Large HTML content processed and added to download");
+      await addIndexHtmlFromBlob(finalizeResult.blob, storage);
       sendMessage({ key: "status.largeHtmlAdded" });
     }
   }
-
-  // Process other resources (same as regular download)
-  // Note: getResources normally parses HTML. Here we don't have the full HTML easily accessible as a string if it was a blob.
-  // The original code does: `const data = getResources("");` which returns empty lists.
-  // This means incremental assembly download DOES NOT download assets unless they were somehow pre-calculated? 
-  // Let's check original code.
-  // Line 1543: `const data = getResources(""); // Empty HTML since we're using incremental assembly`
-  // Yes. It seems incremental mode relies on the merged HTML being sufficient or resources handled separately?
-  // But subsequent lines call `processAssets(data, ...)` which checks `data.css.length`.
-  // If `data` is empty, this does nothing.
-  // So incremental assembly mode effectively skips asset downloading?
-  // That seems to be the implementation. I will stick to it.
   
   const data = { css: [], js: [], images: [], documents: [], links: [], text: "" }; // Equivalent to getResources("")
   
   if (downloadOptions.downloadAssets) {
     // Process CSS and JS files
-    await processAssets(data, zip, tabUrl, sendMessage);
+    await processAssets(data, storage, tabUrl, sendMessage);
   }
 
   if (downloadOptions.downloadDocuments) {
-    await processDocuments(data.documents, zip, tabUrl, sendMessage);
+    await processDocuments(data.documents, storage, tabUrl, sendMessage);
   }
 
   if (downloadOptions.downloadImages) {
-    await processImages(data.images, zip, tabUrl, sendMessage);
+    await processImages(data.images, storage, tabUrl, sendMessage);
   }
 
   if (downloadOptions.downloadLinks) {
-    await processLinks(data.links, zip, tabUrl, sendMessage);
+    await processLinks(data.links, storage, tabUrl, sendMessage);
   }
 
   if (downloadOptions.downloadContentAsText) {
-    await addContentText(data.text, zip);
+    await addContentText(data.text, storage);
   }
 
   // Create and initiate download
-  await createAndInitiateDownload(zip, zipFilename, sendMessage, tabId);
+  const blob = await zip.generateAsync({
+    type: "blob",
+    compression: "DEFLATE",
+    compressionOptions: { level: 6 },
+  });
+
+  await initiateDownload(blob, zipFilename, (msg) => {
+      if (typeof msg === 'string') sendMessage(msg);
+      else sendMessage(msg);
+  }, tabId);
 }

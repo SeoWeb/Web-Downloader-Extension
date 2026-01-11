@@ -278,8 +278,6 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
           });
         }
       }
-
-      console.log(`Cleaned up ${downloads.length} old downloads`);
     } catch (error) {
       console.error('Error during cleanup:', error);
     }

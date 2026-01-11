@@ -5,7 +5,6 @@ import {
 } from "../utils/memoryLimits";
 import { memoryManager } from "../utils/MemoryManager";
 import { htmlAssembler } from "./HtmlAssembler";
-import { adaptiveMemoryManager } from "../utils/AdaptiveMemoryManager";
 
 interface MergeHtmlOptions {
   maxHtmlSize?: number;
@@ -25,7 +24,6 @@ export function mergeHtml(
     maxHtmlSize = DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE,
     maxIterations = 1000,
     enableMemoryCheck = true,
-    trackMemory = false,
     useIncrementalAssembly = false,
     jobId,
   } = options;
@@ -55,9 +53,6 @@ export function mergeHtml(
       throw new Error(MEMORY_ERROR_MESSAGES.INSUFFICIENT_MEMORY);
     }
   }
-
-  // Track memory usage if requested
-  let memoryStats = trackMemory ? memoryManager.getMemoryStats() : null;
 
   try {
     // Validate HTML content before parsing
@@ -128,13 +123,6 @@ export function mergeHtml(
     if (enableMemoryCheck && result.length > maxHtmlSize) {
       throw new Error(
         MEMORY_ERROR_MESSAGES.HTML_TOO_LARGE(result.length, maxHtmlSize),
-      );
-    }
-
-    if (trackMemory) {
-      const finalStats = memoryManager.getMemoryStats();
-      console.log(
-        `Memory usage after HTML merge: ${formatBytes(finalStats.totalMemoryUsed)} (${finalStats.totalMemoryUsed - (memoryStats?.totalMemoryUsed || 0)} bytes increase)`,
       );
     }
 
@@ -425,15 +413,12 @@ export function mergeHtmlIncremental(
     maxHtmlSize = DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE,
   } = options;
 
-  console.log(`Using incremental HTML assembly for job ${jobId}`);
-
   try {
     // Check if job exists, if not initialize it
     let job = htmlAssembler.getActiveJobs().find(j => j.id === jobId);
     
     if (!job) {
       // Initialize job with first HTML as skeleton
-      console.log(`Initializing new assembly job ${jobId}`);
       htmlAssembler.initializeJob(jobId, html1, {
         maxTotalSize: maxHtmlSize,
         enableDeduplication: true,
@@ -450,12 +435,6 @@ export function mergeHtmlIncremental(
       // Fall back to traditional merge if incremental assembly fails
       console.warn(`Falling back to traditional HTML merge for job ${jobId}`);
       return mergeHtml(html1, html2, { ...options, useIncrementalAssembly: false });
-    }
-
-    if (addResult.added) {
-      console.log(`Added chunk to job ${jobId}: ${adaptiveMemoryManager.formatBytes(html2.length)}`);
-    } else {
-      console.log(`Chunk not added to job ${jobId}: ${addResult.reason}`);
     }
 
     // For incremental assembly, we don't return the full HTML yet
@@ -485,8 +464,6 @@ export function finalizeIncrementalMerge(jobId: string): { success: boolean; htm
         error: result.reason || 'Failed to finalize job',
       };
     }
-
-    console.log(`Finalized incremental HTML assembly job ${jobId}: ${adaptiveMemoryManager.formatBytes(result.html?.length || 0)}`);
     
     return {
       success: true,

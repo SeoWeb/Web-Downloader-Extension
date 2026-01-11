@@ -1,18 +1,18 @@
-import JSZip from "jszip";
+import { IStorageAdapter } from "../storage/storage-adapter";
 import { fixFilename } from "../urlUtils";
 import { requestQueue } from "../../utils/RequestQueue";
 import { RequestPriority, ResourceType } from "../../types/queue";
 
 export async function addJsFiles(
   jss: string[],
-  zip: JSZip,
+  storage: IStorageAdapter,
   tabUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ) {
   if (!jss?.length) return;
 
-  const zscripts = zip.folder("scripts") || zip;
+  // Using storage adapter directly
   const count = jss.length;
   let successCount = 0;
   let failCount = 0;
@@ -21,7 +21,7 @@ export async function addJsFiles(
 
   // Log download tracking if downloadId is provided
   if (downloadId) {
-    console.log(`Processing JS files for download: ${downloadId}`);
+    // TODO: Log download tracking
   }
 
   // Set up queue event listeners for this batch
@@ -90,7 +90,7 @@ export async function addJsFiles(
               return;
             }
 
-            zscripts.file(fixFilename(filename), blob);
+            await storage.addFile(`scripts/${fixFilename(filename)}`, blob, "application/javascript");
             successCount++;
             resolve(js);
           } catch (error) {
@@ -124,9 +124,6 @@ export async function addJsFiles(
     }
   });
 
-  console.log(
-    `JS download summary: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
-  );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
       { key: "status.jsSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },

@@ -74,7 +74,6 @@ export async function saveBlob(
     metadataRequest.onerror = () => reject(metadataRequest.error);
 
     transaction.oncomplete = () => {
-      console.log(`Blob saved: ${key} (${formatBytes(blob.size)})`);
       resolve();
     };
     transaction.onerror = () => reject(transaction.error);
@@ -137,7 +136,6 @@ export async function deleteBlob(key: string): Promise<void> {
     metadataRequest.onerror = () => reject(metadataRequest.error);
 
     transaction.oncomplete = () => {
-      console.log(`Blob deleted: ${key}`);
       resolve();
     };
     transaction.onerror = () => reject(transaction.error);
@@ -172,7 +170,6 @@ export async function cleanupOldBlobs(
       let deletedCount = 0;
 
       if (oldKeys.length === 0) {
-        console.log("No old blobs to clean up");
         resolve();
         return;
       }
@@ -185,7 +182,6 @@ export async function cleanupOldBlobs(
       });
 
       transaction.oncomplete = () => {
-        console.log(`Cleaned up ${deletedCount} old blobs`);
         resolve();
       };
       transaction.onerror = () => reject(transaction.error);
@@ -217,7 +213,6 @@ export async function cleanupDownloadBlobs(downloadId: string): Promise<void> {
       let deletedCount = 0;
 
       if (keys.length === 0) {
-        console.log(`No blobs found for download ${downloadId}`);
         resolve();
         return;
       }
@@ -230,9 +225,6 @@ export async function cleanupDownloadBlobs(downloadId: string): Promise<void> {
       });
 
       transaction.oncomplete = () => {
-        console.log(
-          `Cleaned up ${deletedCount} blobs for download ${downloadId}`,
-        );
         resolve();
       };
       transaction.onerror = () => reject(transaction.error);
@@ -262,7 +254,6 @@ export async function forceCleanupAllBlobs(): Promise<void> {
     metadataRequest.onerror = () => reject(metadataRequest.error);
 
     transaction.oncomplete = () => {
-      console.log("Force cleanup: All blobs deleted");
       resolve();
     };
     transaction.onerror = () => reject(transaction.error);
@@ -313,20 +304,4 @@ export async function getBlobMemoryUsage(): Promise<{
       });
     };
   });
-}
-
-/**
- * Format bytes to human readable format
- */
-function formatBytes(bytes: number): string {
-  const units = ["B", "KB", "MB", "GB"];
-  let size = bytes;
-  let unitIndex = 0;
-
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex++;
-  }
-
-  return `${size.toFixed(1)}${units[unitIndex]}`;
 }

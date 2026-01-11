@@ -1,15 +1,38 @@
 import { listenMessage } from "./src/common/chrome";
+
+// Polyfill window for libraries that expect it in Service Worker
+if (typeof self !== 'undefined' && typeof window === 'undefined') {
+  self.window = self;
+}
+
 import { messageWorker } from "./src/background/message";
+import { FileStore } from "./src/background/storage/file-store";
 
 // Reset download state on startup and installation
 const resetDownloadState = async () => {
   if (chrome.storage && chrome.storage.local) {
     await chrome.storage.local.set({ isDownloadInProgress: false, downloads: {} });
   }
+  
+  // Run IndexedDB cleanup
+  try {
+    await FileStore.cleanupOldDownloads();
+  } catch (error) {
+    console.error('Error during IndexedDB cleanup:', error);
+  }
 };
 
 chrome.runtime.onStartup.addListener(resetDownloadState);
 chrome.runtime.onInstalled.addListener(resetDownloadState);
+
+// Run periodic cleanup (every 6 hours)
+setInterval(async () => {
+  try {
+    await FileStore.cleanupOldDownloads();
+  } catch (error) {
+    console.error('Error during periodic cleanup:', error);
+  }
+}, 6 * 60 * 60 * 1000);
 
 chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.setOptions(

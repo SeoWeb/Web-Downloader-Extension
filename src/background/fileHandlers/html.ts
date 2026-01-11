@@ -1,4 +1,4 @@
-import JSZip from "jszip";
+import { IStorageAdapter } from "../storage/storage-adapter";
 import { fixFilename } from "../urlUtils";
 import { convertHtml } from "../htmlUtils";
 import { DEFAULT_MEMORY_LIMITS } from "../../utils/memoryLimits";
@@ -7,12 +7,10 @@ import { RequestPriority, ResourceType } from "../../types/queue";
 
 export async function addIndexHtml(
   inputHtml: string,
-  zip: JSZip,
+  storage: IStorageAdapter,
   tabUrl: string,
 ) {
-  try {
-    console.log("Converting HTML for index.html");
-    
+  try {    
     // Validate input HTML
     if (!inputHtml || typeof inputHtml !== 'string') {
       throw new Error("Invalid HTML input: inputHtml is not a valid string");
@@ -32,10 +30,8 @@ export async function addIndexHtml(
       throw new Error("HTML conversion resulted in empty content");
     }
     
-    console.log(`Creating index.html with ${html.length} characters`);
     const blob = new Blob([html], { type: "text/html;charset=UTF-8" });
-    zip.file("index.html", blob);
-    console.log("index.html created successfully");
+    await storage.addFile("index.html", blob, "text/html");
   } catch (error) {
     console.error("Error creating index.html:", error);
     
@@ -56,14 +52,13 @@ export async function addIndexHtml(
 
 export async function addHtmlFiles(
   links: string[],
-  zip: JSZip,
+  storage: IStorageAdapter,
   tabUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
 ) {
   if (!links?.length) return;
 
-  const zhtmls = zip.folder("html") || zip;
   const count = links.length;
   let successCount = 0;
   let failCount = 0;
@@ -72,7 +67,7 @@ export async function addHtmlFiles(
 
   // Log download tracking if downloadId is provided
   if (downloadId) {
-    console.log(`Processing HTML files for download: ${downloadId}`);
+    // TODO: Log download tracking
   }
 
   // Set up queue event listeners for this batch
@@ -155,12 +150,12 @@ export async function addHtmlFiles(
               return;
             }
 
-            zhtmls.file(
-              fixFilename(
-                filename.endsWith(".html") ? filename : `${filename}.html`,
-              ),
-              html,
+            const finalFilename = fixFilename(
+              filename.endsWith(".html") ? filename : `${filename}.html`,
             );
+            
+            // Store in html folder
+            await storage.addFile(`html/${finalFilename}`, html, "text/html");
             successCount++;
             resolve(link);
           } catch (error) {
@@ -194,12 +189,13 @@ export async function addHtmlFiles(
     }
   });
 
-  console.log(
-    `HTML download summary: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
-  );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
       { key: "status.htmlSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
     );
   }
+}
+
+export async function addContentText(text: string, storage: IStorageAdapter) {
+  await storage.addFile("content.txt", text, "text/plain");
 }

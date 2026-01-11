@@ -50,7 +50,6 @@ function zipDistContents() {
         }
         
         writeFileSync(join(zipPath, zipName), content);
-        console.log(`✅ Created ${zipName} with dist contents`);
       });
     }
   };
@@ -69,7 +68,6 @@ export default defineConfig({
         sidePanel: resolve(__dirname, "sidePanel.html"),
 
         background: resolve(__dirname, "background.js"),
-        offscreen: resolve(__dirname, "src/offscreen/offscreen.html"),
       },
       output: {
         chunkFileNames: (chunkInfo) => {

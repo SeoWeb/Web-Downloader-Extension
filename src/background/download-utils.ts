@@ -1,6 +1,5 @@
 
-import JSZip from "jszip";
-import { saveBlob, cleanupOldBlobs, getBlobMemoryUsage } from "../common/blobStorage";
+import { cleanupOldBlobs } from "../common/blobStorage";
 import { trackDownload } from "./download-state";
 import { memoryManager } from "../utils/MemoryManager";
 import { MemoryPressureLevel } from "../utils/memoryLimits";
@@ -21,58 +20,17 @@ export function formatBytes(bytes: number): string {
   return `${size.toFixed(1)}${units[unitIndex]}`;
 }
 
-let creatingOffscreenDocument: Promise<void> | null = null;
-
-export async function setupOffscreenDocument(path: string) {
-  // Check if offscreen API is available (permission granted)
-  if (!chrome.offscreen) {
-    throw new Error("Offscreen permission is required for this operation");
-  }
-
-  // Check if offscreen document already exists
-  const existingContexts = await chrome.runtime.getContexts({
-    contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
-    documentUrls: [chrome.runtime.getURL(path)],
-  });
-
-  if (existingContexts.length > 0) {
-    return;
-  }
-
-  // Create offscreen document
-  if (creatingOffscreenDocument) {
-    await creatingOffscreenDocument;
-  } else {
-    creatingOffscreenDocument = chrome.offscreen.createDocument({
-      url: path,
-      reasons: [chrome.offscreen.Reason.BLOBS],
-      justification: "To create Blob URLs for large downloads",
-    });
-    await creatingOffscreenDocument;
-    creatingOffscreenDocument = null;
-  }
-}
 
 /**
  * Perform memory cleanup at the start of download
  */
 export async function performInitialCleanup(): Promise<void> {
   try {
-    console.log("Performing initial memory cleanup...");
-
     // Clean up old blobs
     await cleanupOldBlobs();
 
     // Get memory usage stats
-    const blobStats = await getBlobMemoryUsage();
     const memoryStats = memoryManager.getMemoryStats();
-
-    console.log(`Memory stats before download:`, {
-      blobMemory: formatBytes(blobStats.totalSize),
-      blobCount: blobStats.blobCount,
-      extensionMemory: formatBytes(memoryStats.totalMemoryUsed),
-      memoryPressure: memoryStats.memoryPressureLevel,
-    });
 
     // If memory pressure is already high, perform more aggressive cleanup
     if (
@@ -95,127 +53,72 @@ export async function initiateDownload(
   sendMessage: (message: string | { key: string; options?: any }) => void,
   tabId?: number
 ): Promise<void> {
-  console.log("Preparing to initiate download:", filename, "for tabId:", tabId);
-
   if (!blob || blob.size === 0) {
-    throw new Error("No blob data available for download or blob is empty");
+    const error = "No blob data available for download or blob is empty";
+    console.error(error);
+    sendMessage({ key: "error.noBlobData" });
+    throw new Error(error);
   }
 
-  // Check if we're in a service worker
-  const isServiceWorker =
-    typeof self !== "undefined" &&
-    self.constructor.name === "ServiceWorkerGlobalScope";
+  try {
+    // For smaller files, we can often use data URLs or object URLs directly.
+    // However, for larger files in service workers, object URLs might be limited.
+    // But since we are now splitting files > 100MB into parts, the blob size passed here
+    // should generally be manageable (100MB max per part if multi-part, or single small file).
 
-  if (isServiceWorker || typeof URL.createObjectURL !== "function") {
-    // For service workers or when object URL is not available
-    if (blob.size < 50 * 1024 * 1024) { // 50MB limit
-      // Use data URL for smaller files
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("Failed to read blob as data URL"));
-        reader.readAsDataURL(blob);
-      });
-
-      const downloadId = await chrome.downloads.download({
-        url: dataUrl,
-        filename,
-        saveAs: true,
-        conflictAction: "uniquify",
-      });
-      
-      // Track this download so completion is detected
-      trackDownload(downloadId, filename, tabId);
+    // Try object URL first as it's more efficient
+    if (typeof URL.createObjectURL === "function") {
+       const objectUrl = URL.createObjectURL(blob);
+       
+       try {
+         const downloadId = await chrome.downloads.download({
+           url: objectUrl,
+           filename,
+           saveAs: true,
+           conflictAction: "uniquify",
+         });
+         
+         // Store for cleanup
+         const { downloads } = await chrome.storage.local.get("downloads");
+         const downloadMap = downloads || {};
+         downloadMap[downloadId] = objectUrl;
+         await chrome.storage.local.set({ downloads: downloadMap });
+         
+         trackDownload(downloadId, filename, tabId);
+       } catch (downloadError) {
+         // Cleanup on failure
+         URL.revokeObjectURL(objectUrl);
+         throw downloadError;
+       }
     } else {
-      // Use offscreen document for large files
-      const key = `download-${Date.now()}`;
-      await saveBlob(key, blob);
+       const dataUrl = await new Promise<string>((resolve, reject) => {
+         const reader = new FileReader();
+         reader.onload = () => resolve(reader.result as string);
+         reader.onerror = () => reject(new Error("Failed to read blob as data URL"));
+         reader.readAsDataURL(blob);
+       });
 
-      await setupOffscreenDocument("offscreen.html");
-      const response = await chrome.runtime.sendMessage({
-        action: "createBlobUrl",
-        key,
-      });
-
-      if (response.error) {
-        throw new Error(response.error);
-      }
-
-      const downloadId = await chrome.downloads.download({
-        url: response.url,
-        filename,
-        saveAs: true,
-        conflictAction: "uniquify",
-      });
-
-      // Store for cleanup
-      const { downloads } = await chrome.storage.local.get("downloads");
-      const downloadMap = downloads || {};
-      downloadMap[downloadId] = response.url;
-      await chrome.storage.local.set({ downloads: downloadMap });
-      
-      trackDownload(downloadId, filename, tabId);
+       const downloadId = await chrome.downloads.download({
+         url: dataUrl,
+         filename,
+         saveAs: true,
+         conflictAction: "uniquify",
+       });
+       
+       trackDownload(downloadId, filename, tabId);
     }
-  } else {
-    // Regular download with object URL
-    const objectUrl = URL.createObjectURL(blob);
-    const downloadId = await chrome.downloads.download({
-      url: objectUrl,
-      filename,
-      saveAs: true,
-      conflictAction: "uniquify",
-    });
-
-    // Store for cleanup
-    const { downloads } = await chrome.storage.local.get("downloads");
-    const downloadMap = downloads || {};
-    downloadMap[downloadId] = objectUrl;
-    await chrome.storage.local.set({ downloads: downloadMap });
-    
-    trackDownload(downloadId, filename, tabId);
+    sendMessage({ key: "status.downloadStarted" });
+  } catch (error) {
+    console.error("Critical error in initiateDownload:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown download error";
+    sendMessage({ key: "error.downloadFailed", options: { error: errorMessage } });
+    throw error;
   }
-
-  console.log("Download initiated successfully");
-  sendMessage({ key: "status.downloadStarted" });
 }
 
 /**
  * Create ZIP and initiate download
  */
-export async function createAndInitiateDownload(
-  zip: JSZip,
-  zipFilename: string,
-  sendMessage: (message: string | { key: string; options?: any }) => void,
-  tabId?: number
-) {
-  try {
-    console.log("Creating final download package");
-    sendMessage({ key: "status.creatingPackage" });
+// createAndInitiateDownload removed. 
+// Its functionality is now integrated directly into download-core.ts or handled by initiateDownload.
 
-    const blob = await zip.generateAsync({
-      type: "blob",
-      compression: "DEFLATE",
-      compressionOptions: { level: 6 },
-    });
-
-    console.log("ZIP archive created");
-    sendMessage({ key: "status.finalizingDownload" });
-
-    if (!blob || blob.size === 0) {
-      throw new Error("No blob data available for download or blob is empty");
-    }
-
-    await initiateDownload(blob, zipFilename, (msg) => {
-        if (typeof msg === 'string') sendMessage(msg);
-        else sendMessage(msg);
-    }, tabId);
-  } catch (error) {
-    console.error("Error creating download package:", error);
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Failed to create download package";
-    sendMessage(errorMessage);
-    throw error;
-  }
-}

@@ -39,7 +39,12 @@
       "ariaSingleFile": "Download as a single HTML file",
       "ariaStartDownload": "Start download",
       "ariaDismissWarning": "Dismiss warning",
-      "error": "Error"
+      "error": "Error",
+      "fullScraping": "Full Scraping (includes all assets)",
+      "fullScrapingInfo": "Opens linked pages sequentially in this tab to capture dynamic content and assets. You'll see each page load during the process.",
+      "maxPages": "Max pages to scrape",
+      "pageDelay": "Delay between pages",
+      "includeExternal": "Include external links"
     },
     "actions": {
       "title": "Actions:",
@@ -119,7 +124,11 @@
       "streamingCompleted": "All streaming downloads completed",
       "creatingStreamingZip": "Creating ZIP file with streaming content...",
       "streamingSuccess": "Streaming download completed successfully",
-      "downloadingWebsiteContent": "Downloading website content ..."
+      "downloadingWebsiteContent": "Downloading website content ...",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {

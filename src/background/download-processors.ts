@@ -1,5 +1,5 @@
 
-import JSZip from "jszip";
+import { IStorageAdapter } from "./storage/storage-adapter";
 import {
   addIndexHtml,
   addCssFiles,
@@ -14,7 +14,7 @@ import { DEFAULT_MEMORY_LIMITS } from "../utils/memoryLimits";
 
 export async function processRegularHtml(
   html: string,
-  zip: JSZip,
+  storage: IStorageAdapter,
   tabUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void
 ) {
@@ -24,102 +24,82 @@ export async function processRegularHtml(
     sendMessage({ key: "status.htmlTooLarge" });
   }
 
-  await addIndexHtml(html, zip, tabUrl);
-  console.log("index.html created");
+  await addIndexHtml(html, storage, tabUrl);
   sendMessage({ key: "status.indexCreated" });
 }
 
 export async function addIndexHtmlFromBlob(
   htmlBlob: Blob,
-  zip: JSZip,
+  storage: IStorageAdapter,
 ) {
   try {
     // Convert blob to array buffer and then to string
     const arrayBuffer = await htmlBlob.arrayBuffer();
     const htmlContent = new TextDecoder('utf-8').decode(arrayBuffer);
     
-    // Add to ZIP
-    zip.file("index.html", htmlContent, {
-      compression: "DEFLATE",
-      compressionOptions: { level: 6 },
-    });
+    // Add to storage
+    await storage.addFile("index.html", htmlContent, "text/html");
     
-    console.log(`Added HTML from blob (${formatBytes(htmlBlob.size)}) to ZIP`);
   } catch (error) {
-    console.error("Error adding HTML blob to ZIP:", error);
+    console.error("Error adding HTML blob to storage:", error);
     throw new Error(`Failed to process HTML content: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 export async function processAssets(
   data: { css: string[]; js: string[] },
-  zip: JSZip,
+  storage: IStorageAdapter,
   tabUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void
 ) {
-  if (data.css.length > 0) {
-    sendMessage({ key: "status.downloadingCss" });
-    try {
-      await addCssFiles(data.css, zip, tabUrl, sendMessage, downloadId);
-      console.log("CSS files downloaded:", data.css.length);
-      sendMessage({ key: "status.cssDownloaded" });
-    } catch (error) {
-      console.error("Error downloading CSS files:", error);
-      sendMessage({ key: "status.cssError" });
-    }
+  if (data.css?.length) {
+    sendMessage({ key: "status.downloadingCss", options: { count: data.css.length } });
+    await addCssFiles(data.css, storage, tabUrl, sendMessage, downloadId);
+    sendMessage({ key: "status.cssDownloaded" });
   }
 
-  if (data.js.length > 0) {
-    sendMessage({ key: "status.downloadingJs" });
-    try {
-      await addJsFiles(data.js, zip, tabUrl, sendMessage, downloadId);
-      console.log("JS files downloaded:", data.js.length);
-      sendMessage({ key: "status.jsDownloaded" });
-    } catch (error) {
-      console.error("Error downloading JS files:", error);
-      sendMessage({ key: "status.jsError" });
-    }
+  if (data.js?.length) {
+    sendMessage({ key: "status.downloadingJs", options: { count: data.js.length } });
+    await addJsFiles(data.js, storage, tabUrl, sendMessage, downloadId);
+    sendMessage({ key: "status.jsDownloaded" });
   }
 }
 
 export async function processDocuments(
   documents: string[],
-  zip: JSZip,
+  storage: IStorageAdapter,
   tabUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void
 ) {
-  if (documents.length > 0) {
-    sendMessage({ key: "status.downloadingDocuments" });
-    await addDocumentFiles(documents, zip, tabUrl, sendMessage, downloadId);
-    console.log("Documents downloaded:", documents.length);
-    sendMessage({ key: "status.documentsDownloaded" });
-  }
+  if (!documents?.length) return;
+
+  sendMessage({ key: "status.downloadingDocuments", options: { count: documents.length } });
+  await addDocumentFiles(documents, storage, tabUrl, sendMessage, downloadId);
+  sendMessage({ key: "status.documentsDownloaded" });
 }
 
 export async function processImages(
   images: string[],
-  zip: JSZip,
+  storage: IStorageAdapter,
   tabUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void
 ) {
-  if (images.length > 0) {
-    sendMessage({ key: "status.downloadingImages" });
-    await addImageFiles(images, zip, tabUrl, sendMessage, downloadId);
-    console.log("Images downloaded:", images.length);
-    sendMessage({ key: "status.imagesDownloaded" });
-  }
+  if (!images?.length) return;
+
+  sendMessage({ key: "status.downloadingImages", options: { count: images.length } });
+  await addImageFiles(images, storage, tabUrl, sendMessage, downloadId);
+  sendMessage({ key: "status.imagesDownloaded" });
 }
 
 export async function processLinks(
   links: string[],
-  zip: JSZip,
+  storage: IStorageAdapter,
   tabUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void
 ) {
-  if (links.length > 0) {
-    sendMessage({ key: "status.downloadingLinks" });
-    await addHtmlFiles(links, zip, tabUrl, sendMessage, downloadId);
-    console.log("Linked HTML files downloaded:", links.length);
-    sendMessage({ key: "status.linksDownloaded" });
-  }
+  if (!links?.length) return;
+
+  sendMessage({ key: "status.downloadingLinks", options: { count: links.length } });
+  await addHtmlFiles(links, storage, tabUrl, sendMessage, downloadId);
+  sendMessage({ key: "status.linksDownloaded" });
 }

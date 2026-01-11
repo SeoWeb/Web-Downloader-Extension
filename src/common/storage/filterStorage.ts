@@ -21,9 +21,6 @@ export async function loadFilterOptions(): Promise<FilterOptions> {
       // Check if we have storage permission
       const hasPermission = await hasStoragePermission();
       if (!hasPermission) {
-        console.log(
-          "Storage permission not granted, using default filter options",
-        );
         return DEFAULT_FILTER_OPTIONS;
       }
 
@@ -80,9 +77,6 @@ export async function saveFilterOptions(
       // Check if we have storage permission
       const hasPermission = await hasStoragePermission();
       if (!hasPermission) {
-        console.log(
-          "Storage permission not granted, cannot save filter options",
-        );
         return false;
       }
 
@@ -90,7 +84,6 @@ export async function saveFilterOptions(
       await chrome.storage.local.set({
         [FILTER_OPTIONS_STORAGE_KEY]: validatedOptions,
       });
-      console.log("Filter options saved to storage:", validatedOptions);
       return true;
     },
     false,
@@ -118,8 +111,6 @@ export async function migrateFilterOptions(): Promise<void> {
       );
 
       if (oldKeys.length > 0) {
-        console.log("Found old filter option format, migrating...");
-
         // Remove old keys
         await chrome.storage.local.remove(oldKeys);
 
@@ -127,8 +118,6 @@ export async function migrateFilterOptions(): Promise<void> {
         await chrome.storage.local.set({
           [FILTER_OPTIONS_STORAGE_KEY]: DEFAULT_FILTER_OPTIONS,
         });
-
-        console.log("Migration completed");
       }
     },
     undefined,

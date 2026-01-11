@@ -51,14 +51,8 @@ export class ThrottlingManager {
       return true;
     }
 
-    // Check network congestion
-    if (this.networkCondition.congested) {
-      return true;
-    }
-
-    // Check recent failure rate
-    const recentFailures = this.getRecentFailureRate();
-    if (recentFailures > 0.5) { // More than 50% failure rate
+    // Check network congestion (only if severe)
+    if (this.isNetworkCongested() && this.getRecentFailureRate() > 0.8) {
       return true;
     }
 

@@ -59,6 +59,18 @@ export function useFilterOptions() {
     setDownloadDocuments: (value: boolean) =>
       setFilterOption("downloadDocuments", value),
     setSingleFile: (value: boolean) => setFilterOption("singleFile", value),
+    
+    // Full scraping options
+    setDownloadLinksFullScraping: (value: boolean) =>
+      setFilterOption("downloadLinksFullScraping", value),
+    setLinkedPagesMaxCount: (value: number) =>
+      setFilterOption("linkedPagesMaxCount", value),
+    setLinkedPagesDelay: (value: number) =>
+      setFilterOption("linkedPagesDelay", value),
+    setLinkedPagesIncludeExternal: (value: boolean) =>
+      setFilterOption("linkedPagesIncludeExternal", value),
+    setLinkedPagesTimeout: (value: number) =>
+      setFilterOption("linkedPagesTimeout", value),
   };
 }
 
@@ -84,6 +96,13 @@ export function useDownloadOptions() {
     downloadContentAsText: options.downloadContentAsText,
     downloadDocuments: options.downloadDocuments,
     singleFile: options.singleFile,
+    
+    // Full scraping options
+    downloadLinksFullScraping: options.downloadLinksFullScraping,
+    linkedPagesMaxCount: options.linkedPagesMaxCount,
+    linkedPagesDelay: options.linkedPagesDelay,
+    linkedPagesIncludeExternal: options.linkedPagesIncludeExternal,
+    linkedPagesTimeout: options.linkedPagesTimeout,
   };
 }
 

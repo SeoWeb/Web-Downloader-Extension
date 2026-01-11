@@ -1,21 +1,11 @@
-import JSZip from "jszip";
+import { IStorageAdapter } from "../storage/storage-adapter";
 import { fixFilename } from "../urlUtils";
 import { requestQueue } from "../../utils/RequestQueue";
 import { RequestPriority, ResourceType } from "../../types/queue";
 
-export async function addContentText(text: string, zip: JSZip) {
-  try {
-    const blob = new Blob([text], { type: "text/plain" });
-    zip.file("content.txt", blob);
-  } catch (error) {
-    console.error("Error creating content.txt:", error);
-    throw new Error("Failed to create content.txt");
-  }
-}
-
 export async function addDocumentFiles(
   documents: string[],
-  zip: JSZip,
+  storage: IStorageAdapter,
   tabUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
@@ -24,7 +14,7 @@ export async function addDocumentFiles(
     return;
   }
 
-  const zdocuments = zip.folder("documents") || zip;
+  // Using storage adapter directly
   let successCount = 0;
   let failCount = 0;
   let skippedCount = 0;
@@ -33,7 +23,7 @@ export async function addDocumentFiles(
 
   // Log download tracking if downloadId is provided
   if (downloadId) {
-    console.log(`Processing document files for download: ${downloadId}`);
+   // TODO: Log download tracking
   }
 
   // Set up queue event listeners for this batch
@@ -104,7 +94,7 @@ export async function addDocumentFiles(
               return;
             }
 
-            zdocuments.file(fixFilename(filename), blob);
+            await storage.addFile(`documents/${fixFilename(filename)}`, blob);
             successCount++;
             resolve(document);
           } catch (error) {
@@ -138,9 +128,6 @@ export async function addDocumentFiles(
     }
   });
 
-  console.log(
-    `Document download summary: ${successCount} succeeded, ${failCount} failed, ${skippedCount} skipped`,
-  );
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(
       { key: "status.documentsSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },

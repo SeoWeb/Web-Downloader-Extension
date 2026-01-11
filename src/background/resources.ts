@@ -116,9 +116,9 @@ export function getResources(html: string): {
     ?.map((el) => $(el).attr("href") || "")
     ?.filter((el) => !!el?.length);
 
-  // .pdf, .doc, .docx, .xls, .xlsx, .ppt, .pptx, .txt, .rtf, .odt, .ods, .odp, .csv, .zip, .gz, .bz2, .xz, .avi, .mkv, .mp3, .ogg, .wav, .mp4, .webm, .ogg, .ogv, .oga, .gif, .png, .jpg, .jpeg, .bmp, .svg, .ico, .heic, .avif
+  // .pdf, .doc, .docx, .xls, .xlsx, .ppt, .pptx, .txt, .rtf, .odt, .ods, .odp, .csv, .zip, .gz, .bz2, .xz, .avi, .mkv, .mp3, .ogg, .wav, .mp4, .webm, .ogg, .ogv, .oga, .gif, .png, .jpg, .jpeg, .bmp, .svg, .ico, .heic, .avif, .stl, .obj, .3mf, .fbx, .dae, .step, .stp, .iges, .igs, .dxf, .dwg, .gcode
   const documents = $(
-    "a[href*='.pdf'], a[href*='.doc'], a[href*='.docx'], a[href*='.xls'], a[href*='.xlsx'], a[href*='.ppt'], a[href*='.pptx'], a[href*='.txt'], a[href*='.rtf'], a[href*='.odt'], a[href*='.ods'], a[href*='.odp'], a[href*='.csv'], a[href*='.zip'], a[href*='.gz'], a[href*='.bz2'], a[href*='.xz'], a[href*='.avi'], a[href*='.mkv'], a[href*='.mp3'], a[href*='.ogg'], a[href*='.wav'], a[href*='.mp4'], a[href*='.webm'], a[href*='.ogg'], a[href*='.ogv'], a[href*='.oga'], a[href*='.gif'], a[href*='.png'], a[href*='.jpg'], a[href*='.jpeg'], a[href*='.bmp'], a[href*='.svg'], a[href*='.ico'], a[href*='.heic'], a[href*='.avif']",
+    "a[href*='.pdf'], a[href*='.doc'], a[href*='.docx'], a[href*='.xls'], a[href*='.xlsx'], a[href*='.ppt'], a[href*='.pptx'], a[href*='.txt'], a[href*='.rtf'], a[href*='.odt'], a[href*='.ods'], a[href*='.odp'], a[href*='.csv'], a[href*='.zip'], a[href*='.gz'], a[href*='.bz2'], a[href*='.xz'], a[href*='.avi'], a[href*='.mkv'], a[href*='.mp3'], a[href*='.ogg'], a[href*='.wav'], a[href*='.mp4'], a[href*='.webm'], a[href*='.ogg'], a[href*='.ogv'], a[href*='.oga'], a[href*='.gif'], a[href*='.png'], a[href*='.jpg'], a[href*='.jpeg'], a[href*='.bmp'], a[href*='.svg'], a[href*='.ico'], a[href*='.heic'], a[href*='.avif'], a[href*='.stl'], a[href*='.obj'], a[href*='.3mf'], a[href*='.fbx'], a[href*='.dae'], a[href*='.step'], a[href*='.stp'], a[href*='.iges'], a[href*='.igs'], a[href*='.dxf'], a[href*='.dwg'], a[href*='.gcode']",
   )
     ?.toArray()
     ?.map((el) => $(el).attr("href") || "")

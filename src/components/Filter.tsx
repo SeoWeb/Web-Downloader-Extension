@@ -23,9 +23,7 @@ import {
   useStorageStatus,
 } from "../hooks/useFilterOptions";
 import { StoragePermissionBanner } from "./StoragePermissionBanner";
-import { OffscreenPermissionBanner } from "./OffscreenPermissionBanner";
 import { hasStoragePermission } from "../common/permissions";
-import { hasOffscreenPermission } from "../common/permissions";
 
 export default function Filter({
   download,
@@ -44,7 +42,6 @@ export default function Filter({
   const { t } = useTranslation();
   const [showPermissionBanner, setShowPermissionBanner] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [hasOffscreenPerm, setHasOffscreenPerm] = useState<boolean | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const {
@@ -57,6 +54,10 @@ export default function Filter({
     setDownloadContentAsText,
     setDownloadDocuments,
     setSingleFile,
+    setDownloadLinksFullScraping,
+    setLinkedPagesMaxCount,
+    setLinkedPagesDelay,
+    setLinkedPagesIncludeExternal,
   } = useFilterOptions();
 
   const downloadOptions = useDownloadOptions();
@@ -76,13 +77,9 @@ export default function Filter({
         ) {
           setShowPermissionBanner(true);
         }
-
-        const offscreenPermission = await hasOffscreenPermission();
-        setHasOffscreenPerm(offscreenPermission);
       } catch (error) {
         console.error("Error checking permissions:", error);
         setHasPermission(false);
-        setHasOffscreenPerm(false);
       }
     };
 
@@ -138,10 +135,6 @@ export default function Filter({
     localStorage.setItem("storage-banner-dismissed", "true");
   };
 
-  const handleOffscreenPermissionGranted = () => {
-    setHasOffscreenPerm(true);
-  };
-
   if (isLoading || isLoadingFromStorage) {
     return (
       <div className="p-4 space-y-4">
@@ -155,11 +148,6 @@ export default function Filter({
     <div className="animate-fade-in space-y-6">
       {/* Permission Banners */}
       <div className="space-y-4">
-        {hasOffscreenPerm === false && (
-          <OffscreenPermissionBanner
-            onPermissionGranted={handleOffscreenPermissionGranted}
-          />
-        )}
         {showPermissionBanner && (
           <StoragePermissionBanner
             onPermissionGranted={handlePermissionGranted}
@@ -180,7 +168,6 @@ export default function Filter({
       <div className="card p-6 bg-gradient-to-br from-white to-slate-50 border-slate-200">
         <button
           onClick={handleDownload}
-          disabled={hasOffscreenPerm === false}
           className="btn-primary w-full flex items-center justify-center gap-3 text-lg py-4 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 transition-all"
         >
           <Download className="w-6 h-6" />
@@ -291,9 +278,84 @@ export default function Filter({
                 />
 
                 {options.downloadLinks && (
-                  <div className="mt-2 ml-7 p-3 bg-red-50 text-red-600 text-xs rounded border border-red-100 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{t('filter.linksWarning')}</span>
+                  <div className="mt-2 ml-7 space-y-3">
+                    {/* Full Scraping Toggle */}
+                    <div className="p-3 bg-blue-50 rounded border border-blue-100">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          id="downloadLinksFullScraping"
+                          checked={options.downloadLinksFullScraping || false}
+                          onCheckedChange={(c: any) => setDownloadLinksFullScraping(!!c)}
+                        />
+                        <div className="flex-1">
+                          <label htmlFor="downloadLinksFullScraping" className="cursor-pointer">
+                            <div className="text-sm font-medium text-blue-900">
+                              {t('filter.fullScraping') || 'Full Scraping (includes all assets)'}
+                            </div>
+                            <div className="text-xs text-blue-600 mt-1">
+                              {t('filter.fullScrapingInfo') || 'Opens linked pages sequentially in this tab to capture dynamic content and assets. You\'ll see each page load during the process.'}
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Advanced Options */}
+                      {options.downloadLinksFullScraping && (
+                        <div className="mt-3 pt-3 border-t border-blue-200 space-y-3">
+                          {/* Max Pages */}
+                          <div>
+                            <label className="text-xs font-medium text-blue-900 block mb-1">
+                              {t('filter.maxPages') || 'Max pages to scrape'}: {options.linkedPagesMaxCount || 50}
+                            </label>
+                            <input
+                              type="range"
+                              min="10"
+                              max="200"
+                              step="10"
+                              value={options.linkedPagesMaxCount || 50}
+                              onChange={(e) => setLinkedPagesMaxCount(parseInt(e.target.value))}
+                              className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+
+                          {/* Delay Between Pages */}
+                          <div>
+                            <label className="text-xs font-medium text-blue-900 block mb-1">
+                              {t('filter.pageDelay') || 'Delay between pages'}: {options.linkedPagesDelay || 500}ms
+                            </label>
+                            <input
+                              type="range"
+                              min="0"
+                              max="2000"
+                              step="100"
+                              value={options.linkedPagesDelay || 500}
+                              onChange={(e) => setLinkedPagesDelay(parseInt(e.target.value))}
+                              className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+
+                          {/* Include External Links */}
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id="linkedPagesIncludeExternal"
+                              checked={options.linkedPagesIncludeExternal || false}
+                              onCheckedChange={(c: any) => setLinkedPagesIncludeExternal(!!c)}
+                            />
+                            <label htmlFor="linkedPagesIncludeExternal" className="text-xs text-blue-900 cursor-pointer">
+                              {t('filter.includeExternal') || 'Include external links'}
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Warning for simple mode */}
+                    {!options.downloadLinksFullScraping && (
+                      <div className="p-3 bg-red-50 text-red-600 text-xs rounded border border-red-100 flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{t('filter.linksWarning')}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

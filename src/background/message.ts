@@ -1,9 +1,9 @@
 import { sendMessage } from "../common/chrome";
 import { MessageAction, messageActions } from "../common/message";
-console.log("MessageActions in background:", messageActions);
 import { scrollDownAndScrape, startDownload } from "./jobs";
 import { downloadResourcesWithIncrementalAssembly } from "./download";
 import { mergeHtmlIncremental } from "./merge-html";
+import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
 
 export async function sendMessageToPanel(
   action: MessageAction,
@@ -112,6 +112,18 @@ export async function messageWorker(
       );
 
     case messageActions.CHECK_ONLINE_STATUS:
+      return true;
+
+    case messageActions.SCRAPER_PAUSE:
+      pauseScraping();
+      return true;
+
+    case messageActions.SCRAPER_RESUME:
+      resumeScraping();
+      return true;
+
+    case messageActions.SCRAPER_STOP:
+      stopScraping();
       return true;
 
     default:

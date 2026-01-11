@@ -9,7 +9,15 @@ export interface FilterOptions {
   downloadContentAsText: boolean;
   downloadDocuments: boolean;
   singleFile: boolean;
+  
+  // Full scraping options for linked pages
+  downloadLinksFullScraping?: boolean; // Enable full scraping (default: false)
+  linkedPagesMaxCount?: number; // Default: 50, Max: 200
+  linkedPagesDelay?: number; // Default: 500ms (delay between page loads)
+  linkedPagesIncludeExternal?: boolean; // Default: false
+  linkedPagesTimeout?: number; // Default: 30000ms (per page)
 }
+
 
 /**
  * Default filter options matching current hardcoded values

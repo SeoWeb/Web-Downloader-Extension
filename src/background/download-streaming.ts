@@ -7,8 +7,9 @@ import { createZipFromDownloads } from "../utils/chunkedZip";
 import { addCssFiles, addJsFiles, addDocumentFiles, addImageFiles, addHtmlFiles, addContentText } from "./fileHandlers";
 import { downloadId, setDownloadInProgress, getDownloadInProgress } from "./download-state";
 import { streamingDownloader, streamingFetcher } from "./download-services";
-import { formatBytes, initiateDownload } from "./download-utils";
+import { initiateDownload } from "./download-utils";
 import { downloadResources } from "./download-core";
+import { JSZipAdapter } from "./storage/storage-adapter";
 
 /**
  * Enhanced streaming download function for large files
@@ -20,8 +21,6 @@ export async function downloadResourcesWithStreaming(
   sendMessage: (message: string | { key: string; options?: any }) => void,
   tabId?: number,
 ) {
-  console.log("Starting streaming downloadResources for URL:", tabUrl, "tabId:", tabId);
-
   if (!tabUrl) {
     console.error("No tab URL provided");
     sendMessage({ key: "error.noUrl" });
@@ -34,7 +33,6 @@ export async function downloadResourcesWithStreaming(
 
   if (!hasLargeFiles) {
     // Fall back to regular download for small files
-    console.log("No large files detected, using regular download");
     return downloadResources(html, tabUrl, downloadOptions, sendMessage, undefined, tabId);
   }
 
@@ -91,7 +89,6 @@ async function executeStreamingDownload(
   const timestamp = Date.now();
 
   const zipFilename = `${hostname}-${safePath}-${timestamp}.zip`;
-  console.log("Generated streaming filename:", zipFilename);
 
   // Create streaming downloads for all resources
   const streamingDownloads: Array<{ download: StreamingDownload; path: string }> = [];
@@ -293,7 +290,6 @@ async function checkForLargeFiles(data: ReturnType<typeof getResources>): Promis
     try {
       const metadata = await streamingFetcher.getMetadata(url, { chunkTimeout: 5000 });
       if (metadata.size > checkThreshold) {
-        console.log(`Large file detected: ${url} (${formatBytes(metadata.size)})`);
         return true;
       }
     } catch (error) {
@@ -319,32 +315,33 @@ async function addRegularFiles(
   downloadId: string
 ) {
   const zip = new JSZip();
+  const storage = new JSZipAdapter(zip);
 
   if (downloadOptions.downloadAssets) {
     // Add CSS files that weren't streamed
     if (data.css.length > 0) {
-      await addCssFiles(data.css, zip, tabUrl, sendMessage, downloadId);
+      await addCssFiles(data.css, storage, tabUrl, sendMessage, downloadId);
     }
 
     // Add JS files that weren't streamed
     if (data.js.length > 0) {
-      await addJsFiles(data.js, zip, tabUrl, sendMessage, downloadId);
+      await addJsFiles(data.js, storage, tabUrl, sendMessage, downloadId);
     }
   }
 
   if (downloadOptions.downloadDocuments) {
-    await addDocumentFiles(data.documents, zip, tabUrl, sendMessage, downloadId);
+    await addDocumentFiles(data.documents, storage, tabUrl, sendMessage, downloadId);
   }
 
   if (downloadOptions.downloadImages) {
-    await addImageFiles(data.images, zip, tabUrl, sendMessage, downloadId);
+    await addImageFiles(data.images, storage, tabUrl, sendMessage, downloadId);
   }
 
   if (downloadOptions.downloadLinks) {
-    await addHtmlFiles(data.links, zip, tabUrl, sendMessage, downloadId);
+    await addHtmlFiles(data.links, storage, tabUrl, sendMessage, downloadId);
   }
 
   if (downloadOptions.downloadContentAsText) {
-    await addContentText(data.text, zip);
+    await addContentText(data.text, storage);
   }
 }

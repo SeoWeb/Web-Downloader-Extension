@@ -10,7 +10,7 @@
     "default_title": "__MSG_extensionActionTitle__"
   },
   "permissions": ["activeTab", "tabs", "scripting", "sidePanel", "downloads"],
-  "optional_permissions": ["storage", "offscreen"],
+  "optional_permissions": ["storage"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "type": "module",

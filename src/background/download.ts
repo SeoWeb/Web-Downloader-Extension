@@ -3,7 +3,6 @@
 import { initializeCleanupHandlers } from "./cleanupHandlers";
 import { streamingDownloader } from "./download-services";
 import { requestQueue } from "../utils/RequestQueue";
-import { formatBytes } from "./download-utils";
 import { cleanupOldBlobs } from "../common/blobStorage";
 import { memoryManager } from "../utils/MemoryManager";
 import { DEFAULT_MEMORY_LIMITS, MemoryPressureLevel } from "../utils/memoryLimits";
@@ -22,36 +21,36 @@ initializeDownloadListener();
 // Initialize queue system
 // Set up queue event listeners for global monitoring
 requestQueue.setEventListeners({
-  onStart: (request) => {
-    console.log(`Queue: Started processing ${request.resourceType} request for ${request.url}`);
+  onStart: () => {
+    // console .log(`Queue: Started processing ${request.resourceType} request for ${request.url}`);
   },
-  onComplete: (result) => {
-    console.log(`Queue: Completed ${result.requestId} request`);
+  onComplete: () => {
+    // console .log(`Queue: Completed ${result.requestId} request`);
   },
   onError: (request, error) => {
     console.error(`Queue: Failed ${request.resourceType} request for ${request.url}:`, error);
   },
-  onRetry: (request, attempt) => {
-    console.log(`Queue: Retrying ${request.resourceType} request for ${request.url}, attempt ${attempt}`);
+  onRetry: () => {
+    // console .log(`Queue: Retrying ${request.resourceType} request for ${request.url}, attempt ${attempt}`);
   }
 });
 
 // Set up streaming event listeners
 streamingDownloader.setEventListeners({
-  onStart: (download) => {
-    console.log(`Streaming download started: ${download.id} for ${download.url}`);
+  onStart: () => {
+    // console .log(`Streaming download started: ${download.id} for ${download.url}`);
   },
-  onProgress: (progress) => {
-    console.log(`Streaming progress: ${progress.downloadId} - ${progress.completedChunks}/${progress.totalChunks} chunks (${formatBytes(progress.bytesDownloaded)}/${formatBytes(progress.totalBytes)})`);
+  onProgress: () => {
+    // console .log(`Streaming progress: ${progress.downloadId} - ${progress.completedChunks}/${progress.totalChunks} chunks (${formatBytes(progress.bytesDownloaded)}/${formatBytes(progress.totalBytes)})`);
   },
-  onComplete: (download) => {
-    console.log(`Streaming download completed: ${download.id}`);
+  onComplete: () => {
+    // console .log(`Streaming download completed: ${download.id}`);
   },
   onError: (download, error) => {
     console.error(`Streaming download failed: ${download.id}`, error);
   },
   onMemoryPressure: async (pressure) => {
-    console.warn(`Memory pressure during streaming: ${pressure.level}`);
+    // console.warn(`Memory pressure during streaming: ${pressure.level}`);
 
     if (pressure.shouldPause) {
       // Pause all active streaming downloads
@@ -67,7 +66,6 @@ streamingDownloader.setEventListeners({
 
 // Register cleanup callbacks with memory manager
 memoryManager.registerCleanupCallback(async () => {
-  console.log("Memory manager cleanup callback triggered");
   await cleanupOldBlobs();
   
   // Clear queue during cleanup
@@ -75,7 +73,7 @@ memoryManager.registerCleanupCallback(async () => {
 });
 
 memoryManager.registerMemoryPressureCallback(async (level) => {
-  console.log(`Memory pressure detected: ${level}`);
+  // console .log(`Memory pressure detected: ${level}`);
 
   if (level === MemoryPressureLevel.CRITICAL) {
     // Emergency cleanup
@@ -95,7 +93,7 @@ memoryManager.registerMemoryPressureCallback(async (level) => {
   } else if (level === MemoryPressureLevel.HIGH) {
     // Reduce queue concurrency during high memory pressure
     // Note: This would need to be implemented in RequestQueue if needed
-    console.log("High memory pressure detected, queue will naturally reduce concurrency");
+    console.warn("High memory pressure detected, queue will naturally reduce concurrency");
   } else if (level === MemoryPressureLevel.LOW) {
     // Resume normal queue operation
     requestQueue.resume();

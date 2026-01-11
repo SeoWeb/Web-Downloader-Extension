@@ -67,8 +67,6 @@ export class HtmlAssembler {
     };
 
     this.jobs.set(id, job);
-    console.log(`Initialized HTML assembly job ${id} with skeleton size: ${adaptiveMemoryManager.formatBytes(job.totalSize)}`);
-    
     return job;
   }
 
@@ -187,8 +185,6 @@ export class HtmlAssembler {
     job.totalSize = newTotalSize;
     job.lastUpdated = Date.now();
 
-    console.log(`Added chunk to job ${jobId}: ${adaptiveMemoryManager.formatBytes(processedChunk.length)}, Total: ${adaptiveMemoryManager.formatBytes(job.totalSize)}`);
-
     return {
       success: true,
       added: true,
@@ -225,8 +221,6 @@ export class HtmlAssembler {
         compressionRatio: job.chunks.length > 0 ? finalHtml.length / job.totalSize : 1,
         estimatedFinalSize: finalHtml.length,
       };
-
-      console.log(`Finalized job ${jobId}: ${adaptiveMemoryManager.formatBytes(finalHtml.length)} from ${job.chunks.length} chunks`);
 
       // Clean up job
       this.jobs.delete(jobId);
@@ -284,10 +278,6 @@ export class HtmlAssembler {
         this.jobs.delete(jobId);
         cleaned++;
       }
-    }
-
-    if (cleaned > 0) {
-      console.log(`Cleaned up ${cleaned} old HTML assembly jobs`);
     }
 
     return cleaned;

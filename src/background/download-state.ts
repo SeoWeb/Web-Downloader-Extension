@@ -34,8 +34,5 @@ export const trackDownload = (id: number, filename: string, tabId?: number) => {
     // Create keepalive connection if not already exists
     if (!keepalivePort) {
         keepalivePort = chrome.runtime.connect({ name: "keepalive" });
-        console.log("Created keepalive port to prevent service worker termination");
     }
-    
-    console.log(`Tracking download ${id}: ${filename}`);
 };

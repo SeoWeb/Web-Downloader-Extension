@@ -69,9 +69,7 @@ export function useScrapingDownloader({
       return;
     }
 
-    console.log("Starting scrolling for tab", tabId);
     const response = await startScrolling();
-    console.log("Scrolling completed with response:", response);
 
     if (response?.height && response.html) {
       setDownloadResponse((prev) => {
@@ -93,13 +91,10 @@ export function useScrapingDownloader({
         // 2. Position hasn't changed (stuck), OR
         // 3. We've exceeded the safety limit
         if (isAtBottom) {
-          console.log("Reached bottom of page, stopping scroll");
           setIsScraping(false);
         } else if (prev && !scrollPositionChanged) {
-          console.log("Scroll position unchanged (stuck), stopping scroll");
           setIsScraping(false);
         } else if (scrollAttempts >= 500) { // Increased safety limit for very long pages
-          console.log("Maximum scroll attempts reached, stopping scroll");
           setIsScraping(false);
           setMessages((prev) => [...prev, "Maximum scroll attempts reached"]);
         } else {
@@ -119,10 +114,8 @@ export function useScrapingDownloader({
     if (isScraping) {
       scrape();
     } else if (downloadResponse?.html && downloadOptions) {
-      console.log("Starting download with HTML content");
       startDownload(downloadResponse.html)
-        .then((links) => {
-          console.log("Download initiated successfully with links:", links);
+        .then(() => {
           // Don't reset downloadResponse here - keep it to maintain filter hidden state
           // It will be cleared when DOWNLOAD_COMPLETE or DOWNLOAD_CANCELLED message is received
         })

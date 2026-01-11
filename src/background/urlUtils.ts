@@ -127,8 +127,6 @@ export async function fetchUrl(
       // Try alternative approach using different fetch modes for external resources
       if (i < retries - 1) {
         try {
-          console.log(`Trying alternative fetch method for ${fullUrl}`);
-
           // For CSS files, try no-cors mode first
           const isCssFile = fullUrl.toLowerCase().includes('.css');
           const response = await fetch(fullUrl, {
@@ -172,7 +170,6 @@ export async function fetchUrl(
 
           // Try one more approach with different headers
           try {
-            console.log(`Trying third fetch method for ${fullUrl}`);
             const thirdResponse = await fetch(fullUrl, {
               method: "GET",
               mode: "navigate",

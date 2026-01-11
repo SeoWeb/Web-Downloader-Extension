@@ -214,10 +214,6 @@ export class DomainLimiter implements IDomainLimiter {
         this.crawlDelay = crawlDelay;
         this.robotsTxtCache.set(this.domain, crawlDelay);
         this.robotsTxtCacheTime.set(this.domain, Date.now());
-        
-        if (crawlDelay > 0) {
-          console.log(`Crawl delay for ${this.domain}: ${crawlDelay}ms`);
-        }
       }
     } catch (error) {
       // Silently fail - robots.txt is optional

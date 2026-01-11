@@ -85,14 +85,12 @@ export async function recoverFromStorageError(
   switch (error.type) {
     case StorageErrorType.PERMISSION_DENIED:
       // Use fallback options or defaults
-      console.log("Using fallback options due to permission denial");
       return fallbackOptions || DEFAULT_FILTER_OPTIONS;
 
     case StorageErrorType.CORRUPTION:
       // Clear corrupted data and use defaults
       try {
         await chrome.storage.local.remove(["webPageDownloader_filterOptions"]);
-        console.log("Cleared corrupted storage data");
       } catch (clearError) {
         console.error("Failed to clear corrupted data:", clearError);
       }
@@ -106,7 +104,6 @@ export async function recoverFromStorageError(
         const keysToRemove = Object.keys(allData);
         if (keysToRemove.length > 0) {
           await chrome.storage.local.remove(keysToRemove);
-          console.log("Cleared storage to free up space");
         }
       } catch (clearError) {
         console.error("Failed to clear storage:", clearError);
