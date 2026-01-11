@@ -77,7 +77,6 @@ function copyLocaleFiles() {
         }
       }
       
-      console.log(`Copied ${localeFiles.length} locale files to dist/locales`);
     }
   };
 }

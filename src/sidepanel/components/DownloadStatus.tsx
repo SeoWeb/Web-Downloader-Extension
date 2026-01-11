@@ -68,6 +68,7 @@ export function DownloadStatus({
   }
 
   // Show "Downloading website content..." when download is in progress but not scraping
+  // Hide this component when download is complete (DOWNLOAD_DONE)
   if (
     !isScraping &&
     !isScrapingLinkedPages &&
@@ -79,6 +80,11 @@ export function DownloadStatus({
         <h3 className="pb-2 font-bold">{t('status.downloadingWebsiteContent')}</h3>
       </div>
     );
+  }
+
+  // Hide component when download is complete
+  if (action === messageActions.DOWNLOAD_DONE) {
+    return null;
   }
 
   // Hide component if no scraping and no download response

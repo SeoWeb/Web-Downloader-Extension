@@ -8,7 +8,7 @@ import { addIndexHtml } from "./fileHandlers";
 import { cleanupAfterDownload } from "./cleanupHandlers";
 import { finalizeIncrementalMerge } from "./merge-html";
 import { FilterOptions } from "../types/filterTypes";
-import { downloadId, setDownloadInProgress, getDownloadInProgress } from "./download-state";
+import { downloadId, setDownloadInProgress, getDownloadInProgress, trackDownload } from "./download-state";
 import { initiateDownload, performInitialCleanup } from "./download-utils";
 import { 
   processRegularHtml, 
@@ -445,6 +445,9 @@ async function executeDownload(
               saveAs: false, // Don't prompt for every part
               conflictAction: "uniquify",
             });
+            
+            // Track this download so completion can be detected
+            trackDownload(downloadId, partFilename, tabId);
             
             // Wait for download to complete
              await new Promise<void>((resolve, reject) => {

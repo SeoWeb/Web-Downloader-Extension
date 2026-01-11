@@ -3,9 +3,10 @@ import { activeDownloads, getKeepalivePort, setKeepalivePort } from "./download-
 
 import { sendMessageToPanel } from "./message";
 
-export function initializeDownloadListener() {
+export function initializeDownloadListener() {  
   // Enhanced listener to track download completion and clean up object URLs
   chrome.downloads.onChanged.addListener(async (delta) => {
+    
     // Check if this download is being tracked
     const downloadInfo = activeDownloads.get(delta.id);
     
@@ -33,6 +34,7 @@ export function initializeDownloadListener() {
               filename: downloadInfo.filename,
               tabId: downloadInfo.tabId,
             }, false).then(() => {
+              // Side panel might be closed, that's ok - storage will handle it
             }).catch(() => {
               // Side panel might be closed, that's ok - storage will handle it
             });
