@@ -11,7 +11,10 @@
       "networkCheckFailed": "Ukaguzi wa muunganisho wa mtandao umeshindikana - inaendelea kupakua",
       "noUrl": "Hitilafu: Hakuna URL iliyotolewa kwa kupakua",
       "downloadInProgress": "Upakuaji tayari unaendelea. Tafadhali subiri.",
-      "memoryPressure": "Haiwezi kuanza kupakua kwa sababu ya shinikizo kubwa la kumbukumbu. Tafadhali jaribu tena baadaye."
+      "memoryPressure": "Haiwezi kuanza kupakua kwa sababu ya shinikizo kubwa la kumbukumbu. Tafadhali jaribu tena baadaye.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Kitambulisho cha kichupo batili",
+      "maxScrollAttempts": "Upeo wa majaribio ya kusogeza umefikiwa"
     },
     "filter": {
       "title": "Chu ja unachotaka kupakua",
@@ -39,13 +42,20 @@
       "error": "Hitilafu",
       "configuration": "Usanidi",
       "singleFileDescription": "Bora kwa uhifadhi rahisi",
-      "zipDescription": "Hifadhi muundo kamili wa ukurasa kama faili la ZIP"
+      "zipDescription": "Hifadhi muundo kamili wa ukurasa kama faili la ZIP",
+      "fullScraping": "Ukunaji Kamili (inajumuisha mali zote)",
+      "fullScrapingInfo": "Hufungua kurasa zilizounganishwa kwa mfuatano katika kichupo hiki ili kunasa maudhui na mali zinazobadilika. Utaona kila ukurasa ukipakia wakati wa mchakato.",
+      "maxPages": "Upeo wa kurasa za kukunua",
+      "pageDelay": "Kuchelewa kati ya kurasa",
+      "includeExternal": "Jumuisha viungo vya nje"
     },
     "actions": {
       "title": "Vitendo:",
       "stop": "Simama",
       "showInFolder": "Onyesha kwenye folda",
-      "downloadAnother": "Pakua nyingine"
+      "downloadAnother": "Pakua nyingine",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Inasubiri muunganisho...",
@@ -119,7 +129,28 @@
       "done": "Imekamilika!",
       "packing": "Inafunga...",
       "downloading": "Inapakua...",
-      "ready": "Tayari"
+      "ready": "Tayari",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Omba Kipengele",
       "description": "Je, una wazo la kuboresha kiendelezi hiki?",
       "submit": "Wasilisha Ombi"
+    },
+    "generated": {
+      "readme": "UPAKUAJI WA SEHEMU NYINGI\n===================\nTovuti hii imegawanywa katika sehemu {{total}} kwa ajili ya kupakuliwa.\n\nMAAGIZO YA KUTOA:\n1. Pakua sehemu zote {{total}} (faili zinazoishia na .zip)\n2. Unda folda mpya ya tovuti\n3. Toa kila faili ya ZIP kwenye folda HIYO HIYO\n4. Faili zote zitaungana katika muundo sahihi wa saraka\n5. Fungua index.html ili kutazama tovuti\n\nHii ni Sehemu ya {{part}} kati ya {{total}}\n",
+      "partMarkerContent": "Hii ni sehemu ya {{part}} kati ya {{total}}",
+      "completeArchive": "Kumbukumbu kamili",
+      "partDescription": "Sehemu ya {{number}}"
     }
   }
 }

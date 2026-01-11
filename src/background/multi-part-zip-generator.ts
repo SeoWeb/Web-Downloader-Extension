@@ -1,23 +1,12 @@
 import JSZip from "jszip";
 import { FilePartition } from "./file-partitioner";
+import i18n from "../i18n/config";
 
 /**
  * Generate a README file content for the specific part.
  */
 function createReadmeContent(partNumber: number, totalParts: number): string {
-  return `MULTI-PART DOWNLOAD
-===================
-This website has been split into ${totalParts} parts for download.
-
-EXTRACTION INSTRUCTIONS:
-1. Download all ${totalParts} parts (files ending in .zip)
-2. Create a new folder for the website
-3. Extract each ZIP file into the SAME folder
-4. All files will merge into the correct directory structure
-5. Open index.html to view the website
-
-This is Part ${partNumber} of ${totalParts}
-`;
+  return i18n.t("generated.readme", { part: partNumber, total: totalParts });
 }
 
 /**
@@ -48,7 +37,7 @@ export async function generatePartZip(
   zip.file("README.txt", createReadmeContent(partition.partNumber, totalParts));
   
   // Add part marker
-  zip.file(`PART_${partition.partNumber}_OF_${totalParts}.txt`, `This is part ${partition.partNumber} of ${totalParts}`);
+  zip.file(`PART_${partition.partNumber}_OF_${totalParts}.txt`, i18n.t("generated.partMarkerContent", { part: partition.partNumber, total: totalParts }));
 
   // Generate the blob
   return zip.generateAsync({

@@ -1,4 +1,5 @@
 import { listenMessage } from "./src/common/chrome";
+import "./src/i18n/config";
 
 // Polyfill window for libraries that expect it in Service Worker
 if (typeof self !== 'undefined' && typeof window === 'undefined') {

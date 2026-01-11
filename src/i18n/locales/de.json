@@ -11,7 +11,10 @@
       "title": "Webseiten-Downloader",
       "loading": "Wird geladen...",
       "error": "Etwas ist schiefgelaufen:",
-      "tryAgain": "Erneut versuchen"
+      "tryAgain": "Erneut versuchen",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Ungültige Tab-ID",
+      "maxScrollAttempts": "Maximale Scroll-Versuche erreicht"
     },
     "filter": {
       "loading": "Filter werden geladen...",
@@ -39,13 +42,20 @@
       "dismiss": "Verwerfen",
       "configuration": "Konfiguration",
       "singleFileDescription": "Am besten für einfache Archivierung",
-      "zipDescription": "Speichert die gesamte Seitenstruktur als ZIP-Archiv"
+      "zipDescription": "Speichert die gesamte Seitenstruktur als ZIP-Archiv",
+      "fullScraping": "Vollständiges Scraping (inklusive aller Assets)",
+      "fullScrapingInfo": "Öffnet verlinkte Seiten sequenziell in diesem Tab, um dynamische Inhalte und Assets zu erfassen. Sie werden sehen, wie jede Seite während des Prozesses geladen wird.",
+      "maxPages": "Max. zu scrapende Seiten",
+      "pageDelay": "Verzögerung zwischen Seiten",
+      "includeExternal": "Externe Links einbeziehen"
     },
     "actions": {
       "title": "Aktionen:",
       "stop": "Stopp",
       "showInFolder": "Im Ordner anzeigen",
-      "downloadAnother": "Weiteren herunterladen"
+      "downloadAnother": "Weiteren herunterladen",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "creatingIndex": "Erstelle index.html",
@@ -119,7 +129,28 @@
       "done": "Fertig!",
       "packing": "Packen...",
       "downloading": "Herunterladen...",
-      "ready": "Bereit"
+      "ready": "Bereit",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Funktion anfordern",
       "description": "Haben Sie eine Idee, um diese Erweiterung zu verbessern?",
       "submit": "Anfrage senden"
+    },
+    "generated": {
+      "readme": "MEHRTEILIGER DOWNLOAD\n===================\nDiese Website wurde für den Download in {{total}} Teile aufgeteilt.\n\nEXTRAKTIONSANWEISUNG:\n1. Laden Sie alle {{total}} Teile herunter (Dateien mit der Endung .zip)\n2. Erstellen Sie einen neuen Ordner für die Website\n3. Entpacken Sie jede ZIP-Datei in denselben Ordner\n4. Alle Dateien werden in der korrekten Verzeichnisstruktur zusammengeführt\n5. Öffnen Sie die index.html, um die Website anzuzeigen\n\nDies ist Teil {{part}} von {{total}}\n",
+      "partMarkerContent": "Dies ist Teil {{part}} von {{total}}",
+      "completeArchive": "Vollständiges Archiv",
+      "partDescription": "Teil {{number}}"
     }
   }
 }

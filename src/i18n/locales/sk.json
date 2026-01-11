@@ -11,7 +11,10 @@
       "networkCheckFailed": "Kontrola sieťového pripojenia zlyhala - sťahovanie pokračuje",
       "noUrl": "Chyba: Nebola poskytnutá žiadna URL na stiahnutie",
       "downloadInProgress": "Sťahovanie už prebieha. Čakajte prosím.",
-      "memoryPressure": "Nie je možné spustiť sťahovanie kvôli kritickému nedostatku pamäte. Skúste to prosím neskôr."
+      "memoryPressure": "Nie je možné spustiť sťahovanie kvôli kritickému nedostatku pamäte. Skúste to prosím neskôr.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Neplatné ID karty",
+      "maxScrollAttempts": "Dosiahnutý maximálny počet pokusov o posúvanie"
     },
     "filter": {
       "title": "Filtrujte, čo chcete stiahnuť",
@@ -39,13 +42,20 @@
       "error": "Chyba",
       "configuration": "Konfigurácia",
       "singleFileDescription": "Najlepšie pre jednoduchú archiváciu",
-      "zipDescription": "Uloží kompletnú štruktúru stránky ako ZIP archív"
+      "zipDescription": "Uloží kompletnú štruktúru stránky ako ZIP archív",
+      "fullScraping": "Úplné sťahovanie (vrátane všetkých prostriedkov)",
+      "fullScrapingInfo": "Otvára prepojené stránky postupne v tejto karte na zachytenie dynamického obsahu a prostriedkov. Uvidíte načítanie každej stránky počas procesu.",
+      "maxPages": "Max. stránok na stiahnutie",
+      "pageDelay": "Oneskorenie medzi stránkami",
+      "includeExternal": "Zahrnúť externé odkazy"
     },
     "actions": {
       "title": "Akcie:",
       "stop": "Zastaviť",
       "showInFolder": "Zobraziť v priečinku",
-      "downloadAnother": "Stiahnuť ďalší"
+      "downloadAnother": "Stiahnuť ďalší",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Čakanie na pripojenie...",
@@ -119,7 +129,28 @@
       "done": "Hotovo!",
       "packing": "Balenie...",
       "downloading": "Sťahovanie...",
-      "ready": "Pripravené"
+      "ready": "Pripravené",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Požiadať o funkciu",
       "description": "Máte nápad na vylepšenie tohto rozšírenia?",
       "submit": "Odoslať žiadosť"
+    },
+    "generated": {
+      "readme": "VIACDIELNE SŤAHOVANIE\n===================\nTáto webová stránka bola rozdelená na {{total}} častí na stiahnutie.\n\nPOKYNY NA EXTRAKCIU:\n1. Stiahnite všetky {{total}} časti (súbory končiace na .zip)\n2. Vytvorte nový priečinok pre webovú stránku\n3. Extrahujte každý ZIP súbor do ROVNAKÉHO priečinka\n4. Všetky súbory sa zlúčia do správnej adresárovej štruktúry\n5. Otvorte index.html na zobrazenie webovej stránky\n\nToto je Časť {{part}} z {{total}}\n",
+      "partMarkerContent": "Toto je časť {{part}} z {{total}}",
+      "completeArchive": "Kompletný archív",
+      "partDescription": "Časť {{number}}"
     }
   }
 }

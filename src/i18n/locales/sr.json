@@ -11,7 +11,10 @@
       "networkCheckFailed": "Provera mrežne povezanosti nije uspela - preuzimanje se nastavlja",
       "noUrl": "Greška: Nije naveden URL za preuzimanje",
       "downloadInProgress": "Preuzimanje je već u toku. Molimo sačekajte.",
-      "memoryPressure": "Ne mogu započeti preuzimanje zbog kritičnog nedostatka memorije. Molimo pokušajte ponovo kasnije."
+      "memoryPressure": "Ne mogu započeti preuzimanje zbog kritičnog nedostatka memorije. Molimo pokušajte ponovo kasnije.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Nevažeći ID kartice",
+      "maxScrollAttempts": "Dostignut maksimalan broj pokušaja pomicanja"
     },
     "filter": {
       "title": "Филтрирајте оно што желите да преузмете",
@@ -39,13 +42,20 @@
       "error": "Greška",
       "configuration": "Konfiguracija",
       "singleFileDescription": "Najbolje za jednostavno arhiviranje",
-      "zipDescription": "Čuva kompletnu strukturu stranice kao ZIP arhivu"
+      "zipDescription": "Čuva kompletnu strukturu stranice kao ZIP arhivu",
+      "fullScraping": "Potpuno struganje (uključuje sve resurse)",
+      "fullScrapingInfo": "Otvara povezane stranice redom u ovoj kartici radi hvatanja dinamičkog sadržaja i resursa. Videćete kako se svaka stranica učitava tokom procesa.",
+      "maxPages": "Maks. stranica za struganje",
+      "pageDelay": "Kašnjenje između stranica",
+      "includeExternal": "Uključi spoljne veze"
     },
     "actions": {
       "title": "Акције:",
       "stop": "Стани",
       "showInFolder": "Prikaži u fascikli",
-      "downloadAnother": "Preuzmi drugo"
+      "downloadAnother": "Preuzmi drugo",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Чекање везе...",
@@ -119,7 +129,28 @@
       "done": "Gotovo!",
       "packing": "Pakovanje...",
       "downloading": "Preuzimanje...",
-      "ready": "Spremno"
+      "ready": "Spremno",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Затражи функцију",
       "description": "Имате ли идеју за побољшање овог проширења?",
       "submit": "Пошаљи захтев"
+    },
+    "generated": {
+      "readme": "VIŠEDELNO PREUZIMANJE\n===================\nOva veb lokacija je podeljena na {{total}} delova za preuzimanje.\n\nUPUTSTVO ZA RASPAKIVANJE:\n1. Preuzmite sve {{total}} delove (datoteke koje se završavaju na .zip)\n2. Napravite novu fasciklu za veb lokaciju\n3. Raspakujte svaku ZIP datoteku u ISTU fasciklu\n4. Sve datoteke će se spojiti u ispravnu strukturu direktorijuma\n5. Otvorite index.html da biste videli veb lokaciju\n\nOvo je Deo {{part}} od {{total}}\n",
+      "partMarkerContent": "Ovo je deo {{part}} od {{total}}",
+      "completeArchive": "Kompletna arhiva",
+      "partDescription": "Deo {{number}}"
     }
   }
 }

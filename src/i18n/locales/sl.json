@@ -11,7 +11,10 @@
       "networkCheckFailed": "Preverjanje omrežne povezljivosti ni uspelo - prenos se nadaljuje",
       "noUrl": "Napaka: Za prenos ni naveden URL",
       "downloadInProgress": "Prenos že poteka. Prosimo, počakajte.",
-      "memoryPressure": "Prenosa ni mogoče začeti zaradi kritičnega pomanjkanja pomnilnika. Poskusite znova pozneje."
+      "memoryPressure": "Prenosa ni mogoče začeti zaradi kritičnega pomanjkanja pomnilnika. Poskusite znova pozneje.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Neveljaven ID zavihka",
+      "maxScrollAttempts": "Doseženo največje število poskusov drsenja"
     },
     "filter": {
       "title": "Filtrirajte, kaj želite prenesti",
@@ -39,13 +42,20 @@
       "error": "Napaka",
       "configuration": "Konfiguracija",
       "singleFileDescription": "Najbolje za preprosto arhiviranje",
-      "zipDescription": "Shrani celotno strukturo strani kot ZIP arhiv"
+      "zipDescription": "Shrani celotno strukturo strani kot ZIP arhiv",
+      "fullScraping": "Popolno strganje (vključuje vsa sredstva)",
+      "fullScrapingInfo": "Odpre povezane strani zaporedno v tem zavihku za zajem dinamične vsebine in sredstev. Videli boste nalaganje vsake strani med postopkom.",
+      "maxPages": "Maks. strani za strganje",
+      "pageDelay": "Zakasnitev med stranmi",
+      "includeExternal": "Vključi zunanje povezave"
     },
     "actions": {
       "title": "Dejanja:",
       "stop": "Ustavi",
       "showInFolder": "Prikaži v mapi",
-      "downloadAnother": "Prenesi drugo"
+      "downloadAnother": "Prenesi drugo",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Čakanje na povezavo...",
@@ -119,7 +129,28 @@
       "done": "Končano!",
       "packing": "Pakiranje...",
       "downloading": "Prenašanje...",
-      "ready": "Pripravljen"
+      "ready": "Pripravljen",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Zahtevaj funkcijo",
       "description": "Imate idejo za izboljšavo te razširitve?",
       "submit": "Pošlji zahtevo"
+    },
+    "generated": {
+      "readme": "VEČDELNI PRENOS\n===================\nTo spletno mesto je bilo razdeljeno na {{total}} delov za prenos.\n\nNAVODILA ZA IZVLEČENJE:\n1. Prenesite vseh {{total}} delov (datoteke, ki se končajo na .zip)\n2. Ustvarite novo mapo za spletno mesto\n3. Izvlecite vsako datoteko ZIP v ISTO mapo\n4. Vse datoteke se bodo združile v pravilno strukturo imenikov\n5. Odprite index.html za ogled spletnega mesta\n\nTo je Del {{part}} od {{total}}\n",
+      "partMarkerContent": "To je del {{part}} od {{total}}",
+      "completeArchive": "Popoln arhiv",
+      "partDescription": "Del {{number}}"
     }
   }
 }

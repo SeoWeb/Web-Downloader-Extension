@@ -134,7 +134,7 @@ export async function addHtmlFiles(
               console.warn(
                 `HTML content too large: ${link} (${inputHtml.length} bytes)`,
               );
-              sendMessage(`Skipping HTML due to size limit: ${link}`);
+              sendMessage({ key: "status.skippingHtmlSizeLimit", options: { link } });
               skippedCount++;
               resolve(link);
               return;
@@ -144,7 +144,7 @@ export async function addHtmlFiles(
             const filename = new URL(fullHtmlUrl, baseUrl).pathname.split("/").pop();
             if (!filename?.length) {
               console.warn(`Could not determine filename for HTML: ${fullHtmlUrl}`);
-              sendMessage(`Could not determine filename for: ${link}`);
+              sendMessage({ key: "status.htmlFilenameError", options: { link } });
               failCount++;
               resolve(link);
               return;

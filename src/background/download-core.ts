@@ -85,7 +85,7 @@ export async function downloadResources(
       error instanceof Error ? error.message : "Unknown error";
     
     // Categorize error for better user feedback
-    let userFriendlyMessage = `Download failed: ${errorMessage}`;
+    let userFriendlyMessage: string | { key: string; options?: any } = { key: "status.failedWithError", options: { error: errorMessage } };
     let isMemoryError = false;
 
     if (
@@ -95,14 +95,14 @@ export async function downloadResources(
       errorMessage.includes("quota")
     ) {
       isMemoryError = true;
-      userFriendlyMessage = "Download failed due to memory limits. Attempting cleanup...";
+      userFriendlyMessage = { key: "status.memoryLimitError" };
     } else if (
       errorMessage.includes("network") ||
       errorMessage.includes("fetch") ||
       errorMessage.includes("connection") ||
       errorMessage.includes("offline")
     ) {
-      userFriendlyMessage = "Download failed due to network issues. Please check your connection.";
+      userFriendlyMessage = { key: "status.networkError" };
     }
 
     sendMessage(userFriendlyMessage);
@@ -110,9 +110,7 @@ export async function downloadResources(
     // If it's a memory-related error, perform cleanup
     if (isMemoryError) {
       await memoryManager.forceCleanup();
-      sendMessage(
-        "Memory cleanup performed. Please try downloading again with fewer options selected.",
-      );
+      sendMessage({ key: "status.memoryCleanupPerformed" });
     }
   } finally {
     // Always reset the flag when done and cleanup
@@ -251,16 +249,16 @@ async function executeDownload(
           const finalHtml = finalizeResult.html;
           if (finalHtml) {
             await addIndexHtml(finalHtml, storage, tabUrl);
-            sendMessage("HTML content assembled and added to download");
+            sendMessage({ key: "status.htmlAssembled" });
           } else if (finalizeResult.blob) {
             // Handle blob case for large files
             await addIndexHtmlFromBlob(finalizeResult.blob, storage);
-            sendMessage("Large HTML content processed and added to download");
+            sendMessage({ key: "status.largeHtmlAssembled" });
           }
         }
       } catch (error) {
         console.error("Error during incremental HTML assembly:", error);
-        sendMessage("Error during HTML assembly, falling back to regular processing");
+        sendMessage({ key: "status.htmlAssemblyError" });
         await processRegularHtml(html, storage, tabUrl, sendMessage);
       }
     } else {
@@ -357,7 +355,7 @@ async function executeDownload(
       if (USE_INDEXEDDB) {
         // Stream-based Split Zip Generation
         sendMessage({ key: "status.creatingPackage" });
-        sendMessage(`Generating split zip archive...`);
+        sendMessage({ key: "status.generatingSplitZip" });
 
         // const { SplitZipGenerator } = await import("./zip-stream-splitter"); // Dynamic import removed
         const zip = new JSZip();
@@ -385,7 +383,7 @@ async function executeDownload(
           // Pause if memory pressure is critical
           if (memoryStats.memoryPressureLevel === MemoryPressureLevel.CRITICAL) {
             console.warn(`Critical memory pressure detected before part ${partNumber}, waiting for cleanup...`);
-            sendMessage(`Waiting for memory cleanup before part ${partNumber}...`);
+            sendMessage({ key: "status.waitingForCleanup", options: { part: partNumber } });
             
             // Wait for memory to stabilize
             await new Promise(resolve => setTimeout(resolve, 5000));
@@ -396,7 +394,7 @@ async function executeDownload(
             }
           }
 
-          sendMessage(`Downloading part ${partNumber}/${totalParts}`);
+          sendMessage({ key: "status.downloadingPart", options: { part: partNumber, total: totalParts } });
           
           let partFilename: string;
           const nameWithoutExt = zipFilenameFinal.replace(/\.zip$/i, '');
@@ -493,7 +491,7 @@ async function executeDownload(
         // Start generation
         await generator.start();
         
-        sendMessage("Download complete! Open the .zip file to extract the whole website.");
+        sendMessage({ key: "status.downloadCompleteZipInstruction" });
         sendMessage({ key: "status.complete" });
 
         blob = undefined; // Handled
@@ -533,7 +531,8 @@ async function executeDownload(
     const errorMessage =
       error instanceof Error
         ? error.message
-        : "Failed to create download package";
+        : { key: "status.packCreationError" };
+    // @ts-ignore - sendMessage accepts object but TS might benefit from explicit cast/check if needed, but signature matches
     sendMessage(errorMessage);
     throw error; // Re-throw to allow calling code to handle the error
   } finally {

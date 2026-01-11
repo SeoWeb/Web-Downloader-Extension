@@ -11,7 +11,10 @@
       "networkCheckFailed": "Verificarea conexiunii la rețea a eșuat - se continuă descărcarea",
       "noUrl": "Eroare: Niciun URL furnizat pentru descărcare",
       "downloadInProgress": "O descărcare este deja în curs. Vă rugăm să așteptați.",
-      "memoryPressure": "Nu se poate începe descărcarea din cauza presiunii critice asupra memoriei. Vă rugăm să încercați din nou mai târziu."
+      "memoryPressure": "Nu se poate începe descărcarea din cauza presiunii critice asupra memoriei. Vă rugăm să încercați din nou mai târziu.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "ID filă nevalid",
+      "maxScrollAttempts": "Numărul maxim de încercări de defilare a fost atins"
     },
     "filter": {
       "title": "Filtrează ce vrei să descarci",
@@ -39,13 +42,20 @@
       "error": "Eroare",
       "configuration": "Configurație",
       "singleFileDescription": "Cel mai bun pentru arhivare simplă",
-      "zipDescription": "Salvează structura completă a paginii ca arhivă ZIP"
+      "zipDescription": "Salvează structura completă a paginii ca arhivă ZIP",
+      "fullScraping": "Răzuire completă (include toate resursele)",
+      "fullScrapingInfo": "Deschide paginile legate secvențial în această filă pentru a captura conținut dinamic și resurse. Veți vedea fiecare pagină încărcându-se în timpul procesului.",
+      "maxPages": "Max pagini de răzuit",
+      "pageDelay": "Întârziere între pagini",
+      "includeExternal": "Include linkuri externe"
     },
     "actions": {
       "title": "Acțiuni:",
       "stop": "Oprește",
       "showInFolder": "Arată în dosar",
-      "downloadAnother": "Descarcă altul"
+      "downloadAnother": "Descarcă altul",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Așteptare conexiune...",
@@ -119,7 +129,28 @@
       "done": "Gata!",
       "packing": "Se împachetează...",
       "downloading": "Se descarcă...",
-      "ready": "Pregătit"
+      "ready": "Pregătit",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Solicită o Funcționalitate",
       "description": "Ai o idee pentru a îmbunătăți această extensie?",
       "submit": "Trimite Solicitare"
+    },
+    "generated": {
+      "readme": "DESCĂRCARE MULTI-PARTE\n===================\nAcest site web a fost împărțit în {{total}} părți pentru descărcare.\n\nINSTRUCȚIUNI DE EXTRAGERE:\n1. Descărcați toate cele {{total}} părți (fișiere care se termină în .zip)\n2. Creați un folder nou pentru site-ul web\n3. Extrageți fiecare fișier ZIP în ACELAȘI folder\n4. Toate fișierele se vor îmbina în structura corectă a directoarelor\n5. Deschideți index.html pentru a vizualiza site-ul web\n\nAceasta este Partea {{part}} din {{total}}\n",
+      "partMarkerContent": "Aceasta este partea {{part}} din {{total}}",
+      "completeArchive": "Arhivă completă",
+      "partDescription": "Partea {{number}}"
     }
   }
 }

@@ -11,7 +11,10 @@
       "networkCheckFailed": "ネットワーク接続チェックに失敗しました - ダウンロードを続行します",
       "noUrl": "エラー: ダウンロード用の URL が提供されていません",
       "downloadInProgress": "ダウンロードはすでに進行中です。お待ちください。",
-      "memoryPressure": "重大なメモリ不足のため、ダウンロードを開始できません。後でもう一度お試しください。"
+      "memoryPressure": "重大なメモリ不足のため、ダウンロードを開始できません。後でもう一度お試しください。",
+      "unknownError": "Unknown error",
+      "invalidTabId": "無効なタブID",
+      "maxScrollAttempts": "最大スクロール試行回数に達しました"
     },
     "filter": {
       "title": "ダウンロードしたい内容をフィルタリング",
@@ -39,13 +42,20 @@
       "error": "エラー",
       "configuration": "設定",
       "singleFileDescription": "単純なアーカイブに最適",
-      "zipDescription": "ページ構造全体をZIPアーカイブとして保存"
+      "zipDescription": "ページ構造全体をZIPアーカイブとして保存",
+      "fullScraping": "完全スクレイピング（全アセットを含む）",
+      "fullScrapingInfo": "動的なコンテンツとアセットをキャプチャするために、このタブでリンク先ページを順次開きます。プロセス中に各ページが読み込まれるのが見えます。",
+      "maxPages": "最大スクレイピングページ数",
+      "pageDelay": "ページ間の遅延",
+      "includeExternal": "外部リンクを含める"
     },
     "actions": {
       "title": "アクション:",
       "stop": "停止",
       "showInFolder": "フォルダで表示",
-      "downloadAnother": "別をダウンロード"
+      "downloadAnother": "別をダウンロード",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "接続待機中...",
@@ -119,7 +129,28 @@
       "done": "完了！",
       "packing": "梱包中...",
       "downloading": "ダウンロード中...",
-      "ready": "準備完了"
+      "ready": "準備完了",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "機能をリクエスト",
       "description": "この拡張機能を改善するアイデアはありますか？",
       "submit": "リクエストを送信"
+    },
+    "generated": {
+      "readme": "分割ダウンロード\n===================\nこのウェブサイトはダウンロードのために{{total}}個のパートに分割されています。\n\n解凍手順：\n1. すべての{{total}}個のパート（.zipで終わるファイル）をダウンロードします\n2. ウェブサイト用の新しいフォルダを作成します\n3. 各ZIPファイルを「同じ」フォルダに解凍します\n4. すべてのファイルが正しいディレクトリ構造に統合されます\n5. index.htmlを開いてウェブサイトを表示します\n\nこれはパート {{part}} / {{total}} です\n",
+      "partMarkerContent": "これはパート {{part}} / {{total}} です",
+      "completeArchive": "完全なアーカイブ",
+      "partDescription": "パート {{number}}"
     }
   }
 }

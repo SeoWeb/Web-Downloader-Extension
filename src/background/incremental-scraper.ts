@@ -1,6 +1,7 @@
 import { ScrapingQueueManager } from './storage/scraping-queue';
 import { FileStore } from './storage/file-store';
 import { SessionManager } from './storage/session-manager';
+import i18n from '../i18n/config';
 
 export class IncrementalScraper {
   private sessionId: string;
@@ -95,7 +96,7 @@ export class IncrementalScraper {
         
       } catch (error) {
         console.error(`Failed to scrape ${item.url}:`, error);
-        await ScrapingQueueManager.markFailed(item.id, error instanceof Error ? error.message : 'Unknown error');
+        await ScrapingQueueManager.markFailed(item.id, error instanceof Error ? error.message : i18n.t('app.unknownError'));
       }
     }
 

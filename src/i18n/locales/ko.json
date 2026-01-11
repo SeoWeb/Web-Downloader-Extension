@@ -11,7 +11,10 @@
       "networkCheckFailed": "네트워크 연결 확인 실패 - 다운로드 계속 진행",
       "noUrl": "오류: 다운로드할 URL이 제공되지 않았습니다",
       "downloadInProgress": "다운로드가 이미 진행 중입니다. 잠시 기다려 주십시오.",
-      "memoryPressure": "치명적인 메모리 부족으로 인해 다운로드를 시작할 수 없습니다. 나중에 다시 시도하십시오."
+      "memoryPressure": "치명적인 메모리 부족으로 인해 다운로드를 시작할 수 없습니다. 나중에 다시 시도하십시오.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "유효하지 않은 탭 ID",
+      "maxScrollAttempts": "최대 스크롤 시도 횟수 도달"
     },
     "filter": {
       "title": "다운로드할 항목 필터링",
@@ -39,13 +42,20 @@
       "error": "오류",
       "configuration": "구성",
       "singleFileDescription": "단순 보관에 최적",
-      "zipDescription": "전체 페이지 구조를 ZIP 아카이브로 저장"
+      "zipDescription": "전체 페이지 구조를 ZIP 아카이브로 저장",
+      "fullScraping": "전체 스크래핑 (모든 리소스 포함)",
+      "fullScrapingInfo": "동적 콘텐츠와 리소스를 캡처하기 위해 이 탭에서 링크된 페이지를 순차적으로 엽니다. 과정 중에 각 페이지가 로드되는 것을 볼 수 있습니다.",
+      "maxPages": "최대 스크래핑 페이지",
+      "pageDelay": "페이지 간 지연",
+      "includeExternal": "외부 링크 포함"
     },
     "actions": {
       "title": "작업:",
       "stop": "중지",
       "showInFolder": "폴더에서 보기",
-      "downloadAnother": "다른 것 다운로드"
+      "downloadAnother": "다른 것 다운로드",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "연결 대기 중...",
@@ -119,7 +129,28 @@
       "done": "완료!",
       "packing": "포장 중...",
       "downloading": "다운로드 중...",
-      "ready": "준비"
+      "ready": "준비",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "기능 요청",
       "description": "이 확장 프로그램을 개선할 아이디어가 있으신가요?",
       "submit": "요청 제출"
+    },
+    "generated": {
+      "readme": "다중 파트 다운로드\n===================\n이 웹사이트는 다운로드를 위해 {{total}}개의 파트로 분할되었습니다.\n\n압축 해제 지침:\n1. 모든 {{total}}개 파트(.zip으로 끝나는 파일)를 다운로드하십시오\n2. 웹사이트를 위한 새 폴더를 만드십시오\n3. 각 ZIP 파일을 '동일한' 폴더에 압축 해제하십시오\n4. 모든 파일이 올바른 디렉토리 구조로 병합됩니다\n5. index.html을 열어 웹사이트를 확인하십시오\n\n이것은 {{total}} 중 파트 {{part}}입니다\n",
+      "partMarkerContent": "이것은 {{total}} 중 파트 {{part}}입니다",
+      "completeArchive": "전체 아카이브",
+      "partDescription": "파트 {{number}}"
     }
   }
 }

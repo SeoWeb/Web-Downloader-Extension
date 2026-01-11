@@ -11,7 +11,10 @@
       "networkCheckFailed": "בדיקת קישוריות רשת נכשלה - ממשיך בהורדה",
       "noUrl": "שגיאה: לא סופק כתובת URL להורדה",
       "downloadInProgress": "הורדה כבר מתבצעת. אנא המתן.",
-      "memoryPressure": "לא ניתן להתחיל בהורדה עקב לחץ זיכרון קריטי. נסה שוב מאוחר יותר."
+      "memoryPressure": "לא ניתן להתחיל בהורדה עקב לחץ זיכרון קריטי. נסה שוב מאוחר יותר.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "מזהה כרטיסייה לא חוקי",
+      "maxScrollAttempts": "הגעת למספר המרבי של ניסיונות גלילה"
     },
     "filter": {
       "title": "סנן את מה שברצונך להוריד",
@@ -39,13 +42,20 @@
       "error": "שגיאה",
       "configuration": "תצורה",
       "singleFileDescription": "הכי טוב לארכיון פשוט",
-      "zipDescription": "שומר את מבנה הדף המלא כארכיון ZIP"
+      "zipDescription": "שומר את מבנה הדף המלא כארכיון ZIP",
+      "fullScraping": "גירוד מלא (כולל את כל הנכסים)",
+      "fullScrapingInfo": "פותח דפים מקושרים ברצף בכרטיסייה זו כדי ללכוד תוכן דינמי ונכסים. תראה כל דף נטען במהלך התהליך.",
+      "maxPages": "מקסימום דפים לגירוד",
+      "pageDelay": "השהייה בין דפים",
+      "includeExternal": "כלול קישורים חיצוניים"
     },
     "actions": {
       "title": "פעולות:",
       "stop": "עצור",
       "showInFolder": "הצג בתיקייה",
-      "downloadAnother": "הורד עוד אחד"
+      "downloadAnother": "הורד עוד אחד",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "ממתין לחיבור...",
@@ -119,7 +129,28 @@
       "done": "בוצע!",
       "packing": "אורז...",
       "downloading": "מוריד...",
-      "ready": "מוכן"
+      "ready": "מוכן",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "בקש תכונה",
       "description": "יש לך רעיון לשפר את ההרחבה הזו?",
       "submit": "שלח בקשה"
+    },
+    "generated": {
+      "readme": "הורדה מרובת חלקים\n===================\nאתר זה פוצל ל-{{total}} חלקים להורדה.\n\nהוראות חילוץ:\n1. הורד את כל {{total}} החלקים (קבצים המסתיימים ב-.zip)\n2. צור תיקייה חדשה לאתר\n3. חילץ כל קובץ ZIP לאותה תיקייה\n4. כל הקבצים יתמזגו למבנה הספרייה הנכון\n5. פתח את index.html כדי לצפות באתר\n\nזהו חלק {{part}} מתוך {{total}}\n",
+      "partMarkerContent": "זהו חלק {{part}} מתוך {{total}}",
+      "completeArchive": "ארכיון מלא",
+      "partDescription": "חלק {{number}}"
     }
   }
 }

@@ -127,7 +127,7 @@ export default function SidePanel() {
           // Reset messages to connected status with error message
           setMessages([
             { key: "status.connected" },
-            `Download failed: ${data.error || "Unknown error"}`,
+            { key: "status.failedWithError", options: { error: data.error || t("app.unknownError") } },
           ]);
           setIsScraping(false);
           setAction(null);

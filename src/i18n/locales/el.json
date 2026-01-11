@@ -11,7 +11,10 @@
       "networkCheckFailed": "Ο έλεγχος σύνδεσης δικτύου απέτυχε - συνέχεια με τη λήψη",
       "noUrl": "Σφάλμα: Δεν παρέχεται URL για λήψη",
       "downloadInProgress": "Μια λήψη βρίσκεται ήδη σε εξέλιξη. Παρακαλώ περιμένετε.",
-      "memoryPressure": "Αδυναμία έναρξης λήψης λόγω κρίσιμης πίεσης μνήμης. Δοκιμάστε ξανά αργότερα."
+      "memoryPressure": "Αδυναμία έναρξης λήψης λόγω κρίσιμης πίεσης μνήμης. Δοκιμάστε ξανά αργότερα.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Μη έγκυρο ID καρτέλας",
+      "maxScrollAttempts": "Συμπληρώθηκε ο μέγιστος αριθμός προσπαθειών κύλισης"
     },
     "filter": {
       "title": "Φιλτράρετε τι θέλετε να κατεβάσετε",
@@ -39,13 +42,20 @@
       "error": "Σφάλμα",
       "configuration": "Διαμόρφωση",
       "singleFileDescription": "Καλύτερο για απλή αρχειοθέτηση",
-      "zipDescription": "Αποθηκεύει την πλήρη δομή της σελίδας ως αρχείο ZIP"
+      "zipDescription": "Αποθηκεύει την πλήρη δομή της σελίδας ως αρχείο ZIP",
+      "fullScraping": "Πλήρης απόξεση (συμπεριλαμβανομένων όλων των πόρων)",
+      "fullScrapingInfo": "Ανοίγει τις συνδεδεμένες σελίδες διαδοχικά σε αυτήν την καρτέλα για τη λήψη δυναμικού περιεχομένου και πόρων. Θα δείτε κάθε σελίδα να φορτώνει κατά τη διάρκεια της διαδικασίας.",
+      "maxPages": "Μέγιστες σελίδες για απόξεση",
+      "pageDelay": "Καθυστέρηση μεταξύ σελίδων",
+      "includeExternal": "Συμπερίληψη εξωτερικών συνδέσμων"
     },
     "actions": {
       "title": "Ενέργειες:",
       "stop": "Διακοπή",
       "showInFolder": "Εμφάνιση στο φάκελο",
-      "downloadAnother": "Λήψη άλλου"
+      "downloadAnother": "Λήψη άλλου",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Αναμονή σύνδεσης...",
@@ -119,7 +129,28 @@
       "done": "Ολοκληρώθηκε!",
       "packing": "Συσκευασία...",
       "downloading": "Λήψη...",
-      "ready": "Έτοιμο"
+      "ready": "Έτοιμο",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Αίτημα για Λειτουργία",
       "description": "Έχετε κάποια ιδέα για τη βελτίωση αυτής της επέκτασης;",
       "submit": "Υποβολή Αιτήματος"
+    },
+    "generated": {
+      "readme": "ΠΟΛΥΜΕΡΗΣ ΛΗΨΗ\n===================\nΑυτός ο ιστότοπος έχει χωριστεί σε {{total}} μέρη για λήψη.\n\nΟΔΗΓΙΕΣ ΕΞΑΓΩΓΗΣ:\n1. Κατεβάστε και τα {{total}} μέρη (αρχεία που λήγουν σε .zip)\n2. Δημιουργήστε έναν νέο φάκελο για τον ιστότοπο\n3. Εξάγετε κάθε αρχείο ZIP στον ΙΔΙΟ φάκελο\n4. Όλα τα αρχεία θα συγχωνευθούν στη σωστή δομή καταλόγου\n5. Ανοίξτε το index.html για να δείτε τον ιστότοπο\n\nΑυτό είναι το Μέρος {{part}} από {{total}}\n",
+      "partMarkerContent": "Αυτό είναι το μέρος {{part}} από {{total}}",
+      "completeArchive": "Πλήρες αρχείο",
+      "partDescription": "Μέρος {{number}}"
     }
   }
 }

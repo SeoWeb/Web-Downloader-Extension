@@ -56,7 +56,7 @@ export async function downloadResourcesWithStreaming(
       await downloadResources(html, tabUrl, downloadOptions, sendMessage, undefined, tabId);
     } catch (fallbackError) {
       console.error("Fallback download also failed:", fallbackError);
-      sendMessage(`Download failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
+      sendMessage({ key: "status.failedWithError", options: { error: fallbackError instanceof Error ? fallbackError.message : 'Unknown error' } });
     }
   } finally {
     await setDownloadInProgress(false);
@@ -122,7 +122,7 @@ async function executeStreamingDownload(
 
   // Download CSS files with streaming
   if (downloadOptions.downloadAssets && data.css.length > 0) {
-    sendMessage(`Processing ${data.css.length} CSS files`);
+    sendMessage({ key: "status.processingCssCount", options: { count: data.css.length } });
 
     for (let i = 0; i < data.css.length; i++) {
       const cssUrl = data.css[i];
@@ -132,7 +132,7 @@ async function executeStreamingDownload(
         const shouldStream = streamingDownloader.shouldUseStreaming(cssUrl);
 
         if (shouldStream) {
-          sendMessage(`Starting streaming download for CSS: ${i + 1}/${data.css.length}`);
+          sendMessage({ key: "status.streamingCss", options: { current: i + 1, total: data.css.length } });
           const download = await streamingDownloader.startDownload(cssUrl, {
             chunkSize: 512 * 1024, // 512KB chunks for CSS
             maxParallelChunks: 2,
@@ -156,7 +156,7 @@ async function executeStreamingDownload(
 
   // Download JavaScript files with streaming
   if (downloadOptions.downloadAssets && data.js.length > 0) {
-    sendMessage(`Processing ${data.js.length} JS files`);
+    sendMessage({ key: "status.processingJsCount", options: { count: data.js.length } });
 
     for (let i = 0; i < data.js.length; i++) {
       const jsUrl = data.js[i];
@@ -166,7 +166,7 @@ async function executeStreamingDownload(
         const shouldStream = streamingDownloader.shouldUseStreaming(jsUrl);
 
         if (shouldStream) {
-          sendMessage(`Starting streaming download for JS: ${i + 1}/${data.js.length}`);
+          sendMessage({ key: "status.streamingJs", options: { current: i + 1, total: data.js.length } });
           const download = await streamingDownloader.startDownload(jsUrl, {
             chunkSize: 512 * 1024, // 512KB chunks for JS
             maxParallelChunks: 2,

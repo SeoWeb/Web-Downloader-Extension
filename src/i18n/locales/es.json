@@ -11,7 +11,10 @@
       "networkCheckFailed": "Falló la verificación de conectividad de red: continuando con la descarga",
       "noUrl": "Error: no se proporcionó URL para descargar",
       "downloadInProgress": "Ya hay una descarga en curso. Espere por favor.",
-      "memoryPressure": "No se puede iniciar la descarga debido a la presión crítica de la memoria. Inténtelo de nuevo más tarde."
+      "memoryPressure": "No se puede iniciar la descarga debido a la presión crítica de la memoria. Inténtelo de nuevo más tarde.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "ID de pestaña no válido",
+      "maxScrollAttempts": "Se alcanzó el número máximo de intentos de desplazamiento"
     },
     "filter": {
       "title": "Filtra lo que quieres descargar",
@@ -39,13 +42,20 @@
       "error": "¡Error!",
       "configuration": "Configuración",
       "singleFileDescription": "Mejor para archivado simple",
-      "zipDescription": "Guarda la estructura completa de la página como un archivo ZIP"
+      "zipDescription": "Guarda la estructura completa de la página como un archivo ZIP",
+      "fullScraping": "Scraping completo (incluye todos los recursos)",
+      "fullScrapingInfo": "Abre las páginas vinculadas secuencialmente en esta pestaña para capturar contenido dinámico y recursos. Verás cargar cada página durante el proceso.",
+      "maxPages": "Máximo de páginas a extraer",
+      "pageDelay": "Retraso entre páginas",
+      "includeExternal": "Incluir enlaces externos"
     },
     "actions": {
       "title": "Acciones:",
       "stop": "Detener",
       "showInFolder": "Mostrar en carpeta",
-      "downloadAnother": "Descargar otro"
+      "downloadAnother": "Descargar otro",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Esperando conexión...",
@@ -119,7 +129,28 @@
       "done": "¡Hecho!",
       "packing": "Empaquetando...",
       "downloading": "Descargando...",
-      "ready": "Listo"
+      "ready": "Listo",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Solicitar una Función",
       "description": "¿Tienes una idea para mejorar esta extensión?",
       "submit": "Enviar Solicitud"
+    },
+    "generated": {
+      "readme": "DESCARGA DE MÚLTIPLES PARTES\n===================\nEste sitio web se ha dividido en {{total}} partes para su descarga.\n\nINSTRUCCIONES DE EXTRACCIÓN:\n1. Descargue todas las {{total}} partes (archivos que terminan en .zip)\n2. Cree una nueva carpeta para el sitio web\n3. Extraiga cada archivo ZIP en la MISMA carpeta\n4. Todos los archivos se combinarán en la estructura de directorios correcta\n5. Abra index.html para ver el sitio web\n\nEsta es la Parte {{part}} de {{total}}\n",
+      "partMarkerContent": "Esta es la parte {{part}} de {{total}}",
+      "completeArchive": "Archivo completo",
+      "partDescription": "Parte {{number}}"
     }
   }
 }

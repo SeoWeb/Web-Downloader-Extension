@@ -65,11 +65,11 @@ export function DownloadStatus({
         <div className="flex gap-2">
           {isPaused ? (
             <Button onClick={handleResume} variant={"secondary"}>
-              {t('actions.resume') || "Resume"}
+              {t('actions.resume')}
             </Button>
           ) : (
             <Button onClick={handlePause} variant={"secondary"}>
-              {t('actions.pause') || "Pause"}
+              {t('actions.pause')}
             </Button>
           )}
           <Button onClick={handleStop} variant={"secondary"}>

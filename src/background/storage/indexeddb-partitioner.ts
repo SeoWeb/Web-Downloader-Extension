@@ -1,4 +1,5 @@
 import { FileStore } from './file-store';
+import i18n from '../../i18n/config';
 
 export interface FilePartitionMetadata {
   partNumber: number;
@@ -26,7 +27,7 @@ export async function partitionIndexedDBFiles(
       partNumber: 1,
       fileIds: files.map(f => f.id),
       estimatedSize: totalSize,
-      description: 'Complete archive'
+      description: i18n.t('generated.completeArchive')
     }];
   }
   
@@ -38,7 +39,7 @@ export async function partitionIndexedDBFiles(
     partNumber: 1,
     fileIds: [],
     estimatedSize: 0,
-    description: 'Part 1'
+    description: i18n.t('generated.partDescription', { number: 1 })
   };
   
   for (const file of files) {
@@ -52,7 +53,7 @@ export async function partitionIndexedDBFiles(
         partNumber: partitions.length + 1,
         fileIds: [],
         estimatedSize: 0,
-        description: `Part ${partitions.length + 1}`
+        description: i18n.t('generated.partDescription', { number: partitions.length + 1 })
       };
     }
     

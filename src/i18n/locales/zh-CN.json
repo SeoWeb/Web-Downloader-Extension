@@ -11,7 +11,10 @@
       "networkCheckFailed": "网络连接检查失败 - 继续下载",
       "noUrl": "错误：未提供下载 URL",
       "downloadInProgress": "下载已在进行中。请稍候。",
-      "memoryPressure": "由于内存严重不足，无法开始下载。请稍后再试。"
+      "memoryPressure": "由于内存严重不足，无法开始下载。请稍后再试。",
+      "unknownError": "Unknown error",
+      "invalidTabId": "无效的标签 ID",
+      "maxScrollAttempts": "已达到最大滚动尝试次数"
     },
     "filter": {
       "title": "筛选您要下载的内容",
@@ -39,13 +42,20 @@
       "error": "错误",
       "configuration": "配置",
       "singleFileDescription": "最适合简单归档",
-      "zipDescription": "将整个页面结构保存为 ZIP 归档"
+      "zipDescription": "将整个页面结构保存为 ZIP 归档",
+      "fullScraping": "全量抓取（包含所有资源）",
+      "fullScrapingInfo": "在此标签页中按顺序打开链接的页面，以捕获动态内容和资源。过程中您会看到每个页面加载。",
+      "maxPages": "最大抓取页数",
+      "pageDelay": "页面间延迟",
+      "includeExternal": "包含外部链接"
     },
     "actions": {
       "title": "操作：",
       "stop": "停止",
       "showInFolder": "在文件夹中显示",
-      "downloadAnother": "下载另一个"
+      "downloadAnother": "下载另一个",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "等待连接...",
@@ -119,7 +129,28 @@
       "done": "完成！",
       "packing": "打包中...",
       "downloading": "下载中...",
-      "ready": "就绪"
+      "ready": "就绪",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "请求功能",
       "description": "有改进此扩展程序的想法吗？",
       "submit": "提交请求"
+    },
+    "generated": {
+      "readme": "多部分下载\n===================\n该网站已分为 {{total}} 部分供下载。\n\n解压说明：\n1. 下载所有 {{total}} 个部分（以 .zip 结尾的文件）\n2. 为网站创建一个新文件夹\n3. 将每个 ZIP 文件解压到同一个文件夹中\n4. 所有文件将合并到正确的目录结构中\n5. 打开 index.html 查看网站\n\n这是第 {{part}} 部分，共 {{total}} 部分\n",
+      "partMarkerContent": "这是第 {{part}} 部分，共 {{total}} 部分",
+      "completeArchive": "完整归档",
+      "partDescription": "第 {{number}} 部分"
     }
   }
 }

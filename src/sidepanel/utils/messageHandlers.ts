@@ -4,7 +4,7 @@ import { DownloadOptions } from "../hooks/useScrapingDownloader";
 
 export async function handleStartScroll(
   tabId: number,
-  setMessages: (message: string) => void,
+  setMessages: (message: any) => void,
   setIsScraping: (value: boolean) => void,
 ): Promise<{ height?: number; html?: string; top?: number } | undefined> {
   try {
@@ -17,7 +17,7 @@ export async function handleStartScroll(
     return response;
   } catch (error) {
     console.error("Scroll failed:", error);
-    setMessages("Failed to start scrolling");
+    setMessages({ key: "status.failedToStartScrolling" });
     setIsScraping(false);
     return undefined;
   }
@@ -28,7 +28,7 @@ export async function handleStartDownload(
   html: string,
   tabUrl: string,
   downloadOptions: DownloadOptions | null,
-  setMessages: (message: string) => void,
+  setMessages: (message: any) => void,
 ): Promise<string[] | undefined> {
   try {
     const addMessage = (message: string) => {
@@ -47,7 +47,7 @@ export async function handleStartDownload(
     return response;
   } catch (error) {
     console.error("Download failed:", error);
-    setMessages("Download failed");
+    setMessages({ key: "status.failed" });
     return undefined;
   }
 }

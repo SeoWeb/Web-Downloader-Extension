@@ -11,7 +11,10 @@
       "networkCheckFailed": "Tīkla savienojamības pārbaude neizdevās - lejupielāde turpinās",
       "noUrl": "Kļūda: Lejupielādei nav norādīts URL",
       "downloadInProgress": "Lejupielāde jau notiek. Lūdzu, uzgaidiet.",
-      "memoryPressure": "Nevar sākt lejupielādi kritiskā atmiņas trūkuma dēļ. Lūdzu, mēģiniet vēlāk."
+      "memoryPressure": "Nevar sākt lejupielādi kritiskā atmiņas trūkuma dēļ. Lūdzu, mēģiniet vēlāk.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Nederīgs cilnes ID",
+      "maxScrollAttempts": "Sasniegts maksimālais ritināšanas mēģinājumu skaits"
     },
     "filter": {
       "title": "Filtrējiet to, ko vēlaties lejupielādēt",
@@ -39,13 +42,20 @@
       "error": "Kļūda",
       "configuration": "Konfigurācija",
       "singleFileDescription": "Vislabāk vienkāršai arhivēšanai",
-      "zipDescription": "Saglabā pilnu lapas struktūru kā ZIP arhīvu"
+      "zipDescription": "Saglabā pilnu lapas struktūru kā ZIP arhīvu",
+      "fullScraping": "Pilna skrāpēšana (ieskaitot visus aktīvus)",
+      "fullScrapingInfo": "Secīgi atver saistītās lapas šajā cilnē, lai tvertu dinamisku saturu un aktīvus. Procesa laikā redzēsiet katras lapas ielādi.",
+      "maxPages": "Maks. lapas skrāpēšanai",
+      "pageDelay": "Aizkave starp lapām",
+      "includeExternal": "Iekļaut ārējās saites"
     },
     "actions": {
       "title": "Darbības:",
       "stop": "Apturēt",
       "showInFolder": "Rādīt mapē",
-      "downloadAnother": "Lejupielādēt citu"
+      "downloadAnother": "Lejupielādēt citu",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Gaida savienojumu...",
@@ -119,7 +129,28 @@
       "done": "Gatavs!",
       "packing": "Pakošana...",
       "downloading": "Lejupielāde...",
-      "ready": "Gatavs"
+      "ready": "Gatavs",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Pieprasīt funkciju",
       "description": "Vai jums ir ideja, kā uzlabot šo paplašinājumu?",
       "submit": "Iesniegt pieprasījumu"
+    },
+    "generated": {
+      "readme": "VAIRĀKU DAĻU LEJUPIELĀDE\n===================\nŠī vietne ir sadalīta {{total}} daļās lejupielādei.\n\nIZVILKŠANAS INSTRUKCIJAS:\n1. Lejupielādējiet visas {{total}} daļas (failus, kas beidzas ar .zip)\n2. Izveidojiet jaunu mapi vietnei\n3. Izvelciet katru ZIP failu TAJĀ PAŠĀ mapē\n4. Visi faili tiks apvienoti pareizajā direktoriju struktūrā\n5. Atveriet index.html, lai apskatītu vietni\n\nŠī ir {{part}}. daļa no {{total}}\n",
+      "partMarkerContent": "Šī ir {{part}}. daļa no {{total}}",
+      "completeArchive": "Pilns arhīvs",
+      "partDescription": "{{number}}. daļa"
     }
   }
 }

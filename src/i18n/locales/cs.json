@@ -11,7 +11,10 @@
       "networkCheckFailed": "Kontrola připojení k síti selhala - stahování pokračuje",
       "noUrl": "Chyba: Nebyla poskytnuta žádná URL pro stažení",
       "downloadInProgress": "Stahování již probíhá. Čekejte prosím.",
-      "memoryPressure": "Nelze zahájit stahování kvůli kritickému nedostatku paměti. Zkuste to prosím později."
+      "memoryPressure": "Nelze zahájit stahování kvůli kritickému nedostatku paměti. Zkuste to prosím později.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Neplatné ID karty",
+      "maxScrollAttempts": "Dosaženo maximálního počtu pokusů o posouvání"
     },
     "filter": {
       "title": "Vyfiltrujte, co chcete stáhnout",
@@ -39,13 +42,20 @@
       "error": "Chyba",
       "configuration": "Konfigurace",
       "singleFileDescription": "Nejlepší pro jednoduchou archivaci",
-      "zipDescription": "Uloží kompletní strukturu stránky jako ZIP archiv"
+      "zipDescription": "Uloží kompletní strukturu stránky jako ZIP archiv",
+      "fullScraping": "Úplné stahování (včetně všech prostředků)",
+      "fullScrapingInfo": "Otevírá propojené stránky postupně v této kartě pro zachycení dynamického obsahu a prostředků. Uvidíte načítání každé stránky během procesu.",
+      "maxPages": "Max. stránek ke stažení",
+      "pageDelay": "Zpoždění mezi stránkami",
+      "includeExternal": "Zahrnout externí odkazy"
     },
     "actions": {
       "title": "Akce:",
       "stop": "Zastavit",
       "showInFolder": "Zobrazit ve složce",
-      "downloadAnother": "Stáhnout další"
+      "downloadAnother": "Stáhnout další",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Čekání na připojení...",
@@ -119,7 +129,28 @@
       "done": "Hotovo!",
       "packing": "Balení...",
       "downloading": "Stahování...",
-      "ready": "Připraveno"
+      "ready": "Připraveno",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Požádat o funkci",
       "description": "Máte nápad, jak vylepšit toto rozšíření?",
       "submit": "Odeslat žádost"
+    },
+    "generated": {
+      "readme": "VÍCEDÍLNÉ STAŽENÍ\n===================\nTato webová stránka byla rozdělena na {{total}} částí pro stažení.\n\nPOKYNY PRO EXTRAKCI:\n1. Stáhněte všechny {{total}} části (soubory končící na .zip)\n2. Vytvořte novou složku pro webovou stránku\n3. Extrahujte každý ZIP soubor do STEJNÉ složky\n4. Všechny soubory se sloučí do správné adresářové struktury\n5. Otevřete index.html pro zobrazení webové stránky\n\nToto je Část {{part}} z {{total}}\n",
+      "partMarkerContent": "Toto je část {{part}} z {{total}}",
+      "completeArchive": "Kompletní archiv",
+      "partDescription": "Část {{number}}"
     }
   }
 }

@@ -11,7 +11,10 @@
       "networkCheckFailed": "Ağ bağlantısı kontrolü başarısız oldu - indirme işlemine devam ediliyor",
       "noUrl": "Hata: İndirme için URL sağlanmadı",
       "downloadInProgress": "Bir indirme işlemi zaten devam ediyor. Lütfen bekleyin.",
-      "memoryPressure": "Kritik bellek baskısı nedeniyle indirme başlatılamıyor. Lütfen daha sonra tekrar deneyin."
+      "memoryPressure": "Kritik bellek baskısı nedeniyle indirme başlatılamıyor. Lütfen daha sonra tekrar deneyin.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Geçersiz sekme kimliği",
+      "maxScrollAttempts": "Maksimum kaydırma denemesine ulaşıldı"
     },
     "filter": {
       "title": "İndirmek istediklerinizi filtreleyin",
@@ -39,13 +42,20 @@
       "error": "Hata",
       "configuration": "Yapılandırma",
       "singleFileDescription": "Basit arşivleme için en iyisi",
-      "zipDescription": "Tam sayfa yapısını ZIP arşivi olarak kaydeder"
+      "zipDescription": "Tam sayfa yapısını ZIP arşivi olarak kaydeder",
+      "fullScraping": "Tam Kazıma (tüm varlıkları içerir)",
+      "fullScrapingInfo": "Dinamik içeriği ve varlıkları yakalamak için bağlantılı sayfaları bu sekmede sırayla açar. İşlem sırasında her sayfanın yüklendiğini göreceksiniz.",
+      "maxPages": "Kazınacak maksimum sayfa",
+      "pageDelay": "Sayfalar arası gecikme",
+      "includeExternal": "Harici bağlantıları dahil et"
     },
     "actions": {
       "title": "İşlemler:",
       "stop": "Durdur",
       "showInFolder": "Klasörde göster",
-      "downloadAnother": "Başka indir"
+      "downloadAnother": "Başka indir",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Bağlantı bekleniyor...",
@@ -119,7 +129,28 @@
       "done": "Bitti!",
       "packing": "Paketle",
       "downloading": "İndiriliyor...",
-      "ready": "Hazır"
+      "ready": "Hazır",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Bir Özellik İsteyin",
       "description": "Bu uzantıyı geliştirmek için bir fikriniz mi var?",
       "submit": "İsteği Gönder"
+    },
+    "generated": {
+      "readme": "ÇOK PARÇALI İNDİRME\n===================\nBu web sitesi indirme için {{total}} parçaya bölünmüştür.\n\nÇIKARMA TALİMATLARI:\n1. Tüm {{total}} parçayı indirin (.zip ile biten dosyalar)\n2. Web sitesi için yeni bir klasör oluşturun\n3. Her ZIP dosyasını AYNI klasöre çıkarın\n4. Tüm dosyalar doğru dizin yapısında birleşecektir\n5. Web sitesini görüntülemek için index.html dosyasını açın\n\nBu, {{total}} parçanın {{part}}. parçasıdır\n",
+      "partMarkerContent": "Bu, {{total}} parçanın {{part}}. parçasıdır",
+      "completeArchive": "Tam arşiv",
+      "partDescription": "Bölüm {{number}}"
     }
   }
 }

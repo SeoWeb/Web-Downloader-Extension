@@ -290,10 +290,10 @@ export default function Filter({
                         <div className="flex-1">
                           <label htmlFor="downloadLinksFullScraping" className="cursor-pointer">
                             <div className="text-sm font-medium text-blue-900">
-                              {t('filter.fullScraping') || 'Full Scraping (includes all assets)'}
+                              {t('filter.fullScraping')}
                             </div>
                             <div className="text-xs text-blue-600 mt-1">
-                              {t('filter.fullScrapingInfo') || 'Opens linked pages sequentially in this tab to capture dynamic content and assets. You\'ll see each page load during the process.'}
+                              {t('filter.fullScrapingInfo')}
                             </div>
                           </label>
                         </div>
@@ -305,7 +305,7 @@ export default function Filter({
                           {/* Max Pages */}
                           <div>
                             <label className="text-xs font-medium text-blue-900 block mb-1">
-                              {t('filter.maxPages') || 'Max pages to scrape'}: {options.linkedPagesMaxCount || 50}
+                              {t('filter.maxPages')}: {options.linkedPagesMaxCount || 50}
                             </label>
                             <input
                               type="range"
@@ -321,7 +321,7 @@ export default function Filter({
                           {/* Delay Between Pages */}
                           <div>
                             <label className="text-xs font-medium text-blue-900 block mb-1">
-                              {t('filter.pageDelay') || 'Delay between pages'}: {options.linkedPagesDelay || 500}ms
+                              {t('filter.pageDelay')}: {options.linkedPagesDelay || 500}ms
                             </label>
                             <input
                               type="range"
@@ -342,7 +342,7 @@ export default function Filter({
                               onCheckedChange={(c: any) => setLinkedPagesIncludeExternal(!!c)}
                             />
                             <label htmlFor="linkedPagesIncludeExternal" className="text-xs text-blue-900 cursor-pointer">
-                              {t('filter.includeExternal') || 'Include external links'}
+                              {t('filter.includeExternal')}
                             </label>
                           </div>
                         </div>

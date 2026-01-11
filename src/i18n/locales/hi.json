@@ -11,7 +11,10 @@
       "networkCheckFailed": "नेटवर्क कनेक्टिविटी जांच विफल - डाउनलोड जारी है",
       "noUrl": "त्रुटि: डाउनलोड के लिए कोई URL प्रदान नहीं किया गया",
       "downloadInProgress": "एक डाउनलोड पहले से ही प्रगति पर है। कृपया प्रतीक्षा करें।",
-      "memoryPressure": "महत्वपूर्ण मेमोरी दबाव के कारण डाउनलोड शुरू नहीं किया जा सकता है। कृपया बाद में पुनः प्रयास करें।"
+      "memoryPressure": "महत्वपूर्ण मेमोरी दबाव के कारण डाउनलोड शुरू नहीं किया जा सकता है। कृपया बाद में पुनः प्रयास करें।",
+      "unknownError": "Unknown error",
+      "invalidTabId": "अमान्य टैब आईडी",
+      "maxScrollAttempts": "अधिकतम स्क्रॉल प्रयास तक पहुंच गया"
     },
     "filter": {
       "title": "आप जो डाउनलोड करना चाहते हैं उसे फ़िल्टर करें",
@@ -39,13 +42,20 @@
       "error": "त्रुटि",
       "configuration": "विन्यास",
       "singleFileDescription": "साधारण संग्रह के लिए सर्वोत्तम",
-      "zipDescription": "पूर्ण पृष्ठ संरचना को ज़िप संग्रह के रूप में सहेजता है"
+      "zipDescription": "पूर्ण पृष्ठ संरचना को ज़िप संग्रह के रूप में सहेजता है",
+      "fullScraping": "पूर्ण स्क्रैपिंग (सभी संपत्ति शामिल है)",
+      "fullScrapingInfo": "गतिशील सामग्री और संपत्ति को कैप्चर करने के लिए इस टैब में लिंक किए गए पृष्ठों को क्रमिक रूप से खोलता है। आप प्रक्रिया के दौरान प्रत्येक पृष्ठ को लोड होते देखेंगे।",
+      "maxPages": "स्क्रैप करने के लिए अधिकतम पृष्ठ",
+      "pageDelay": "पृष्ठों के बीच देरी",
+      "includeExternal": "बाहरी लिंक शामिल करें"
     },
     "actions": {
       "title": "क्रियाएं:",
       "stop": "रुकें",
       "showInFolder": "फ़ोल्डर में दिखाएं",
-      "downloadAnother": "दूसरा डाउनलोड करें"
+      "downloadAnother": "दूसरा डाउनलोड करें",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "कनेक्शन की प्रतीक्षा कर रहा है...",
@@ -119,7 +129,28 @@
       "done": "हो गया!",
       "packing": "पैकिंग...",
       "downloading": "डाउनलोड हो रहा है...",
-      "ready": "तैयार"
+      "ready": "तैयार",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "सुविधा का अनुरोध करें",
       "description": "क्या आपके पास इस एक्सटेंशन को बेहतर बनाने का कोई विचार है?",
       "submit": "अनुरोध सबमिट करें"
+    },
+    "generated": {
+      "readme": "बहु-भाग डाउनलोड\n===================\nडाउनलोड के लिए इस वेबसाइट को {{total}} भागों में विभाजित किया गया है।\n\nनिष्कर्षण निर्देश:\n1. सभी {{total}} भागों को डाउनलोड करें (.zip में समाप्त होने वाली फाइलें)\n2. वेबसाइट के लिए एक नया फ़ोल्डर बनाएँ\n3. प्रत्येक ज़िप फ़ाइल को उसी फ़ोल्डर में निकालें\n4. सभी फाइलें सही निर्देशिका संरचना में विलीन हो जाएंगी\n5. वेबसाइट देखने के लिए index.html खोलें\n\nयह {{total}} का भाग {{part}} है\n",
+      "partMarkerContent": "यह {{total}} का भाग {{part}} है",
+      "completeArchive": "पूर्ण संग्रह",
+      "partDescription": "भाग {{number}}"
     }
   }
 }

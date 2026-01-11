@@ -11,7 +11,10 @@
       "networkCheckFailed": "பிணைய இணைப்பு சரிபார்ப்பு தோல்வியடைந்தது - பதிவிறக்கம் தொடர்கிறது",
       "noUrl": "பிழை: பதிவிறக்கத்திற்கு URL வழங்கப்படவில்லை",
       "downloadInProgress": "பதிவிறக்கம் ஏற்கனவே செயல்பாட்டில் உள்ளது. காத்திருக்கவும்.",
-      "memoryPressure": "கடுமையான நினைவக அழுத்தம் காரணமாக பதிவிறக்கத்தைத் தொடங்க முடியவில்லை. பின்னர் மீண்டும் முயற்சிக்கவும்."
+      "memoryPressure": "கடுமையான நினைவக அழுத்தம் காரணமாக பதிவிறக்கத்தைத் தொடங்க முடியவில்லை. பின்னர் மீண்டும் முயற்சிக்கவும்.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "செல்லuபடியாகாத தாவல் ஐடி",
+      "maxScrollAttempts": "அதிகபட்ச சுருள் முயற்சிகள் அடையப்பட்டன"
     },
     "filter": {
       "title": "நீங்கள் பதிவிறக்க விரும்புவதை வடிகட்டவும்",
@@ -39,13 +42,20 @@
       "error": "பிழை",
       "configuration": "கட்டமைப்பு",
       "singleFileDescription": "எளிய காப்பகத்திற்கு சிறந்தது",
-      "zipDescription": "முழு பக்க கட்டமைப்பையும் ZIP காப்பகமாக சேமிக்கிறது"
+      "zipDescription": "முழு பக்க கட்டமைப்பையும் ZIP காப்பகமாக சேமிக்கிறது",
+      "fullScraping": "முழு ஸ்கிராப்பிங் (அனைத்து வளங்களையும் உள்ளடக்கியது)",
+      "fullScrapingInfo": "மாறும் உள்ளடக்கம் மற்றும் வளங்களைப் பிடிக்க இந்த தாவலில் இணைக்கப்பட்ட பக்கங்களை வரிசையாகத் திறக்கிறது. செயல்பாட்டின் போது ஒவ்வொரு பக்கமும் ஏற்றப்படுவதைக் காண்பீர்கள்.",
+      "maxPages": "ஸ்கிராப் செய்ய வேண்டிய அதிகபட்ச பக்கங்கள்",
+      "pageDelay": "பக்கங்களுக்கு இடையிலான தாமதம்",
+      "includeExternal": "வெளிப்புற இணைப்புகளைச் சேர்க்கவும்"
     },
     "actions": {
       "title": "செயல்கள்:",
       "stop": "நிறுத்து",
       "showInFolder": "கோப்புறையில் காட்டு",
-      "downloadAnother": "மற்றொன்றைப் பதிவிறக்கு"
+      "downloadAnother": "மற்றொன்றைப் பதிவிறக்கு",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "இணைப்பிற்காக காத்திருக்கிறது...",
@@ -119,7 +129,28 @@
       "done": "முடிந்தது!",
       "packing": "பேக் செய்கிறது...",
       "downloading": "பதிவிறக்குகிறது...",
-      "ready": "தயார்"
+      "ready": "தயார்",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "அம்சத்தைக் கோருங்கள்",
       "description": "இந்த நீட்டிப்பை மேம்படுத்த யோசனை உள்ளதா?",
       "submit": "கோரிக்கையை சமர்ப்பிக்கவும்"
+    },
+    "generated": {
+      "readme": "பல பகுதி பதிவிறக்கம்\n===================\nபதிவிறக்கத்திற்காக இந்த இணையதளம் {{total}} பகுதிகளாகப் பிரிக்கப்பட்டுள்ளது.\n\nபிரித்தெடுத்தல் வழிமுறைகள்:\n1. அனைத்து {{total}} பகுதிகளையும் பதிவிறக்கவும் (.zip இல் முடியும் கோப்புகள்)\n2. இணையதளத்திற்கு புதிய கோப்புறையை உருவாக்கவும்\n3. ஒவ்வொரு ZIP கோப்பையும் ஒரே கோப்புறையில் பிரித்தெடுக்கவும்\n4. அனைத்து கோப்புகளும் சரியான அடைவு கட்டமைப்பில் ஒன்றிணைக்கப்படும்\n5. இணையதளத்தைப் பார்க்க index.html ஐத் திறக்கவும்\n\nஇது {{total}} இல் பகுதி {{part}}\n",
+      "partMarkerContent": "இது {{total}} இல் பகுதி {{part}}",
+      "completeArchive": "முழு காப்பகம்",
+      "partDescription": "பகுதி {{number}}"
     }
   }
 }

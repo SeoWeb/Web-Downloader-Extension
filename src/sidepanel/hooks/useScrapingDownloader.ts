@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   handleStartScroll,
   handleStartDownload,
@@ -39,6 +40,7 @@ export function useScrapingDownloader({
   downloadOptions,
   setMessages,
 }: UseScrapingDownloaderProps) {
+  const { t } = useTranslation();
   const [downloadResponse, setDownloadResponse] =
     useState<ScrollingResponse | null>(null);
   const [scrollAttempts, setScrollAttempts] = useState<number>(0);
@@ -65,7 +67,7 @@ export function useScrapingDownloader({
   const scrape = useCallback(async () => {
   if (!tabId) {
       setIsScraping(false);
-      setMessages((prev) => [...prev, { key: "status.failed", options: { error: "Invalid tab ID" } }]);
+      setMessages((prev) => [...prev, { key: "status.failedWithError", options: { error: t("app.invalidTabId") } }]);
       return;
     }
 
@@ -96,7 +98,7 @@ export function useScrapingDownloader({
           setIsScraping(false);
         } else if (scrollAttempts >= 500) { // Increased safety limit for very long pages
           setIsScraping(false);
-          setMessages((prev) => [...prev, "Maximum scroll attempts reached"]);
+          setMessages((prev) => [...prev, { key: "app.maxScrollAttempts" }]);
         } else {
           // Continue scrolling
           setScrollAttempts((prevCount) => prevCount + 1);

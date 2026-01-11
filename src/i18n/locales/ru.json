@@ -11,7 +11,10 @@
       "networkCheckFailed": "Проверка сетевого подключения не удалась - продолжение загрузки",
       "noUrl": "Ошибка: URL для загрузки не предоставлен",
       "downloadInProgress": "Загрузка уже выполняется. Пожалуйста, подождите.",
-      "memoryPressure": "Невозможно начать загрузку из-за критической нехватки памяти. Пожалуйста, повторите попытку позже."
+      "memoryPressure": "Невозможно начать загрузку из-за критической нехватки памяти. Пожалуйста, повторите попытку позже.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Неверный ID вкладки",
+      "maxScrollAttempts": "Достигнуто максимальное количество попыток прокрутки"
     },
     "filter": {
       "title": "Отфильтруйте то, что вы хотите скачать",
@@ -39,13 +42,20 @@
       "error": "Ошибка",
       "configuration": "Конфигурация",
       "singleFileDescription": "Лучше всего для простого архивирования",
-      "zipDescription": "Сохраняет полную структуру страницы как ZIP-архив"
+      "zipDescription": "Сохраняет полную структуру страницы как ZIP-архив",
+      "fullScraping": "Полный скрейпинг (включая все ресурсы)",
+      "fullScrapingInfo": "Открывает связанные страницы последовательно в этой вкладке для захвата динамического контента и ресурсов. Вы увидите загрузку каждой страницы во время процесса.",
+      "maxPages": "Макс. страниц для сканирования",
+      "pageDelay": "Задержка между страницами",
+      "includeExternal": "Включить внешние ссылки"
     },
     "actions": {
       "title": "Действия:",
       "stop": "Стоп",
       "showInFolder": "Показать в папке",
-      "downloadAnother": "Скачать еще"
+      "downloadAnother": "Скачать еще",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Ожидание подключения...",
@@ -119,7 +129,28 @@
       "done": "Готово!",
       "packing": "Упаковка...",
       "downloading": "Загрузка...",
-      "ready": "Готово"
+      "ready": "Готово",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Запросить функцию",
       "description": "Есть идея, как улучшить это расширение?",
       "submit": "Отправить запрос"
+    },
+    "generated": {
+      "readme": "МНОГОЧАСТНАЯ ЗАГРУЗКА\n===================\nЭтот веб-сайт был разделен на {{total}} частей для скачивания.\n\nИНСТРУКЦИИ ПО ИЗВЛЕЧЕНИЮ:\n1. Скачайте все {{total}} частей (файлы, оканчивающиеся на .zip)\n2. Создайте новую папку для веб-сайта\n3. Извлеките каждый ZIP-файл в ТУ ЖЕ папку\n4. Все файлы объединятся в правильную структуру каталогов\n5. Откройте index.html для просмотра веб-сайта\n\nЭто Часть {{part}} из {{total}}\n",
+      "partMarkerContent": "Это часть {{part}} из {{total}}",
+      "completeArchive": "Полный архив",
+      "partDescription": "Часть {{number}}"
     }
   }
 }

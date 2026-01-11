@@ -11,7 +11,10 @@
       "networkCheckFailed": "Netværksforbindelsestjek mislykkedes - fortsætter download",
       "noUrl": "Fejl: Ingen URL angivet til download",
       "downloadInProgress": "En download er allerede i gang. Vent venligst.",
-      "memoryPressure": "Kan ikke starte download på grund af kritisk hukommelsespres. Prøv igen senere."
+      "memoryPressure": "Kan ikke starte download på grund af kritisk hukommelsespres. Prøv igen senere.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Ugyldigt fane-ID",
+      "maxScrollAttempts": "Maksimalt antal rulningsforsøg nået"
     },
     "filter": {
       "title": "Filtrer hvad du vil downloade",
@@ -39,13 +42,20 @@
       "error": "Fejl",
       "configuration": "Konfiguration",
       "singleFileDescription": "Bedst til simpel arkivering",
-      "zipDescription": "Gemmer den fulde sidestruktur som et ZIP-arkiv"
+      "zipDescription": "Gemmer den fulde sidestruktur som et ZIP-arkiv",
+      "fullScraping": "Fuld scraping (inkluderer alle aktiver)",
+      "fullScrapingInfo": "Åbner linkede sider sekventielt i denne fane for at fange dynamisk indhold og aktiver. Du vil se hver side indlæse under processen.",
+      "maxPages": "Maks. sider at scrappe",
+      "pageDelay": "Forsinkelse mellem sider",
+      "includeExternal": "Inkluder eksterne links"
     },
     "actions": {
       "title": "Handlinger:",
       "stop": "Afbryd",
       "showInFolder": "Vis i mappe",
-      "downloadAnother": "Download en anden"
+      "downloadAnother": "Download en anden",
+      "resume": "Resume",
+      "pause": "Pause"
     },
     "status": {
       "waiting": "Venter på forbindelse...",
@@ -119,7 +129,28 @@
       "done": "Færdig!",
       "packing": "Pakker...",
       "downloading": "Downloader...",
-      "ready": "Klar"
+      "ready": "Klar",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
+      "processingCssCount": "Processing {{count}} CSS files",
+      "processingJsCount": "Processing {{count}} JS files",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
+      "scrapingLinkedPages": "Scraping linked pages...",
+      "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
+      "linkedPagesFailed": "{{count}} pages failed to scrape"
     },
     "permissions": {
       "storage": {
@@ -191,6 +222,12 @@
       "title": "Anmod om en funktion",
       "description": "Har du en idé til at forbedre denne udvidelse?",
       "submit": "Indsend anmodning"
+    },
+    "generated": {
+      "readme": "FLERDELT DOWNLOAD\n===================\nDette websted er blevet opdelt i {{total}} dele til download.\n\nUDPAKNINGSINSTRUKTIONER:\n1. Download alle {{total}} dele (filer der ender på .zip)\n2. Opret en ny mappe til webstedet\n3. Udpak hver ZIP-fil i den SAMME mappe\n4. Alle filer vil blive flettet ind i den korrekte mappestruktur\n5. Åbn index.html for at se webstedet\n\nDette er Del {{part}} af {{total}}\n",
+      "partMarkerContent": "Dette er del {{part}} af {{total}}",
+      "completeArchive": "Komplet arkiv",
+      "partDescription": "Del {{number}}"
     }
   }
 }

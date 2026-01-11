@@ -11,7 +11,10 @@
       "networkCheckFailed": "Network connectivity check failed - continuing with download",
       "noUrl": "Error: No URL provided for download",
       "downloadInProgress": "A download is already in progress. Please wait.",
-      "memoryPressure": "Cannot start download due to critical memory pressure. Please try again later."
+      "memoryPressure": "Cannot start download due to critical memory pressure. Please try again later.",
+      "unknownError": "Unknown error",
+      "invalidTabId": "Invalid tab ID",
+      "maxScrollAttempts": "Maximum scroll attempts reached"
     },
     "filter": {
       "title": "Filter out what you want to download",
@@ -49,6 +52,8 @@
     "actions": {
       "title": "Actions:",
       "stop": "Stop",
+      "resume": "Resume",
+      "pause": "Pause",
       "showInFolder": "Show in Folder",
       "downloadAnother": "Download Another"
     },
@@ -64,6 +69,19 @@
       "downloading": "Downloading...",
       "ready": "Ready",
       "failed": "Download failed",
+      "failedWithError": "Download failed: {{error}}",
+      "failedToStartScrolling": "Failed to start scrolling",
+      "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
+      "networkError": "Download failed due to network issues. Please check your connection.",
+      "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",
+      "htmlAssembled": "HTML content assembled and added to download",
+      "largeHtmlAssembled": "Large HTML content processed and added to download",
+      "htmlAssemblyError": "Error during HTML assembly, falling back to regular processing",
+      "generatingSplitZip": "Generating split zip archive...",
+      "waitingForCleanup": "Waiting for memory cleanup before part {{part}}...",
+      "downloadingPart": "Downloading part {{part}}/{{total}}",
+      "downloadCompleteZipInstruction": "Download complete! Open the .zip file to extract the whole website.",
+      "packCreationError": "Failed to create download package",
       "cancelled": "Download was cancelled",
       "creatingIndex": "Creating index.html",
       "downloadingCss": "Downloading CSS files",
@@ -98,10 +116,12 @@
       "imagesSummary": "Images downloaded: {{succeeded}} succeeded, {{failed}} failed, {{skipped}} skipped",
       "htmlSummary": "HTML files downloaded: {{succeeded}} succeeded, {{failed}} failed, {{skipped}} skipped",
       "processingCss": "Processing CSS files: {{current}}/{{total}}",
+      "processingCssCount": "Processing {{count}} CSS files",
       "streamingCss": "Starting streaming download for large CSS: {{current}}/{{total}}",
       "streamingCssProgress": "CSS streaming progress: {{completed}}/{{total}} chunks",
       "cssStreamingSummary": "CSS files processed: {{succeeded}} succeeded, {{streamed}} streamed, {{failed}} failed",
       "processingJs": "Processing JS files: {{current}}/{{total}}",
+      "processingJsCount": "Processing {{count}} JS files",
       "streamingJs": "Starting streaming download for large JS: {{current}}/{{total}}",
       "streamingJsProgress": "JS streaming progress: {{completed}}/{{total}} chunks",
       "jsStreamingSummary": "JS files processed: {{succeeded}} succeeded, {{streamed}} streamed, {{failed}} failed",
@@ -114,6 +134,8 @@
       "finalizingDownload": "Finalizing download",
       "indexCreated": "Index.html created",
       "htmlTooLarge": "HTML content is too large, may be truncated",
+      "skippingHtmlSizeLimit": "Skipping HTML due to size limit: {{link}}",
+      "htmlFilenameError": "Could not determine filename for: {{link}}",
       "incrementalHtmlAdded": "HTML content assembled and added to download",
       "largeHtmlAdded": "Large HTML content processed and added to download",
       "creatingPackage": "Creating final download package",
@@ -177,6 +199,12 @@
         },
         "footer": "Revoke anytime in browser settings"
       }
+    },
+    "generated": {
+      "readme": "MULTI-PART DOWNLOAD\n===================\nThis website has been split into {{total}} parts for download.\n\nEXTRACTION INSTRUCTIONS:\n1. Download all {{total}} parts (files ending in .zip)\n2. Create a new folder for the website\n3. Extract each ZIP file into the SAME folder\n4. All files will merge into the correct directory structure\n5. Open index.html to view the website\n\nThis is Part {{part}} of {{total}}\n",
+      "partMarkerContent": "This is part {{part}} of {{total}}",
+      "completeArchive": "Complete archive",
+      "partDescription": "Part {{number}}"
     },
     "download": {
       "showInFolder": "Show in folder",
