@@ -305,14 +305,14 @@ export default function Filter({
                           {/* Max Pages */}
                           <div>
                             <label className="text-xs font-medium text-blue-900 block mb-1">
-                              {t('filter.maxPages')}: {options.linkedPagesMaxCount || 50}
+                              {t('filter.maxPages')}: {options.linkedPagesMaxCount || 500}
                             </label>
                             <input
                               type="range"
                               min="10"
-                              max="200"
+                              max="500"
                               step="10"
-                              value={options.linkedPagesMaxCount || 50}
+                              value={options.linkedPagesMaxCount || 200}
                               onChange={(e) => setLinkedPagesMaxCount(parseInt(e.target.value))}
                               className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
                             />

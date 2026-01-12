@@ -12,7 +12,7 @@ export interface FilterOptions {
   
   // Full scraping options for linked pages
   downloadLinksFullScraping?: boolean; // Enable full scraping (default: false)
-  linkedPagesMaxCount?: number; // Default: 50, Max: 200
+  linkedPagesMaxCount?: number; // Default: 200, Max: 500
   linkedPagesDelay?: number; // Default: 500ms (delay between page loads)
   linkedPagesIncludeExternal?: boolean; // Default: false
   linkedPagesTimeout?: number; // Default: 30000ms (per page)
