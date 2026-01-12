@@ -32,9 +32,15 @@ export class SplitZipGenerator {
   private lastChunkTail: Uint8Array = new Uint8Array(0); // For detecting signatures across chunk boundaries
   
   // File Position Tracking
-  private filePositions: Map<number, { diskNumber: number; offsetInDisk: number }> = new Map();
+  // The type includes needsSignatureAdjustment to track whether the 4-byte spanned signature
+  // was already counted in totalBytesOutput when this file's position was captured.
+  private filePositions: Map<number, { diskNumber: number; offsetInDisk: number; needsSignatureAdjustment: boolean }> = new Map();
   private fileIndex: number = 0;
   private lastLocalHeaderTail: Uint8Array = new Uint8Array(0); // For detecting local file headers across chunk boundaries
+  
+  // Multi-part flag: set to true when we flush an intermediate part (not the last)
+  // This indicates we need the spanned signature offset adjustment
+  private isMultiPart: boolean = false;
   
   // Magic Signatures
   private readonly SIG_LOCAL_FILE = 0x04034b50;  // Local File Header
@@ -175,30 +181,21 @@ export class SplitZipGenerator {
         // Only track if the signature starts in the current data (not in tail)
         if (actualSearchOffset >= 0) {
           // Calculate its position in the split archive
+          // Store RAW positions without the spanned signature offset adjustment.
           const positionInCurrentBuffer = actualSearchOffset;
           const absolutePosition = this.totalBytesOutput + this.currentBufferSize + positionInCurrentBuffer;
         
-        // Account for the 4-byte signature prepended to the first part.
-        // Only add 4 if we haven't flushed yet (totalBytesOutput === 0), 
-        // because after the first flush, totalBytesOutput already includes the +4.
-        const adjustedPosition = absolutePosition + (this.totalBytesOutput === 0 ? 4 : 0);
+        // Track whether this position was captured BEFORE the first flush.
+        // If totalBytesOutput is 0, the 4-byte signature hasn't been counted yet,
+        // so we'll need to add +4 later for multi-part archives.
+        // If totalBytesOutput > 0, it already includes the +4 from the signature.
+        const needsSignatureAdjustment = (this.totalBytesOutput === 0);
         
-        // Calculate disk number and offset
-        let diskNumber: number;
-        let offsetInDisk: number;
-        
-        if (adjustedPosition < this.partSize + 4) {
-          // File is on disk 0
-          diskNumber = 0;
-          offsetInDisk = adjustedPosition;
-        } else {
-          // File is on disk 1 or later
-          const bytesAfterDisk0 = adjustedPosition - (this.partSize + 4);
-          diskNumber = 1 + Math.floor(bytesAfterDisk0 / this.partSize);
-          offsetInDisk = bytesAfterDisk0 % this.partSize;
-        }
-        
-        this.filePositions.set(this.fileIndex, { diskNumber, offsetInDisk });
+        this.filePositions.set(this.fileIndex, { 
+          diskNumber: 0,  // Will be recalculated in patchCentralDirectory
+          offsetInDisk: absolutePosition,  // Store raw absolute position for now
+          needsSignatureAdjustment: needsSignatureAdjustment
+        });
         this.fileIndex++;
         }
         
@@ -258,8 +255,12 @@ export class SplitZipGenerator {
 
     const blobs: any[] = [];
 
-    // Prepend Spanned Zip Signature to the VERY FIRST part
-    if (this.partNumber === 1) {
+    // Prepend Spanned Zip Signature ONLY if this is a multi-part archive
+    // The spanned signature (0x08074b50) is ONLY valid for split archives (.z01, .z02, ... .zip)
+    // For single-file ZIPs, adding this signature corrupts the archive!
+    // We know it's a multi-part archive if: partNumber === 1 AND isLast === false
+    // (meaning we're flushing the first part but there's more data to come)
+    if (this.partNumber === 1 && !isLast) {
         const sig = new Uint8Array([
             this.SIG_SPANNED & 0xFF,
             (this.SIG_SPANNED >> 8) & 0xFF,
@@ -268,6 +269,7 @@ export class SplitZipGenerator {
         ]);
         blobs.push(sig);
         this.totalBytesOutput += 4; // Shift offsets by 4
+        this.isMultiPart = true; // Mark as multi-part archive
     }
 
     // Determine how many bytes to flush
@@ -389,9 +391,42 @@ export class SplitZipGenerator {
               const position = this.filePositions.get(fileIndex);
               
               if (position) {
-                  // Use the tracked position!
-                  view.setUint16(offset + 34, position.diskNumber, true);
-                  view.setUint32(offset + 42, position.offsetInDisk, true);
+                  // Calculate actual disk number and offset based on archive type
+                  let diskNumber: number;
+                  let offsetInDisk: number;
+                  
+                  // position.offsetInDisk contains the RAW absolute position
+                  const rawPosition = position.offsetInDisk;
+                  
+                  if (this.isMultiPart) {
+                      // Multi-part archive: account for 4-byte spanned signature
+                      // The signature is ONLY in the first part (.z01), which is partSize + 4 bytes total
+                      
+                      // Only add +4 if this file was tracked BEFORE the first flush.
+                      // Files tracked after the first flush already have the +4 included
+                      // in totalBytesOutput, so their rawPosition already accounts for it.
+                      const adjustedPosition = position.needsSignatureAdjustment 
+                          ? rawPosition + 4 
+                          : rawPosition;
+                      
+                      if (adjustedPosition < this.partSize + 4) {
+                          // File is on disk 0 (the .z01 file, which has the 4-byte signature)
+                          diskNumber = 0;
+                          offsetInDisk = adjustedPosition;
+                      } else {
+                          // File is on disk 1 or later
+                          const bytesAfterDisk0 = adjustedPosition - (this.partSize + 4);
+                          diskNumber = 1 + Math.floor(bytesAfterDisk0 / this.partSize);
+                          offsetInDisk = bytesAfterDisk0 % this.partSize;
+                      }
+                  } else {
+                      // Single-part archive: no signature, all files on disk 0
+                      diskNumber = 0;
+                      offsetInDisk = rawPosition;
+                  }
+                  
+                  view.setUint16(offset + 34, diskNumber, true);
+                  view.setUint32(offset + 42, offsetInDisk, true);
                   
               } else {
                   console.error(`No tracked position for file ${fileIndex}! This should not happen.`);
@@ -417,9 +452,16 @@ export class SplitZipGenerator {
               // Offset 12 (4 bytes): Size of central directory
               // Offset 16 (4 bytes): Offset of start of central directory, relative to start of archive
               
-              // Calculate which disk we're currently on based on total bytes output
-              // This is more accurate than using partNumber since partNumber is only incremented after flush
-              const currentDisk = Math.floor(this.totalBytesOutput / this.partSize);
+              let currentDisk: number;
+              
+              if (this.isMultiPart) {
+                  // Calculate which disk we're currently on based on total bytes output
+                  // Account for the 4-byte signature in the first part
+                  currentDisk = Math.floor((this.totalBytesOutput + 4) / this.partSize);
+              } else {
+                  // Single-part archive: always disk 0
+                  currentDisk = 0;
+              }
               
               // All CD records are on this disk (we buffered them all)
               const totalRecords = view.getUint16(offset + 10, true);
