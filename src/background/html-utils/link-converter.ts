@@ -12,43 +12,70 @@ export function convertLinksToRelative(
   for (const link of links) {
     let href: string | null = link.getAttribute("href");
     if (!href) continue;
-    href = href.split("?")[0];
+    
+    // Remove query params for file matching
+    const hrefWithoutQuery = href.split("?")[0].split("#")[0];
 
     const u = new URL(tabUrl);
     const baseUrl = u.origin + "/";
 
-    if (!href) continue;
-    else if (href.startsWith("/") || href.startsWith("#")) {
-      // Already relative, skip
-    } else if (href.startsWith(baseUrl)) {
+    // Skip anchor-only links and external links
+    if (!hrefWithoutQuery) continue;
+    if (href.startsWith("#")) continue;
+    
+    // Skip external links (different origin)
+    if (href.startsWith("http://") || href.startsWith("https://")) {
+      try {
+        const linkUrl = new URL(href);
+        if (linkUrl.origin !== u.origin) {
+          continue; // External link, don't modify
+        }
+      } catch {
+        continue;
+      }
+    }
+    
+    // Normalize the path - convert absolute and full URLs to pathname
+    let normalizedPath = hrefWithoutQuery;
+    if (href.startsWith(baseUrl)) {
       const url = new URL(href, baseUrl);
-      href = url.pathname + url.search + url.hash;
+      normalizedPath = url.pathname;
+    } else if (href.startsWith("/")) {
+      normalizedPath = hrefWithoutQuery;
+    }
+    
+    // Remove leading slash for consistent handling
+    if (normalizedPath.startsWith("/")) {
+      normalizedPath = normalizedPath.substring(1);
     }
 
-    const matchDocuments = href.match(
+    const matchDocuments = normalizedPath.match(
       /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp|rtf|txt)$/i,
     );
-    const imageMatch = href.match(
+    const imageMatch = normalizedPath.match(
       /\.(gif|jpe?g|tiff?|png|webp|bmp|svg|ico|heic|avif)$/i,
     );
-    const htmlMatch = href.match(/\.html$/i);
-    const hrefParts = href.split("?")[0].split("#")[0].split("/");
+    const htmlMatch = normalizedPath.match(/\.html$/i);
+    const pathParts = normalizedPath.split("/");
 
     if (matchDocuments) {
-      href = path + "documents/" + hrefParts.pop();
+      href = path + "documents/" + pathParts.pop();
     } else if (imageMatch) {
-      href = path + "images/" + hrefParts.pop();
+      href = path + "images/" + pathParts.pop();
     } else if (htmlMatch) {
-      href = path + "html/" + hrefParts.pop();
+      // HTML files go to pages/ folder (matching where linked-page-scraper saves them)
+      href = path + "pages/" + pathParts.pop();
     } else {
-      let lastPart = hrefParts.pop();
+      // Clean URLs (no extension) - treat as HTML pages
+      let lastPart = pathParts.pop();
       if (!lastPart?.length) {
-        lastPart = hrefParts.pop();
+        lastPart = pathParts.pop();
       }
       if (!lastPart?.length) {
         continue;
       }
-      href = path + "html/" + lastPart + ".html";
+      // Add .html extension for clean URLs, save to pages/ folder
+      href = path + "pages/" + lastPart + ".html";
     }
 
     link.setAttribute("href", href);

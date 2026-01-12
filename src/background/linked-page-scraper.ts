@@ -269,8 +269,8 @@ export class LinkedPageScraper {
     // Download assets (checking registry first to avoid duplicates)
     await this.downloadAssets(resources, storage, finalUrl, sendMessage);
 
-    // Convert HTML with proper link rewriting
-    const convertedHtml = convertHtml(html, finalUrl, "../assets/");
+    // Convert HTML with proper link rewriting (pages are in pages/ folder, assets are at root level)
+    const convertedHtml = convertHtml(html, finalUrl, "../");
 
     return {
       html: convertedHtml,

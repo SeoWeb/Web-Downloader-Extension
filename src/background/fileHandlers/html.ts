@@ -154,8 +154,8 @@ export async function addHtmlFiles(
               filename.endsWith(".html") ? filename : `${filename}.html`,
             );
             
-            // Store in html folder
-            await storage.addFile(`html/${finalFilename}`, html, "text/html");
+            // Store in pages folder
+            await storage.addFile(`pages/${finalFilename}`, html, "text/html");
             successCount++;
             resolve(link);
           } catch (error) {
