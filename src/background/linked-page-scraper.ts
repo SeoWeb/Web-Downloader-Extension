@@ -192,7 +192,7 @@ export class LinkedPageScraper {
 
       // Check pause flag
       if (this.isPaused) {
-        sendMessage({ key: "status.scraperPaused" }); // You might need to add this key to i18n or handle string
+        sendMessage({ key: "status.scraperPaused" });
         await this.resumePromise;
         if (this.isStopped) break; // Check again after resume
       }
