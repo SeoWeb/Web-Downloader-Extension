@@ -33,7 +33,9 @@ export function MainContent({
     <>
       <Heading />
 
-      <Actions messages={messages} />
+      {action !== messageActions.DOWNLOAD_DONE && (
+        <Actions messages={messages} />
+      )}
 
       {!!tabId &&
         !isScraping &&

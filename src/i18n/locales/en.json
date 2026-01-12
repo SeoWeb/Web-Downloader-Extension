@@ -211,6 +211,18 @@
       "downloadAnother": "Download another page",
       "cancel": "Cancel download"
     },
+    "extraction": {
+      "alertTitle": "⚠️ Important: ZIP Extraction Required",
+      "alertMessage": "Before extracting the ZIP file, please install a proper extraction program. Default system tools have significant limitations when handling multipart (split) ZIP files and may fail to extract correctly.",
+      "recommendedTools": "Recommended extraction tools:",
+      "windows": "Windows",
+      "windowsPrograms": "7-Zip / PeaZip",
+      "macOS": "macOS",
+      "macOSPrograms": "The Unarchiver / Keka",
+      "ubuntu": "Ubuntu",
+      "ubuntuPrograms": "7-Zip (CLI) / PeaZip",
+      "hideNextTime": "Hide next time"
+    },
     "language": {
       "select": "Select Language",
       "search": "Search languages...",
