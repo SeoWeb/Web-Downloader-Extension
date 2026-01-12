@@ -190,7 +190,7 @@ export function DownloadComplete({
               <div className="pt-2">
                 <button
                   onClick={handleHideNextTime}
-                  className="text-sm text-blue-700 hover:text-blue-900 font-medium underline hover:no-underline transition-all"
+                  className="text-sm text-blue-700 hover:text-blue-900 font-medium underline hover:no-underline transition-all cursor-pointer"
                 >
                   {t('extraction.hideNextTime')}
                 </button>
@@ -203,14 +203,14 @@ export function DownloadComplete({
           <button
             onClick={handleShowInFolder}
             disabled={!downloadId}
-            className="btn-primary w-full flex items-center justify-center gap-2"
+            className="btn-primary w-full flex items-center justify-center gap-2 cursor-pointer"
           >
             <FolderOpen className="w-5 h-5" />
             {t('actions.showInFolder')}
           </button>
           <button
             onClick={handleReset}
-            className="btn-secondary w-full flex items-center justify-center gap-2"
+            className="btn-secondary w-full flex items-center justify-center gap-2 cursor-pointer"
           >
             <RefreshCcw className="w-5 h-5" />
             {t('actions.downloadAnother')}

@@ -11,13 +11,13 @@ const buttonVariants = cva(
         default:
           "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-indigo-500/30 items-center justify-center border border-transparent",
         destructive:
-          "bg-red-500 text-white hover:bg-red-600 shadow-sm hover:shadow-red-500/30 items-center justify-center border border-transparent",
+          "bg-red-500 text-white hover:bg-red-600 shadow-sm hover:shadow-red-500/30 items-center justify-center border border-transparent cursor-pointer",
         outline:
-          "border border-slate-200 bg-white hover:bg-slate-50 text-slate-700",
+          "border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 cursor-pointer",
         secondary:
-          "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm items-center justify-center",
-        ghost: "hover:bg-slate-100 hover:text-slate-900 text-slate-600",
-        link: "text-indigo-600 underline-offset-4 hover:underline",
+          "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm items-center justify-center cursor-pointer",
+        ghost: "hover:bg-slate-100 hover:text-slate-900 text-slate-600 cursor-pointer",
+        link: "text-indigo-600 underline-offset-4 hover:underline cursor-pointer",
       },
       size: {
         default: "h-11 px-4 py-2",

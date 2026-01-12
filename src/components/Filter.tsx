@@ -168,7 +168,7 @@ export default function Filter({
       <div className="card p-6 bg-gradient-to-br from-white to-slate-50 border-slate-200">
         <button
           onClick={handleDownload}
-          className="btn-primary w-full flex items-center justify-center gap-3 text-lg py-4 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 transition-all"
+          className="btn-primary w-full flex items-center justify-center gap-3 text-lg py-4 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 transition-all cursor-pointer"
         >
           <Download className="w-6 h-6" />
           <span>{t('filter.startDownload')}</span>
@@ -185,7 +185,7 @@ export default function Filter({
       <div className="card overflow-hidden">
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="w-full flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100 hover:bg-slate-100 transition-colors text-slate-700 font-medium"
+          className="w-full flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100 hover:bg-slate-100 transition-colors text-slate-700 font-medium cursor-pointer"
         >
           <div className="flex items-center gap-2">
             <Settings className="w-4 h-4 text-slate-500" />
