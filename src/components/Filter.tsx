@@ -57,7 +57,6 @@ export default function Filter({
     setDownloadLinksFullScraping,
     setLinkedPagesMaxCount,
     setLinkedPagesDelay,
-    setLinkedPagesIncludeExternal,
   } = useFilterOptions();
 
   const downloadOptions = useDownloadOptions();
