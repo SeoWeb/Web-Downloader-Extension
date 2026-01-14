@@ -257,8 +257,11 @@ export class RequestQueue {
       },
       
       onError: (request, error) => {
-        // Handle retries
-        if (request.retryCount < (this.options.throttling?.maxRetries || 3)) {
+        // Handle retries - only retry transient errors, not permanent ones
+        const shouldRetry = request.retryCount < (this.options.throttling?.maxRetries || 3) && 
+                           this.isRetryableError(error);
+        
+        if (shouldRetry) {
           this.retryRequest(request);
         } else {
           if (originalListeners.onError) {
@@ -453,13 +456,24 @@ export class RequestQueue {
   private async executeRequest(request: QueuedRequest, controller: AbortController): Promise<RequestResult> {
     const startTime = Date.now();
     
+    // Extract origin from request URL for Referer header
+    let referer = '';
+    try {
+      const urlObj = new URL(request.url);
+      referer = urlObj.origin + '/';
+    } catch (e) {
+      // If URL parsing fails, skip referer
+    }
+    
     // Prepare fetch options
     const fetchOptions: RequestInit = {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': this.getAcceptHeader(request.resourceType),
         'Cache-Control': 'no-cache',
+        'Referer': referer,
+        'Origin': referer ? referer.replace(/\/$/, '') : '',
         ...request.fetchOptions?.headers,
       },
       ...request.fetchOptions,
@@ -558,6 +572,40 @@ export class RequestQueue {
 
     // Trigger next processing cycle
     this.scheduleProcessing();
+  }
+
+  /**
+   * Check if an error is retryable (transient) or permanent
+   * Permanent errors like 404, 403 should not be retried as they will always fail
+   */
+  private isRetryableError(error: Error): boolean {
+    const message = error.message;
+    
+    // Check for HTTP status codes in the error message
+    const httpMatch = message.match(/HTTP (\d+)/);
+    if (httpMatch) {
+      const statusCode = parseInt(httpMatch[1]);
+      
+      // 4xx Client Errors - generally not retryable (resource doesn't exist or access denied)
+      // Exceptions:
+      // - 408 Request Timeout - retryable
+      // - 429 Too Many Requests - retryable (rate limiting)
+      if (statusCode >= 400 && statusCode < 500) {
+        if (statusCode === 408 || statusCode === 429) {
+          return true; // These are retryable
+        }
+        return false; // Other 4xx errors are permanent
+      }
+      
+      // 5xx Server Errors - generally retryable (server issues may be temporary)
+      if (statusCode >= 500) {
+        return true;
+      }
+    }
+    
+    // Network errors, timeouts, and other transient issues are retryable
+    // These typically don't have HTTP status codes
+    return true;
   }
 
   /**

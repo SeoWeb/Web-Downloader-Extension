@@ -51,15 +51,20 @@ export async function fetchUrl(
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+      // Extract origin for Referer header
+      const urlOrigin = new URL(fullUrl).origin + '/';
+
       const response = await fetch(fullUrl, {
         signal: controller.signal,
         // Add headers to prevent some blocking issues
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           Accept:
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.5",
+          "Referer": urlOrigin,
+          "Origin": urlOrigin.replace(/\/$/, ''),
         },
       });
 
@@ -67,6 +72,14 @@ export async function fetchUrl(
 
       if (response.status >= 400) {
         console.warn(`HTTP ${response.status} for ${fullUrl}`);
+        
+        // Don't retry permanent 4xx errors (except 408 timeout and 429 rate limit)
+        const isPermanentError = response.status >= 400 && response.status < 500 && 
+                                 response.status !== 408 && response.status !== 429;
+        if (isPermanentError) {
+          return null; // Don't waste time retrying
+        }
+        
         if (i === retries - 1) return null;
         await new Promise((res) => setTimeout(res, delay * (i + 1))); // Exponential backoff
         continue;
