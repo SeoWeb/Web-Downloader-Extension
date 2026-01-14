@@ -86,17 +86,15 @@ export class MemoryManager {
       ] || RESOURCE_SIZE_LIMITS.DEFAULT;
 
     if (size > this.config.MAX_RESOURCE_SIZE) {
-      console.warn(
-        `Resource ${url} exceeds maximum size limit (${this.formatBytes(size)} > ${this.formatBytes(this.config.MAX_RESOURCE_SIZE)})`,
-      );
       return true;
     }
 
     if (size > limit) {
-      console.warn(
-        `Resource ${url} exceeds type-specific limit (${this.formatBytes(size)} > ${this.formatBytes(limit)})`,
-      );
       return true;
+    }
+
+    if (url) {
+      // TODO: Do we need url?
     }
 
     return false;
@@ -222,9 +220,7 @@ export class MemoryManager {
   public async forceCleanup(): Promise<void> {
     // Run all cleanup callbacks
     const cleanupPromises = this.cleanupCallbacks.map((callback) =>
-      callback().catch((error) =>
-        console.error("Cleanup callback failed:", error),
-      ),
+      callback(),
     );
 
     await Promise.allSettled(cleanupPromises);
@@ -301,8 +297,8 @@ export class MemoryManager {
     this.memoryPressureCallbacks.forEach((callback) => {
       try {
         callback(level);
-      } catch (error) {
-        console.error("Memory pressure callback failed:", error);
+      } catch {
+        // Ignore
       }
     });
 
@@ -402,22 +398,6 @@ export class MemoryManager {
       }
     }
     return undefined;
-  }
-
-  /**
-   * Format bytes to human readable format
-   */
-  private formatBytes(bytes: number): string {
-    const units = ["B", "KB", "MB", "GB"];
-    let size = bytes;
-    let unitIndex = 0;
-
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
-    }
-
-    return `${size.toFixed(1)}${units[unitIndex]}`;
   }
 }
 

@@ -275,8 +275,8 @@ export class StreamingDownloader {
         const urlParts = new URL(url);
         filename = urlParts.pathname.split('/').pop() || 'download';
       }
-    } catch (error) {
-      console.warn('Could not get file metadata:', error);
+    } catch {
+      // Ignore
     }
 
     const chunkSize = calculateOptimalChunkSize(totalSize, options);

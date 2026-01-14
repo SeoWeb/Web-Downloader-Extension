@@ -60,8 +60,7 @@ export const DEFAULT_MEMORY_LIMITS: MemoryLimitsConfig = {
   get MAX_HTML_CONTENT_SIZE(): number {
     try {
       return adaptiveMemoryManager.calculateSafeHtmlLimit();
-    } catch (error) {
-      console.warn('Failed to calculate dynamic HTML limit, using fallback:', error);
+    } catch {
       return 10 * 1024 * 1024; // 10MB fallback
     }
   },

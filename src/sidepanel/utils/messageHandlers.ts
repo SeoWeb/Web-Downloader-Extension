@@ -15,8 +15,7 @@ export async function handleStartScroll(
       },
     );
     return response;
-  } catch (error) {
-    console.error("Scroll failed:", error);
+  } catch {
     setMessages({ key: "status.failedToStartScrolling" });
     setIsScraping(false);
     return undefined;
@@ -45,8 +44,7 @@ export async function handleStartDownload(
       },
     );
     return response;
-  } catch (error) {
-    console.error("Download failed:", error);
+  } catch {
     setMessages({ key: "status.failed" });
     return undefined;
   }

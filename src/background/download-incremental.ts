@@ -22,14 +22,12 @@ export async function downloadResourcesWithIncrementalAssembly(
   tabId?: number,
 ) {
   if (!tabUrl) {
-    console.error("No tab URL provided");
     sendMessage({ key: "error.noUrl" });
     return;
   }
 
   // Prevent concurrent downloads
   if (await getDownloadInProgress()) {
-    console.warn("Download already in progress, rejecting new request");
     sendMessage({ key: "error.downloadInProgress" });
     return;
   }
@@ -37,7 +35,6 @@ export async function downloadResourcesWithIncrementalAssembly(
   // Initial memory check
   const initialMemoryStats = memoryManager.getMemoryStats();
   if (initialMemoryStats.memoryPressureLevel === MemoryPressureLevel.CRITICAL) {
-    console.error("Cannot start download - critical memory pressure");
     sendMessage(
       { key: "error.memoryPressure" },
     );
@@ -53,8 +50,6 @@ export async function downloadResourcesWithIncrementalAssembly(
     // Execute download with incremental assembly
     await executeDownloadWithIncrementalAssembly(assemblyJobId, tabUrl, downloadOptions, sendMessage, tabId);
   } catch (error) {
-    console.error("Incremental download failed:", error);
-
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     sendMessage(`Download failed: ${errorMessage}`);
@@ -77,8 +72,8 @@ export async function downloadResourcesWithIncrementalAssembly(
     // Cleanup download-specific resources
     try {
       await cleanupAfterDownload(downloadId);
-    } catch (cleanupError) {
-      console.error("Error during final cleanup:", cleanupError);
+    } catch {
+      // ignore
     }
 
     // Clean up incremental assembly jobs

@@ -71,9 +71,6 @@ async function performStartupCleanup(): Promise<void> {
     // Check if there was an interrupted download
     const downloadInProgress = await getDownloadInProgress();
     if (downloadInProgress) {
-      console.warn(
-        "Detected interrupted download, performing emergency cleanup...",
-      );
       await handleInterruptedDownload();
     }
 
@@ -82,8 +79,8 @@ async function performStartupCleanup(): Promise<void> {
 
     // Perform memory cleanup
     await memoryManager.forceCleanup();
-  } catch (error) {
-    console.error("Error during startup cleanup:", error);
+  } catch {
+    // ignore
   }
 }
 
@@ -100,8 +97,8 @@ async function handleInterruptedDownload(): Promise<void> {
 
     // Clean up any orphaned blobs
     await cleanupOldBlobs(0); // Clean up all blobs since we can't track them
-  } catch (error) {
-    console.error("Error handling interrupted download:", error);
+  } catch {
+    // ignore
   }
 }
 
@@ -112,8 +109,8 @@ function performEmergencyCleanup(): void {
   try {
     // Synchronous cleanup operations only
     memoryManager.shutdown();
-  } catch (error) {
-    console.error("Error during emergency cleanup:", error);
+  } catch {
+    // ignore
   }
 }
 
@@ -127,8 +124,8 @@ async function performMaintenanceCleanup(): Promise<void> {
 
     // Memory cleanup
     await memoryManager.forceCleanup();
-  } catch (error) {
-    console.error("Error during maintenance cleanup:", error);
+  } catch {
+    // ignore
   }
 }
 
@@ -146,8 +143,8 @@ function setupPeriodicCleanup(): void {
       if (memoryStats.memoryPressureLevel !== "low") {
         await cleanupOldBlobs();
       }
-    } catch (error) {
-      console.error("Error during periodic cleanup:", error);
+    } catch {
+      // ignore
     }
   }, CLEANUP_INTERVAL);
 }
@@ -164,13 +161,10 @@ function setupMemoryPressureMonitoring(): void {
 
       // Auto-response to critical memory pressure
       if (memoryStats.memoryPressureLevel === "critical") {
-        console.warn(
-          "Critical memory pressure detected, performing emergency cleanup...",
-        );
         await handleCriticalMemoryPressure();
       }
-    } catch (error) {
-      console.error("Error during memory pressure monitoring:", error);
+    } catch {
+      // ignore
     }
   }, MONITORING_INTERVAL);
 }
@@ -187,8 +181,8 @@ async function handleCriticalMemoryPressure(): Promise<void> {
     if (typeof gc !== "undefined") {
       gc();
     }
-  } catch (error) {
-    console.error("Error handling critical memory pressure:", error);
+  } catch {
+    // ignore
   }
 }
 
@@ -199,8 +193,8 @@ export async function cleanupAfterDownload(downloadId: string): Promise<void> {
   try {
     await cleanupDownloadBlobs(downloadId);
     await memoryManager.forceCleanup();
-  } catch (error) {
-    console.error(`Error during cleanup for download ${downloadId}:`, error);
+  } catch {
+    // ignore
   }
 }
 

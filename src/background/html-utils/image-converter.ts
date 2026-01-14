@@ -1,5 +1,5 @@
 import { DOMParser } from "linkedom";
-import { fetchUrl } from "../urlUtils";
+import { fetchUrl, fixFilename } from "../urlUtils";
 
 export function convertImagesToRelative(
   htmlString: string,
@@ -27,7 +27,8 @@ export function convertImagesToRelative(
     }
 
     if (src.split(".").length > 1) {
-      src = path + "images/" + src.split("/").pop();
+      const filename = src.split("/").pop();
+      src = path + "images/" + fixFilename(filename || "");
     }
 
     image.setAttribute("src", src);

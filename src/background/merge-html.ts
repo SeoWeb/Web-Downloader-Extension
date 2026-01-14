@@ -38,9 +38,6 @@ export function mergeHtml(
     const combinedSize = html1.length + html2.length;
 
     if (combinedSize > maxHtmlSize) {
-      console.warn(
-        `HTML content too large for merging: ${formatBytes(combinedSize)} > ${formatBytes(maxHtmlSize)}`,
-      );
       throw new Error(
         MEMORY_ERROR_MESSAGES.HTML_TOO_LARGE(combinedSize, maxHtmlSize),
       );
@@ -49,7 +46,6 @@ export function mergeHtml(
     // Check memory availability
     if (!memoryManager.checkMemoryAvailability(combinedSize * 2)) {
       // Account for growth during merge
-      console.warn(`Insufficient memory for HTML merge operation`);
       throw new Error(MEMORY_ERROR_MESSAGES.INSUFFICIENT_MEMORY);
     }
   }
@@ -66,9 +62,6 @@ export function mergeHtml(
     // Check for potential exponential growth scenarios
     const complexity = analyzeHtmlComplexity(html1, html2);
     if (complexity.isExponential) {
-      console.warn(
-        "Potential exponential growth detected, using safe merge strategy",
-      );
       return safeHtmlMerge(html1, html2, options);
     }
 
@@ -105,9 +98,6 @@ export function mergeHtml(
           if (enableMemoryCheck && i % 100 === 0) {
             const currentSize = $1.html()!.length;
             if (currentSize > maxHtmlSize) {
-              console.warn(
-                `HTML size exceeded limit during merge at iteration ${i}: ${formatBytes(currentSize)}`,
-              );
               throw new Error(
                 MEMORY_ERROR_MESSAGES.HTML_TOO_LARGE(currentSize, maxHtmlSize),
               );
@@ -128,16 +118,11 @@ export function mergeHtml(
 
     return result;
   } catch (error) {
-    console.error("Error during HTML merge:", error);
-
     // Fallback to safe merge if regular merge fails
     if (
       error instanceof Error &&
       (error.message?.includes("memory") || error.message?.includes("size"))
     ) {
-      console.warn(
-        "Regular merge failed due to memory constraints, using safe fallback",
-      );
       return safeHtmlMerge(html1, html2, options);
     }
 
@@ -172,19 +157,13 @@ function safeHtmlMerge(
       const truncatedContent =
         combinedContent.substring(0, maxHtmlSize - 1000) +
         "\n<!-- Content truncated due to size limits -->";
-      console.warn(
-        `HTML content truncated to fit size limits: ${combinedContent.length} -> ${truncatedContent.length} bytes`,
-      );
 
       return createSimpleHtmlWrapper(truncatedContent, $1);
     }
 
     return createSimpleHtmlWrapper(combinedContent, $1);
-  } catch (error) {
-    console.error("Safe HTML merge failed:", error);
-
+  } catch {
     // Last resort: return the first HTML content
-    console.warn("All merge strategies failed, returning first HTML content");
     return html1.length > maxHtmlSize
       ? html1.substring(0, maxHtmlSize) + "\n<!-- Content truncated -->"
       : html1;
@@ -327,22 +306,6 @@ function escapeHtml(text: string): string {
     .replace(/'/g, "&#039;");
 }
 
-/**
- * Format bytes to human readable format
- */
-function formatBytes(bytes: number): string {
-  const units = ["B", "KB", "MB", "GB"];
-  let size = bytes;
-  let unitIndex = 0;
-
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex++;
-  }
-
-  return `${size.toFixed(1)}${units[unitIndex]}`;
-}
-
 function compareHTMLBlocks(html1: string, html2: string) {
   const normalizedHtml1 = html1.replace(/\s/g, "").toLowerCase();
   const normalizedHtml2 = html2.replace(/\s/g, "").toLowerCase();
@@ -430,10 +393,7 @@ export function mergeHtmlIncremental(
     const addResult = htmlAssembler.addChunk(jobId, html2);
     
     if (!addResult.success) {
-      console.error(`Failed to add chunk to job ${jobId}:`, addResult.reason);
-      
       // Fall back to traditional merge if incremental assembly fails
-      console.warn(`Falling back to traditional HTML merge for job ${jobId}`);
       return mergeHtml(html1, html2, { ...options, useIncrementalAssembly: false });
     }
 
@@ -442,11 +402,8 @@ export function mergeHtmlIncremental(
     // Return a placeholder that indicates the merge was successful
     return `<!-- Incremental merge successful for job ${jobId}. Total size: ${addResult.newSize || 'unknown'} -->`;
 
-  } catch (error) {
-    console.error(`Incremental HTML merge failed for job ${jobId}:`, error);
-    
+  } catch {    
     // Fall back to traditional merge
-    console.warn(`Falling back to traditional HTML merge for job ${jobId}`);
     return mergeHtml(html1, html2, { ...options, useIncrementalAssembly: false });
   }
 }
@@ -471,7 +428,6 @@ export function finalizeIncrementalMerge(jobId: string): { success: boolean; htm
       blob: result.blob,
     };
   } catch (error) {
-    console.error(`Failed to finalize incremental HTML assembly job ${jobId}:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

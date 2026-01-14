@@ -346,12 +346,12 @@ export class RequestQueue {
       // Start all eligible requests in parallel
       for (const request of requestsToStart) {
         // Start the request without awaiting to avoid blocking the queue processing
-        this.startRequest(request).catch(error => {
-          console.error(`Error starting request ${request.id}:`, error);
+        this.startRequest(request).catch(() => {
+          // Ignore
         });
       }
-    } catch (error) {
-      console.error('Error processing queue:', error);
+    } catch {
+      // Ignore
     }
 
     // Schedule next processing only if we have more items and not paused
@@ -451,7 +451,7 @@ export class RequestQueue {
   }
 
   /**
-   * Execute a request
+   * Execute a request with fallback strategies for CORS-blocked resources
    */
   private async executeRequest(request: QueuedRequest, controller: AbortController): Promise<RequestResult> {
     const startTime = Date.now();
@@ -479,19 +479,52 @@ export class RequestQueue {
       ...request.fetchOptions,
     };
 
-    // Make the request
-    const response = await fetch(request.url, fetchOptions);
+    let response: Response;
+    
+    try {
+      // Make the request
+      response = await fetch(request.url, fetchOptions);
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    // Check for opaque response (CORS blocked)
-    if (response.type === 'opaque') {
-      console.warn(`Request ${request.url} returned opaque response (CORS blocked)`);
-      // For CSS files, we should fail early since we can't read the content
-      if (request.resourceType === ResourceType.CSS) {
-        throw new Error(`CSS blocked by CORS policy: ${request.url}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      // If standard fetch fails for CSS/JS, try fallback with no-cors mode
+      if (request.resourceType === ResourceType.CSS || request.resourceType === ResourceType.JS) {
+        try {
+          response = await fetch(request.url, {
+            method: 'GET',
+            mode: 'no-cors',
+            cache: 'no-cache',
+            credentials: 'omit',
+            signal: controller.signal,
+            headers: {
+              'Accept': this.getAcceptHeader(request.resourceType),
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            },
+          });
+          
+          // no-cors mode will return opaque responses, which is expected
+          if (response.type === 'opaque') {
+          }
+        } catch (fallbackError) {
+          // If even no-cors fails, try one more time with navigate mode
+          try {
+            response = await fetch(request.url, {
+              method: 'GET',
+              mode: 'navigate',
+              cache: 'force-cache',
+              redirect: 'follow',
+              signal: controller.signal,
+            });
+          } catch (navigateError) {
+            // All strategies failed, re-throw the original error
+            throw error;
+          }
+        }
+      } else {
+        // For non-CSS/JS resources, just re-throw the error
+        throw error;
       }
     }
 

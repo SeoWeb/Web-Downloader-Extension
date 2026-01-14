@@ -25,8 +25,7 @@ export function StoragePermissionBanner({
       } else {
         onPermissionDenied?.();
       }
-    } catch (error) {
-      console.error("Error requesting storage permission:", error);
+    } catch {
       onPermissionDenied?.();
     } finally {
       setIsRequesting(false);

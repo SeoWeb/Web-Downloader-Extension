@@ -41,7 +41,6 @@ export async function addDocumentFiles(
     },
     onError: (request: any, error: Error) => {
       failCount++;
-      console.error(`Document download failed: ${request.url}`, error);
       // Call original listener if it exists
       if (originalListeners.onError) {
         originalListeners.onError(request, error);
@@ -86,9 +85,6 @@ export async function addDocumentFiles(
             const blob = await result.response.blob();
             const filename = new URL(fullDocumentUrl, baseUrl).pathname.split("/").pop();
             if (!filename) {
-              console.error(
-                `Could not determine filename for document: ${fullDocumentUrl}`,
-              );
               failCount++;
               resolve(document);
               return;
@@ -98,13 +94,11 @@ export async function addDocumentFiles(
             successCount++;
             resolve(document);
           } catch (error) {
-            console.error(`Error processing document ${document}:`, error);
             failCount++;
             reject(error);
           }
         },
         onError: (error) => {
-          console.error(`Error downloading document ${document}:`, error);
           reject(error);
         },
       });

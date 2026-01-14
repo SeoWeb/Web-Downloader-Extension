@@ -48,14 +48,12 @@ export async function downloadResources(
   tabId?: number, // Tab ID for tracking downloads
 ) {
   if (!tabUrl) {
-    console.error("No tab URL provided");
     sendMessage({ key: "error.noUrl" });
     return;
   }
 
   // Prevent concurrent downloads
   if (await getDownloadInProgress()) {
-    console.warn("Download already in progress, rejecting new request");
     sendMessage({ key: "error.downloadInProgress" });
     return;
   }
@@ -63,7 +61,6 @@ export async function downloadResources(
   // Initial memory check and cleanup
   const initialMemoryStats = memoryManager.getMemoryStats();
   if (initialMemoryStats.memoryPressureLevel === MemoryPressureLevel.CRITICAL) {
-    console.error("Cannot start download - critical memory pressure");
     sendMessage(
       { key: "error.memoryPressure" },
     );
@@ -79,8 +76,6 @@ export async function downloadResources(
     // Execute the download within a try-catch-finally block
     await executeDownload(html, tabUrl, downloadOptions, sendMessage, assemblyJobId, tabId);
   } catch (error) {
-    console.error("Download failed:", error);
-
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     
@@ -122,8 +117,8 @@ export async function downloadResources(
       
       // Clear the queue after download completion
       await requestQueue.clear();
-    } catch (cleanupError) {
-      console.error("Error during final cleanup:", cleanupError);
+    } catch {
+      // ignore
     }
   }
 }
@@ -180,7 +175,6 @@ async function executeDownload(
       sendMessage(
         { key: "error.noInternet" },
       );
-      console.warn("No internet connection detected");
       // Continue with basic HTML download only
       if (!downloadOptions.downloadHTML && !downloadOptions.singleFile) {
         sendMessage(
@@ -190,7 +184,6 @@ async function executeDownload(
       }
     }
   } catch (error) {
-    console.warn("Network check failed, continuing with download:", error);
     // Continue with download but warn about potential issues
     sendMessage({ key: "error.networkCheckFailed" });
   }
@@ -256,8 +249,7 @@ async function executeDownload(
             sendMessage({ key: "status.largeHtmlAssembled" });
           }
         }
-      } catch (error) {
-        console.error("Error during incremental HTML assembly:", error);
+      } catch {
         sendMessage({ key: "status.htmlAssemblyError" });
         await processRegularHtml(html, storage, tabUrl, sendMessage);
       }
@@ -320,8 +312,8 @@ async function executeDownload(
             parentUrl: tabUrl,
             status: "queued",
           });
-        } catch (error) {
-          console.warn(`Invalid link URL: ${link}`, error);
+        } catch {
+          // Ignore invalid links
         }
       }
 
@@ -382,7 +374,6 @@ async function executeDownload(
 
           // Pause if memory pressure is critical
           if (memoryStats.memoryPressureLevel === MemoryPressureLevel.CRITICAL) {
-            console.warn(`Critical memory pressure detected before part ${partNumber}, waiting for cleanup...`);
             sendMessage({ key: "status.waitingForCleanup", options: { part: partNumber } });
             
             // Wait for memory to stabilize
@@ -434,7 +425,6 @@ async function executeDownload(
               reader.readAsDataURL(blob);
             });
           } catch (readError) {
-            console.error(`Failed to read blob for part ${partNumber}:`, readError);
             throw readError;
           }
 
@@ -473,7 +463,6 @@ async function executeDownload(
               chrome.downloads.onChanged.addListener(listener);
             });
           } catch (error) {
-             console.error(`Failed to download part ${partNumber}:`, error);
              throw error;
           } finally {
             // Explicitly clear the data URL string to free memory
@@ -523,9 +512,7 @@ async function executeDownload(
     }
     // If blob is undefined, multi-part download was already handled above
 
-  } catch (error) {
-    console.error("Error creating download package:", error);
-    
+  } catch (error) {    
     // Mark session as failed if using IndexedDB
     if (USE_INDEXEDDB) {
       await SessionManager.failSession(currentSessionId, error instanceof Error ? error.message : 'Unknown error');
@@ -548,8 +535,8 @@ async function executeDownload(
         }
         // Cleanup files after successful download
         await FileStore.deleteDownload(currentSessionId);
-      } catch (cleanupError) {
-        console.error("Error during session cleanup:", cleanupError);
+      } catch {
+        // ignore
       }
     }
   }
@@ -557,9 +544,7 @@ async function executeDownload(
   return data.links;
   
   } catch (outerError) {
-    // Handle errors from the main download logic
-    console.error("Error during download execution:", outerError);
-    
+    // Handle errors from the main download logic    
     if (USE_INDEXEDDB) {
       await SessionManager.failSession(currentSessionId, outerError instanceof Error ? outerError.message : 'Unknown error');
     }

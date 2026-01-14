@@ -39,7 +39,6 @@ export async function addImageFiles(
     },
     onError: (request: any, error: Error) => {
       failCount++;
-      console.error(`Image download failed: ${request.url}`, error);
       // Call original listener if it exists
       if (originalListeners.onError) {
         originalListeners.onError(request, error);
@@ -66,7 +65,18 @@ export async function addImageFiles(
       continue;
     }
 
-    const fullImageUrl = new URL(image, tabUrl).href;
+    // Resolve URL like Single File mode does - use origin for relative paths
+    // This fixes issues where paths like 'catalog/view/...' get wrongly appended to page path
+    const tabOrigin = new URL(tabUrl).origin + '/';
+    let fullImageUrl: string;
+    if (image.startsWith('http')) {
+      fullImageUrl = image;
+    } else if (image.startsWith('//')) {
+      fullImageUrl = 'https:' + image;
+    } else {
+      // All relative paths (both '/path' and 'path') use origin as base
+      fullImageUrl = new URL(image, tabOrigin).href;
+    }
     const u = new URL(fullImageUrl);
     const baseUrl = u.origin;
 
@@ -90,7 +100,6 @@ export async function addImageFiles(
             const blob = await result.response.blob();
             const filename = new URL(fullImageUrl, baseUrl).pathname.split("/").pop();
             if (!filename) {
-              console.warn(`Could not determine filename for image: ${fullImageUrl}`);
               failCount++;
               resolve(image);
               return;
@@ -100,13 +109,11 @@ export async function addImageFiles(
             successCount++;
             resolve(image);
           } catch (error) {
-            console.error(`Error processing image ${image}:`, error);
             failCount++;
             reject(error);
           }
         },
         onError: (error) => {
-          console.error(`Error downloading image ${image}:`, error);
           reject(error);
         },
       });

@@ -131,7 +131,6 @@ export default function SidePanel() {
 
         case messageActions.DOWNLOAD_FAILED:
           // Download failed or was interrupted
-          console.error("Download failed:", data);
           // Reset messages to connected status with error message
           setMessages([
             { key: "status.connected" },

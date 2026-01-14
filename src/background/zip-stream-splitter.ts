@@ -116,8 +116,6 @@ export class SplitZipGenerator {
        const actualIndex = cdIndex - this.lastChunkTail.length;
        
        if (actualIndex < 0) {
-         // Signature started in previous chunk
-         console.warn('CD signature spans chunks - this should be rare with JSZip');
          // The signature is in the tail, we need to handle this carefully
          // For now, we'll treat everything as CD since we detected it
          this.isCollectingCD = true;
@@ -429,7 +427,6 @@ export class SplitZipGenerator {
                   view.setUint32(offset + 42, offsetInDisk, true);
                   
               } else {
-                  console.error(`No tracked position for file ${fileIndex}! This should not happen.`);
                   // Fallback: leave the original values (will likely cause errors)
               }
               
@@ -476,7 +473,6 @@ export class SplitZipGenerator {
           } else {
               // Unknown signature - this shouldn't happen in a well-formed ZIP
               // Try to find the next signature
-              console.warn(`Unknown signature 0x${signature.toString(16)} at offset ${offset}`);
               offset++;
           }
       }

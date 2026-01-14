@@ -4,8 +4,7 @@
 export async function hasStoragePermission(): Promise<boolean> {
   try {
     return await chrome.permissions.contains({ permissions: ["storage"] });
-  } catch (error) {
-    console.error("Error checking storage permission:", error);
+  } catch {
     return false;
   }
 }
@@ -16,8 +15,7 @@ export async function hasStoragePermission(): Promise<boolean> {
 export async function requestStoragePermission(): Promise<boolean> {
   try {
     return await chrome.permissions.request({ permissions: ["storage"] });
-  } catch (error) {
-    console.error("Error requesting storage permission:", error);
+  } catch {
     return false;
   }
 }

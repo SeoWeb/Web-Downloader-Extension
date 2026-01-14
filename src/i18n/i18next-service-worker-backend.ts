@@ -28,8 +28,7 @@ class ServiceWorkerBackend implements BackendModule<object> {
         this.cache.set(cacheKey, data);
         callback(null, data);
       })
-      .catch((error) => {
-        console.error(`Failed to load locale ${language}:`, error);
+      .catch(() => {
         // Fallback to empty object to prevent blocking
         callback(null, {});
       });
@@ -80,7 +79,6 @@ class ServiceWorkerBackend implements BackendModule<object> {
       // We need to return just the translation object for the "translation" namespace
       return data.translation || data;
     } catch (error) {
-      console.error(`Error loading locale ${language}:`, error);
       throw error;
     }
   }

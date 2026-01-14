@@ -89,9 +89,6 @@ export async function downloadParts(
       await new Promise(resolve => setTimeout(resolve, 500));
       
     } catch (error) {
-      console.error(`Failed to download part ${partNum}:`, error);
-      // For now, if one fails, we throw. 
-      // A more robust system might pause or ask for retry.
       throw error;
     }
   }

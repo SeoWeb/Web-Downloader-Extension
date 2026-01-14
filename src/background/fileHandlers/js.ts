@@ -39,7 +39,6 @@ export async function addJsFiles(
     },
     onError: (request: any, error: Error) => {
       failCount++;
-      console.error(`JS download failed: ${request.url}`, error);
       // Call original listener if it exists
       if (originalListeners.onError) {
         originalListeners.onError(request, error);
@@ -60,7 +59,18 @@ export async function addJsFiles(
       continue;
     }
 
-    const fullJsUrl = new URL(js, tabUrl).href;
+    // Resolve URL like Single File mode does - use origin for relative paths
+    // This fixes issues where paths like 'catalog/view/...' get wrongly appended to page path
+    const tabOrigin = new URL(tabUrl).origin + '/';
+    let fullJsUrl: string;
+    if (js.startsWith('http')) {
+      fullJsUrl = js;
+    } else if (js.startsWith('//')) {
+      fullJsUrl = 'https:' + js;
+    } else {
+      // All relative paths (both '/path' and 'path') use origin as base
+      fullJsUrl = new URL(js, tabOrigin).href;
+    }
     const u = new URL(fullJsUrl);
     const baseUrl = u.origin;
 
@@ -84,7 +94,6 @@ export async function addJsFiles(
             const blob = await result.response.blob();
             const filename = new URL(fullJsUrl, baseUrl).pathname.split("/").pop();
             if (!filename) {
-              console.warn(`Could not determine filename for JS: ${fullJsUrl}`);
               failCount++;
               resolve(js);
               return;
@@ -94,13 +103,11 @@ export async function addJsFiles(
             successCount++;
             resolve(js);
           } catch (error) {
-            console.error(`Error processing JS ${js}:`, error);
             failCount++;
             reject(error);
           }
         },
         onError: (error) => {
-          console.error(`Error downloading JS ${js}:`, error);
           reject(error);
         },
       });

@@ -108,7 +108,6 @@ export const useFilterStore = create<FilterState>()(
       // Save to Chrome storage asynchronously
       saveFilterOptions(validatedOptions).catch((error) => {
         const storageError = analyzeStorageError(error);
-        console.error("Failed to save filter options:", storageError);
         set({
           hasStorageError: true,
           storageErrorMessage: storageError.message,
@@ -127,7 +126,6 @@ export const useFilterStore = create<FilterState>()(
       // Save to Chrome storage asynchronously
       saveFilterOptions(validatedOptions).catch((error) => {
         const storageError = analyzeStorageError(error);
-        console.error("Failed to save filter options:", storageError);
         set({
           hasStorageError: true,
           storageErrorMessage: storageError.message,
@@ -145,7 +143,6 @@ export const useFilterStore = create<FilterState>()(
       // Save defaults to Chrome storage asynchronously
       saveFilterOptions(DEFAULT_FILTER_OPTIONS).catch((error) => {
         const storageError = analyzeStorageError(error);
-        console.error("Failed to save default filter options:", storageError);
         set({
           hasStorageError: true,
           storageErrorMessage: storageError.message,
@@ -176,11 +173,6 @@ export const useFilterStore = create<FilterState>()(
           storageErrorMessage: null,
         });
       } catch (error) {
-        console.error(
-          "Failed to initialize filter options from storage:",
-          error,
-        );
-
         // Attempt recovery
         const storageError = analyzeStorageError(error);
         const recoveredOptions = await recoverFromStorageError(

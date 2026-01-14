@@ -38,8 +38,8 @@ export function initializeDownloadListener() {
             }).catch(() => {
               // Side panel might be closed, that's ok - storage will handle it
             });
-          } catch (error) {
-            console.error(`Failed to store DOWNLOAD_COMPLETE status:`, error);
+          } catch {
+            // ignore
           }
           
           // Remove from tracking
@@ -118,11 +118,8 @@ export function initializeDownloadListener() {
           if (url.startsWith("blob:") || url.startsWith("data:")) {
             try {
                 URL.revokeObjectURL(url);
-            } catch (cleanupError) {
-              console.warn(
-                `Failed to revoke object URL for download ${delta.id}:`,
-                cleanupError,
-              );
+            } catch {
+              // Ignore
             }
           }
 
@@ -160,11 +157,8 @@ export function initializeDownloadListener() {
           if (url.startsWith("blob:") || url.startsWith("data:")) {
             try {
                 URL.revokeObjectURL(url);
-            } catch (cleanupError) {
-              console.warn(
-                `Failed to revoke object URL for erased download ${downloadId}:`,
-                cleanupError,
-              );
+            } catch {
+              // Ignore
             }
           }
 

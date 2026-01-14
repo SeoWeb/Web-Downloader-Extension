@@ -76,8 +76,7 @@ export default function Filter({
         ) {
           setShowPermissionBanner(true);
         }
-      } catch (error) {
-        console.error("Error checking permissions:", error);
+      } catch {
         setHasPermission(false);
       }
     };

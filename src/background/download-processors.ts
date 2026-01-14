@@ -9,7 +9,6 @@ import {
   addHtmlFiles,
 } from "./fileHandlers";
 import { downloadId } from "./download-state";
-import { formatBytes } from "./download-utils";
 import { DEFAULT_MEMORY_LIMITS } from "../utils/memoryLimits";
 
 export async function processRegularHtml(
@@ -20,7 +19,6 @@ export async function processRegularHtml(
 ) {
   // Check HTML size before processing
   if (html.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
-    console.warn(`HTML content too large: ${formatBytes(html.length)}`);
     sendMessage({ key: "status.htmlTooLarge" });
   }
 
@@ -41,7 +39,6 @@ export async function addIndexHtmlFromBlob(
     await storage.addFile("index.html", htmlContent, "text/html");
     
   } catch (error) {
-    console.error("Error adding HTML blob to storage:", error);
     throw new Error(`Failed to process HTML content: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

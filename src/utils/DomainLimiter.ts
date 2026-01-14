@@ -115,13 +115,11 @@ export class DomainLimiter implements IDomainLimiter {
         // Reduce rate limit by 50%
         this.maxRequestsPerSecond = Math.max(1, Math.floor(this.maxRequestsPerSecond * 0.5));
       }
-      console.warn(`Rate limiting reduced for ${this.domain} to ${this.maxRequestsPerSecond} req/s due to 429 response`);
     }
     
     // If we get 5xx errors, reduce rate limit
     else if (responseStatus >= 500 && responseStatus < 600) {
       this.maxRequestsPerSecond = Math.max(1, Math.floor(this.maxRequestsPerSecond * 0.8));
-      console.warn(`Rate limiting reduced for ${this.domain} to ${this.maxRequestsPerSecond} req/s due to server errors`);
     }
     
     // If we get successful responses, we can gradually increase
@@ -215,9 +213,8 @@ export class DomainLimiter implements IDomainLimiter {
         this.robotsTxtCache.set(this.domain, crawlDelay);
         this.robotsTxtCacheTime.set(this.domain, Date.now());
       }
-    } catch (error) {
+    } catch {
       // Silently fail - robots.txt is optional
-      console.debug(`Failed to fetch robots.txt for ${this.domain}:`, error);
     }
   }
 

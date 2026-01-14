@@ -31,7 +31,6 @@ export async function messageWorker(
   addMessage: (message: Message) => void,
 ): Promise<any> {
   if (!messageActions) {
-    console.error("messageActions is not defined!");
     throw new Error("messageActions is not defined");
   }
 
@@ -65,7 +64,6 @@ export async function messageWorker(
           assemblyJobId,
         };
       } catch (error) {
-        console.error("Failed to initialize differential scraping:", error);
         return {
           success: false,
           error: error instanceof Error ? error.message : "Unknown error",
@@ -90,7 +88,6 @@ export async function messageWorker(
           chunkProcessed: true,
         };
       } catch (error) {
-        console.error("Failed to process HTML chunk:", error);
         return {
           success: false,
           error: error instanceof Error ? error.message : "Unknown error",

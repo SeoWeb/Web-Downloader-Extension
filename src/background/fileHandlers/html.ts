@@ -21,7 +21,6 @@ export async function addIndexHtml(
     try {
       html = convertHtml(inputHtml, tabUrl);
     } catch (conversionError) {
-      console.warn("HTML conversion failed, using original HTML:", conversionError);
       html = inputHtml; // Fallback to original HTML
     }
     
@@ -33,19 +32,8 @@ export async function addIndexHtml(
     const blob = new Blob([html], { type: "text/html;charset=UTF-8" });
     await storage.addFile("index.html", blob, "text/html");
   } catch (error) {
-    console.error("Error creating index.html:", error);
-    
     // Provide more detailed error information
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : '';
-    
-    console.error("Detailed error information:", {
-      message: errorMessage,
-      stack: errorStack,
-      inputHtmlLength: inputHtml?.length || 0,
-      tabUrl: tabUrl || 'undefined'
-    });
-    
     throw new Error(`Failed to create index.html: ${errorMessage}`);
   }
 }
@@ -85,7 +73,6 @@ export async function addHtmlFiles(
     },
     onError: (request: any, error: Error) => {
       failCount++;
-      console.error(`HTML download failed: ${request.url}`, error);
       // Call original listener if it exists
       if (originalListeners.onError) {
         originalListeners.onError(request, error);
@@ -131,9 +118,6 @@ export async function addHtmlFiles(
 
             // Check HTML content size
             if (inputHtml.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
-              console.warn(
-                `HTML content too large: ${link} (${inputHtml.length} bytes)`,
-              );
               sendMessage({ key: "status.skippingHtmlSizeLimit", options: { link } });
               skippedCount++;
               resolve(link);
@@ -143,7 +127,6 @@ export async function addHtmlFiles(
             const html = convertHtml(inputHtml, tabUrl, "../");
             const filename = new URL(fullHtmlUrl, baseUrl).pathname.split("/").pop();
             if (!filename?.length) {
-              console.warn(`Could not determine filename for HTML: ${fullHtmlUrl}`);
               sendMessage({ key: "status.htmlFilenameError", options: { link } });
               failCount++;
               resolve(link);
@@ -159,13 +142,11 @@ export async function addHtmlFiles(
             successCount++;
             resolve(link);
           } catch (error) {
-            console.error(`Error processing HTML ${link}:`, error);
             failCount++;
             reject(error);
           }
         },
         onError: (error) => {
-          console.error(`Error downloading HTML ${link}:`, error);
           reject(error);
         },
       });

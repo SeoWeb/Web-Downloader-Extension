@@ -42,7 +42,6 @@ export async function loadFilterOptions(): Promise<FilterOptions> {
             ...validatedOptions,
           };
         } else {
-          console.warn("Stored filter options are invalid, using defaults");
           // Clear invalid data
           await chrome.storage.local.remove([FILTER_OPTIONS_STORAGE_KEY]);
           return DEFAULT_FILTER_OPTIONS;
@@ -70,7 +69,6 @@ export async function saveFilterOptions(
       // Validate options before saving
       const validatedOptions = validateFilterOptions(options);
       if (!validatedOptions) {
-        console.error("Invalid filter options provided for saving");
         return false;
       }
 

@@ -80,8 +80,6 @@ export async function recoverFromStorageError(
   error: StorageError,
   fallbackOptions?: FilterOptions,
 ): Promise<FilterOptions> {
-  console.warn("Storage error detected:", error);
-
   switch (error.type) {
     case StorageErrorType.PERMISSION_DENIED:
       // Use fallback options or defaults
@@ -91,8 +89,8 @@ export async function recoverFromStorageError(
       // Clear corrupted data and use defaults
       try {
         await chrome.storage.local.remove(["webPageDownloader_filterOptions"]);
-      } catch (clearError) {
-        console.error("Failed to clear corrupted data:", clearError);
+      } catch {
+        // ignore
       }
       return fallbackOptions || DEFAULT_FILTER_OPTIONS;
 
@@ -105,8 +103,8 @@ export async function recoverFromStorageError(
         if (keysToRemove.length > 0) {
           await chrome.storage.local.remove(keysToRemove);
         }
-      } catch (clearError) {
-        console.error("Failed to clear storage:", clearError);
+      } catch {
+        // ignore
       }
       return fallbackOptions || DEFAULT_FILTER_OPTIONS;
 
@@ -139,7 +137,6 @@ export function validateFilterOptions(data: any): FilterOptions | null {
   // Check if all required keys exist and are booleans
   for (const key of requiredKeys) {
     if (!(key in data) || typeof data[key] !== "boolean") {
-      console.warn(`Invalid filter option: ${key}`);
       return null;
     }
   }
@@ -157,13 +154,9 @@ export async function safeStorageOperation<T>(
 ): Promise<T> {
   try {
     return await operation();
-  } catch (error) {
-    const storageError = analyzeStorageError(error);
-    console.error(`Storage operation '${operationName}' failed:`, storageError);
-
-    // Log error for debugging
-    if (storageError.originalError) {
-      console.error("Original error:", storageError.originalError);
+  } catch {
+    if (operationName) {
+      // TODO: Do we need operationName?
     }
 
     return fallback;

@@ -22,8 +22,7 @@ async function estimateFileSize(file: JSZip.JSZipObject): Promise<number> {
     // Generate the compressed blob to get actual size
     const blob = await file.async('blob');
     return blob.size;
-  } catch (error) {
-    console.warn('Failed to estimate file size, using fallback:', error);
+  } catch {
     return 1024; // 1KB fallback
   }
 }

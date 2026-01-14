@@ -105,9 +105,6 @@ export class LinkedPageScraper {
 
     // Check if we've reached the max page limit
     if (this.queue.length >= this.options.maxPages) {
-      console.warn(
-        `Max page limit (${this.options.maxPages}) reached, skipping: ${job.url}`,
-      );
       return;
     }
 
@@ -177,8 +174,8 @@ export class LinkedPageScraper {
     try {
       const tab = await chrome.tabs.get(tabId);
       this.originalTabUrl = tab.url || "";
-    } catch (error) {
-      console.error("Failed to get original tab URL:", error);
+    } catch {
+      // Ignore
     }
 
     // Using storage adapter directly
@@ -223,7 +220,6 @@ export class LinkedPageScraper {
       } catch (error) {
         job.status = "failed";
         this.failCount++;
-        console.error(`✗ Failed to scrape ${job.url}:`, error);
         sendMessage(`Failed to scrape: ${job.url}`);
       }
 
@@ -376,8 +372,7 @@ export class LinkedPageScraper {
           await new Promise((resolve) => setTimeout(resolve, 200));
         },
       });
-    } catch (error) {
-      console.warn("Failed to scroll page for lazy loading:", error);
+    } catch {
       // Non-critical error, continue anyway
     }
   }
@@ -453,14 +448,13 @@ export class LinkedPageScraper {
    */
   private async restoreOriginalPage(tabId: number): Promise<void> {
     if (!this.originalTabUrl) {
-      console.warn("No original tab URL stored, skipping restoration");
       return;
     }
 
     try {
       await chrome.tabs.update(tabId, { url: this.originalTabUrl });
-    } catch (error) {
-      console.error("Failed to restore original page:", error);
+    } catch {
+      // Non-critical error, continue anyway
     }
   }
 
@@ -481,8 +475,7 @@ export class LinkedPageScraper {
       }
 
       return fixFilename(filename);
-    } catch (error) {
-      console.error("Failed to generate filename:", error);
+    } catch {
       return "page.html";
     }
   }

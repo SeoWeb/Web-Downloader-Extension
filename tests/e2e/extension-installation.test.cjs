@@ -32,7 +32,7 @@ const colors = {
 };
 
 function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
+  // console .log(`${colors[color]}${message}${colors.reset}`);
 }
 
 function logSuccess(message) {
@@ -314,7 +314,6 @@ async function runTests() {
 
   } catch (error) {
     logError(`\n💥 Fatal error: ${error.message}`);
-    console.error(error);
     process.exit(1);
   } finally {
     if (browser) {

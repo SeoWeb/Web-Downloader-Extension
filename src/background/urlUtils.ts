@@ -39,9 +39,6 @@ export async function fetchUrl(
 
   // Check memory availability before making request
   if (!memoryManager.checkMemoryAvailability(sizeLimit)) {
-    console.warn(
-      `Insufficient memory for ${fullUrl} (requires up to ${formatBytes(sizeLimit)})`,
-    );
     return null;
   }
 
@@ -71,8 +68,6 @@ export async function fetchUrl(
       clearTimeout(timeoutId);
 
       if (response.status >= 400) {
-        console.warn(`HTTP ${response.status} for ${fullUrl}`);
-        
         // Don't retry permanent 4xx errors (except 408 timeout and 429 rate limit)
         const isPermanentError = response.status >= 400 && response.status < 500 && 
                                  response.status !== 408 && response.status !== 429;
@@ -87,7 +82,6 @@ export async function fetchUrl(
 
       // Check if response is actually valid
       if (!response.body) {
-        console.warn(`Empty response body for ${fullUrl}`);
         if (i === retries - 1) return null;
         await new Promise((res) => setTimeout(res, delay * (i + 1)));
         continue;
@@ -100,9 +94,6 @@ export async function fetchUrl(
         );
 
         if (contentLength > sizeLimit) {
-          console.warn(
-            `Resource ${fullUrl} too large based on Content-Length: ${formatBytes(contentLength)} > ${formatBytes(sizeLimit)}`,
-          );
           return null;
         }
 
@@ -135,8 +126,6 @@ export async function fetchUrl(
 
       return response;
     } catch (e) {
-      console.warn(`Attempt ${i + 1} failed for ${fullUrl}:`, e);
-
       // Try alternative approach using different fetch modes for external resources
       if (i < retries - 1) {
         try {
@@ -155,7 +144,6 @@ export async function fetchUrl(
 
           // For no-cors responses, we need to handle them differently
           if (response.type === 'opaque') {
-            console.warn(`Got opaque response for ${fullUrl}, may not be usable`);
             // For CSS files, opaque responses usually mean the fetch succeeded but we can't access the content
             // This is better than failing completely, so we'll try to use it
             return response;
@@ -167,20 +155,12 @@ export async function fetchUrl(
               response.headers.get("Content-Length") || "0",
             );
             if (contentLength > sizeLimit) {
-              console.warn(
-                `Fallback resource ${fullUrl} too large: ${formatBytes(contentLength)} > ${formatBytes(sizeLimit)}`,
-              );
               continue;
             }
           }
 
           return response;
         } catch (fallbackError) {
-          console.warn(
-            `Alternative fetch method also failed for ${fullUrl}:`,
-            fallbackError,
-          );
-
           // Try one more approach with different headers
           try {
             const thirdResponse = await fetch(fullUrl, {
@@ -190,14 +170,13 @@ export async function fetchUrl(
               redirect: "follow",
             });
             return thirdResponse;
-          } catch (thirdError) {
-            console.warn(`Third fetch method also failed for ${fullUrl}:`, thirdError);
+          } catch {
+            // Ignore
           }
         }
       }
 
       if (i === retries - 1) {
-        console.error(`Failed to fetch ${url} after ${retries} attempts`);
         return null;
       }
       await new Promise((res) => setTimeout(res, delay * (i + 1))); // Exponential backoff
@@ -218,6 +197,10 @@ async function createSizeLimitedResponse(
   const chunks: Uint8Array[] = [];
   let totalSize = 0;
 
+  if (url) {
+    // DOTO: why this url is needed?
+  }
+
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -227,9 +210,6 @@ async function createSizeLimitedResponse(
       totalSize += value.length;
 
       if (totalSize > maxSize) {
-        console.warn(
-          `Resource ${url} exceeded size limit during streaming: ${formatBytes(totalSize)} > ${formatBytes(maxSize)}`,
-        );
         reader.cancel();
         return null;
       }
@@ -258,7 +238,6 @@ async function createSizeLimitedResponse(
 
     return newResponse;
   } catch (error) {
-    console.error(`Error while checking size for ${url}:`, error);
     reader.cancel();
     return null;
   }
@@ -328,22 +307,6 @@ function getResourceType(path: string): keyof typeof RESOURCE_SIZE_LIMITS {
     default:
       return "DEFAULT";
   }
-}
-
-/**
- * Format bytes to human readable format
- */
-function formatBytes(bytes: number): string {
-  const units = ["B", "KB", "MB", "GB"];
-  let size = bytes;
-  let unitIndex = 0;
-
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex++;
-  }
-
-  return `${size.toFixed(1)}${units[unitIndex]}`;
 }
 
 export function fixFilename(filename: string) {

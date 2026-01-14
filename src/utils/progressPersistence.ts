@@ -117,7 +117,6 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
       // Clean up old downloads if needed
       await this.performCleanup();
     } catch (error) {
-      console.error('Error saving download progress:', error);
       throw error;
     }
   }
@@ -161,8 +160,7 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
           data: undefined, // Data will be re-downloaded
         })),
       };
-    } catch (error) {
-      console.error('Error loading download progress:', error);
+    } catch {
       return null;
     }
   }
@@ -193,7 +191,6 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
         };
       });
     } catch (error) {
-      console.error('Error removing download progress:', error);
       throw error;
     }
   }
@@ -225,8 +222,7 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
       });
 
       return downloadIds;
-    } catch (error) {
-      console.error('Error listing download progress:', error);
+    } catch {
       return [];
     }
   }
@@ -278,8 +274,7 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
           });
         }
       }
-    } catch (error) {
-      console.error('Error during cleanup:', error);
+    } catch {
     }
   }
 
@@ -323,8 +318,7 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
       };
 
       return stats;
-    } catch (error) {
-      console.error('Error getting statistics:', error);
+    } catch {
       return {
         totalDownloads: 0,
         activeDownloads: 0,
@@ -370,8 +364,7 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
           data: undefined,
         })),
       }));
-    } catch (error) {
-      console.error('Error finding downloads by URL:', error);
+    } catch {
       return [];
     }
   }
@@ -407,8 +400,8 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
     try {
       // Clean up downloads older than 24 hours
       await this.cleanup(24 * 60 * 60 * 1000);
-    } catch (error) {
-      console.error('Error during periodic cleanup:', error);
+    } catch {
+      // Ignore
     }
   }
 

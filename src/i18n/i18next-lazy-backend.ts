@@ -29,7 +29,6 @@ class LazyLocaleBackend implements BackendModule<object> {
         callback(null, data);
       })
       .catch((error) => {
-        console.error(`Failed to load locale ${language}:`, error);
         callback(error, null);
       });
   }
@@ -105,7 +104,6 @@ class LazyLocaleBackend implements BackendModule<object> {
       // We need to return just the translation object for the "translation" namespace
       return data.translation || data;
     } catch (error) {
-      console.error(`Error loading locale ${language}:`, error);
       throw error;
     }
   }

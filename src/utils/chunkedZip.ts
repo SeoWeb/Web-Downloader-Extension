@@ -123,7 +123,6 @@ export class ChunkedZipProcessor {
         const memoryIncrease = currentMemory - memoryBefore;
 
         if (memoryIncrease > maxAllowedMemory * 0.8) {
-          console.warn('High memory usage during ZIP generation, consider reducing compression');
           memoryManager.forceCleanup();
         }
       });
@@ -134,7 +133,6 @@ export class ChunkedZipProcessor {
 
       return zipBlob;
     } catch (error) {
-      console.error('Error generating ZIP:', error);
       throw new Error(`ZIP generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -246,7 +244,6 @@ export class ChunkedZipProcessor {
         this.currentProgress.completedEntries++;
         this.currentProgress.completedBytes += await this.getEntrySize(entry);
       } catch (error) {
-        console.error(`Error adding entry ${entry.path}:`, error);
         throw error;
       }
     }

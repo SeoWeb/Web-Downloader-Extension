@@ -121,8 +121,7 @@ export function useScrapingDownloader({
           // Don't reset downloadResponse here - keep it to maintain filter hidden state
           // It will be cleared when DOWNLOAD_COMPLETE or DOWNLOAD_CANCELLED message is received
         })
-        .catch((error) => {
-          console.error("Download failed:", error);
+        .catch(() => {
           setMessages((prev) => [...prev, { key: "status.failed" }]);
           // Reset on error
           setDownloadResponse(null);

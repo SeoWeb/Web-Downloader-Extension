@@ -30,8 +30,7 @@ export function usePermissions(): UsePermissionsReturn {
       // Offscreen might be requested on demand or together, but storage is critical for settings
       const storage = await hasStoragePermission();
       setHasPermission(storage);
-    } catch (err) {
-      console.error("Error checking permissions:", err);
+    } catch {
       setError("Failed to check permissions");
     } finally {
       setLoading(false);
@@ -58,8 +57,7 @@ export function usePermissions(): UsePermissionsReturn {
       } else {
         setError("Storage and offscreen permissions are required to use this extension");
       }
-    } catch (err) {
-      console.error("Error requesting permissions:", err);
+    } catch {
       setError("Failed to request permissions");
     } finally {
       setPermissionRequesting(false);

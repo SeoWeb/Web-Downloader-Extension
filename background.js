@@ -13,8 +13,8 @@ const resetDownloadState = async () => {
   // Run IndexedDB cleanup
   try {
     await FileStore.cleanupOldDownloads();
-  } catch (error) {
-    console.error('Error during IndexedDB cleanup:', error);
+  } catch {
+    // ignore
   }
 };
 
@@ -25,8 +25,8 @@ chrome.runtime.onInstalled.addListener(resetDownloadState);
 setInterval(async () => {
   try {
     await FileStore.cleanupOldDownloads();
-  } catch (error) {
-    console.error('Error during periodic cleanup:', error);
+  } catch {
+    // ignore
   }
 }, 6 * 60 * 60 * 1000);
 

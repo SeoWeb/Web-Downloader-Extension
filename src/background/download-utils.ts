@@ -39,8 +39,8 @@ export async function performInitialCleanup(): Promise<void> {
     ) {
       await memoryManager.forceCleanup();
     }
-  } catch (error) {
-    console.error("Error during initial cleanup:", error);
+  } catch {
+    // ignore
   }
 }
 
@@ -55,7 +55,6 @@ export async function initiateDownload(
 ): Promise<void> {
   if (!blob || blob.size === 0) {
     const error = "No blob data available for download or blob is empty";
-    console.error(error);
     sendMessage({ key: "error.noBlobData" });
     throw new Error(error);
   }
@@ -109,7 +108,6 @@ export async function initiateDownload(
     }
     sendMessage({ key: "status.downloadStarted" });
   } catch (error) {
-    console.error("Critical error in initiateDownload:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown download error";
     sendMessage({ key: "error.downloadFailed", options: { error: errorMessage } });
     throw error;

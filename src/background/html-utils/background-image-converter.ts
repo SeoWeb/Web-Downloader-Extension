@@ -1,5 +1,5 @@
 import { DOMParser } from "linkedom";
-import { fetchUrl } from "../urlUtils";
+import { fetchUrl, fixFilename } from "../urlUtils";
 
 export function convertBackgroundImagesToRelative(
   htmlString: string,
@@ -62,7 +62,7 @@ function convertBackgroundImageUrlsToRelative(
       if (!imageUrl.startsWith("http")) {
         const filename = imageUrl.split("/").pop();
         if (filename) {
-          const relativeImagePath = path + "images/" + filename;
+          const relativeImagePath = path + "images/" + fixFilename(filename);
           return match.replace(imageUrl, relativeImagePath);
         }
       }
@@ -75,15 +75,12 @@ function convertBackgroundImageUrlsToRelative(
         const relativePath = url.pathname;
         const filename = relativePath.split("/").pop();
         if (filename) {
-          const relativeImagePath = path + "images/" + filename;
+          const relativeImagePath = path + "images/" + fixFilename(filename);
           return match.replace(imageUrl, relativeImagePath);
         }
       }
-    } catch (error) {
-      console.warn(
-        `Failed to convert background image URL to relative: ${imageUrl}`,
-        error,
-      );
+    } catch {
+      // Ignore
     }
 
     return match; // Return original if conversion fails
@@ -161,11 +158,8 @@ async function convertBackgroundImageUrlsToBase64(
             reader.readAsDataURL(blob);
           });
         }
-      } catch (error) {
-        console.warn(
-          `Failed to convert background image to base64: ${imageUrl}`,
-          error,
-        );
+      } catch {
+        // Ignore
       }
       return imageUrl; // Return original URL if conversion fails
     };

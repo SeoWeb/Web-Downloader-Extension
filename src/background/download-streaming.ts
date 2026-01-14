@@ -22,7 +22,6 @@ export async function downloadResourcesWithStreaming(
   tabId?: number,
 ) {
   if (!tabUrl) {
-    console.error("No tab URL provided");
     sendMessage({ key: "error.noUrl" });
     return;
   }
@@ -38,7 +37,6 @@ export async function downloadResourcesWithStreaming(
 
   // Prevent concurrent downloads
   if (await getDownloadInProgress()) {
-    console.warn("Download already in progress, rejecting new request");
     sendMessage({ key: "error.downloadInProgress" });
     return;
   }
@@ -47,15 +45,12 @@ export async function downloadResourcesWithStreaming(
 
   try {
     await executeStreamingDownload(html, tabUrl, downloadOptions, sendMessage, data, tabId);
-  } catch (error) {
-    console.error("Streaming download failed:", error);
-
+  } catch {
     // Fall back to regular download on streaming failure
     sendMessage({ key: "status.streamingFailedFallback" });
     try {
       await downloadResources(html, tabUrl, downloadOptions, sendMessage, undefined, tabId);
     } catch (fallbackError) {
-      console.error("Fallback download also failed:", fallbackError);
       sendMessage({ key: "status.failedWithError", options: { error: fallbackError instanceof Error ? fallbackError.message : 'Unknown error' } });
     }
   } finally {
@@ -147,8 +142,7 @@ async function executeStreamingDownload(
           // Use regular download for small CSS files
           // This will be handled by the regular file handlers
         }
-      } catch (error) {
-        console.error(`Error streaming CSS ${cssUrl}:`, error);
+      } catch {
         // Fall back to regular download
       }
     }
@@ -178,8 +172,8 @@ async function executeStreamingDownload(
             path: `scripts/${filename}`,
           });
         }
-      } catch (error) {
-        console.error(`Error streaming JS ${jsUrl}:`, error);
+      } catch {
+        // Fall back to regular download
       }
     }
   }
@@ -208,8 +202,8 @@ async function executeStreamingDownload(
             path: `images/${filename}`,
           });
         }
-      } catch (error) {
-        console.error(`Error streaming image ${imageUrl}:`, error);
+      } catch {
+        // Fall back to regular download
       }
     }
   }
@@ -272,7 +266,6 @@ async function executeStreamingDownload(
     sendMessage({ key: "status.streamingSuccess" });
 
   } catch (error) {
-    console.error("Error creating streaming ZIP:", error);
     throw error;
   }
 }

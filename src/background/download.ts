@@ -27,8 +27,8 @@ requestQueue.setEventListeners({
   onComplete: () => {
     // console .log(`Queue: Completed ${result.requestId} request`);
   },
-  onError: (request, error) => {
-    console.error(`Queue: Failed ${request.resourceType} request for ${request.url}:`, error);
+  onError: () => {
+    // console .error(`Queue: Failed ${request.resourceType} request for ${request.url}:`, error);
   },
   onRetry: () => {
     // console .log(`Queue: Retrying ${request.resourceType} request for ${request.url}, attempt ${attempt}`);
@@ -46,12 +46,10 @@ streamingDownloader.setEventListeners({
   onComplete: () => {
     // console .log(`Streaming download completed: ${download.id}`);
   },
-  onError: (download, error) => {
-    console.error(`Streaming download failed: ${download.id}`, error);
+  onError: () => {
+    // console .error(`Streaming download failed: ${download.id}`, error);
   },
   onMemoryPressure: async (pressure) => {
-    // console.warn(`Memory pressure during streaming: ${pressure.level}`);
-
     if (pressure.shouldPause) {
       // Pause all active streaming downloads
       const activeDownloads = streamingDownloader.getActiveDownloads();
@@ -78,8 +76,6 @@ memoryManager.registerMemoryPressureCallback(async (level) => {
   if (level === MemoryPressureLevel.CRITICAL) {
     // Emergency cleanup
     await cleanupOldBlobs(DEFAULT_MEMORY_LIMITS.MAX_BLOB_AGE / 2); // Cleanup sooner
-    console.warn("Emergency cleanup performed due to critical memory pressure");
-
     // Pause all streaming downloads during critical memory pressure
     const activeDownloads = streamingDownloader.getActiveDownloads();
     for (const download of activeDownloads) {
@@ -93,7 +89,6 @@ memoryManager.registerMemoryPressureCallback(async (level) => {
   } else if (level === MemoryPressureLevel.HIGH) {
     // Reduce queue concurrency during high memory pressure
     // Note: This would need to be implemented in RequestQueue if needed
-    console.warn("High memory pressure detected, queue will naturally reduce concurrency");
   } else if (level === MemoryPressureLevel.LOW) {
     // Resume normal queue operation
     requestQueue.resume();

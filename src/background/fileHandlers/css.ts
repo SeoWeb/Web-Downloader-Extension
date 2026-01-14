@@ -35,8 +35,6 @@ export async function addCssFiles(
     },
     onError: (request: any, error: Error) => {
       failCount++;
-      console.error(`CSS download failed: ${request.url}`, error);
-      // Call original listener if it exists
       if (originalListeners.onError) {
         originalListeners.onError(request, error);
       }
@@ -56,7 +54,18 @@ export async function addCssFiles(
       continue;
     }
 
-    const fullCssUrl = new URL(css, tabUrl).href;
+    // Resolve URL like Single File mode does - use origin for relative paths
+    // This fixes issues where paths like 'catalog/view/...' get wrongly appended to page path
+    const tabOrigin = new URL(tabUrl).origin + '/';
+    let fullCssUrl: string;
+    if (css.startsWith('http')) {
+      fullCssUrl = css;
+    } else if (css.startsWith('//')) {
+      fullCssUrl = 'https:' + css;
+    } else {
+      // All relative paths (both '/path' and 'path') use origin as base
+      fullCssUrl = new URL(css, tabOrigin).href;
+    }
     const u = new URL(fullCssUrl);
     const baseUrl = u.origin;
 
@@ -83,7 +92,6 @@ export async function addCssFiles(
           try {
             // Check for opaque response (CORS issue)
             if (result.response.type === 'opaque') {
-              console.warn(`CSS ${css} returned opaque response (CORS blocked), skipping`);
               skippedCount++;
               resolve(css);
               return;
@@ -94,9 +102,6 @@ export async function addCssFiles(
 
             // Check CSS content size against limits
             if (cssContent.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
-              console.warn(
-                `CSS content too large: ${css} (${cssContent.length} bytes)`,
-              );
               skippedCount++;
               resolve(css);
               return;
@@ -126,7 +131,6 @@ export async function addCssFiles(
             const blob = new Blob([updatedCssContent], { type: "text/css" });
             const filename = new URL(fullCssUrl).pathname.split("/").pop();
             if (!filename) {
-              console.warn(`Could not determine filename for CSS: ${fullCssUrl}`);
               failCount++;
               resolve(css);
               return;
@@ -136,13 +140,11 @@ export async function addCssFiles(
             successCount++;
             resolve(css);
           } catch (error) {
-            console.error(`Error processing CSS ${css}:`, error);
             failCount++;
             reject(error);
           }
         },
         onError: (error) => {
-          console.error(`Error downloading CSS ${css}:`, error);
           reject(error);
         },
       });
@@ -226,7 +228,6 @@ async function downloadBackgroundImages(
     },
     onError: (request: any, error: Error) => {
       failCount++;
-      console.error(`Background image download failed: ${request.url}`, error);
       // Call original listener if it exists
       if (originalListeners.onError) {
         originalListeners.onError(request, error);
@@ -268,9 +269,6 @@ async function downloadBackgroundImages(
             const blob = await result.response.blob();
             const filename = new URL(fullImageUrl).pathname.split("/").pop();
             if (!filename) {
-              console.warn(
-                `Could not determine filename for background image: ${fullImageUrl}`,
-              );
               sendMessage(`Could not determine filename for: ${imageUrl}`);
               failCount++;
               resolve(imageUrl);
@@ -281,13 +279,11 @@ async function downloadBackgroundImages(
             successCount++;
             resolve(imageUrl);
           } catch (error) {
-            console.error(`Error processing background image ${imageUrl}:`, error);
             failCount++;
             reject(error);
           }
         },
         onError: (error) => {
-          console.error(`Error downloading background image ${imageUrl}:`, error);
           reject(error);
         },
       });
@@ -353,11 +349,8 @@ function convertBackgroundImageUrlsToRelative(
           return match.replace(imageUrl, relativeImagePath);
         }
       }
-    } catch (error) {
-      console.warn(
-        `Failed to convert image URL to relative: ${imageUrl}`,
-        error,
-      );
+    } catch {
+      // Ignore
     }
 
     return match; // Return original if conversion fails

@@ -114,7 +114,6 @@ export class HtmlAssembler {
     // Check if individual chunk is too large (should not exceed 25% of max HTML size)
     const maxAbsoluteChunkSize = finalOptions.maxTotalSize / 4;
     if (chunkSize > maxAbsoluteChunkSize) {
-      console.warn(`Chunk size (${adaptiveMemoryManager.formatBytes(chunkSize)}) exceeds absolute maximum (${adaptiveMemoryManager.formatBytes(maxAbsoluteChunkSize)})`);
       return {
         success: false,
         added: false,
@@ -124,8 +123,6 @@ export class HtmlAssembler {
     
     // Check against configured max chunk size
     if (chunkSize > finalOptions.maxChunkSize) {
-      console.warn(`Chunk size (${adaptiveMemoryManager.formatBytes(chunkSize)}) exceeds configured limit (${adaptiveMemoryManager.formatBytes(finalOptions.maxChunkSize)})`);
-      
       // Try to split large chunks, but reject if they're way too big
       if (chunkSize > finalOptions.maxChunkSize * 2) {
         return {
@@ -232,7 +229,6 @@ export class HtmlAssembler {
         stats,
       };
     } catch (error) {
-      console.error(`Error finalizing job ${jobId}:`, error);
       return {
         success: false,
         reason: error instanceof Error ? error.message : 'Unknown error',

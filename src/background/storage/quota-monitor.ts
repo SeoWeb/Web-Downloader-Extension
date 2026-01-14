@@ -17,7 +17,6 @@ export async function checkStorageQuota(): Promise<{
 export async function warnIfQuotaLow(): Promise<void> {
   const { percentUsed } = await checkStorageQuota();
   if (percentUsed > 80) {
-    console.warn(`Storage quota is ${percentUsed.toFixed(1)}% full`);
     // Could show notification to user
   }
 }

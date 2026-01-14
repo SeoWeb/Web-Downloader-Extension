@@ -95,7 +95,6 @@ export class IncrementalScraper {
         await new Promise(resolve => setTimeout(resolve, 500));
         
       } catch (error) {
-        console.error(`Failed to scrape ${item.url}:`, error);
         await ScrapingQueueManager.markFailed(item.id, error instanceof Error ? error.message : i18n.t('app.unknownError'));
       }
     }
