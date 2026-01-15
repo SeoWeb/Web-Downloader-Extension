@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Avaa linkitetyt sivut peräkkäin tässä välilehdessä dynaamisen sisällön ja resurssien tallentamiseksi. Näet kunkin sivun latautuvan prosessin aikana.",
       "maxPages": "Kaavittavien sivujen enimmäismäärä",
       "pageDelay": "Viive sivujen välillä",
-      "includeExternal": "Sisällytä ulkoiset linkit"
+      "includeExternal": "Sisällytä ulkoiset linkit",
+      "fullWebsite": "Lataa koko verkkosivusto",
+      "fullWebsiteDescription": "Paras monimutkaisille verkkosivustoille (lataa linkitettyjen sivujen ensimmäisen tason)"
     },
     "actions": {
       "title": "Toiminnot:",

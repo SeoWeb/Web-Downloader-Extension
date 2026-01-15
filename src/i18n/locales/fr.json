@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Ouvre les pages liées séquentiellement dans cet onglet pour capturer le contenu dynamique et les ressources. Vous verrez chaque page se charger pendant le processus.",
       "maxPages": "Pages max à extraire",
       "pageDelay": "Délai entre les pages",
-      "includeExternal": "Inclure les liens externes"
+      "includeExternal": "Inclure les liens externes",
+      "fullWebsite": "Télécharger le site web complet",
+      "fullWebsiteDescription": "Idéal pour les sites web complexes (télécharge le premier niveau des pages liées)"
     },
     "actions": {
       "title": "Actions :",

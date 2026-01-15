@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Öffnet verlinkte Seiten sequenziell in diesem Tab, um dynamische Inhalte und Assets zu erfassen. Sie werden sehen, wie jede Seite während des Prozesses geladen wird.",
       "maxPages": "Max. zu scrapende Seiten",
       "pageDelay": "Verzögerung zwischen Seiten",
-      "includeExternal": "Externe Links einbeziehen"
+      "includeExternal": "Externe Links einbeziehen",
+      "fullWebsite": "Vollständige Website herunterladen",
+      "fullWebsiteDescription": "Am besten für komplexe Websites (lädt die erste Ebene verlinkter Seiten herunter)"
     },
     "actions": {
       "title": "Aktionen:",

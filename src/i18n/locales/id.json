@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Membuka halaman tertaut secara berurutan di tab ini untuk menangkap konten dan aset dinamis. Anda akan melihat setiap halaman dimuat selama proses.",
       "maxPages": "Maks halaman untuk di-scrape",
       "pageDelay": "Jeda antar halaman",
-      "includeExternal": "Sertakan tautan eksternal"
+      "includeExternal": "Sertakan tautan eksternal",
+      "fullWebsite": "Unduh situs web lengkap",
+      "fullWebsiteDescription": "Terbaik untuk situs web yang kompleks (mengunduh tingkat pertama halaman yang ditautkan)"
     },
     "actions": {
       "title": "Tindakan:",

@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Deschide paginile legate secvențial în această filă pentru a captura conținut dinamic și resurse. Veți vedea fiecare pagină încărcându-se în timpul procesului.",
       "maxPages": "Max pagini de răzuit",
       "pageDelay": "Întârziere între pagini",
-      "includeExternal": "Include linkuri externe"
+      "includeExternal": "Include linkuri externe",
+      "fullWebsite": "Descarcă site-ul complet",
+      "fullWebsiteDescription": "Cel mai bun pentru site-uri complexe (descarcă primul nivel de pagini conectate)"
     },
     "actions": {
       "title": "Acțiuni:",

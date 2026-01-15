@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Mở các trang được liên kết theo trình tự trong tab này để thu thập nội dung động và tài nguyên. Bạn sẽ thấy từng trang tải trong quá trình này.",
       "maxPages": "Số trang tối đa để thu thập",
       "pageDelay": "Độ trễ giữa các trang",
-      "includeExternal": "Bao gồm các liên kết bên ngoài"
+      "includeExternal": "Bao gồm các liên kết bên ngoài",
+      "fullWebsite": "Tải xuống toàn bộ trang web",
+      "fullWebsiteDescription": "Tốt nhất cho các trang web phức tạp (tải xuống cấp độ đầu tiên của các trang được liên kết)"
     },
     "actions": {
       "title": "Hành động:",

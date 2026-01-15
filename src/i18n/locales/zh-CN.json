@@ -47,7 +47,9 @@
       "fullScrapingInfo": "在此标签页中按顺序打开链接的页面，以捕获动态内容和资源。过程中您会看到每个页面加载。",
       "maxPages": "最大抓取页数",
       "pageDelay": "页面间延迟",
-      "includeExternal": "包含外部链接"
+      "includeExternal": "包含外部链接",
+      "fullWebsite": "下载完整网站",
+      "fullWebsiteDescription": "最适合复杂网站（下载链接页面的第一层级）"
     },
     "actions": {
       "title": "操作：",

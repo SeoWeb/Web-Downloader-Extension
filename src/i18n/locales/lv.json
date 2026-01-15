@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Secīgi atver saistītās lapas šajā cilnē, lai tvertu dinamisku saturu un aktīvus. Procesa laikā redzēsiet katras lapas ielādi.",
       "maxPages": "Maks. lapas skrāpēšanai",
       "pageDelay": "Aizkave starp lapām",
-      "includeExternal": "Iekļaut ārējās saites"
+      "includeExternal": "Iekļaut ārējās saites",
+      "fullWebsite": "Lejupielādēt visu vietni",
+      "fullWebsiteDescription": "Vislabāk piemērots sarežģītām vietnēm (lejupielādē saistīto lapu pirmo līmeni)"
     },
     "actions": {
       "title": "Darbības:",

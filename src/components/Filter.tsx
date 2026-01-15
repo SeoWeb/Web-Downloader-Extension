@@ -13,7 +13,8 @@ import {
   File,
   AlertTriangle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Globe
 } from "lucide-react";
 import cn from "classnames";
 
@@ -118,6 +119,20 @@ export default function Filter({
     setSingleFile(isChecked);
   };
 
+  const handleFullWebsiteChange = (checked: CheckedState) => {
+    const isChecked = !!checked;
+    if (isChecked) {
+      setSingleFile(false);
+      setDownloadHTML(true);
+      setDownloadImages(true);
+      setDownloadAssets(true);
+      setDownloadLinks(true);
+      setDownloadLinksFullScraping(true);
+    } else {
+      setDownloadLinks(false);
+    }
+  };
+
   const handleDownloadLinksChange = (checked: CheckedState) => {
     setDownloadLinks(!!checked);
   };
@@ -197,6 +212,22 @@ export default function Filter({
           showAdvanced ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
         )}>
           <div className="p-4 space-y-4 bg-white">
+
+            {/* Mode Selection */}
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 mb-2">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  id="fullWebsite"
+                  checked={!!(options.downloadLinks && options.downloadLinksFullScraping)}
+                  onCheckedChange={handleFullWebsiteChange}
+                />
+                <label htmlFor="fullWebsite" className="flex-1 cursor-pointer">
+                  <div className="font-medium text-slate-900">{t('filter.fullWebsite')}</div>
+                  <div className="text-xs text-slate-500">{t('filter.fullWebsiteDescription')}</div>
+                </label>
+                <Globe className="w-5 h-5 text-slate-400" />
+              </div>
+            </div>
 
             {/* Mode Selection */}
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">

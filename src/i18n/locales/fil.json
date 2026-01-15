@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Binubuksan ang mga naka-link na pahina nang sunud-sunod sa tab na ito upang makuha ang dynamic na nilalaman at mga asset. Makikita mo ang pag-load ng bawat pahina sa panahon ng proseso.",
       "maxPages": "Max na mga pahina na i-scrape",
       "pageDelay": "Pagkaantala sa pagitan ng mga pahina",
-      "includeExternal": "Isama ang mga panlabas na link"
+      "includeExternal": "Isama ang mga panlabas na link",
+      "fullWebsite": "I-download ang buong website",
+      "fullWebsiteDescription": "Pinakamahusay para sa mga kumplikadong website (idina-download ang unang antas ng mga naka-link na pahina)"
     },
     "actions": {
       "title": "Mga Aksyon:",

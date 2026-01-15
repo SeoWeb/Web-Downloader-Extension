@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Avab lingitud lehed selles vahekaardis järjestikku, et haarata dünaamilist sisu ja ressursse. Näete protsessi käigus iga lehe laadimist.",
       "maxPages": "Maksimaalne lehtede arv kraapimiseks",
       "pageDelay": "Viivitus lehtede vahel",
-      "includeExternal": "Kaasa välised lingid"
+      "includeExternal": "Kaasa välised lingid",
+      "fullWebsite": "Laadi alla kogu veebileht",
+      "fullWebsiteDescription": "Parim keerukate veebilehtede jaoks (laadib alla lingitud lehtede esimese taseme)"
     },
     "actions": {
       "title": "Tegevused:",

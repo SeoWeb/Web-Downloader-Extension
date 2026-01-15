@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Dinamik içeriği ve varlıkları yakalamak için bağlantılı sayfaları bu sekmede sırayla açar. İşlem sırasında her sayfanın yüklendiğini göreceksiniz.",
       "maxPages": "Kazınacak maksimum sayfa",
       "pageDelay": "Sayfalar arası gecikme",
-      "includeExternal": "Harici bağlantıları dahil et"
+      "includeExternal": "Harici bağlantıları dahil et",
+      "fullWebsite": "Tam web sitesini indir",
+      "fullWebsiteDescription": "Karmaşık web siteleri için en iyisi (bağlantılı sayfaların ilk seviyesini indirir)"
     },
     "actions": {
       "title": "İşlemler:",

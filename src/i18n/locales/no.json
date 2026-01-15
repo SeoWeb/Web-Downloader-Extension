@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Åpner koblede sider sekvensielt i denne fanen for å fange dynamisk innhold og ressurser. Du vil se hver side laste under prosessen.",
       "maxPages": "Maks sider å skrape",
       "pageDelay": "Forsinkelse mellom sider",
-      "includeExternal": "Inkluder eksterne lenker"
+      "includeExternal": "Inkluder eksterne lenker",
+      "fullWebsite": "Last ned hele nettsiden",
+      "fullWebsiteDescription": "Best for komplekse nettsteder (laster ned første nivå av koblede sider)"
     },
     "actions": {
       "title": "Handlinger:",

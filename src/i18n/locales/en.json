@@ -27,6 +27,8 @@
       "downloadContentAsText": "Download content as text",
       "singleFile": "Download in single HTML file",
       "singleFileDescription": "Best for simple archiving",
+      "fullWebsite": "Download full website",
+      "fullWebsiteDescription": "Best for complex websites (downloads the first level of linked pages)",
       "zipDescription": "Saves the full page structure as a ZIP archive",
       "startDownload": "Start download",
       "linksWarning": "If you choose to download links, you have to take into account that the total download time can increase dramatically and the zip file can be significantly larger.",

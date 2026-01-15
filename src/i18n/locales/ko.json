@@ -47,7 +47,9 @@
       "fullScrapingInfo": "동적 콘텐츠와 리소스를 캡처하기 위해 이 탭에서 링크된 페이지를 순차적으로 엽니다. 과정 중에 각 페이지가 로드되는 것을 볼 수 있습니다.",
       "maxPages": "최대 스크래핑 페이지",
       "pageDelay": "페이지 간 지연",
-      "includeExternal": "외부 링크 포함"
+      "includeExternal": "외부 링크 포함",
+      "fullWebsite": "전체 웹사이트 다운로드",
+      "fullWebsiteDescription": "복잡한 웹사이트에 최적 (연결된 페이지의 첫 번째 레벨을 다운로드함)"
     },
     "actions": {
       "title": "작업:",

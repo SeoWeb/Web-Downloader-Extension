@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Öppnar länkade sidor sekventiellt i denna flik för att fånga dynamiskt innehåll och tillgångar. Du kommer att se varje sida laddas under processen.",
       "maxPages": "Max sidor att skrapa",
       "pageDelay": "Fördröjning mellan sidor",
-      "includeExternal": "Inkludera externa länkar"
+      "includeExternal": "Inkludera externa länkar",
+      "fullWebsite": "Ladda ner hela webbplatsen",
+      "fullWebsiteDescription": "Bäst för komplexa webbplatser (laddar ner första nivån av länkade sidor)"
     },
     "actions": {
       "title": "Åtgärder:",

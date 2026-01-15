@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Otevírá propojené stránky postupně v této kartě pro zachycení dynamického obsahu a prostředků. Uvidíte načítání každé stránky během procesu.",
       "maxPages": "Max. stránek ke stažení",
       "pageDelay": "Zpoždění mezi stránkami",
-      "includeExternal": "Zahrnout externí odkazy"
+      "includeExternal": "Zahrnout externí odkazy",
+      "fullWebsite": "Stáhnout celý web",
+      "fullWebsiteDescription": "Nejlepší pro složité weby (stáhne první úroveň odkazovaných stránek)"
     },
     "actions": {
       "title": "Akce:",

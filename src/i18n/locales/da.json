@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Åbner linkede sider sekventielt i denne fane for at fange dynamisk indhold og aktiver. Du vil se hver side indlæse under processen.",
       "maxPages": "Maks. sider at scrappe",
       "pageDelay": "Forsinkelse mellem sider",
-      "includeExternal": "Inkluder eksterne links"
+      "includeExternal": "Inkluder eksterne links",
+      "fullWebsite": "Download hele hjemmesiden",
+      "fullWebsiteDescription": "Bedst til komplekse hjemmesider (downloader første niveau af linkede sider)"
     },
     "actions": {
       "title": "Handlinger:",

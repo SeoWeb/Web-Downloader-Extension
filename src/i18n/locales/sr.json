@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Otvara povezane stranice redom u ovoj kartici radi hvatanja dinamičkog sadržaja i resursa. Videćete kako se svaka stranica učitava tokom procesa.",
       "maxPages": "Maks. stranica za struganje",
       "pageDelay": "Kašnjenje između stranica",
-      "includeExternal": "Uključi spoljne veze"
+      "includeExternal": "Uključi spoljne veze",
+      "fullWebsite": "Preuzmite ceo veb sajt",
+      "fullWebsiteDescription": "Najbolje za složene veb sajtove (preuzima prvi nivo povezanih stranica)"
     },
     "actions": {
       "title": "Акције:",

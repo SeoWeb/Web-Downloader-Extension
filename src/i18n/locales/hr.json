@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Otvara povezane stranice redom u ovoj kartici radi hvatanja dinamičkog sadržaja i resursa. Vidjet ćete kako se svaka stranica učitava tijekom procesa.",
       "maxPages": "Maksimalan broj stranica za struganje",
       "pageDelay": "Odgoda između stranica",
-      "includeExternal": "Uključi vanjske poveznice"
+      "includeExternal": "Uključi vanjske poveznice",
+      "fullWebsite": "Preuzmi cijelu web stranicu",
+      "fullWebsiteDescription": "Najbolje za složene web stranice (preuzima prvu razinu povezanih stranica)"
     },
     "actions": {
       "title": "Radnje:",

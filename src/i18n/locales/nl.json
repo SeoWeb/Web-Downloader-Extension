@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Opent gelinkte pagina's achtereenvolgens in dit tabblad om dynamische inhoud en activa vast te leggen. U zult elke pagina zien laden tijdens het proces.",
       "maxPages": "Max pagina's om te scrapen",
       "pageDelay": "Vertraging tussen pagina's",
-      "includeExternal": "Externe links opnemen"
+      "includeExternal": "Externe links opnemen",
+      "fullWebsite": "Volledige website downloaden",
+      "fullWebsiteDescription": "Het beste voor complexe websites (downloadt het eerste niveau van gelinkte pagina's)"
     },
     "actions": {
       "title": "Acties:",

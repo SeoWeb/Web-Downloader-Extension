@@ -47,7 +47,9 @@
       "fullScrapingInfo": "在此分頁中依序開啟連結的頁面，以擷取動態內容和資源。過程中您會看到每個頁面載入。",
       "maxPages": "最大擷取頁數",
       "pageDelay": "頁面間延遲",
-      "includeExternal": "包含外部連結"
+      "includeExternal": "包含外部連結",
+      "fullWebsite": "下載完整網站",
+      "fullWebsiteDescription": "最適合複雜網站（下載連結頁面的第一層級）"
     },
     "actions": {
       "title": "操作：",

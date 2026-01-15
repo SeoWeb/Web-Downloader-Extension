@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Hufungua kurasa zilizounganishwa kwa mfuatano katika kichupo hiki ili kunasa maudhui na mali zinazobadilika. Utaona kila ukurasa ukipakia wakati wa mchakato.",
       "maxPages": "Upeo wa kurasa za kukunua",
       "pageDelay": "Kuchelewa kati ya kurasa",
-      "includeExternal": "Jumuisha viungo vya nje"
+      "includeExternal": "Jumuisha viungo vya nje",
+      "fullWebsite": "Pakua tovuti kamili",
+      "fullWebsiteDescription": "Bora kwa tovuti ngumu (inapakua kiwango cha kwanza cha kurasa zilizounganishwa)"
     },
     "actions": {
       "title": "Vitendo:",

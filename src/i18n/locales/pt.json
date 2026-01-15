@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Abre páginas vinculadas sequencialmente neste separador para capturar conteúdo dinâmico e recursos. Verá cada página carregar durante o processo.",
       "maxPages": "Páginas máx. para extrair",
       "pageDelay": "Atraso entre páginas",
-      "includeExternal": "Incluir links externos"
+      "includeExternal": "Incluir links externos",
+      "fullWebsite": "Descarregar site completo",
+      "fullWebsiteDescription": "Melhor para sites complexos (descarrega o primeiro nível de páginas ligadas)"
     },
     "actions": {
       "title": "Ações:",

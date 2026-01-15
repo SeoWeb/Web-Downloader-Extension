@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Šiame skirtuke paeiliui atidaro susijusius puslapius, kad užfiksuotų dinaminį turinį ir išteklius. Proceso metu matysite kiekvieno puslapio įkėlimą.",
       "maxPages": "Maks. nuskaitomų puslapių",
       "pageDelay": "Delsa tarp puslapių",
-      "includeExternal": "Įtraukti išorines nuorodas"
+      "includeExternal": "Įtraukti išorines nuorodas",
+      "fullWebsite": "Atsisiųsti visą svetainę",
+      "fullWebsiteDescription": "Geriausiai tinka sudėtingoms svetainėms (atsisiunčia pirmąjį susietų puslapių lygį)"
     },
     "actions": {
       "title": "Veiksmai:",

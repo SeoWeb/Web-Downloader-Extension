@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Otwiera połączone strony sekwencyjnie w tej karcie, aby przechwycić dynamiczną zawartość i zasoby. Zobaczysz ładowanie każdej strony podczas procesu.",
       "maxPages": "Maks. stron do pobrania",
       "pageDelay": "Opóźnienie między stronami",
-      "includeExternal": "Uwzględnij linki zewnętrzne"
+      "includeExternal": "Uwzględnij linki zewnętrzne",
+      "fullWebsite": "Pobierz całą stronę internetową",
+      "fullWebsiteDescription": "Najlepsze dla złożonych stron (pobiera pierwszy poziom połączonych stron)"
     },
     "actions": {
       "title": "Akcje:",

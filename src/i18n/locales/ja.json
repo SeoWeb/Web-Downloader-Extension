@@ -47,7 +47,9 @@
       "fullScrapingInfo": "動的なコンテンツとアセットをキャプチャするために、このタブでリンク先ページを順次開きます。プロセス中に各ページが読み込まれるのが見えます。",
       "maxPages": "最大スクレイピングページ数",
       "pageDelay": "ページ間の遅延",
-      "includeExternal": "外部リンクを含める"
+      "includeExternal": "外部リンクを含める",
+      "fullWebsite": "ウェブサイト全体をダウンロード",
+      "fullWebsiteDescription": "複雑なウェブサイトに最適（リンクされたページの最初のレベルをダウンロードします）"
     },
     "actions": {
       "title": "アクション:",

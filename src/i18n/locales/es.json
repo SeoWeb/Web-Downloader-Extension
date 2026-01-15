@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Abre las páginas vinculadas secuencialmente en esta pestaña para capturar contenido dinámico y recursos. Verás cargar cada página durante el proceso.",
       "maxPages": "Máximo de páginas a extraer",
       "pageDelay": "Retraso entre páginas",
-      "includeExternal": "Incluir enlaces externos"
+      "includeExternal": "Incluir enlaces externos",
+      "fullWebsite": "Descargar sitio web completo",
+      "fullWebsiteDescription": "Lo mejor para sitios web complejos (descarga el primer nivel de páginas vinculadas)"
     },
     "actions": {
       "title": "Acciones:",

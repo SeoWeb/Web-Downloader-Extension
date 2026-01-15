@@ -47,7 +47,9 @@
       "fullScrapingInfo": "A kapcsolt oldalakat egymás után nyitja meg ezen a lapon a dinamikus tartalom és erőforrások rögzítéséhez. Látni fogja, ahogy az egyes oldalak betöltődnek a folyamat során.",
       "maxPages": "Lementendő oldalak max. száma",
       "pageDelay": "Késleltetés az oldalak között",
-      "includeExternal": "Külső hivatkozások belefoglalása"
+      "includeExternal": "Külső hivatkozások belefoglalása",
+      "fullWebsite": "Teljes webhely letöltése",
+      "fullWebsiteDescription": "Legjobb összetett webhelyekhez (a hivatkozott oldalak első szintjét tölti le)"
     },
     "actions": {
       "title": "Műveletek:",

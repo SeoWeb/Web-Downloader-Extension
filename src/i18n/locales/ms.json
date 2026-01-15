@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Membuka halaman yang dipautkan secara berurutan dalam tab ini untuk menangkap kandungan dan aset dinamik. Anda akan melihat setiap halaman dimuatkan semasa proses.",
       "maxPages": "Maks laman untuk dikikis",
       "pageDelay": "Kelewatan antara halaman",
-      "includeExternal": "Sertakan pautan luar"
+      "includeExternal": "Sertakan pautan luar",
+      "fullWebsite": "Muat turun laman web penuh",
+      "fullWebsiteDescription": "Terbaik untuk laman web yang kompleks (memuat turun tahap pertama halaman yang dipautkan)"
     },
     "actions": {
       "title": "Tindakan:",

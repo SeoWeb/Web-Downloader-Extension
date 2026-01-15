@@ -47,7 +47,9 @@
       "fullScrapingInfo": "Odpre povezane strani zaporedno v tem zavihku za zajem dinamične vsebine in sredstev. Videli boste nalaganje vsake strani med postopkom.",
       "maxPages": "Maks. strani za strganje",
       "pageDelay": "Zakasnitev med stranmi",
-      "includeExternal": "Vključi zunanje povezave"
+      "includeExternal": "Vključi zunanje povezave",
+      "fullWebsite": "Prenesi celotno spletno mesto",
+      "fullWebsiteDescription": "Najbolje za zapletena spletna mesta (prenese prvo raven povezanih strani)"
     },
     "actions": {
       "title": "Dejanja:",
