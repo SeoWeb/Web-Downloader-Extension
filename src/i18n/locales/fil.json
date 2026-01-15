@@ -166,22 +166,12 @@
           "improveExperience": "Magbigay ng mas personalized na karanasan"
         }
       },
-      "offscreen": {
-        "title": "Kinakailangan ang Karagdagang Pahintulot",
-        "description": "Kailangan ng extension na ito ang offscreen na pahintulot upang maproseso ang mga pag-download nang mahusay.",
-        "grant": "Magbigay ng Pahintulot",
-        "why": "Ang pahintulot na ito ay nagbibigay-daan sa extension na lumikha ng mga background document para sa pagproseso ng malalaking pag-download nang hindi naaapektuhan ang iyong karanasan sa pagba-browse."
-      },
       "global": {
         "title": "Kinakailangan ang mga Pahintulot",
-        "description": "Kailangan ng extension na ito ng mga pahintulot sa storage at offscreen upang magbigay ng pinakamahusay na karanasan sa pag-download.",
+        "description": "Kailangan ng extension na ito ng pahintulot sa storage upang maibigay ang pinakamagandang karanasan sa pag-download.",
         "storage": {
           "title": "Pahintulot sa Storage:",
           "description": "Pinapayagan ang extension na mag-save ng maliliit na halaga ng data nang lokal sa iyong browser. Nagbibigay-daan ito sa amin na tandaan ang iyong mga kagustuhan at magbigay ng personalized na karanasan sa mga session."
-        },
-        "offscreen": {
-          "title": "Pahintulot sa Offscreen:",
-          "description": "Nagbibigay-daan sa pag-download ng malalaking file sa pamamagitan ng pagpayag sa extension na magproseso ng mga file sa background nang hindi naaapektuhan ang iyong karanasan sa pag-browse."
         },
         "storageDetails": {
           "title": "Ano ang aming iniimbak:",
@@ -195,8 +185,8 @@
           "local": "Ang lahat ng data ay nananatiling lokal sa iyong browser"
         },
         "button": {
-          "requesting": "Humihiling ng mga Pahintulot...",
-          "enable": "Paganahin ang mga Pahintulot"
+          "requesting": "Humihiling ng Pahintulot...",
+          "enable": "Paganahin ang Pahintulot"
         },
         "footer": "Bawiin anumang oras sa mga setting ng browser"
       }

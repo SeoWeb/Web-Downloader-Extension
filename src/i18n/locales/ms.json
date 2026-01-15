@@ -166,22 +166,12 @@
           "improveExperience": "Berikan pengalaman yang lebih peribadi"
         }
       },
-      "offscreen": {
-        "title": "Kebenaran Tambahan Diperlukan",
-        "description": "Sambungan ini memerlukan kebenaran luar skrin untuk memproses muat turun dengan cekap.",
-        "grant": "Berikan Kebenaran",
-        "why": "Kebenaran ini membolehkan sambungan membuat dokumen latar belakang untuk memproses muat turun besar tanpa menjejaskan pengalaman penyemakan imbas anda."
-      },
       "global": {
         "title": "Kebenaran Diperlukan",
-        "description": "Sambungan ini memerlukan kebenaran penyimpanan dan luar skrin untuk memberikan pengalaman muat turun terbaik.",
+        "description": "Sambungan ini memerlukan kebenaran storan untuk memberikan pengalaman muat turun terbaik.",
         "storage": {
           "title": "Kebenaran Penyimpanan:",
           "description": "Membenarkan sambungan menyimpan sejumlah kecil data secara tempatan dalam penyemak imbas anda. Ini membolehkan kami mengingati pilihan anda dan memberikan pengalaman yang diperibadikan merentas sesi."
-        },
-        "offscreen": {
-          "title": "Kebenaran Luar Skrin:",
-          "description": "Membolehkan muat turun fail besar dengan membenarkan sambungan memproses fail di latar belakang tanpa menjejaskan pengalaman penyemakan imbas anda."
         },
         "storageDetails": {
           "title": "Apa yang kami simpan:",
@@ -196,7 +186,7 @@
         },
         "button": {
           "requesting": "Meminta Kebenaran...",
-          "enable": "Dayakan Kebenaran"
+          "enable": "Benarkan"
         },
         "footer": "Tarik balik pada bila-bila masa dalam tetapan penyemak imbas"
       }

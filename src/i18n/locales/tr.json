@@ -166,22 +166,12 @@
           "improveExperience": "Daha kişiselleştirilmiş bir deneyim sağlayın"
         }
       },
-      "offscreen": {
-        "title": "Ek İzin Gerekli",
-        "description": "Bu uzantının, indirmeleri verimli bir şekilde işlemek için offscreen iznine ihtiyacı vardır.",
-        "grant": "İzin Ver",
-        "why": "Bu izin, uzantının tarama deneyiminizi etkilemeden büyük indirmeleri işlemek için arka plan belgeleri oluşturmasına olanak tanır."
-      },
       "global": {
         "title": "İzinler Gerekli",
-        "description": "Bu uzantı, en iyi indirme deneyimini sağlamak için depolama ve ekran dışı izinlere ihtiyaç duyar.",
+        "description": "Bu uzantı, en iyi indirme deneyimini sağlamak için depolama iznine ihtiyaç duyar.",
         "storage": {
           "title": "Depolama İzni:",
           "description": "Uzantının tarayıcınıza yerel olarak küçük miktarda veri kaydetmesine izin verir. Bu, tercihlerinizi hatırlamamızı ve oturumlar arasında kişiselleştirilmiş bir deneyim sunmamızı sağlar."
-        },
-        "offscreen": {
-          "title": "Ekran Dışı İzin:",
-          "description": "Uzantının dosyaları arka planda işlemesine izin vererek, tarama deneyiminizi etkilemeden büyük dosya indirmelerini sağlar."
         },
         "storageDetails": {
           "title": "Neyi saklıyoruz:",
@@ -195,8 +185,8 @@
           "local": "Tüm veriler yerel olarak tarayıcınızda kalır"
         },
         "button": {
-          "requesting": "İzinler İsteniyor...",
-          "enable": "İzinleri Etkinleştir"
+          "requesting": "İzin İsteniyor...",
+          "enable": "İzni Etkinleştir"
         },
         "footer": "Tarayıcı ayarlarından istediğiniz zaman iptal edebilirsiniz"
       }

@@ -166,22 +166,12 @@
           "improveExperience": "Oferă o experiență mai personalizată"
         }
       },
-      "offscreen": {
-        "title": "Permisiune Suplimentară Necesară",
-        "description": "Această extensie are nevoie de permisiunea offscreen pentru a procesa descărcările eficient.",
-        "grant": "Acordă Permisiune",
-        "why": "Această permisiune permite extensiei să creeze documente în fundal pentru procesarea descărcărilor mari fără a afecta experiența ta de navigare."
-      },
       "global": {
         "title": "Permisiuni necesare",
-        "description": "Această extensie necesită permisiuni de stocare și offscreen pentru a oferi cea mai bună experiență de descărcare.",
+        "description": "Această extensie are nevoie de permisiunea de stocare pentru a oferi cea mai bună experiență de descărcare.",
         "storage": {
           "title": "Permisiune de stocare:",
           "description": "Permite extensiei să salveze cantități mici de date local în browserul dvs. Acest lucru ne permite să reținem preferințele dvs. și să oferim o experiență personalizată în timpul sesiunilor."
-        },
-        "offscreen": {
-          "title": "Permisiune Offscreen:",
-          "description": "Permite descărcarea de fișiere mari, permițând extensiei să proceseze fișiere în fundal fără a afecta experiența dvs. de navigare."
         },
         "storageDetails": {
           "title": "Ce stocăm:",
@@ -195,8 +185,8 @@
           "local": "Toate datele rămân local în browserul dvs."
         },
         "button": {
-          "requesting": "Se solicită permisiuni...",
-          "enable": "Activează permisiunile"
+          "requesting": "Se solicită permisiunea...",
+          "enable": "Activați permisiunea"
         },
         "footer": "Revocați oricând în setările browserului"
       }

@@ -166,22 +166,12 @@
           "improveExperience": "Paku isikupärasemat kogemust"
         }
       },
-      "offscreen": {
-        "title": "Vajalik on täiendav luba",
-        "description": "See laiendus vajab offscreen luba allalaadimiste tõhusaks töötlemiseks.",
-        "grant": "Anna luba",
-        "why": "See luba võimaldab laiendusel luua taustadokumente suurte allalaadimiste töötlemiseks, ilma et see mõjutaks teie sirvimiskogemust."
-      },
       "global": {
         "title": "Load on vajalikud",
-        "description": "See laiendus vajab parima allalaadimiskogemuse pakkumiseks salvestusruumi ja offscreen lubasid.",
+        "description": "See laiendus vajab parima allalaadimiskogemuse pakkumiseks salvestusruumi luba.",
         "storage": {
           "title": "Salvestusruumi luba:",
           "description": "Võimaldab laiendusel salvestada väikeseid andmekoguseid lokaalselt teie brauserisse. See võimaldab meil teie eelistusi meeles pidada ja pakkuda isikupärastatud kogemust erinevate seansside vahel."
-        },
-        "offscreen": {
-          "title": "Offscreen luba:",
-          "description": "Võimaldab suurte failide allalaadimist, lubades laiendusel töödelda faile taustal ilma teie sirvimiskogemust mõjutamata."
         },
         "storageDetails": {
           "title": "Mida me salvestame:",
@@ -195,8 +185,8 @@
           "local": "Kõik andmed jäävad lokaalselt teie brauserisse"
         },
         "button": {
-          "requesting": "Lubade taotlemine...",
-          "enable": "Luba load"
+          "requesting": "Loa taotlemine...",
+          "enable": "Luba"
         },
         "footer": "Tühistage igal ajal brauseri seadetes"
       }

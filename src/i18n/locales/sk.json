@@ -166,22 +166,12 @@
           "improveExperience": "Poskytnite prispôsobenejší zážitok"
         }
       },
-      "offscreen": {
-        "title": "Vyžaduje sa dodatočné povolenie",
-        "description": "Toto rozšírenie potrebuje povolenie offscreen na efektívne spracovanie sťahovania.",
-        "grant": "Udeliť povolenie",
-        "why": "Toto povolenie umožňuje rozšíreniu vytvárať dokumenty na pozadí na spracovanie veľkých sťahovaní bez ovplyvnenia vášho zážitku z prehliadania."
-      },
       "global": {
         "title": "Vyžadujú sa povolenia",
-        "description": "Toto rozšírenie vyžaduje povolenia na ukladanie a offscreen pre poskytnutie najlepšieho zážitku zo sťahovania.",
+        "description": "Toto rozšírenie potrebuje povolenie na úložisko, aby poskytovalo najlepší zážitok zo sťahovania.",
         "storage": {
           "title": "Povolenie na ukladanie:",
           "description": "Umožňuje rozšíreniu ukladať malé množstvá údajov lokálne vo vašom prehliadači. To nám umožňuje zapamätať si vaše preferencie a poskytnúť personalizovaný zážitok."
-        },
-        "offscreen": {
-          "title": "Offscreen povolenie:",
-          "description": "Umožňuje sťahovanie veľkých súborov tým, že dovoľuje rozšíreniu spracovávať súbory na pozadí bez ovplyvnenia vášho prehliadania."
         },
         "storageDetails": {
           "title": "Čo ukladáme:",
@@ -195,8 +185,8 @@
           "local": "Všetky údaje zostávajú lokálne vo vašom prehliadači"
         },
         "button": {
-          "requesting": "Žiadosť o povolenia...",
-          "enable": "Povoliť povolenia"
+          "requesting": "Žiadosť o povolenie...",
+          "enable": "Povoliť povolenie"
         },
         "footer": "Kedykoľvek odvolať v nastaveniach prehliadača"
       }

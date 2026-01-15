@@ -166,22 +166,12 @@
           "improveExperience": "Provide a more personalized experience"
         }
       },
-      "offscreen": {
-        "title": "Additional Permission Required",
-        "description": "This extension needs the offscreen permission to process downloads efficiently.",
-        "grant": "Grant Permission",
-        "why": "This permission allows the extension to create background documents for processing large downloads without affecting your browsing experience."
-      },
       "global": {
         "title": "Permissions Required",
-        "description": "This extension needs storage and offscreen permissions to provide the best download experience.",
+        "description": "This extension needs storage permission to provide the best download experience.",
         "storage": {
           "title": "Storage Permission:",
           "description": "Allows the extension to save small amounts of data locally in your browser. This enables us to remember your preferences and provide a personalized experience across sessions."
-        },
-        "offscreen": {
-          "title": "Offscreen Permission:",
-          "description": "Enables large file downloads by allowing the extension to process files in the background without affecting your browsing experience."
         },
         "storageDetails": {
           "title": "What we store:",
@@ -195,8 +185,8 @@
           "local": "All data stays local in your browser"
         },
         "button": {
-          "requesting": "Requesting Permissions...",
-          "enable": "Enable Permissions"
+          "requesting": "Requesting Permission...",
+          "enable": "Enable Permission"
         },
         "footer": "Revoke anytime in browser settings"
       }

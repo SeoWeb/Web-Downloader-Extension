@@ -166,22 +166,12 @@
           "improveExperience": "Pružite personaliziranije iskustvo"
         }
       },
-      "offscreen": {
-        "title": "Potrebno dodatno dopuštenje",
-        "description": "Ovo proširenje treba dopuštenje offscreen za učinkovitu obradu preuzimanja.",
-        "grant": "Daj dopuštenje",
-        "why": "Ovo dopuštenje omogućuje proširenju stvaranje pozadinskih dokumenata za obradu velikih preuzimanja bez utjecaja na vaše iskustvo pregledavanja."
-      },
       "global": {
         "title": "Potrebna dopuštenja",
-        "description": "Ovo proširenje treba dopuštenja za pohranu i offscreen kako bi pružilo najbolje iskustvo preuzimanja.",
+        "description": "Ovom proširenju potrebna je dozvola za pohranu kako bi se omogućilo najbolje iskustvo preuzimanja.",
         "storage": {
           "title": "Dopuštenje za pohranu:",
           "description": "Omogućuje proširenju spremanje malih količina podataka lokalno u vašem pregledniku. To nam omogućuje da zapamtimo vaše postavke i pružimo personalizirano iskustvo kroz sesije."
-        },
-        "offscreen": {
-          "title": "Offscreen dopuštenje:",
-          "description": "Omogućuje preuzimanje velikih datoteka dopuštajući proširenju obradu datoteka u pozadini bez utjecaja na vaše iskustvo pregledavanja."
         },
         "storageDetails": {
           "title": "Što pohranjujemo:",
@@ -195,8 +185,8 @@
           "local": "Svi podaci ostaju lokalno u vašem pregledniku"
         },
         "button": {
-          "requesting": "Zahtijevanje dopuštenja...",
-          "enable": "Omogući dopuštenja"
+          "requesting": "Traženje dozvole...",
+          "enable": "Omogući dozvolu"
         },
         "footer": "Opozovite bilo kada u postavkama preglednika"
       }

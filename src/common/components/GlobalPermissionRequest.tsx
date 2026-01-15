@@ -29,11 +29,7 @@ export function GlobalPermissionRequest({
             <br />
             {t('permissions.global.storage.description')}
           </div>
-          <div className="mb-3">
-            <strong>{t('permissions.global.offscreen.title')}</strong>
-            <br />
-            {t('permissions.global.offscreen.description')}
-          </div>
+
         </div>
         <div className="text-xs text-gray-500 mb-4 text-left">
           <div className="mb-2">

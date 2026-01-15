@@ -166,22 +166,12 @@
           "improveExperience": "Ge en mer personlig upplevelse"
         }
       },
-      "offscreen": {
-        "title": "Ytterligare behörighet krävs",
-        "description": "Detta tillägg behöver offscreen-behörighet för att bearbeta nedladdningar effektivt.",
-        "grant": "Ge behörighet",
-        "why": "Denna behörighet tillåter tillägget att skapa bakgrundsdokument för att bearbeta stora nedladdningar utan att påverka din surfupplevelse."
-      },
       "global": {
         "title": "Behörigheter krävs",
-        "description": "Detta tillägg behöver lagrings- och offscreen-behörigheter för att ge den bästa nedladdningsupplevelsen.",
+        "description": "Detta tillägg behöver lagringsbehörighet för att ge den bästa nedladdningsupplevelsen.",
         "storage": {
           "title": "Lagringsbehörighet:",
           "description": "Tillåter tillägget att spara små mängder data lokalt i din webbläsare. Detta gör att vi kan komma ihåg dina preferenser och ge en personlig upplevelse över sessioner."
-        },
-        "offscreen": {
-          "title": "Offscreen-behörighet:",
-          "description": "Möjliggör nedladdning av stora filer genom att låta tillägget bearbeta filer i bakgrunden utan att påverka din surfupplevelse."
         },
         "storageDetails": {
           "title": "Vad vi lagrar:",
@@ -195,8 +185,8 @@
           "local": "All data stannar lokalt i din webbläsare"
         },
         "button": {
-          "requesting": "Begär behörigheter...",
-          "enable": "Aktivera behörigheter"
+          "requesting": "Begär behörighet...",
+          "enable": "Aktivera behörighet"
         },
         "footer": "Återkalla när som helst i webbläsarinställningar"
       }

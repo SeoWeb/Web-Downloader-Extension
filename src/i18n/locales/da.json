@@ -166,22 +166,12 @@
           "improveExperience": "Giv en mere personlig oplevelse"
         }
       },
-      "offscreen": {
-        "title": "Yderligere tilladelse påkrævet",
-        "description": "Denne udvidelse har brug for offscreen-tilladelsen til at behandle downloads effektivt.",
-        "grant": "Giv tilladelse",
-        "why": "Denne tilladelse gør det muligt for udvidelsen at oprette baggrundsdokumenter til behandling af store downloads uden at påvirke din browsingoplevelse."
-      },
       "global": {
         "title": "Tilladelser påkrævet",
-        "description": "Denne udvidelse har brug for lager- og offscreen-tilladelser for at give den bedste downloadoplevelse.",
+        "description": "Denne udvidelse skal bruge lagertilladelse for at give den bedste downloadoplevelse.",
         "storage": {
           "title": "Lagertilladelse:",
           "description": "Giver udvidelsen lov til at gemme små mængder data lokalt i din browser. Dette gør det muligt for os at huske dine præferencer og give en personlig oplevelse på tværs af sessioner."
-        },
-        "offscreen": {
-          "title": "Offscreen-tilladelse:",
-          "description": "Muliggør download af store filer ved at lade udvidelsen behandle filer i baggrunden uden at påvirke din browsingoplevelse."
         },
         "storageDetails": {
           "title": "Hvad vi gemmer:",
@@ -195,8 +185,8 @@
           "local": "Alle data forbliver lokalt i din browser"
         },
         "button": {
-          "requesting": "Anmoder om tilladelser...",
-          "enable": "Aktiver tilladelser"
+          "requesting": "Anmoder om tilladelse...",
+          "enable": "Aktiver tilladelse"
         },
         "footer": "Tilbagekald når som helst i browserindstillinger"
       }

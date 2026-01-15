@@ -166,22 +166,12 @@
           "improveExperience": "Berikan pengalaman yang lebih personal"
         }
       },
-      "offscreen": {
-        "title": "Izin Tambahan Diperlukan",
-        "description": "Ekstensi ini memerlukan izin offscreen untuk memproses unduhan secara efisien.",
-        "grant": "Berikan Izin",
-        "why": "Izin ini memungkinkan ekstensi untuk membuat dokumen latar belakang untuk memproses unduhan besar tanpa memengaruhi pengalaman menjelajah Anda."
-      },
       "global": {
         "title": "Izin Diperlukan",
-        "description": "Ekstensi ini memerlukan izin penyimpanan dan offscreen untuk memberikan pengalaman pengunduhan terbaik.",
+        "description": "Ekstensi ini memerlukan izin penyimpanan untuk memberikan pengalaman unduhan terbaik.",
         "storage": {
           "title": "Izin Penyimpanan:",
           "description": "Memungkinkan ekstensi menyimpan sejumlah kecil data secara lokal di browser Anda. Ini memungkinkan kami mengingat preferensi Anda dan memberikan pengalaman yang dipersonalisasi di seluruh sesi."
-        },
-        "offscreen": {
-          "title": "Izin Offscreen:",
-          "description": "Memungkinkan pengunduhan file besar dengan membiarkan ekstensi memproses file di latar belakang tanpa memengaruhi pengalaman menjelajah Anda."
         },
         "storageDetails": {
           "title": "Apa yang kami simpan:",

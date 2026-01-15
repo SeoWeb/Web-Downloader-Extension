@@ -166,22 +166,12 @@
           "improveExperience": "Zapewnij bardziej spersonalizowane wrażenia"
         }
       },
-      "offscreen": {
-        "title": "Wymagane dodatkowe uprawnienie",
-        "description": "To rozszerzenie wymaga uprawnienia offscreen do wydajnego przetwarzania pobierania.",
-        "grant": "Przyznaj uprawnienie",
-        "why": "To uprawnienie umożliwia rozszerzeniu tworzenie dokumentów w tle w celu przetwarzania dużych plików do pobrania bez wpływu na jakość przeglądania."
-      },
       "global": {
         "title": "Wymagane uprawnienia",
-        "description": "To rozszerzenie wymaga uprawnień do przechowywania i działania w tle, aby zapewnić najlepsze wrażenia z pobierania.",
+        "description": "To rozszerzenie wymaga uprawnień do pamięci, aby zapewnić najlepsze wrażenia z pobierania.",
         "storage": {
           "title": "Uprawnienie do przechowywania:",
           "description": "Pozwala rozszerzeniu na lokalne zapisywanie niewielkich ilości danych w przeglądarce. Dzięki temu możemy zapamiętać Twoje preferencje i zapewnić spersonalizowane wrażenia podczas sesji."
-        },
-        "offscreen": {
-          "title": "Uprawnienie Offscreen:",
-          "description": "Umożliwia pobieranie dużych plików, pozwalając rozszerzeniu przetwarzać pliki w tle bez wpływu na przeglądanie."
         },
         "storageDetails": {
           "title": "Co przechowujemy:",
@@ -195,8 +185,8 @@
           "local": "Wszystkie dane pozostają lokalnie w przeglądarce"
         },
         "button": {
-          "requesting": "Żądanie uprawnień...",
-          "enable": "Włącz uprawnienia"
+          "requesting": "Żądanie uprawnienia...",
+          "enable": "Włącz uprawnienie"
         },
         "footer": "Możesz cofnąć w dowolnym momencie w ustawieniach przeglądarki"
       }

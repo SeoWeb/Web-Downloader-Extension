@@ -166,22 +166,12 @@
           "improveExperience": "Cung cấp trải nghiệm cá nhân hóa hơn"
         }
       },
-      "offscreen": {
-        "title": "Cần quyền bổ sung",
-        "description": "Tiện ích mở rộng này cần quyền offscreen để xử lý tải xuống hiệu quả.",
-        "grant": "Cấp quyền",
-        "why": "Quyền này cho phép tiện ích mở rộng tạo tài liệu nền để xử lý các bản tải xuống lớn mà không ảnh hưởng đến trải nghiệm duyệt web của bạn."
-      },
       "global": {
         "title": "Yêu cầu quyền truy cập",
-        "description": "Tiện ích này cần quyền truy cập bộ nhớ và offscreen để cung cấp trải nghiệm tải xuống tốt nhất.",
+        "description": "Tiện ích mở rộng này cần quyền lưu trữ để cung cấp trải nghiệm tải xuống tốt nhất.",
         "storage": {
           "title": "Quyền truy cập bộ nhớ:",
           "description": "Cho phép tiện ích lưu một lượng nhỏ dữ liệu cục bộ trong trình duyệt của bạn. Điều này cho phép chúng tôi ghi nhớ tùy chọn của bạn và cung cấp trải nghiệm cá nhân hóa giữa các phiên làm việc."
-        },
-        "offscreen": {
-          "title": "Quyền Offscreen:",
-          "description": "Cho phép tải xuống tệp lớn bằng cách cho phép tiện ích xử lý tệp trong nền mà không ảnh hưởng đến trải nghiệm duyệt web của bạn."
         },
         "storageDetails": {
           "title": "Những gì chúng tôi lưu trữ:",
@@ -196,7 +186,7 @@
         },
         "button": {
           "requesting": "Đang yêu cầu quyền...",
-          "enable": "Bật quyền truy cập"
+          "enable": "Bật quyền"
         },
         "footer": "Thu hồi bất cứ lúc nào trong cài đặt trình duyệt"
       }

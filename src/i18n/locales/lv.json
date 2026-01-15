@@ -166,22 +166,12 @@
           "improveExperience": "Nodrošiniet personalizētāku pieredzi"
         }
       },
-      "offscreen": {
-        "title": "Nepieciešama papildu atļauja",
-        "description": "Šim paplašinājumam nepieciešama offscreen atļauja, lai efektīvi apstrādātu lejupielādes.",
-        "grant": "Piešķirt atļauju",
-        "why": "Šī atļauja ļauj paplašinājumam izveidot fona dokumentus lielu lejupielāžu apstrādei, neietekmējot jūsu pārlūkošanas pieredzi."
-      },
       "global": {
         "title": "Nepieciešamas atļaujas",
-        "description": "Šim paplašinājumam ir nepieciešamas krātuves un ārpusekrāna atļaujas, lai nodrošinātu labāko lejupielādes pieredzi.",
+        "description": "Šim paplašinājumam ir nepieciešama krātuves atļauja, lai nodrošinātu labāko lejupielādes pieredzi.",
         "storage": {
           "title": "Krātuves atļauja:",
           "description": "Ļauj paplašinājumam saglabāt nelielus datu apjomus lokāli jūsu pārlūkprogrammā. Tas ļauj mums atcerēties jūsu preferences un nodrošināt personalizētu pieredzi."
-        },
-        "offscreen": {
-          "title": "Ārpusekrāna atļauja:",
-          "description": "Ļauj lejupielādēt lielus failus, ļaujot paplašinājumam apstrādāt failus fonā, neietekmējot jūsu pārlūkošanas pieredzi."
         },
         "storageDetails": {
           "title": "Ko mēs glabājam:",
@@ -195,8 +185,8 @@
           "local": "Visi dati paliek lokāli jūsu pārlūkprogrammā"
         },
         "button": {
-          "requesting": "Pieprasa atļaujas...",
-          "enable": "Iespējot atļaujas"
+          "requesting": "Tiek pieprasīta atļauja...",
+          "enable": "Iespējot atļauju"
         },
         "footer": "Atsaukt jebkurā laikā pārlūkprogrammas iestatījumos"
       }

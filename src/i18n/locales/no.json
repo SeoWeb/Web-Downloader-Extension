@@ -166,22 +166,12 @@
           "improveExperience": "Gi en mer personlig opplevelse"
         }
       },
-      "offscreen": {
-        "title": "Ytterligere tillatelse påkrevd",
-        "description": "Denne utvidelsen trenger offscreen-tillatelsen for å behandle nedlastinger effektivt.",
-        "grant": "Gi tillatelse",
-        "why": "Denne tillatelsen lar utvidelsen opprette bakgrunnsdokumenter for behandling av store nedlastinger uten å påvirke nettleseropplevelsen din."
-      },
       "global": {
         "title": "Tillatelser kreves",
-        "description": "Denne utvidelsen trenger lagrings- og offscreen-tillatelser for å gi den beste nedlastingsopplevelsen.",
+        "description": "Denne utvidelsen trenger lagringstillatelse for å gi den beste nedlastingsopplevelsen.",
         "storage": {
           "title": "Lagringstillatelse:",
           "description": "Lar utvidelsen lagre små mengder data lokalt i nettleseren din. Dette gjør at vi kan huske preferansene dine og gi en personlig opplevelse på tvers av økter."
-        },
-        "offscreen": {
-          "title": "Offscreen-tillatelse:",
-          "description": "Muliggjør nedlasting av store filer ved å la utvidelsen behandle filer i bakgrunnen uten å påvirke nettleseropplevelsen din."
         },
         "storageDetails": {
           "title": "Hva vi lagrer:",
@@ -195,8 +185,8 @@
           "local": "Alle data forblir lokalt i nettleseren din"
         },
         "button": {
-          "requesting": "Forespør tillatelser...",
-          "enable": "Aktiver tillatelser"
+          "requesting": "Forespør tillatelse...",
+          "enable": "Aktiver tillatelse"
         },
         "footer": "Tilbakekall når som helst i nettleserinnstillingene"
       }

@@ -171,22 +171,12 @@
           "improveExperience": "Offrez une expérience plus personnalisée"
         }
       },
-      "offscreen": {
-        "title": "Autorisation Supplémentaire Requise",
-        "description": "Cette extension nécessite l'autorisation offscreen pour traiter les téléchargements efficacement.",
-        "grant": "Accorder l'autorisation",
-        "why": "Cette autorisation permet à l'extension de créer des documents en arrière-plan pour traiter les gros téléchargements sans affecter votre expérience de navigation."
-      },
       "global": {
         "title": "Autorisations requises",
-        "description": "Cette extension a besoin des autorisations de stockage et hors écran pour offrir la meilleure expérience de téléchargement.",
+        "description": "Cette extension a besoin de l'autorisation de stockage pour offrir la meilleure expérience de téléchargement.",
         "storage": {
           "title": "Autorisation de stockage :",
           "description": "Permet à l'extension d'enregistrer de petites quantités de données localement dans votre navigateur. Cela nous permet de mémoriser vos préférences et de fournir une expérience personnalisée entre les sessions."
-        },
-        "offscreen": {
-          "title": "Autorisation hors écran :",
-          "description": "Active le téléchargement de fichiers volumineux en permettant à l'extension de traiter les fichiers en arrière-plan sans affecter votre expérience de navigation."
         },
         "storageDetails": {
           "title": "Ce que nous stockons :",
@@ -200,8 +190,8 @@
           "local": "Toutes les données restent localement dans votre navigateur"
         },
         "button": {
-          "requesting": "Demande d'autorisations...",
-          "enable": "Activer les autorisations"
+          "requesting": "Demande d'autorisation...",
+          "enable": "Activer l'autorisation"
         },
         "footer": "Révoquer à tout moment dans les paramètres du navigateur"
       }

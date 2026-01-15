@@ -166,22 +166,12 @@
           "improveExperience": "Suteikite labiau suasmenintą patirtį"
         }
       },
-      "offscreen": {
-        "title": "Reikalingas papildomas leidimas",
-        "description": "Šiam plėtiniui reikalingas offscreen leidimas, kad galėtų efektyviai apdoroti atsisiuntimus.",
-        "grant": "Suteikti leidimą",
-        "why": "Šis leidimas leidžia plėtiniui kurti fono dokumentus dideliems atsisiuntimams apdoroti, nepaveikiant jūsų naršymo patirties."
-      },
       "global": {
         "title": "Reikalingi leidimai",
-        "description": "Šiam plėtiniui reikalingi saugyklos ir „offscreen“ leidimai, kad būtų užtikrinta geriausia atsisiuntimo patirtis.",
+        "description": "Šiam plėtiniui reikalingas saugyklos leidimas, kad būtų užtikrinta geriausia atsisiuntimo patirtis.",
         "storage": {
           "title": "Saugyklos leidimas:",
           "description": "Leidžia plėtiniui išsaugoti nedidelius duomenų kiekius lokaliai jūsų naršyklėje. Tai leidžia mums atsiminti jūsų nuostatas ir suteikti suasmenintą patirtį."
-        },
-        "offscreen": {
-          "title": "„Offscreen“ leidimas:",
-          "description": "Leidžia atsisiųsti didelius failus, leidžiant plėtiniui apdoroti failus fone, nedarant įtakos jūsų naršymui."
         },
         "storageDetails": {
           "title": "Ką saugome:",
@@ -195,8 +185,8 @@
           "local": "Visi duomenys lieka lokaliai jūsų naršyklėje"
         },
         "button": {
-          "requesting": "Prašoma leidimų...",
-          "enable": "Įgalinti leidimus"
+          "requesting": "Prašoma leidimo...",
+          "enable": "Įgalinti leidimą"
         },
         "footer": "Atšaukite bet kuriuo metu naršyklės nustatymuose"
       }

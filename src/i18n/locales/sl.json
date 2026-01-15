@@ -166,22 +166,12 @@
           "improveExperience": "Zagotavljanje bolj prilagojene izkušnje"
         }
       },
-      "offscreen": {
-        "title": "Zahtevano dodatno dovoljenje",
-        "description": "Ta razširitev potrebuje dovoljenje offscreen za učinkovito obdelavo prenosov.",
-        "grant": "Dovoli",
-        "why": "To dovoljenje omogoča razširitvi ustvarjanje dokumentov v ozadju za obdelavo velikih prenosov, ne da bi to vplivalo na vašo izkušnjo brskanja."
-      },
       "global": {
         "title": "Zahtevana dovoljenja",
-        "description": "Ta razširitev potrebuje dovoljenja za shranjevanje in offscreen za zagotavljanje najboljše izkušnje prenašanja.",
+        "description": "Ta razširitev potrebuje dovoljenje za shranjevanje, da zagotovi najboljšo izkušnjo prenosa.",
         "storage": {
           "title": "Dovoljenje za shranjevanje:",
           "description": "Dovoljuje razširitvi shranjevanje majhnih količin podatkov lokalno v vašem brskalniku. To nam omogoča, da si zapomnimo vaše nastavitve in zagotovimo prilagojeno izkušnjo."
-        },
-        "offscreen": {
-          "title": "Dovoljenje Offscreen:",
-          "description": "Omogoča prenos velikih datotek z dovoljenjem, da razširitev obdeluje datoteke v ozadju, ne da bi vplivala na vašo izkušnjo brskanja."
         },
         "storageDetails": {
           "title": "Kaj shranjujemo:",
@@ -195,8 +185,8 @@
           "local": "Vsi podatki ostanejo lokalno v vašem brskalniku"
         },
         "button": {
-          "requesting": "Zahtevanje dovoljenj...",
-          "enable": "Omogoči dovoljenja"
+          "requesting": "Zahtevanje dovoljenja...",
+          "enable": "Omogoči dovoljenje"
         },
         "footer": "Preklicati kadarkoli v nastavitvah brskalnika"
       }

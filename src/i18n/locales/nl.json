@@ -166,22 +166,12 @@
           "improveExperience": "Bied een meer gepersonaliseerde ervaring"
         }
       },
-      "offscreen": {
-        "title": "Extra toestemming vereist",
-        "description": "Deze extensie heeft de offscreen-toestemming nodig om downloads efficiënt te verwerken.",
-        "grant": "Toestemming geven",
-        "why": "Deze toestemming stelt de extensie in staat om achtergronddocumenten te maken voor het verwerken van grote downloads zonder je browse-ervaring te beïnvloeden."
-      },
       "global": {
         "title": "Toestemmingen vereist",
-        "description": "Deze extensie heeft opslag- en offscreen-toestemmingen nodig om de beste downloadervaring te bieden.",
+        "description": "Deze extensie heeft opslagtoestemming nodig om de beste downloadervaring te bieden.",
         "storage": {
           "title": "Opslagtoestemming:",
           "description": "Hiermee kan de extensie kleine hoeveelheden gegevens lokaal in uw browser opslaan. Dit stelt ons in staat uw voorkeuren te onthouden en een gepersonaliseerde ervaring te bieden via sessies."
-        },
-        "offscreen": {
-          "title": "Offscreen-toestemming:",
-          "description": "Maakt het downloaden van grote bestanden mogelijk door de extensie bestanden op de achtergrond te laten verwerken zonder uw browse-ervaring te beïnvloeden."
         },
         "storageDetails": {
           "title": "Wat we opslaan:",
@@ -195,8 +185,8 @@
           "local": "Alle gegevens blijven lokaal in uw browser"
         },
         "button": {
-          "requesting": "Toestemmingen aanvragen...",
-          "enable": "Toestemmingen inschakelen"
+          "requesting": "Toestemming vragen...",
+          "enable": "Toestemming inschakelen"
         },
         "footer": "Op elk moment intrekken in browserinstellingen"
       }

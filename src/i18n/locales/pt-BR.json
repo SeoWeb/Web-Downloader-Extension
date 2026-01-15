@@ -166,22 +166,12 @@
           "improveExperience": "Forneça uma experiência mais personalizada"
         }
       },
-      "offscreen": {
-        "title": "Permissão Adicional Necessária",
-        "description": "Esta extensão precisa da permissão offscreen para processar downloads de forma eficiente.",
-        "grant": "Conceder Permissão",
-        "why": "Esta permissão permite que a extensão crie documentos em segundo plano para processar grandes downloads sem afetar sua experiência de navegação."
-      },
       "global": {
         "title": "Permissões Necessárias",
-        "description": "Esta extensão precisa de permissões de armazenamento e offscreen para fornecer a melhor experiência de download.",
+        "description": "Esta extensão precisa de permissão de armazenamento para oferecer a melhor experiência de download.",
         "storage": {
           "title": "Permissão de Armazenamento:",
           "description": "Permite que a extensão salve pequenas quantidades de dados localmente em seu navegador. Isso nos permite lembrar suas preferências e fornecer uma experiência personalizada entre as sessões."
-        },
-        "offscreen": {
-          "title": "Permissão Offscreen:",
-          "description": "Habilita o download de arquivos grandes, permitindo que a extensão processe arquivos em segundo plano sem afetar sua experiência de navegação."
         },
         "storageDetails": {
           "title": "O que armazenamos:",
@@ -195,8 +185,8 @@
           "local": "Todos os dados permanecem localmente em seu navegador"
         },
         "button": {
-          "requesting": "Solicitando permissões...",
-          "enable": "Ativar Permissões"
+          "requesting": "Solicitando permissão...",
+          "enable": "Ativar permissão"
         },
         "footer": "Revogar a qualquer momento nas configurações do navegador"
       }

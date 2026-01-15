@@ -166,22 +166,12 @@
           "improveExperience": "提供更個人化的體驗"
         }
       },
-      "offscreen": {
-        "title": "需要額外權限",
-        "description": "此擴充功能需要 offscreen 權限才能有效地處理下載。",
-        "grant": "授予權限",
-        "why": "此權限允許擴充功能建立背景文件以處理大型下載，而不會影響您的瀏覽體驗。"
-      },
       "global": {
         "title": "需要權限",
-        "description": "此擴充功能需要儲存和離線權限才能提供最佳下載體驗。",
+        "description": "此擴充功能需要儲存權限才能提供最佳下載體驗。",
         "storage": {
           "title": "儲存權限：",
           "description": "允許擴充功能在您的瀏覽器中本機儲存少量資料。這使我們能夠記住您的偏好設定並在工作階段之間提供個人化體驗。"
-        },
-        "offscreen": {
-          "title": "離線權限：",
-          "description": "透過允許擴充功能在背景處理檔案而不影響您的瀏覽體驗，從而啟用大檔案下載。"
         },
         "storageDetails": {
           "title": "我們儲存的內容：",

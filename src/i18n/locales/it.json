@@ -166,22 +166,12 @@
           "improveExperience": "Fornisci un'esperienza più personalizzata"
         }
       },
-      "offscreen": {
-        "title": "Autorizzazione Aggiuntiva Richiesta",
-        "description": "Questa estensione ha bisogno dell'autorizzazione offscreen per elaborare i download in modo efficiente.",
-        "grant": "Concedi Autorizzazione",
-        "why": "Questa autorizzazione consente all'estensione di creare documenti in background per elaborare grandi download senza influire sulla tua esperienza di navigazione."
-      },
       "global": {
         "title": "Autorizzazioni richieste",
-        "description": "Questa estensione necessita di autorizzazioni di archiviazione e offscreen per fornire la migliore esperienza di download.",
+        "description": "Questa estensione necessita dell'autorizzazione di archiviazione per fornire la migliore esperienza di download.",
         "storage": {
           "title": "Autorizzazione di archiviazione:",
           "description": "Consente all'estensione di salvare piccole quantità di dati localmente nel tuo browser. Ciò ci consente di ricordare le tue preferenze e fornire un'esperienza personalizzata tra le sessioni."
-        },
-        "offscreen": {
-          "title": "Autorizzazione Offscreen:",
-          "description": "Abilita il download di file di grandi dimensioni consentendo all'estensione di elaborare i file in background senza influire sulla tua esperienza di navigazione."
         },
         "storageDetails": {
           "title": "Cosa memorizziamo:",
@@ -195,8 +185,8 @@
           "local": "Tutti i dati rimangono localmente nel tuo browser"
         },
         "button": {
-          "requesting": "Richiesta autorizzazioni...",
-          "enable": "Abilita autorizzazioni"
+          "requesting": "Richiesta autorizzazione...",
+          "enable": "Abilita autorizzazione"
         },
         "footer": "Revoca in qualsiasi momento nelle impostazioni del browser"
       }

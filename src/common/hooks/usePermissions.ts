@@ -13,7 +13,7 @@ export interface UsePermissionsReturn {
 }
 
 /**
- * Hook to manage global permissions (storage, offscreen)
+ * Hook to manage global permissions (storage)
  */
 export function usePermissions(): UsePermissionsReturn {
   const [hasPermission, setHasPermission] = useState<boolean>(false);
@@ -27,7 +27,7 @@ export function usePermissions(): UsePermissionsReturn {
       setError(null);
       
       // We primarily check for storage permission to determine if we show the main app
-      // Offscreen might be requested on demand or together, but storage is critical for settings
+
       const storage = await hasStoragePermission();
       setHasPermission(storage);
     } catch {
@@ -42,20 +42,17 @@ export function usePermissions(): UsePermissionsReturn {
       setPermissionRequesting(true);
       setError(null);
 
-      // Request both storage and offscreen permissions together
-      // We can't use the wrapper functions easily for a single combined request 
-      // if we want them in one prompt, so we use chrome.permissions.request directly here
-      // or we can chain them. Chrome usually prefers one user gesture for multiple permissions if possible.
-      // The original code requested { permissions: ["storage", "offscreen"] }
+      // Request storage permission
+      // We check for storage permission to determine if we show the main app
       
       const granted = await chrome.permissions.request({ 
-        permissions: ["storage", "offscreen"] 
+        permissions: ["storage"] 
       });
       
       if (granted) {
         await checkPermissions();
       } else {
-        setError("Storage and offscreen permissions are required to use this extension");
+        setError("Storage permission is required to use this extension");
       }
     } catch {
       setError("Failed to request permissions");

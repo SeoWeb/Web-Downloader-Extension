@@ -166,22 +166,12 @@
           "improveExperience": "Пружите персонализованије искуство"
         }
       },
-      "offscreen": {
-        "title": "Потребна додатна дозвола",
-        "description": "Ово проширење треба дозволу offscreen за ефикасну обраду преузимања.",
-        "grant": "Дај дозволу",
-        "why": "Ова дозвола омогућава проширењу да креира позадинске документе за обраду великих преузимања без утицаја на ваше искуство прегледања."
-      },
       "global": {
         "title": "Potrebne dozvole",
-        "description": "Ovom proširenju su potrebne dozvole za skladištenje i offscreen kako bi se obezbedilo najbolje iskustvo preuzimanja.",
+        "description": "Овом проширењу је потребна дозвола за складиштење да би пружило најбоље искуство преузимања.",
         "storage": {
           "title": "Dozvola za skladištenje:",
           "description": "Omogućava proširenju da čuva male količine podataka lokalno u vašem pretraživaču. To nam omogućava da zapamtimo vaše postavke i obezbedimo personalizovano iskustvo."
-        },
-        "offscreen": {
-          "title": "Offscreen dozvola:",
-          "description": "Omogućava preuzimanje velikih fajlova dozvoljavajući proširenju da obrađuje fajlove u pozadini bez uticaja na vaše iskustvo pretraživanja."
         },
         "storageDetails": {
           "title": "Šta čuvamo:",
@@ -195,8 +185,8 @@
           "local": "Svi podaci ostaju lokalno u vašem pretraživaču"
         },
         "button": {
-          "requesting": "Zahtevanje dozvola...",
-          "enable": "Omogući dozvole"
+          "requesting": "Захтевање дозволе...",
+          "enable": "Омогући дозволу"
         },
         "footer": "Opozovite bilo kada u postavkama pretraživača"
       }

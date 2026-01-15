@@ -166,22 +166,12 @@
           "improveExperience": "Tarjoa yksilöllisempi kokemus"
         }
       },
-      "offscreen": {
-        "title": "Lisälupa vaaditaan",
-        "description": "Tämä laajennus tarvitsee offscreen-luvan latausten tehokkaaseen käsittelyyn.",
-        "grant": "Myönnä lupa",
-        "why": "Tämä lupa antaa laajennukselle mahdollisuuden luoda taustadokumentteja suurten latausten käsittelyä varten vaikuttamatta selauskokemukseesi."
-      },
       "global": {
         "title": "Käyttöoikeudet vaaditaan",
-        "description": "Tämä laajennus tarvitsee tallennustila- ja offscreen-oikeudet tarjotakseen parhaan latauskokemuksen.",
+        "description": "Tämä laajennus tarvitsee tallennusluvan tarjotakseen parhaan latauskokemuksen.",
         "storage": {
           "title": "Tallennustilaoikeus:",
           "description": "Sallii laajennuksen tallentaa pieniä määriä tietoa paikallisesti selaimeesi. Tämä mahdollistaa asetustesi muistamisen ja personoidun kokemuksen tarjoamisen istuntojen välillä."
-        },
-        "offscreen": {
-          "title": "Offscreen-oikeus:",
-          "description": "Mahdollistaa suurten tiedostojen lataamisen antamalla laajennuksen käsitellä tiedostoja taustalla vaikuttamatta selauskokemukseesi."
         },
         "storageDetails": {
           "title": "Mitä tallennamme:",
@@ -195,8 +185,8 @@
           "local": "Kaikki tiedot pysyvät paikallisesti selaimessasi"
         },
         "button": {
-          "requesting": "Pyydetään oikeuksia...",
-          "enable": "Ota käyttöoikeudet käyttöön"
+          "requesting": "Pyydetään lupaa...",
+          "enable": "Ota lupa käyttöön"
         },
         "footer": "Peruuta milloin tahansa selaimen asetuksissa"
       }

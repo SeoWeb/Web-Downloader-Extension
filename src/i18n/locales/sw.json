@@ -166,22 +166,12 @@
           "improveExperience": "Toa uzoefu ulioboreshwa zaidi"
         }
       },
-      "offscreen": {
-        "title": "Ruhusa ya Ziada Inahitajika",
-        "description": "Kiendelezi hiki kinahitaji ruhusa ya offscreen ili kuchakata upakuaji kwa ufanisi.",
-        "grant": "Toa Ruhusa",
-        "why": "Ruhusa hii inaruhusu kiendelezi kuunda nyaraka za nyuma kwa ajili ya kuchakata upakuaji mkubwa bila kuathiri uzoefu wako wa kuvinjari."
-      },
       "global": {
         "title": "Ruhusa Zinahitajika",
-        "description": "Kiendelezi hiki kinahitaji ruhusa za kuhifadhi na offscreen ili kutoa uzoefu bora wa kupakua.",
+        "description": "Kiendelezi hiki kinahitaji idhini ya hifadhi ili kutoa uzoefu bora wa kupakua.",
         "storage": {
           "title": "Ruhusa ya Kuhifadhi:",
           "description": "Inaruhusu kiendelezi kuhifadhi kiasi kidogo cha data mahali ulipo kwenye kivinjari chako. Hii inatuwezesha kukumbuka mapendeleo yako na kutoa uzoefu binafsi."
-        },
-        "offscreen": {
-          "title": "Ruhusa ya Offscreen:",
-          "description": "Inawezesha upakuaji wa faili kubwa kwa kuruhusu kiendelezi kuchakata faili kwa nyuma bila kuathiri uzoefu wako wa kuvinjari."
         },
         "storageDetails": {
           "title": "Tunachohifadhi:",
@@ -195,8 +185,8 @@
           "local": "Data yote inabaki mahali ulipo kwenye kivinjari chako"
         },
         "button": {
-          "requesting": "Inaomba Ruhusa...",
-          "enable": "Washa Ruhusa"
+          "requesting": "Inaomba Idhini...",
+          "enable": "Washa Idhini"
         },
         "footer": "Batilisha wakati wowote katika mipangilio ya kivinjari"
       }

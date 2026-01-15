@@ -166,22 +166,12 @@
           "improveExperience": "Bieten Sie ein persönlicheres Erlebnis"
         }
       },
-      "offscreen": {
-        "title": "Zusätzliche Berechtigung erforderlich",
-        "description": "Diese Erweiterung benötigt die Offscreen-Berechtigung, um Downloads effizient zu verarbeiten.",
-        "grant": "Berechtigung erteilen",
-        "why": "Diese Berechtigung ermöglicht es der Erweiterung, Hintergrunddokumente für die Verarbeitung großer Downloads zu erstellen, ohne Ihr Surferlebnis zu beeinträchtigen."
-      },
       "global": {
         "title": "Berechtigungen erforderlich",
-        "description": "Diese Erweiterung benötigt Speicher- und Offscreen-Berechtigungen, um das beste Download-Erlebnis zu bieten.",
+        "description": "Diese Erweiterung benötigt die Speicherberechtigung, um das beste Download-Erlebnis zu bieten.",
         "storage": {
           "title": "Speicherberechtigung:",
           "description": "Erlaubt der Erweiterung, kleine Datenmengen lokal in Ihrem Browser zu speichern. Dies ermöglicht uns, Ihre Einstellungen zu speichern und ein personalisiertes Erlebnis über Sitzungen hinweg zu bieten."
-        },
-        "offscreen": {
-          "title": "Offscreen-Berechtigung:",
-          "description": "Ermöglicht das Herunterladen großer Dateien, indem die Erweiterung Dateien im Hintergrund verarbeiten kann, ohne Ihr Surferlebnis zu beeinträchtigen."
         },
         "storageDetails": {
           "title": "Was wir speichern:",
@@ -195,8 +185,8 @@
           "local": "Alle Daten bleiben lokal in Ihrem Browser"
         },
         "button": {
-          "requesting": "Berechtigungen werden angefordert...",
-          "enable": "Berechtigungen aktivieren"
+          "requesting": "Berechtigung wird angefordert...",
+          "enable": "Berechtigung aktivieren"
         },
         "footer": "Jederzeit in den Browsereinstellungen widerrufbar"
       }

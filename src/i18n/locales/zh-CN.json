@@ -166,22 +166,12 @@
           "improveExperience": "提供更个性化的体验"
         }
       },
-      "offscreen": {
-        "title": "需要额外权限",
-        "description": "此扩展程序需要 offscreen 权限才能有效地处理下载。",
-        "grant": "授予权限",
-        "why": "此权限允许扩展程序创建后台文档以处理大型下载，而不会影响您的浏览体验。"
-      },
       "global": {
         "title": "需要权限",
-        "description": "此扩展程序需要存储和离线权限才能提供最佳下载体验。",
+        "description": "此扩展程序需要存储权限才能提供最佳下载体验。",
         "storage": {
           "title": "存储权限：",
           "description": "允许扩展程序在您的浏览器中本地保存少量数据。这使我们要记住您的首选项并在会话之间提供个性化体验。"
-        },
-        "offscreen": {
-          "title": "离线权限：",
-          "description": "通过允许扩展程序在后台处理文件而不影响您的浏览体验，从而实现大文件下载。"
         },
         "storageDetails": {
           "title": "我们存储的内容：",

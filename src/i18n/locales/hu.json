@@ -166,22 +166,12 @@
           "improveExperience": "Nyújtson személyre szabottabb élményt"
         }
       },
-      "offscreen": {
-        "title": "További engedély szükséges",
-        "description": "Ennek a bővítménynek offscreen engedélyre van szüksége a letöltések hatékony feldolgozásához.",
-        "grant": "Engedély megadása",
-        "why": "Ez az engedély lehetővé teszi a bővítmény számára, hogy háttérdokumentumokat hozzon létre a nagy letöltések feldolgozásához anélkül, hogy befolyásolná a böngészési élményt."
-      },
       "global": {
         "title": "Engedélyek szükségesek",
-        "description": "Ennek a bővítménynek tárolási és képernyőn kívüli (offscreen) engedélyekre van szüksége a legjobb letöltési élmény biztosításához.",
+        "description": "Ennek a bővítménynek tárhely-hozzáférésre van szüksége a legjobb letöltési élmény biztosításához.",
         "storage": {
           "title": "Tárolási engedély:",
           "description": "Lehetővé teszi a bővítmény számára, hogy kis mennyiségű adatot mentsen helyileg a böngészőjében. Ez lehetővé teszi számunkra, hogy megjegyezzük beállításait, és személyre szabott élményt nyújtsunk."
-        },
-        "offscreen": {
-          "title": "Offscreen engedély:",
-          "description": "Lehetővé teszi nagy fájlok letöltését azáltal, hogy a bővítmény feldolgozza a fájlokat a háttérben anélkül, hogy befolyásolná a böngészési élményt."
         },
         "storageDetails": {
           "title": "Amit tárolunk:",
@@ -195,8 +185,8 @@
           "local": "Minden adat helyileg marad a böngészőben"
         },
         "button": {
-          "requesting": "Engedélyek kérése...",
-          "enable": "Engedélyek bekapcsolása"
+          "requesting": "Engedély kérése...",
+          "enable": "Engedélyezés"
         },
         "footer": "Bármikor visszavonható a böngésző beállításaiban"
       }
