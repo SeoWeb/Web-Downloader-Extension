@@ -93,6 +93,7 @@ export default defineConfig({
     alias: {
       // Redirect linkedom's canvas module to our custom shim
       // This prevents the "createCanvas is not a function" error in Service Worker
+      // NOTE: Path is specific to linkedom@0.18.11 - verify on upgrades
       'linkedom/commonjs/canvas.cjs': resolve(__dirname, 'src/utils/canvas-shim.cjs'),
     },
   },
