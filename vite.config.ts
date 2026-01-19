@@ -89,6 +89,13 @@ export default defineConfig({
     copyLocaleFiles(),
     zipDistContents(),
   ],
+  resolve: {
+    alias: {
+      // Redirect linkedom's canvas module to our custom shim
+      // This prevents the "createCanvas is not a function" error in Service Worker
+      'linkedom/commonjs/canvas.cjs': resolve(__dirname, 'src/utils/canvas-shim.cjs'),
+    },
+  },
   build: {
     rollupOptions: {
       input: {
