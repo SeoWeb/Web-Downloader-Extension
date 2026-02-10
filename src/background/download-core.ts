@@ -204,24 +204,37 @@ async function executeDownload(
   const u = new URL(tabUrl || "");
 
   // Generate a safe filename from the URL
-  const hostname = u.hostname.replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "");
-  const path = u.pathname
+  // Remove protocols and common prefixes
+  const domain = u.hostname.replace(/^www\./i, "");
+  
+  // Clean hostname: allow only alphanumeric, dots, and hyphens
+  const hostname = domain.replace(/[^a-z0-9.-]/gi, "_") || "website";
+  
+  // Clean path: allow only alphanumeric, dots, and hyphens, replace others with hyphens
+  const pathParts = u.pathname
     .split("/")
-    .slice(1)
-    .filter((part) => part.length > 0) // Remove empty parts
-    .join("-")
-    .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-"); // Replace invalid characters with hyphens
+    .filter((part) => part.length > 0)
+    .map(part => part.replace(/[^a-z0-9.-]/gi, "-"));
+    
+  let safePath = pathParts.join("-");
 
   // Limit filename length and ensure it's not empty
-  const safePath =
-    path.length > 100 ? path.substring(0, 100) : path || "webpage";
+  // We keep it short to avoid OS/Browser limits (usually 255 total)
+  if (safePath.length > 50) {
+    safePath = safePath.substring(0, 50);
+  }
+  
   const timestamp = Date.now();
 
   let zipFilename: string;
   if (downloadOptions.singleFile) {
-    zipFilename = `${hostname}-${safePath}-${timestamp}.html`;
+    // For single files, we use .html
+    const baseName = safePath ? `${hostname}-${safePath}` : hostname;
+    zipFilename = `${baseName}-${timestamp}`.substring(0, 200) + ".html";
   } else {
-    zipFilename = `${hostname}-${safePath}-${timestamp}.zip`;
+    // For ZIPs
+    const baseName = safePath ? `${hostname}-${safePath}` : hostname;
+    zipFilename = `${baseName}-${timestamp}`.substring(0, 200) + ".zip";
   }
 
   if (downloadOptions.downloadHTML) {

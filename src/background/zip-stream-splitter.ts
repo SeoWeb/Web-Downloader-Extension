@@ -311,14 +311,16 @@ export class SplitZipGenerator {
     this.currentBuffer = remainderBuffers;
     this.currentBufferSize = remainderSize;
 
+    if (isLast) {
+      // Set total parts when we reach the last part
+      this.totalParts = this.partNumber;
+    }
+
     // Send part
     await this.partCallback(blob, this.partNumber, isLast, this.totalParts);
 
     if (!isLast) {
       this.partNumber++;
-    } else {
-      // Set total parts when we reach the last part
-      this.totalParts = this.partNumber;
     }
   }
 
