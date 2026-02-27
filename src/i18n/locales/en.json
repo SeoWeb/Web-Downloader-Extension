@@ -14,7 +14,10 @@
       "memoryPressure": "Cannot start download due to critical memory pressure. Please try again later.",
       "unknownError": "Unknown error",
       "invalidTabId": "Invalid tab ID",
-      "maxScrollAttempts": "Maximum scroll attempts reached"
+      "maxScrollAttempts": "Maximum scroll attempts reached",
+      "panelUnavailable": "Download could not complete because the extension panel was closed or became unavailable. Please keep this panel open while downloading and try again.",
+      "panelUnavailableTitle": "Extension Panel Required",
+      "panelUnavailableTip": "To prevent this, keep this panel open and avoid switching tabs during the download."
     },
     "filter": {
       "title": "Filter out what you want to download",

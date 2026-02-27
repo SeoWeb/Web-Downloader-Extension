@@ -16,6 +16,17 @@ import { usePermissions } from "./common/hooks/usePermissions";
 import { GlobalPermissionRequest } from "./common/components/GlobalPermissionRequest";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 
+// Keep track of blob URLs created by this side panel instance so they can be revoked later
+const activeBlobUrls = new Map<number, string>();
+
+const cleanupBlobUrl = (downloadId: number) => {
+  const url = activeBlobUrls.get(downloadId);
+  if (url) {
+    URL.revokeObjectURL(url);
+    activeBlobUrls.delete(downloadId);
+  }
+};
+
 interface Options {
   downloadHTML: boolean;
   downloadImages: boolean;
@@ -98,6 +109,49 @@ export default function SidePanel() {
   const messageWorker = useCallback(
     async (action: MessageAction, data: any): Promise<any> => {
       switch (action) {
+        case messageActions.PANEL_PING:
+          // Service worker is checking if we're alive
+          return "PONG";
+
+        case messageActions.PANEL_CREATE_DOWNLOAD: {
+          // Service worker is asking us to create a blob URL and download a file.
+          // This is needed because service workers can't use URL.createObjectURL,
+          // and data URLs cause Chrome to ignore the filename parameter.
+          try {
+            const { getBlob, deleteBlob } = await import("./common/blobStorage");
+            const blob = await getBlob(data.idbKey);
+
+            const objectUrl = URL.createObjectURL(blob);
+
+            try {
+              const downloadId = await chrome.downloads.download({
+                url: objectUrl,
+                filename: data.filename,
+                saveAs: data.saveAs ?? true,
+                conflictAction: "uniquify",
+              });
+
+              // Store the objectUrl for cleanup when download completes
+              activeBlobUrls.set(downloadId, objectUrl);
+
+              // Clean up the temp blob from IndexedDB
+              try {
+                await deleteBlob(data.idbKey);
+              } catch {
+                // Non-critical cleanup error
+              }
+
+              return { downloadId };
+            } catch (downloadError) {
+              URL.revokeObjectURL(objectUrl);
+              throw downloadError;
+            }
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Unknown error";
+            return { error: errorMessage };
+          }
+        }
+
         case messageActions.PANEL_MESSAGE:
           setMessages((prev) => [...prev, data.message]);
           if (data.message?.options?.isPaused !== undefined) {
@@ -113,6 +167,7 @@ export default function SidePanel() {
           break;
 
         case messageActions.DOWNLOAD_COMPLETE:
+          if (data.downloadId) cleanupBlobUrl(data.downloadId);
           // Download actually completed - file was saved
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
@@ -130,6 +185,7 @@ export default function SidePanel() {
           break;
 
         case messageActions.DOWNLOAD_FAILED:
+          if (data.downloadId) cleanupBlobUrl(data.downloadId);
           // Download failed or was interrupted
           // Reset messages to connected status with error message
           setMessages([
@@ -144,6 +200,7 @@ export default function SidePanel() {
           break;
 
         case messageActions.DOWNLOAD_CANCELLED:
+          if (data.downloadId) cleanupBlobUrl(data.downloadId);
           // User cancelled the download
           setMessages([{ key: "status.connected" }]);
           setIsScraping(false);
@@ -174,6 +231,7 @@ export default function SidePanel() {
       if (areaName === "local" && changes.downloadComplete) {
         const downloadComplete = changes.downloadComplete.newValue;
         if (downloadComplete) {
+          if (downloadComplete.downloadId) cleanupBlobUrl(downloadComplete.downloadId);
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
           setMessages((prev) => [...prev, { key: "status.creating" }]);

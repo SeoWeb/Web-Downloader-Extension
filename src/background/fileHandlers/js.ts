@@ -24,29 +24,7 @@ export async function addJsFiles(
     // TODO: Log download tracking
   }
 
-  // Set up queue event listeners for this batch
-  const originalListeners = requestQueue.getEventListeners() || {};
-  
-  const batchListeners = {
-    ...originalListeners,
-    onComplete: (result: any) => {
-      completedCount++;
-      sendMessage({ key: "status.jsProgress", options: { completed: completedCount, total: count } });
-      // Call original listener if it exists
-      if (originalListeners.onComplete) {
-        originalListeners.onComplete(result);
-      }
-    },
-    onError: (request: any, error: Error) => {
-      failCount++;
-      // Call original listener if it exists
-      if (originalListeners.onError) {
-        originalListeners.onError(request, error);
-      }
-    }
-  };
 
-  requestQueue.setEventListeners(batchListeners);
 
   // Enqueue all JS files
   const requestPromises: Promise<string>[] = [];
@@ -90,6 +68,8 @@ export async function addJsFiles(
           },
         },
         onComplete: async (result) => {
+          completedCount++;
+          sendMessage({ key: "status.jsProgress", options: { completed: completedCount, total: count } });
           try {
             const blob = await result.response.blob();
             const filename = new URL(fullJsUrl, baseUrl).pathname.split("/").pop();
@@ -108,6 +88,7 @@ export async function addJsFiles(
           }
         },
         onError: (error) => {
+          failCount++;
           reject(error);
         },
       });
@@ -117,19 +98,11 @@ export async function addJsFiles(
   }
 
   // Wait for all JS files to be processed
-  const results = await Promise.allSettled(requestPromises);
+  await Promise.allSettled(requestPromises);
   
-  // Restore original listeners
-  if (originalListeners) {
-    requestQueue.setEventListeners(originalListeners);
-  }
 
-  // Count failures from rejected promises
-  results.forEach((result) => {
-    if (result.status === 'rejected') {
-      failCount++;
-    }
-  });
+
+  // Count failures from rejected promises is handled inside the promise catch/onError.
 
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(

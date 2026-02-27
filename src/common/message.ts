@@ -12,7 +12,9 @@ export type MessageAction =
   | "START_INCREMENTAL_DOWNLOAD"
   | "SCRAPER_PAUSE"
   | "SCRAPER_RESUME"
-  | "SCRAPER_STOP";
+  | "SCRAPER_STOP"
+  | "PANEL_CREATE_DOWNLOAD"
+  | "PANEL_PING";
 
 export const messageActions: Record<MessageAction, MessageAction> = {
   PANEL_MESSAGE: "PANEL_MESSAGE",
@@ -29,4 +31,6 @@ export const messageActions: Record<MessageAction, MessageAction> = {
   SCRAPER_PAUSE: "SCRAPER_PAUSE",
   SCRAPER_RESUME: "SCRAPER_RESUME",
   SCRAPER_STOP: "SCRAPER_STOP",
+  PANEL_CREATE_DOWNLOAD: "PANEL_CREATE_DOWNLOAD",
+  PANEL_PING: "PANEL_PING",
 };

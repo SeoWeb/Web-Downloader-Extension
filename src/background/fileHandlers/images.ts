@@ -24,29 +24,7 @@ export async function addImageFiles(
     // TODO: Log download tracking
   }
 
-  // Set up queue event listeners for this batch
-  const originalListeners = requestQueue.getEventListeners() || {};
-  
-  const batchListeners = {
-    ...originalListeners,
-    onComplete: (result: any) => {
-      completedCount++;
-      sendMessage({ key: "status.imagesProgress", options: { completed: completedCount, total: count } });
-      // Call original listener if it exists
-      if (originalListeners.onComplete) {
-        originalListeners.onComplete(result);
-      }
-    },
-    onError: (request: any, error: Error) => {
-      failCount++;
-      // Call original listener if it exists
-      if (originalListeners.onError) {
-        originalListeners.onError(request, error);
-      }
-    }
-  };
 
-  requestQueue.setEventListeners(batchListeners);
 
   // Enqueue all image files
   const requestPromises: Promise<string>[] = [];
@@ -96,6 +74,8 @@ export async function addImageFiles(
           },
         },
         onComplete: async (result) => {
+          completedCount++;
+          sendMessage({ key: "status.imagesProgress", options: { completed: completedCount, total: count } });
           try {
             const blob = await result.response.blob();
             const filename = new URL(fullImageUrl, baseUrl).pathname.split("/").pop();
@@ -114,6 +94,7 @@ export async function addImageFiles(
           }
         },
         onError: (error) => {
+          failCount++;
           reject(error);
         },
       });
@@ -123,19 +104,11 @@ export async function addImageFiles(
   }
 
   // Wait for all image files to be processed
-  const results = await Promise.allSettled(requestPromises);
+  await Promise.allSettled(requestPromises);
   
-  // Restore original listeners
-  if (originalListeners) {
-    requestQueue.setEventListeners(originalListeners);
-  }
 
-  // Count failures from rejected promises
-  results.forEach((result) => {
-    if (result.status === 'rejected') {
-      failCount++;
-    }
-  });
+
+  // Failures handled inside the promise block
 
   if (failCount > 0 || skippedCount > 0) {
     sendMessage(

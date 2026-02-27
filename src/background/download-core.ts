@@ -8,8 +8,9 @@ import { addIndexHtml } from "./fileHandlers";
 import { cleanupAfterDownload } from "./cleanupHandlers";
 import { finalizeIncrementalMerge } from "./merge-html";
 import { FilterOptions } from "../types/filterTypes";
-import { downloadId, setDownloadInProgress, getDownloadInProgress, trackDownload } from "./download-state";
+import { downloadId, setDownloadInProgress, getDownloadInProgress } from "./download-state";
 import { initiateDownload, performInitialCleanup } from "./download-utils";
+import { isPanelAlive, downloadViaPanelAndWait, PanelUnavailableError } from "./panel-download";
 import { 
   processRegularHtml, 
   processAssets, 
@@ -83,7 +84,11 @@ export async function downloadResources(
     let userFriendlyMessage: string | { key: string; options?: any } = { key: "status.failedWithError", options: { error: errorMessage } };
     let isMemoryError = false;
 
-    if (
+    if (error instanceof PanelUnavailableError) {
+      // Panel was closed or unavailable — already sent the app.panelUnavailable message
+      // from the inner catch, so just use a short error here
+      userFriendlyMessage = { key: "app.panelUnavailable" };
+    } else if (
       errorMessage.includes("memory") ||
       errorMessage.includes("size") ||
       errorMessage.includes("limit") ||
@@ -362,7 +367,14 @@ async function executeDownload(
         sendMessage({ key: "status.creatingPackage" });
         sendMessage({ key: "status.generatingSplitZip" });
 
-        // const { SplitZipGenerator } = await import("./zip-stream-splitter"); // Dynamic import removed
+        // Verify the side panel is available before starting multi-part download
+        const panelAlive = await isPanelAlive();
+        if (!panelAlive) {
+          throw new PanelUnavailableError(
+            "Extension panel is not available. Please keep the extension panel open during downloads."
+          );
+        }
+
         const zip = new JSZip();
 
         // Load all file metadata from IndexedDB
@@ -370,8 +382,6 @@ async function executeDownload(
 
         // Add all files to JSZip as promises (lazy-ish loading)
         for (const file of files) {
-          // We pass a promise that resolves to the blob
-          // JSZip will resolve this when it processes the file in the stream
           zip.file(file.path, FileStore.getFileBlobById(file.id).then(blob => {
              if (!blob) throw new Error(`Blob not found for id ${file.id}`);
              return blob;
@@ -388,14 +398,18 @@ async function executeDownload(
           // Pause if memory pressure is critical
           if (memoryStats.memoryPressureLevel === MemoryPressureLevel.CRITICAL) {
             sendMessage({ key: "status.waitingForCleanup", options: { part: partNumber } });
-            
-            // Wait for memory to stabilize
             await new Promise(resolve => setTimeout(resolve, 5000));
-            
-            // Force garbage collection if available (service workers use self, not global)
             if (typeof (self as any).gc === 'function') {
               (self as any).gc();
             }
+          }
+
+          // Verify panel is still alive before each part
+          const stillAlive = await isPanelAlive();
+          if (!stillAlive) {
+            throw new PanelUnavailableError(
+              "Extension panel was closed during download. Please keep the extension panel open during downloads."
+            );
           }
 
           sendMessage({ key: "status.downloadingPart", options: { part: partNumber, total: totalParts } });
@@ -404,89 +418,18 @@ async function executeDownload(
           const nameWithoutExt = zipFilenameFinal.replace(/\.zip$/i, '');
           
           if (isLast) {
-             // The last part is the .zip file
              partFilename = `${nameWithoutExt}.zip`;
           } else {
-             // Previous parts are .z01, .z02, etc.
              const ext = String(partNumber).padStart(2, '0');
              partFilename = `${nameWithoutExt}.z${ext}`;
           }
 
-          // Convert blob to data URL for download
-          // const reader = new FileReader();
-          // const dataUrl = await new Promise<string>((resolve, reject) => {
-          //   reader.onloadend = () => resolve(reader.result as string);
-          //   reader.onerror = reject;
-          //   reader.readAsDataURL(blob);
-          // });
-          // Use blob URL instead of data URL to avoid base64 memory overhead
-          // const blobUrl = URL.createObjectURL(blob);
-          // Service workers don't support URL.createObjectURL, so we use data URLs
-          // To minimize memory impact, we read in chunks and clear references aggressively
-          let dataUrl: string;
-          try {
-            const reader = new FileReader();
-            dataUrl = await new Promise<string>((resolve, reject) => {
-              reader.onloadend = () => {
-                if (reader.result) {
-                  resolve(reader.result as string);
-                } else {
-                  reject(new Error('Failed to read blob'));
-                }
-              };
-              reader.onerror = () => reject(new Error('FileReader error'));
-              reader.readAsDataURL(blob);
-            });
-          } catch (readError) {
-            throw readError;
-          }
+          // Download via side panel (where URL.createObjectURL is available)
+          await downloadViaPanelAndWait(blob, partFilename, false, tabId);
 
-          try {
-            const downloadId = await chrome.downloads.download({
-              url: dataUrl,
-              filename: partFilename,
-              saveAs: false, // Don't prompt for every part
-              conflictAction: "uniquify",
-            });
-            
-            // Track this download so completion can be detected
-            trackDownload(downloadId, partFilename, tabId);
-            
-            // Wait for download to complete
-             await new Promise<void>((resolve, reject) => {
-              const timeout = setTimeout(() => {
-                chrome.downloads.onChanged.removeListener(listener);
-                reject(new Error('Download timeout'));
-              }, 300000); // 5 minute timeout
-              
-              const listener = (delta: chrome.downloads.DownloadDelta) => {
-                if (delta.id === downloadId && delta.state) {
-                  if (delta.state.current === 'complete') {
-                    clearTimeout(timeout);
-                    chrome.downloads.onChanged.removeListener(listener);
-                    resolve();
-                  } else if (delta.state.current === 'interrupted') {
-                    clearTimeout(timeout);
-                    chrome.downloads.onChanged.removeListener(listener);
-                    reject(new Error('Download interrupted'));
-                  }
-                }
-              };
-              
-              chrome.downloads.onChanged.addListener(listener);
-            });
-          } catch (error) {
-             throw error;
-          } finally {
-            // Explicitly clear the data URL string to free memory
-            dataUrl = '';
-          }
-
-          // Add delay between parts to allow memory cleanup and garbage collection
+          // Add delay between parts to allow memory cleanup
           if (!isLast) {
             await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Force garbage collection if available (service workers use self, not global)
             if (typeof (self as any).gc === 'function') {
               (self as any).gc();
             }
@@ -529,6 +472,12 @@ async function executeDownload(
     // Mark session as failed if using IndexedDB
     if (USE_INDEXEDDB) {
       await SessionManager.failSession(currentSessionId, error instanceof Error ? error.message : 'Unknown error');
+    }
+    
+    // Handle panel unavailable errors with a user-friendly message
+    if (error instanceof PanelUnavailableError) {
+      sendMessage({ key: "app.panelUnavailable" });
+      throw error;
     }
     
     const errorMessage =
