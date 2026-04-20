@@ -274,21 +274,37 @@ function convertBackgroundImageUrlsToRelative(
     }
 
     try {
-      // If URL is already relative, preserve its structure but ensure it points to images folder
-      if (!imageUrl.startsWith("http")) {
-        const filename = imageUrl.split("/").pop();
+      let resolvedUrl = imageUrl;
+
+      // Handle protocol-relative URLs (//cdn.example.com/img.jpg)
+      if (imageUrl.startsWith("//")) {
+        resolvedUrl = "https:" + imageUrl;
+      }
+
+      // Handle absolute-path URLs (/images/photo.jpg) - resolve against baseUrl
+      if (imageUrl.startsWith("/") && !imageUrl.startsWith("//")) {
+        try {
+          const base = new URL(baseUrl);
+          resolvedUrl = base.origin + imageUrl;
+        } catch {
+          // If baseUrl is invalid, just use the path as-is
+        }
+      }
+
+      // Handle full http/https URLs
+      if (resolvedUrl.startsWith("http")) {
+        const filename = new URL(resolvedUrl).pathname.split("/").pop();
         if (filename) {
-          const relativeImagePath = path + "images/" + filename;
+          const relativeImagePath = path + "images/" + fixFilename(filename);
           return match.replace(imageUrl, relativeImagePath);
         }
       }
 
-      if (imageUrl.startsWith(baseUrl)) {
-        const url = new URL(imageUrl, baseUrl);
-        const relativePath = url.pathname;
-        const filename = relativePath.split("/").pop();
+      // Handle relative URLs (../images/photo.jpg, images/photo.jpg, etc.)
+      if (!imageUrl.startsWith("http") && !imageUrl.startsWith("//")) {
+        const filename = imageUrl.split("/").pop();
         if (filename) {
-          const relativeImagePath = path + "images/" + filename;
+          const relativeImagePath = path + "images/" + fixFilename(filename);
           return match.replace(imageUrl, relativeImagePath);
         }
       }

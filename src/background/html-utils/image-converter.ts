@@ -1,10 +1,11 @@
 import { DOMParser } from "linkedom";
-import { fetchUrl, fixFilename } from "../urlUtils";
+import { fetchUrl, generateImageFilename } from "../urlUtils";
 
 export function convertImagesToRelative(
   htmlString: string,
   tabUrl: string,
   path: string = "./",
+  imageFilenameMap?: Map<string, string>,
 ) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlString, "text/html");
@@ -13,8 +14,47 @@ export function convertImagesToRelative(
   for (const image of images) {
     let src: string | null = image.getAttribute("src");
     if (!src) continue;
+    const originalSrc = src;
     src = src.split("?")[0];
 
+    // Check the filename map first (has correct extensions from Content-Type)
+    if (imageFilenameMap) {
+      // Try matching with original src (before query param removal)
+      const mappedFromOriginal = imageFilenameMap.get(originalSrc);
+      if (mappedFromOriginal) {
+        image.setAttribute("src", path + mappedFromOriginal);
+        continue;
+      }
+
+      // Try matching with query-removed src
+      const mappedFromClean = imageFilenameMap.get(src);
+      if (mappedFromClean) {
+        image.setAttribute("src", path + mappedFromClean);
+        continue;
+      }
+
+      // Try resolving to full URL and matching
+      try {
+        const tabOrigin = new URL(tabUrl).origin + '/';
+        let fullUrl: string;
+        if (src.startsWith('http')) {
+          fullUrl = src;
+        } else if (src.startsWith('//')) {
+          fullUrl = 'https:' + src;
+        } else {
+          fullUrl = new URL(src, tabOrigin).href;
+        }
+        const mappedFromFull = imageFilenameMap.get(fullUrl);
+        if (mappedFromFull) {
+          image.setAttribute("src", path + mappedFromFull);
+          continue;
+        }
+      } catch {
+        // URL resolution failed, fall through to default handling
+      }
+    }
+
+    // Fallback: generate filename from URL (no Content-Type available)
     const u = new URL(src.startsWith("http") ? src : tabUrl);
     const baseUrl = u.origin + "/";
 
@@ -26,10 +66,10 @@ export function convertImagesToRelative(
       src = url.pathname + url.search + url.hash;
     }
 
-    if (src.split(".").length > 1) {
-      const filename = src.split("/").pop();
-      src = path + "images/" + fixFilename(filename || "");
-    }
+    // Always convert to local path, even for URLs without file extensions
+    // (e.g., Blackboard/D2L URLs like /bbcswebdav/.../xid-31821076_1)
+    const filename = generateImageFilename(src);
+    src = path + "images/" + filename;
 
     image.setAttribute("src", src);
   }

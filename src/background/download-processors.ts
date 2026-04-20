@@ -15,14 +15,15 @@ export async function processRegularHtml(
   html: string,
   storage: IStorageAdapter,
   tabUrl: string,
-  sendMessage: (message: string | { key: string; options?: any }) => void
+  sendMessage: (message: string | { key: string; options?: any }) => void,
+  imageFilenameMap?: Map<string, string>,
 ) {
   // Check HTML size before processing
   if (html.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
     sendMessage({ key: "status.htmlTooLarge" });
   }
 
-  await addIndexHtml(html, storage, tabUrl);
+  await addIndexHtml(html, storage, tabUrl, imageFilenameMap);
   sendMessage({ key: "status.indexCreated" });
 }
 
@@ -80,12 +81,13 @@ export async function processImages(
   storage: IStorageAdapter,
   tabUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void
-) {
-  if (!images?.length) return;
+): Promise<Map<string, string>> {
+  if (!images?.length) return new Map();
 
   sendMessage({ key: "status.downloadingImages", options: { count: images.length } });
-  await addImageFiles(images, storage, tabUrl, sendMessage, downloadId);
+  const filenameMap = await addImageFiles(images, storage, tabUrl, sendMessage, downloadId);
   sendMessage({ key: "status.imagesDownloaded" });
+  return filenameMap;
 }
 
 export async function processLinks(

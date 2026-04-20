@@ -242,6 +242,13 @@ async function executeDownload(
     zipFilename = `${baseName}-${timestamp}`.substring(0, 200) + ".zip";
   }
 
+  // Download images BEFORE processing HTML so we know the correct filenames
+  // (including proper extensions from Content-Type for extension-less URLs)
+  let imageFilenameMap = new Map<string, string>();
+  if (downloadOptions.downloadImages) {
+    imageFilenameMap = await processImages(data.images, storage, tabUrl, sendMessage);
+  }
+
   if (downloadOptions.downloadHTML) {
     sendMessage({ key: "status.creatingIndex" });
 
@@ -254,12 +261,12 @@ async function executeDownload(
           sendMessage(`Error: ${finalizeResult.error}`);
           
           // Fall back to regular HTML processing
-          await processRegularHtml(html, storage, tabUrl, sendMessage);
+          await processRegularHtml(html, storage, tabUrl, sendMessage, imageFilenameMap);
         } else {
           // Use the assembled HTML
           const finalHtml = finalizeResult.html;
           if (finalHtml) {
-            await addIndexHtml(finalHtml, storage, tabUrl);
+            await addIndexHtml(finalHtml, storage, tabUrl, imageFilenameMap);
             sendMessage({ key: "status.htmlAssembled" });
           } else if (finalizeResult.blob) {
             // Handle blob case for large files
@@ -269,11 +276,11 @@ async function executeDownload(
         }
       } catch {
         sendMessage({ key: "status.htmlAssemblyError" });
-        await processRegularHtml(html, storage, tabUrl, sendMessage);
+        await processRegularHtml(html, storage, tabUrl, sendMessage, imageFilenameMap);
       }
     } else {
       // Regular HTML processing
-      await processRegularHtml(html, storage, tabUrl, sendMessage);
+      await processRegularHtml(html, storage, tabUrl, sendMessage, imageFilenameMap);
     }
   }
 
@@ -283,10 +290,6 @@ async function executeDownload(
 
   if (downloadOptions.downloadDocuments) {
     await processDocuments(data.documents, storage, tabUrl, sendMessage);
-  }
-
-  if (downloadOptions.downloadImages) {
-    await processImages(data.images, storage, tabUrl, sendMessage);
   }
 
   if (downloadOptions.downloadLinks) {

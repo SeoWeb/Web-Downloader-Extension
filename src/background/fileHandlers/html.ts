@@ -9,6 +9,7 @@ export async function addIndexHtml(
   inputHtml: string,
   storage: IStorageAdapter,
   tabUrl: string,
+  imageFilenameMap?: Map<string, string>,
 ) {
   try {    
     // Validate input HTML
@@ -19,7 +20,7 @@ export async function addIndexHtml(
     // Try to convert HTML, with fallback to original if conversion fails
     let html: string;
     try {
-      html = convertHtml(inputHtml, tabUrl);
+      html = convertHtml(inputHtml, tabUrl, "./", imageFilenameMap);
     } catch (conversionError) {
       html = inputHtml; // Fallback to original HTML
     }

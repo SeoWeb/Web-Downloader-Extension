@@ -317,27 +317,142 @@ export function fixFilename(filename: string) {
   // Remove query parameters and fragments
   const newFilename = filename.split(/[?#]/)[0];
 
-  // Extract extension
-  const extension = newFilename.split(".").pop();
+  // Check if the filename has a recognizable file extension
+  const lastDotIndex = newFilename.lastIndexOf(".");
+  const hasValidExtension =
+    lastDotIndex > 0 &&
+    newFilename.length - lastDotIndex - 1 <= 10 &&
+    newFilename.length - lastDotIndex - 1 > 0;
 
-  // Get the name without extension
-  const nameParts = newFilename.split(".");
-  const name = nameParts.slice(0, -1).join(".");
+  if (hasValidExtension) {
+    const extension = newFilename.slice(lastDotIndex + 1);
+    const name = newFilename.slice(0, lastDotIndex);
 
-  // Clean the name
+    const cleanName =
+      name
+        .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 100) ||
+      "file";
+
+    const cleanExtension = extension.toLowerCase();
+    return `${cleanName}.${cleanExtension}`;
+  }
+
+  // No valid extension - sanitize the whole name and add .bin default
+  // (will be corrected to proper extension by Content-Type when available)
   const cleanName =
-    name
-      .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-") // Replace invalid chars with hyphen
-      .replace(/-+/g, "-") // Replace multiple hyphens with single
-      .replace(/^-+|-+$/g, "") // Remove leading/trailing hyphens
-      .slice(0, 100) || // Limit length
-    "file"; // Default name if empty
+    newFilename
+      .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 100) ||
+    "file";
 
-  // Ensure we have a valid extension
-  const cleanExtension =
-    extension && extension.length > 0 && extension.length <= 10
-      ? extension.toLowerCase()
-      : "bin";
+  return `${cleanName}.bin`;
+}
 
-  return `${cleanName}.${cleanExtension}`;
+/**
+ * Known image MIME types mapped to file extensions
+ */
+const MIME_TO_EXTENSION: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+  "image/bmp": "bmp",
+  "image/x-ms-bmp": "bmp",
+  "image/vnd.microsoft.icon": "ico",
+  "image/x-icon": "ico",
+  "image/avif": "avif",
+  "image/heic": "heic",
+  "image/heif": "heic",
+  "image/tiff": "tiff",
+  "image/x-tiff": "tiff",
+};
+
+/**
+ * Get file extension from MIME type
+ */
+export function getExtensionFromMimeType(mimeType: string): string | null {
+  // Strip parameters like charset
+  const cleanMime = mimeType.split(";")[0].trim().toLowerCase();
+  return MIME_TO_EXTENSION[cleanMime] || null;
+}
+
+/**
+ * Generate a consistent image filename from a URL for use by both
+ * the HTML converter (convertImagesToRelative) and the image downloader (addImageFiles).
+ * Handles URLs without file extensions by using a sanitized URL path as the name.
+ *
+ * @param urlSrc - The image URL or path (can be absolute, relative, or just a pathname)
+ * @param contentType - Optional MIME type to determine proper extension for extension-less URLs
+ * @returns A filename suitable for use in the images/ directory
+ */
+export function generateImageFilename(
+  urlSrc: string,
+  contentType?: string,
+): string {
+  if (!urlSrc || typeof urlSrc !== "string") {
+    return "image.bin";
+  }
+
+  // Remove query parameters and fragments
+  const cleanUrl = urlSrc.split(/[?#]/)[0];
+
+  // Try to extract pathname from URL
+  let pathname: string;
+  try {
+    if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://") || cleanUrl.startsWith("//")) {
+      pathname = new URL(cleanUrl.startsWith("//") ? "https:" + cleanUrl : cleanUrl).pathname;
+    } else {
+      pathname = cleanUrl;
+    }
+  } catch {
+    pathname = cleanUrl;
+  }
+
+  // Get the last path segment
+  const segments = pathname.split("/").filter((s) => s.length > 0);
+  const lastSegment = segments.length > 0 ? segments[segments.length - 1] : "image";
+
+  // Check if the last segment has a valid image extension
+  const imageExtensions = [
+    "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "avif", "heic", "tiff", "tif",
+  ];
+  const dotIndex = lastSegment.lastIndexOf(".");
+  const hasImageExtension =
+    dotIndex > 0 &&
+    imageExtensions.includes(lastSegment.slice(dotIndex + 1).toLowerCase());
+
+  if (hasImageExtension) {
+    return fixFilename(lastSegment);
+  }
+
+  // No image extension - generate a unique deterministic name from the full path
+  // Use the entire path (not just the last segment) to avoid collisions
+  // e.g., /bbcswebdav/pid-4837352-dt-content-rid-31821076_1/xid-31821076_1
+  // becomes: bbcswebdav_pid-4837352-dt-content-rid-31821076_1_xid-31821076_1
+  const fullPath = segments.join("_");
+  const sanitized =
+    fullPath
+      .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 150) ||
+    "image";
+
+  // Determine extension from Content-Type if available, otherwise .bin
+  let extension = "bin";
+  if (contentType) {
+    const ext = getExtensionFromMimeType(contentType);
+    if (ext) {
+      extension = ext;
+    }
+  }
+
+  return `${sanitized}.${extension}`;
 }

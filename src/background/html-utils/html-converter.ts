@@ -25,6 +25,7 @@ export function convertHtml(
   inputHtml: string,
   tabUrl: string,
   path: string = "./",
+  imageFilenameMap?: Map<string, string>,
 ) {
   let html = convertLinksToRelative(inputHtml, tabUrl, path);
 
@@ -38,7 +39,7 @@ export function convertHtml(
     }
   }
 
-  html = convertImagesToRelative(html, tabUrl, path);
+  html = convertImagesToRelative(html, tabUrl, path, imageFilenameMap);
   html = convertBackgroundImagesToRelative(html, tabUrl, path);
   html = convertObjectElementsToRelative(html, tabUrl, path);
   html = convertStylesToRelative(html, tabUrl, path);

@@ -1,16 +1,22 @@
 import { IStorageAdapter } from "../storage/storage-adapter";
-import { fixFilename } from "../urlUtils";
+import { generateImageFilename } from "../urlUtils";
 import { requestQueue } from "../../utils/RequestQueue";
 import { RequestPriority, ResourceType } from "../../types/queue";
 
+/**
+ * Download image files and return a mapping from original URL to local filename.
+ * This map is used by the HTML converter to rewrite image URLs correctly.
+ */
 export async function addImageFiles(
   images: string[],
   storage: IStorageAdapter,
   tabUrl: string,
   sendMessage: (message: string | { key: string; options?: any }) => void,
   downloadId?: string,
-) {
-  if (!images?.length) return;
+): Promise<Map<string, string>> {
+  const filenameMap = new Map<string, string>();
+
+  if (!images?.length) return filenameMap;
 
   // Using storage adapter directly
   const count = images.length;
@@ -55,8 +61,9 @@ export async function addImageFiles(
       // All relative paths (both '/path' and 'path') use origin as base
       fullImageUrl = new URL(image, tabOrigin).href;
     }
-    const u = new URL(fullImageUrl);
-    const baseUrl = u.origin;
+
+    // Store the original src for the filename map
+    const originalSrc = image;
 
     // Create a promise that resolves when the image is processed
     const imagePromise = new Promise<string>(async (resolve, reject) => {
@@ -78,14 +85,20 @@ export async function addImageFiles(
           sendMessage({ key: "status.imagesProgress", options: { completed: completedCount, total: count } });
           try {
             const blob = await result.response.blob();
-            const filename = new URL(fullImageUrl, baseUrl).pathname.split("/").pop();
+
+            // Get Content-Type to determine proper extension for extension-less URLs
+            const contentType = result.response.headers.get('Content-Type') || '';
+            const filename = generateImageFilename(fullImageUrl, contentType);
             if (!filename) {
               failCount++;
               resolve(image);
               return;
             }
 
-            await storage.addFile(`images/${fixFilename(filename)}`, blob);
+            await storage.addFile(`images/${filename}`, blob);
+            // Store both the original src and the full URL mapping to local filename
+            filenameMap.set(originalSrc, `images/${filename}`);
+            filenameMap.set(fullImageUrl, `images/${filename}`);
             successCount++;
             resolve(image);
           } catch (error) {
@@ -115,4 +128,6 @@ export async function addImageFiles(
       { key: "status.imagesSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
     );
   }
+
+  return filenameMap;
 }

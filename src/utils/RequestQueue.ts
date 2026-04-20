@@ -489,8 +489,8 @@ export class RequestQueue {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
-      // If standard fetch fails for CSS/JS, try fallback with no-cors mode
-      if (request.resourceType === ResourceType.CSS || request.resourceType === ResourceType.JS) {
+      // If standard fetch fails for CSS/JS/Images, try fallback with no-cors mode
+      if (request.resourceType === ResourceType.CSS || request.resourceType === ResourceType.JS || request.resourceType === ResourceType.IMAGE) {
         try {
           response = await fetch(request.url, {
             method: 'GET',
@@ -523,7 +523,7 @@ export class RequestQueue {
           }
         }
       } else {
-        // For non-CSS/JS resources, just re-throw the error
+        // For other resource types, just re-throw the error
         throw error;
       }
     }
