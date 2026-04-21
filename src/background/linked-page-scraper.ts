@@ -15,6 +15,17 @@ import { convertHtml } from "./htmlUtils";
 import { addCssFiles, addJsFiles, addImageFiles } from "./fileHandlers";
 import { fixFilename } from "./urlUtils";
 
+// Global image filename map shared across main page and all linked pages
+let globalImageFilenameMap = new Map<string, string>();
+
+/**
+ * Set the global image filename map (from main page download)
+ * so linked pages can reference already-downloaded images with correct filenames.
+ */
+export function setGlobalImageFilenameMap(map: Map<string, string>) {
+  globalImageFilenameMap = map;
+}
+
 export interface LinkedPageJob {
   url: string;
   depth: number; // For future recursive crawling support
@@ -263,10 +274,17 @@ export class LinkedPageScraper {
     const resources = getResources(html);
 
     // Download assets (checking registry first to avoid duplicates)
-    await this.downloadAssets(resources, storage, finalUrl, sendMessage);
+    const localImageMap = await this.downloadAssets(resources, storage, finalUrl, sendMessage);
+
+    // Build a combined filename map: global (main page + previous linked pages) + local (this page)
+    // This ensures images already downloaded by the main page have correct filenames
+    const combinedImageMap = new Map<string, string>(globalImageFilenameMap);
+    for (const [key, value] of localImageMap) {
+      combinedImageMap.set(key, value);
+    }
 
     // Convert HTML with proper link rewriting (pages are in pages/ folder, assets are at root level)
-    const convertedHtml = convertHtml(html, finalUrl, "../");
+    const convertedHtml = convertHtml(html, finalUrl, "../", combinedImageMap);
 
     return {
       html: convertedHtml,
@@ -378,7 +396,8 @@ export class LinkedPageScraper {
   }
 
   /**
-   * Download assets for a linked page, checking registry first
+   * Download assets for a linked page, checking registry first.
+   * Returns the image filename map for this page's newly downloaded images.
    */
   private async downloadAssets(
     resources: {
@@ -390,7 +409,9 @@ export class LinkedPageScraper {
     storage: IStorageAdapter,
     pageUrl: string,
     sendMessage: (message: string | { key: string; options?: any }) => void,
-  ): Promise<void> {
+  ): Promise<Map<string, string>> {
+    const localImageFilenameMap = new Map<string, string>();
+
     // Filter out assets that are already downloaded
     const newCss = resources.css.filter((url) => {
       const fullUrl = new URL(url, pageUrl).href;
@@ -417,7 +438,12 @@ export class LinkedPageScraper {
     }
 
     if (newImages.length > 0) {
-      await addImageFiles(newImages, storage, pageUrl, sendMessage);
+      const downloadedMap = await addImageFiles(newImages, storage, pageUrl, sendMessage);
+      // Merge into local and global maps
+      for (const [key, value] of downloadedMap) {
+        localImageFilenameMap.set(key, value);
+        globalImageFilenameMap.set(key, value);
+      }
     }
 
     // Register all assets (including ones we skipped)
@@ -441,6 +467,8 @@ export class LinkedPageScraper {
         this.assetRegistry.register(fullUrl, `assets/images/${fixFilename(url)}`, 0);
       }
     }
+
+    return localImageFilenameMap;
   }
 
   /**

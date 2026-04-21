@@ -21,7 +21,7 @@ import {
 } from "./download-processors";
 import { addContentText } from "./fileHandlers";
 import { AssetRegistry } from "./asset-registry";
-import { LinkedPageScraper } from "./linked-page-scraper";
+import { LinkedPageScraper, setGlobalImageFilenameMap } from "./linked-page-scraper";
 import { convertToSingleFileHtml } from "./html-utils/html-converter";
 import { SplitZipGenerator } from "./zip-stream-splitter";
 
@@ -321,6 +321,10 @@ async function executeDownload(
         includeExternal: downloadOptions.linkedPagesIncludeExternal,
         pageTimeout: downloadOptions.linkedPagesTimeout,
       });
+
+      // Share the main page's image filename map so linked pages can reference
+      // already-downloaded images with correct filenames (including proper extensions)
+      setGlobalImageFilenameMap(imageFilenameMap);
 
       // Queue all discovered links
       setCurrentScraper(linkedPageScraper);
