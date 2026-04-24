@@ -8,7 +8,7 @@ Server-side ZIP archive and single-file HTML assembly for the Website Downloader
 
 ### Requirement: ZIP Archive Creation
 
-The server SHALL create a ZIP archive containing the merged HTML and all uploaded resources when a session is finalized.
+The server SHALL create a ZIP archive containing the merged HTML and all uploaded resources when a session is finalized, with linked page filenames that match the link converter's output.
 
 #### Scenario: Standard ZIP assembly
 
@@ -22,6 +22,8 @@ The server SHALL create a ZIP archive containing the merged HTML and all uploade
 - **WHEN** a session includes linked page HTML files
 - **THEN** the linked pages are stored in the `pages/` directory
 - **AND** each page has an `.html` extension
+- **AND** each page's filename is generated from its URL using the same algorithm as `convert_links()` (last path segment + `.html`)
+- **AND** the filenames are deterministic and match the href values produced by link conversion, so internal navigation links resolve correctly
 
 #### Scenario: ZIP with content text
 

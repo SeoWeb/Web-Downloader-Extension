@@ -314,6 +314,11 @@ export function fixFilename(filename: string) {
     return "unknown_file";
   }
 
+  // Extract query hash BEFORE stripping query params, so URLs that differ
+  // only by query string (e.g. /w/load.php?modules=X vs ?modules=Y)
+  // get unique filenames instead of colliding.
+  const queryHash = getQueryHash(filename);
+
   // Remove query parameters and fragments
   const newFilename = filename.split(/[?#]/)[0];
 
@@ -337,7 +342,9 @@ export function fixFilename(filename: string) {
       "file";
 
     const cleanExtension = extension.toLowerCase();
-    return `${cleanName}.${cleanExtension}`;
+    return queryHash
+      ? `${cleanName}_${queryHash}.${cleanExtension}`
+      : `${cleanName}.${cleanExtension}`;
   }
 
   // No valid extension - sanitize the whole name and add .bin default
@@ -350,7 +357,9 @@ export function fixFilename(filename: string) {
       .slice(0, 100) ||
     "file";
 
-  return `${cleanName}.bin`;
+  return queryHash
+    ? `${cleanName}_${queryHash}.bin`
+    : `${cleanName}.bin`;
 }
 
 /**
@@ -381,6 +390,28 @@ export function getExtensionFromMimeType(mimeType: string): string | null {
   // Strip parameters like charset
   const cleanMime = mimeType.split(";")[0].trim().toLowerCase();
   return MIME_TO_EXTENSION[cleanMime] || null;
+}
+
+/**
+ * Extract a short deterministic hash from the query string of a URL.
+ * Returns an empty string if there is no query string.
+ * Used to disambiguate URLs that share the same path but differ by
+ * query parameters (e.g. MediaWiki load.php?modules=...).
+ */
+function getQueryHash(urlSrc: string): string {
+  try {
+    const url = new URL(urlSrc.startsWith("//") ? "https:" + urlSrc : urlSrc);
+    const query = url.search; // e.g. "?modules=site.styles&only=styles"
+    if (!query || query.length <= 1) return "";
+    // Simple hash: take first 8 hex chars of a DJB2-style hash
+    let hash = 5381;
+    for (let i = 0; i < query.length; i++) {
+      hash = ((hash << 5) + hash + query.charCodeAt(i)) & 0xffffffff;
+    }
+    return (hash >>> 0).toString(16).padStart(8, "0");
+  } catch {
+    return "";
+  }
 }
 
 /**
@@ -436,13 +467,21 @@ export function generateImageFilename(
   // Use the entire path (not just the last segment) to avoid collisions
   // e.g., /bbcswebdav/pid-4837352-dt-content-rid-31821076_1/xid-31821076_1
   // becomes: bbcswebdav_pid-4837352-dt-content-rid-31821076_1_xid-31821076_1
+  //
+  // For URLs with query parameters (e.g. /w/load.php?modules=site.styles),
+  // include a short hash of the query string so that different resources
+  // served through the same endpoint get unique filenames.
   const fullPath = segments.join("_");
+
+  // Extract a short hash from the query string for uniqueness
+  const queryHash = getQueryHash(urlSrc);
+
   const sanitized =
     fullPath
       .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-+|-+$/g, "")
-      .slice(0, 150) ||
+      .slice(0, 120) ||
     "image";
 
   // Determine extension from Content-Type if available, otherwise .bin
@@ -454,5 +493,8 @@ export function generateImageFilename(
     }
   }
 
-  return `${sanitized}.${extension}`;
+  // Append query hash if present to disambiguate same-path, different-query URLs
+  return queryHash
+    ? `${sanitized}_${queryHash}.${extension}`
+    : `${sanitized}.${extension}`;
 }

@@ -7,6 +7,25 @@ export interface DownloadInfo {
 
 export const activeDownloads = new Map<number, DownloadInfo>();
 
+/** AbortController for the currently active download.
+ *  When the user presses "Stop", this controller is aborted,
+ *  causing the upload queue and download flow to cancel. */
+let downloadAbortController: AbortController | null = null;
+
+export const getDownloadAbortController = () => downloadAbortController;
+export const setDownloadAbortController = (controller: AbortController | null) => {
+  downloadAbortController = controller;
+};
+
+/** Abort the active download (called when user presses Stop). */
+export const abortActiveDownload = (): boolean => {
+  if (downloadAbortController && !downloadAbortController.signal.aborted) {
+    downloadAbortController.abort();
+    return true;
+  }
+  return false;
+};
+
 let keepalivePort: chrome.runtime.Port | null = null;
 export const getKeepalivePort = () => keepalivePort;
 export const setKeepalivePort = (port: chrome.runtime.Port | null) => { keepalivePort = port; };

@@ -21,6 +21,7 @@ from app.services.html_converter import (
     _convert_css_file_impl as convert_css_file,
     fix_filename,
     generate_image_filename,
+    generate_page_filename,
 )
 
 
@@ -529,6 +530,80 @@ def test_generate_image_filename():
 
 
 # ---------------------------------------------------------------------------
+# generate_page_filename tests (linked-page-scraping-parity task 5.1)
+# ---------------------------------------------------------------------------
+
+
+def test_generate_page_filename_basic():
+    """Basic URL produces filename from last path segment."""
+    assert generate_page_filename("https://example.com/about") == "about.html"
+
+
+def test_generate_page_filename_nested_path():
+    """Nested path uses only the last segment."""
+    assert generate_page_filename("https://example.com/about/team") == "team.html"
+
+
+def test_generate_page_filename_root_url():
+    """Root URL falls back to page.html."""
+    assert generate_page_filename("https://example.com/") == "page.html"
+
+
+def test_generate_page_filename_root_no_slash():
+    """Root URL without trailing slash falls back to page.html."""
+    assert generate_page_filename("https://example.com") == "page.html"
+
+
+def test_generate_page_filename_already_html():
+    """URL already ending in .html preserves the extension."""
+    assert generate_page_filename("https://example.com/about.html") == "about.html"
+
+
+def test_generate_page_filename_trailing_slash():
+    """URL with trailing slash uses the last non-empty segment."""
+    assert generate_page_filename("https://example.com/about/") == "about.html"
+
+
+def test_generate_page_filename_query_params():
+    """Query parameters are stripped before filename generation."""
+    assert generate_page_filename("https://example.com/about?ref=nav") == "about.html"
+
+
+def test_generate_page_filename_fragment():
+    """Fragment identifiers are stripped."""
+    assert generate_page_filename("https://example.com/about#section") == "about.html"
+
+
+def test_generate_page_filename_special_chars():
+    """Special characters in path segment are sanitized by fix_filename."""
+    result = generate_page_filename("https://example.com/hello<world>")
+    assert result.endswith(".html")
+    # Angle brackets should be sanitized (replaced with dashes)
+    assert "<" not in result
+    assert ">" not in result
+
+
+def test_generate_page_filename_empty_input():
+    """Empty/None input returns page.html."""
+    assert generate_page_filename("") == "page.html"
+    assert generate_page_filename(None) == "page.html"
+
+
+def test_generate_page_filename_matches_convert_links():
+    """generate_page_filename produces same filenames as convert_links for same URLs."""
+    # For /about/team, both should produce 'team.html'
+    url = "https://example.com/about/team"
+    filename = generate_page_filename(url)
+    # convert_links for a clean URL produces pages/team.html
+    html = f'<a href="/about/team">Team</a>'
+    converted = convert_html(html, "https://example.com")
+    assert f"pages/{filename}" in converted, (
+        f"convert_links produced different filename than generate_page_filename "
+        f"for {url}: expected pages/{filename} in {converted}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -578,6 +653,18 @@ def run_all():
         test_source_src_attribute,
         test_source_src_with_data_uri_unchanged,
         test_linked_page_style_tag_background_image,
+        # generate_page_filename (linked-page-scraping-parity 5.1)
+        test_generate_page_filename_basic,
+        test_generate_page_filename_nested_path,
+        test_generate_page_filename_root_url,
+        test_generate_page_filename_root_no_slash,
+        test_generate_page_filename_already_html,
+        test_generate_page_filename_trailing_slash,
+        test_generate_page_filename_query_params,
+        test_generate_page_filename_fragment,
+        test_generate_page_filename_special_chars,
+        test_generate_page_filename_empty_input,
+        test_generate_page_filename_matches_convert_links,
     ]
 
     passed = 0

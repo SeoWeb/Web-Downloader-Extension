@@ -141,7 +141,7 @@ async def upload_resource(
             detail={
                 "error": "session_size_exceeded",
                 "message": f"Upload would exceed session size limit ({settings.max_session_size_mb}MB)",
-                "current_size": current_total,
+                "current_size": int(current_total),
                 "upload_size": original_size,
                 "max_size": max_session_bytes,
                 "api_version": "v1",

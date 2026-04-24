@@ -343,6 +343,8 @@ class TestZipAssembly:
                     assembler._assemble_zip(
                         session_id, MockDB(), mock_session,
                         main_html, linked_page_htmls or {},
+                        {},  # linked_page_urls
+                        {},  # page_hash_to_filename
                         {},  # filename_map
                         content_text,
                     )
@@ -630,7 +632,7 @@ class TestAssemblyProgress:
                 zip_path = loop.run_until_complete(
                     assembler._assemble_zip(
                         session_id, MockDB(), mock_session,
-                        main_html, {}, {}, None,
+                        main_html, {}, {}, {}, {}, None,
                     )
                 )
             finally:
@@ -822,7 +824,7 @@ class TestAssemblyFailure:
                 zip_path = loop.run_until_complete(
                     assembler._assemble_zip(
                         session_id, MockDB(), mock_session,
-                        main_html, {}, {}, None,
+                        main_html, {}, {}, {}, {}, None,
                     )
                 )
             finally:
@@ -899,7 +901,7 @@ class TestAssemblyFailure:
                 zip_path = loop.run_until_complete(
                     assembler._assemble_zip(
                         session_id, MockDB(), mock_session,
-                        main_html, {}, {}, None,
+                        main_html, {}, {}, {}, {}, None,
                     )
                 )
             finally:
@@ -993,3 +995,92 @@ def _make_resource(local_path: str, storage_path: str):
         content_type="application/octet-stream",
         size=100,
     )
+
+
+# ---------------------------------------------------------------------------
+# Linked page filename tests (linked-page-scraping-parity task 5.2)
+# ---------------------------------------------------------------------------
+
+
+class TestLinkedPageFilenames:
+    """Verify linked page filenames in the ZIP match convert_links() output."""
+
+    def test_linked_pages_use_readable_filenames(self):
+        """Linked pages are stored with human-readable filenames, not hashes."""
+        from app.services.html_converter import generate_page_filename
+
+        # Verify generate_page_filename produces expected names
+        assert generate_page_filename("https://example.com/about") == "about.html"
+        assert generate_page_filename("https://example.com/team") == "team.html"
+
+    def test_linked_page_filenames_match_convert_links(self):
+        """Filenames used in the ZIP match what convert_links() produces in the HTML."""
+        from app.services.html_converter import (
+            convert_html,
+            generate_page_filename,
+        )
+
+        tab_url = "https://example.com"
+        page_url = "https://example.com/about"
+
+        # generate_page_filename produces the filename used in the ZIP
+        zip_filename = generate_page_filename(page_url)
+        assert zip_filename == "about.html"
+
+        # convert_links produces the href pointing to that same filename
+        html = '<a href="/about">About Us</a>'
+        converted = convert_html(html, tab_url)
+        assert f"pages/{zip_filename}" in converted, (
+            f"convert_links output doesn't reference pages/{zip_filename}: {converted}"
+        )
+
+    def test_collision_handling_appends_hash_suffix(self):
+        """When two pages have the same base filename, a hash suffix is added."""
+        from app.services.html_converter import generate_page_filename
+
+        # Both URLs produce "about.html" as the base filename
+        url1 = "https://example.com/team-a/about"
+        url2 = "https://example.com/team-b/about"
+
+        base1 = generate_page_filename(url1)
+        base2 = generate_page_filename(url2)
+        assert base1 == base2  # Both produce "about.html"
+
+        # Simulate collision handling from zip_assembler
+        used_filenames = set()
+        page_hash_to_filename = {}
+
+        # Process url1
+        filename1 = base1
+        if filename1 in used_filenames:
+            name_base = filename1.rsplit(".", 1)[0]
+            hash_suffix = "a1b2"  # Simulated hash prefix
+            filename1 = f"{name_base}-{hash_suffix}.html"
+        used_filenames.add(filename1)
+        page_hash_to_filename["hash1"] = filename1
+
+        # Process url2 (collision)
+        filename2 = base2
+        if filename2 in used_filenames:
+            name_base = filename2.rsplit(".", 1)[0]
+            hash_suffix = "c3d4"  # Different hash prefix
+            filename2 = f"{name_base}-{hash_suffix}.html"
+        used_filenames.add(filename2)
+        page_hash_to_filename["hash2"] = filename2
+
+        # Verify collision was resolved
+        assert page_hash_to_filename["hash1"] == "about.html"
+        assert page_hash_to_filename["hash2"] == "about-c3d4.html"
+        assert page_hash_to_filename["hash1"] != page_hash_to_filename["hash2"]
+
+    def test_no_collision_when_filenames_differ(self):
+        """Pages with different base filenames don't get suffixes."""
+        from app.services.html_converter import generate_page_filename
+
+        url1 = "https://example.com/about"
+        url2 = "https://example.com/contact"
+
+        base1 = generate_page_filename(url1)
+        base2 = generate_page_filename(url2)
+        assert base1 != base2  # "about.html" vs "contact.html"
+

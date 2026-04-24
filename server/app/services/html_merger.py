@@ -67,6 +67,7 @@ class MergeResult:
     html: Optional[str] = None
     reason: Optional[str] = None
     stats: Optional[dict] = None
+    page_url: Optional[str] = None  # Original URL of the page (for filename generation)
 
 
 @dataclass
@@ -232,6 +233,7 @@ class HtmlMergerService:
 
         for job in session_jobs:
             result = self._merge_job(job)
+            result.page_url = job.page_url
             results[job.page_url_hash] = result
             # Clean up job
             self.remove_job(session_id, job.page_url_hash)

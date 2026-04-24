@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 from app.config import settings
 from app.services.html_merger import html_merger_service, MergeResult
-from app.services.html_converter import html_converter_service
+from app.services.html_converter import html_converter_service, generate_page_filename
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,13 @@ class ZipAssemblerService:
 
                 # ---- Phase 1: Merging HTML ----
                 await self._update_progress(db, session, "merging_html", 0)
-                merge_results = html_merger_service.merge_session(session_id)
+                # Run synchronous merge in a thread to avoid blocking the
+                # asyncio event loop.  With large pages (100K+ elements),
+                # merge_session() can take tens of seconds, during which the
+                # server would be unable to respond to GET /status polls.
+                merge_results = await asyncio.to_thread(
+                    html_merger_service.merge_session, session_id,
+                )
                 await self._update_progress(db, session, "merging_html", 100)
 
                 # Get main page merged HTML
@@ -105,8 +111,39 @@ class ZipAssemblerService:
 
                 # ---- Phase 2: Converting URLs ----
                 await self._update_progress(db, session, "converting_urls", 0)
-                main_html = html_converter_service.convert_html(
-                    main_html, tab_url, filename_map=filename_map,
+
+                # Build page_filename_map BEFORE converting main HTML so that
+                # convert_html() can rewrite intra-site links to linked pages.
+                linked_results: dict[str, MergeResult] = {
+                    page_hash: result
+                    for page_hash, result in merge_results.items()
+                    if page_hash != "main" and result.success and result.html
+                }
+
+                page_filename_map: dict[str, str] = {}
+                used_filenames: set[str] = set()
+                page_hash_to_filename: dict[str, str] = {}  # page_hash → final filename
+                for page_hash, lp_result in linked_results.items():
+                    if not lp_result.page_url:
+                        page_hash_to_filename[page_hash] = f"{page_hash}.html"
+                        continue
+                    base_filename = generate_page_filename(lp_result.page_url)
+                    filename = base_filename
+                    if filename in used_filenames:
+                        name_base = base_filename.rsplit(".", 1)[0]
+                        hash_suffix = page_hash[:4]
+                        filename = f"{name_base}-{hash_suffix}.html"
+                    used_filenames.add(filename)
+                    page_filename_map[lp_result.page_url] = filename
+                    page_hash_to_filename[page_hash] = filename
+
+                main_html = await asyncio.to_thread(
+                    html_converter_service.convert_html,
+                    main_html, tab_url,
+                    filename_map,      # filename_map (positional)
+                    False,             # is_linked_page
+                    None,              # path
+                    page_filename_map, # page_filename_map (positional)
                 )
                 await self._update_progress(db, session, "converting_urls", 100)
 
@@ -116,21 +153,20 @@ class ZipAssemblerService:
                 # page results are already inside merge_results — extract them
                 # here instead of trying to re-merge (which would fail because
                 # chunks are already deleted).
-                linked_results: dict[str, MergeResult] = {
-                    page_hash: result
-                    for page_hash, result in merge_results.items()
-                    if page_hash != "main" and result.success and result.html
-                }
-
                 linked_page_htmls: dict[str, str] = {}
+                linked_page_urls: dict[str, str] = {}  # page_hash → page_url mapping
                 if linked_results:
                     total_linked = len(linked_results)
                     for i, (page_hash, lp_result) in enumerate(linked_results.items()):
                         if lp_result.success and lp_result.html:
-                            converted = html_converter_service.convert_linked_page_html(
-                                lp_result.html, tab_url, filename_map=filename_map,
+                            converted = await asyncio.to_thread(
+                                html_converter_service.convert_linked_page_html,
+                                lp_result.html, tab_url, filename_map, page_filename_map,
                             )
                             linked_page_htmls[page_hash] = converted
+                            # Store the page URL for filename generation
+                            if lp_result.page_url:
+                                linked_page_urls[page_hash] = lp_result.page_url
                         pct = int((i + 1) / total_linked * 100)
                         await self._update_progress(db, session, "converting_urls", pct)
 
@@ -160,7 +196,8 @@ class ZipAssemblerService:
                 else:
                     output_path = await self._assemble_zip(
                         session_id, db, session,
-                        main_html, linked_page_htmls, filename_map, content_text,
+                        main_html, linked_page_htmls, linked_page_urls,
+                        page_hash_to_filename, filename_map, content_text,
                     )
 
                 if output_path is None:
@@ -209,6 +246,8 @@ class ZipAssemblerService:
         session,
         main_html: str,
         linked_page_htmls: dict[str, str],
+        linked_page_urls: dict[str, str],
+        page_hash_to_filename: dict[str, str],
         filename_map: dict[str, str],
         content_text: Optional[str],
     ) -> Optional[str]:
@@ -291,8 +330,10 @@ class ZipAssemblerService:
                     )
 
                 # 4. Write linked pages in pages/ directory (6.2)
+                # Use pre-computed filenames (with collision dedup) from assemble_session()
                 for page_hash, page_html in linked_page_htmls.items():
-                    page_filename = sanitize_zip_path(f"pages/{page_hash}.html")
+                    filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
+                    page_filename = sanitize_zip_path(f"pages/{filename}")
                     if page_filename:
                         zf.writestr(page_filename, page_html)
                     steps_done += 1
@@ -345,7 +386,8 @@ class ZipAssemblerService:
             # Write single-file HTML to disk using streaming writer
             # This avoids holding both the soup tree and the full output
             # string in memory simultaneously (6.5 streaming requirement).
-            html_converter_service.write_single_file_to_disk(
+            await asyncio.to_thread(
+                html_converter_service.write_single_file_to_disk,
                 main_html, tab_url, self.storage_root, session_id,
                 html_path, filename_map,
             )
@@ -388,9 +430,10 @@ class ZipAssemblerService:
             with open(storage_path, "r", encoding="utf-8") as f:
                 css_content = f.read()
 
-            converted = html_converter_service.convert_css_file(
+            converted = await asyncio.to_thread(
+                html_converter_service.convert_css_file,
                 css_content, tab_url, filename_map,
-                storage_root=self.storage_root, session_id=session_id,
+                self.storage_root, session_id,
             )
 
             # Only rewrite if changed

@@ -27,6 +27,12 @@ export class ServerStorageAdapter implements IStorageAdapter {
   /** Server session ID — set once via setSessionId() after session creation. */
   private sessionId: string | null = null;
 
+  /** Set of paths already enqueued for upload — prevents duplicate uploads
+   *  when the same resource path is passed to addFile() multiple times
+   *  (e.g. MediaWiki load.php images with different query params that
+   *  previously mapped to the same filename). */
+  private readonly enqueuedPaths: Set<string> = new Set();
+
   constructor(serverClient: ServerClient) {
     this.serverClient = serverClient;
     this.uploadQueue = new UploadQueue(serverClient);
@@ -75,6 +81,17 @@ export class ServerStorageAdapter implements IStorageAdapter {
     }
 
     const contentType = mimeType || "application/octet-stream";
+
+    // Dedup: skip if this path was already enqueued. This prevents
+    // re-uploading the same resource when multiple URLs map to the
+    // same local path (e.g. MediaWiki load.php with different query params).
+    if (this.enqueuedPaths.has(path)) {
+      console.log(
+        `[ServerStorageAdapter] addFile: skipping duplicate path=${path}`,
+      );
+      return;
+    }
+    this.enqueuedPaths.add(path);
 
     // Convert content to Blob for upload
     const blob = this.toBlob(content, contentType);
@@ -137,6 +154,9 @@ export class ServerStorageAdapter implements IStorageAdapter {
   async clear(): Promise<void> {
     // (a) Immediately abort all pending and in-progress uploads
     this.uploadQueue.cancel();
+
+    // Clear dedup tracking
+    this.enqueuedPaths.clear();
 
     // (b) Delete the server session to clean up uploaded data
     if (this.sessionId) {

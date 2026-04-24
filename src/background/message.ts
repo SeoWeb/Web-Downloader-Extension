@@ -5,6 +5,7 @@ import { scrollDownAndScrape, startDownload } from "./jobs";
 import { downloadResourcesWithIncrementalAssembly } from "./download";
 import { mergeHtmlIncremental } from "./merge-html";
 import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
+import { abortActiveDownload } from "./download-state";
 import { serverClient } from "./server-client";
 
 // Active server session ID for HTML chunk uploads during scrolling
@@ -217,6 +218,8 @@ export async function messageWorker(
 
     case messageActions.SCRAPER_STOP:
       stopScraping();
+      // Also abort the active server-mode download (uploads + download flow)
+      abortActiveDownload();
       return true;
 
     // ------------------------------------------------------------------

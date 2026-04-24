@@ -26,8 +26,9 @@ export function convertHtml(
   tabUrl: string,
   path: string = "./",
   imageFilenameMap?: Map<string, string>,
+  pageFilenameMap?: Map<string, string>,
 ) {
-  let html = convertLinksToRelative(inputHtml, tabUrl, path);
+  let html = convertLinksToRelative(inputHtml, tabUrl, path, pageFilenameMap);
 
   if (html.includes("<base")) {
     const parser = new DOMParser();

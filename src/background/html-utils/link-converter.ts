@@ -1,9 +1,22 @@
 import { DOMParser } from "linkedom";
 
+/**
+ * Generate a short hash suffix from a URL for filename collision avoidance.
+ * Returns a 4-character alphanumeric string derived from the URL.
+ */
+function shortHash(url: string): string {
+  let hash = 0;
+  for (let i = 0; i < url.length; i++) {
+    hash = ((hash << 5) - hash + url.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash).toString(36).slice(0, 4).padEnd(4, "0");
+}
+
 export function convertLinksToRelative(
   htmlString: string,
   tabUrl: string,
   path: string = "./",
+  pageFilenameMap?: Map<string, string>,
 ) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlString, "text/html");
@@ -63,8 +76,14 @@ export function convertLinksToRelative(
     } else if (imageMatch) {
       href = path + "images/" + pathParts.pop();
     } else if (htmlMatch) {
-      // HTML files go to pages/ folder (matching where linked-page-scraper saves them)
-      href = path + "pages/" + pathParts.pop();
+      // HTML files go to pages/ folder.
+      // Check pageFilenameMap first for collision-resolved filenames.
+      const resolved = lookupPageFilename(href, tabUrl, pageFilenameMap);
+      if (resolved) {
+        href = path + "pages/" + resolved;
+      } else {
+        href = path + "pages/" + pathParts.pop();
+      }
     } else {
       // Clean URLs (no extension) - treat as HTML pages
       let lastPart = pathParts.pop();
@@ -74,8 +93,13 @@ export function convertLinksToRelative(
       if (!lastPart?.length) {
         continue;
       }
-      // Add .html extension for clean URLs, save to pages/ folder
-      href = path + "pages/" + lastPart + ".html";
+      // Check pageFilenameMap first for collision-resolved filenames.
+      const resolved = lookupPageFilename(href, tabUrl, pageFilenameMap);
+      if (resolved) {
+        href = path + "pages/" + resolved;
+      } else {
+        href = path + "pages/" + lastPart + ".html";
+      }
     }
 
     link.setAttribute("href", href);
@@ -83,3 +107,42 @@ export function convertLinksToRelative(
 
   return doc.documentElement.outerHTML;
 }
+
+/**
+ * Look up a resolved filename from the pageFilenameMap for a given href.
+ * Tries the raw href, the href without query params, and the fully resolved URL.
+ * Returns the mapped filename or undefined if not found.
+ */
+function lookupPageFilename(
+  href: string,
+  tabUrl: string,
+  pageFilenameMap?: Map<string, string>,
+): string | undefined {
+  if (!pageFilenameMap) return undefined;
+
+  // Try raw href
+  const mapped = pageFilenameMap.get(href);
+  if (mapped) return mapped;
+
+  // Try without query/fragment
+  const clean = href.split("?")[0].split("#")[0];
+  const mappedClean = pageFilenameMap.get(clean);
+  if (mappedClean) return mappedClean;
+
+  // Try fully resolved URL
+  try {
+    const fullUrl = new URL(href, tabUrl).href;
+    const mappedFull = pageFilenameMap.get(fullUrl);
+    if (mappedFull) return mappedFull;
+    // Also try the clean version of the full URL
+    const cleanFull = fullUrl.split("?")[0].split("#")[0];
+    const mappedCleanFull = pageFilenameMap.get(cleanFull);
+    if (mappedCleanFull) return mappedCleanFull;
+  } catch {
+    // Invalid URL
+  }
+
+  return undefined;
+}
+
+export { shortHash };

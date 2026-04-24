@@ -416,7 +416,8 @@ async def upload_content(
     """Upload text content to be included as content.txt in the ZIP.
 
     Only accepted when session is in scraping or uploading status.
-    Replaces any previously uploaded content.
+    Appends to any previously uploaded content (so linked page
+    text can be uploaded separately after the main page text).
     """
     session = await _get_session_or_404(session_id, db)
     require_session_owner(client, session.client_id)
@@ -431,11 +432,12 @@ async def upload_content(
             },
         )
 
-    # Store content text as a file
+    # Store content text as a file (append mode so linked page text
+    # is added after the main page text rather than overwriting it)
     session_dir = os.path.join(settings.storage_root, session.id)
     content_path = os.path.join(session_dir, "content.txt")
     content_size = len(body.text.encode("utf-8"))
-    with open(content_path, "w", encoding="utf-8") as f:
+    with open(content_path, "a", encoding="utf-8") as f:
         f.write(body.text)
 
     logger.info("Content uploaded for session: id=%s size=%d", session_id, len(body.text))

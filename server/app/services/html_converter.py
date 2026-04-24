@@ -143,6 +143,50 @@ def _sanitize_name(name: str) -> str:
     ) or ""
 
 
+def generate_page_filename(url: str) -> str:
+    """Generate a deterministic filename for a linked page from its URL.
+
+    Port of generateFilename() from linked-page-scraper.ts.
+
+    Algorithm:
+      1. Parse the URL and extract the last path segment.
+      2. If the last segment is empty (root URL like ``/``), use ``page``.
+      3. Remove query parameters and fragments.
+      4. Append ``.html`` if the name does not already end with it.
+      5. Sanitize with :func:`fix_filename`.
+
+    Args:
+        url: The linked page's full URL.
+
+    Returns:
+        A sanitized filename string (e.g. ``about.html``, ``team.html``).
+    """
+    if not url or not isinstance(url, str):
+        return "page.html"
+
+    try:
+        parsed = urlparse(url)
+        pathname = parsed.path
+    except Exception:
+        return "page.html"
+
+    # Extract the last path segment
+    segments = [s for s in pathname.split("/") if s]
+    last_segment = segments[-1] if segments else "page"
+
+    # Remove query params and fragments (defensive — urlparse already strips these)
+    last_segment = last_segment.split("?")[0].split("#")[0]
+
+    if not last_segment:
+        last_segment = "page"
+
+    # Ensure .html extension
+    if not last_segment.lower().endswith(".html"):
+        last_segment = f"{last_segment}.html"
+
+    return fix_filename(last_segment)
+
+
 def generate_image_filename(url_src: str, content_type: Optional[str] = None) -> str:
     """Generate a consistent image filename from a URL.
 
@@ -636,6 +680,7 @@ def convert_links(
     html_string: str,
     tab_url: str,
     path: str = "./",
+    page_filename_map: Optional[dict[str, str]] = None,
 ) -> str:
     """Convert <a href> URLs to local file paths.
 
@@ -645,6 +690,13 @@ def convert_links(
     - Same-origin HTML links → ./pages/<filename>.html
     - External links → unchanged
     - Anchor links (#) → unchanged
+
+    Args:
+        page_filename_map: Optional mapping of page URL → resolved filename
+            (e.g. ``{"https://example.com/about": "about.html"}``).
+            When provided, the function looks up the page URL in this map
+            to determine the target filename, ensuring consistency with the
+            ZIP assembler's deduplicated filenames.
     """
     soup = BeautifulSoup(html_string, "lxml")
     tab_origin = _get_origin(tab_url)
@@ -703,7 +755,12 @@ def convert_links(
         elif img_match:
             link["href"] = path + "images/" + path_parts[-1]
         elif html_match:
-            link["href"] = path + "pages/" + path_parts[-1]
+            # Check page_filename_map first for deduplicated filenames
+            resolved_url = _resolve_url(href, tab_url)
+            if page_filename_map and resolved_url in page_filename_map:
+                link["href"] = path + "pages/" + page_filename_map[resolved_url]
+            else:
+                link["href"] = path + "pages/" + path_parts[-1]
         else:
             # Clean URLs (no extension) — treat as HTML pages
             last_part = path_parts[-1] if path_parts else ""
@@ -711,7 +768,12 @@ def convert_links(
                 last_part = path_parts[-2]
             if not last_part:
                 continue
-            link["href"] = path + "pages/" + last_part + ".html"
+            # Check page_filename_map first for deduplicated filenames
+            resolved_url = _resolve_url(href, tab_url)
+            if page_filename_map and resolved_url in page_filename_map:
+                link["href"] = path + "pages/" + page_filename_map[resolved_url]
+            else:
+                link["href"] = path + "pages/" + last_part + ".html"
 
     return str(soup)
 
@@ -1222,6 +1284,7 @@ def convert_html(
     filename_map: Optional[dict[str, str]] = None,
     is_linked_page: bool = False,
     path: Optional[str] = None,
+    page_filename_map: Optional[dict[str, str]] = None,
 ) -> str:
     """Convert all resource URLs in HTML to relative local paths.
 
@@ -1233,6 +1296,8 @@ def convert_html(
         filename_map: Mapping of original URLs → local filenames.
         is_linked_page: If True, use ../ prefix (page is in pages/ dir).
         path: Override path prefix (default: "./" or "../" for linked pages).
+        page_filename_map: Optional mapping of page URL → resolved filename
+            for deduplicated linked page filenames.
 
     Returns:
         The converted HTML string with local resource paths.
@@ -1241,7 +1306,7 @@ def convert_html(
         path = "../" if is_linked_page else "./"
 
     # 1. Convert links first (they may reference pages)
-    html = convert_links(html_string, tab_url, path)
+    html = convert_links(html_string, tab_url, path, page_filename_map=page_filename_map)
 
     # 2. Remove <base> tag (prevents browser from using original base URL)
     soup = BeautifulSoup(html, "lxml")
@@ -1287,18 +1352,21 @@ class HtmlConverterService:
         filename_map: Optional[dict[str, str]] = None,
         is_linked_page: bool = False,
         path: Optional[str] = None,
+        page_filename_map: Optional[dict[str, str]] = None,
     ) -> str:
         """Convert all resource URLs in HTML to relative local paths."""
-        return convert_html(html_string, tab_url, filename_map, is_linked_page, path)
+        return convert_html(html_string, tab_url, filename_map, is_linked_page, path, page_filename_map)
 
     def convert_linked_page_html(
         self,
         html_string: str,
         tab_url: str,
         filename_map: Optional[dict[str, str]] = None,
+        page_filename_map: Optional[dict[str, str]] = None,
     ) -> str:
         """Convert HTML for a linked page (uses ../ prefix)."""
-        return convert_html_for_linked_page(html_string, tab_url, filename_map)
+        return convert_html(html_string, tab_url, filename_map=filename_map,
+                            is_linked_page=True, page_filename_map=page_filename_map)
 
     def convert_css_file(
         self,

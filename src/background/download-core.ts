@@ -8,7 +8,7 @@ import { addIndexHtml } from "./fileHandlers";
 import { cleanupAfterDownload } from "./cleanupHandlers";
 import { finalizeIncrementalMerge } from "./merge-html";
 import { FilterOptions } from "../types/filterTypes";
-import { downloadId, setDownloadInProgress, getDownloadInProgress } from "./download-state";
+import { downloadId, setDownloadInProgress, getDownloadInProgress, setDownloadAbortController, getDownloadAbortController } from "./download-state";
 import { initiateDownload, performInitialCleanup } from "./download-utils";
 import { isPanelAlive, downloadViaPanelAndWait, PanelUnavailableError } from "./panel-download";
 import { 
@@ -130,6 +130,11 @@ export async function downloadResources(
 
   await setDownloadInProgress(true);
 
+  // Create abort controller for this download session so the user
+  // can press Stop and cancel all in-progress uploads and the download flow.
+  const downloadAbort = new AbortController();
+  setDownloadAbortController(downloadAbort);
+
   try {
     // Perform initial cleanup
     await performInitialCleanup();
@@ -175,6 +180,7 @@ export async function downloadResources(
   } finally {
     // Always reset the flag when done and cleanup
     await setDownloadInProgress(false);
+    setDownloadAbortController(null);
 
     // Cleanup download-specific resources
     try {
@@ -439,6 +445,9 @@ async function executeDownload(
         pageTimeout: downloadOptions.linkedPagesTimeout,
       });
 
+      // Guard text extraction with downloadContentAsText check
+      linkedPageScraper.setExtractText(!!downloadOptions.downloadContentAsText);
+
       // Share the main page's image filename map so linked pages can reference
       // already-downloaded images with correct filenames (including proper extensions)
       setGlobalImageFilenameMap(imageFilenameMap);
@@ -461,7 +470,11 @@ async function executeDownload(
 
       // Process the queue sequentially in the same tab
       try {
-        await linkedPageScraper.processQueue(tabId, storage, sendMessage);
+        const linkedPageText = await linkedPageScraper.processQueue(tabId, storage, sendMessage);
+        // Append linked page text to main content text for local mode
+        if (linkedPageText && downloadOptions.downloadContentAsText) {
+          data.text += linkedPageText;
+        }
       } finally {
         setCurrentScraper(null);
       }
@@ -670,6 +683,20 @@ async function executeDownloadServerMode(
 ): Promise<void> {
   const uploadQueue = storage.getUploadQueue();
 
+  // Link the download-level abort controller to the upload queue
+  // so that pressing Stop aborts in-flight uploads.
+  const downloadAbort = getDownloadAbortController();
+  if (downloadAbort) {
+    // If already aborted before we start, exit immediately
+    if (downloadAbort.signal.aborted) {
+      throw new DOMException("Download was cancelled", "AbortError");
+    }
+    // When the download-level controller aborts, also cancel the upload queue
+    downloadAbort.signal.addEventListener("abort", () => {
+      uploadQueue.cancel();
+    }, { once: true });
+  }
+
   // (15.1) Wire up upload progress reporting so the UI can show
   // "X/Y resources uploaded" during the server-mode download.
   uploadQueue.onProgress = (progress) => {
@@ -766,6 +793,9 @@ async function executeDownloadServerMode(
           serverSessionId: shouldUseServerMode() ? sessionId : undefined,
         });
 
+        // Guard text extraction with downloadContentAsText check
+        linkedPageScraper.setExtractText(!!downloadOptions.downloadContentAsText);
+
         // Share main page image filename map
         setGlobalImageFilenameMap(imageFilenameMap);
 
@@ -789,7 +819,15 @@ async function executeDownloadServerMode(
         // with pageType: "linked" and pageUrl, and uploads incremental
         // filename maps after each linked page (tasks 12.10, 12.11).
         try {
-          await linkedPageScraper.processQueue(tabId, storage, sendMessage);
+          const linkedPageText = await linkedPageScraper.processQueue(tabId, storage, sendMessage);
+          // Upload linked page text content to the server.
+          // ORDERING: This must happen BEFORE the main page text upload below
+          // (line ~818) because the server's uploadContent endpoint appends to
+          // content.txt in file order — the linked page text delimiter format
+          // assumes it follows the main page's content.
+          if (linkedPageText && downloadOptions.downloadContentAsText) {
+            await serverClient.uploadContent(sessionId, linkedPageText);
+          }
         } finally {
           setCurrentScraper(null);
         }
@@ -798,7 +836,11 @@ async function executeDownloadServerMode(
       }
     }
 
-    // (12.7) Upload content text via uploadContent (awaited before finalization)
+    // (12.7) Upload content text via uploadContent (awaited before finalization).
+    // ORDERING: The server's uploadContent endpoint opens content.txt in append
+    // mode, so this call adds the main page text after any linked page text
+    // already uploaded above. The linked page text delimiter format
+    // (\n--- URL ---\n) is designed to be appended after the main content.
     if (downloadOptions.downloadContentAsText) {
       sendMessage({ key: "status.downloadingContent" });
       await serverClient.uploadContent(sessionId, data.text);
@@ -896,6 +938,13 @@ async function executeDownloadServerMode(
   } catch (error) {
     // (12.9) Categorize server-mode errors and offer local fallback.
     const errorMessage = error instanceof Error ? error.message : "Unknown server error";
+    const errorName = error instanceof Error ? error.name : "Unknown";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    console.error(
+      `[ServerMode] Download failed: ${errorName}: ${errorMessage}`,
+      errorStack,
+    );
 
     if (
       error instanceof ServerUnavailableError ||

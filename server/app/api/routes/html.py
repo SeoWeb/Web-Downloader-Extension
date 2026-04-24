@@ -118,7 +118,7 @@ async def upload_html_chunk(
             detail={
                 "error": "session_size_exceeded",
                 "message": f"HTML chunk upload would exceed session size limit ({settings.max_session_size_mb}MB)",
-                "current_size": current_total,
+                "current_size": int(current_total),
                 "upload_size": chunk_size,
                 "max_size": max_session_bytes,
                 "api_version": "v1",

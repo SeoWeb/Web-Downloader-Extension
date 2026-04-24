@@ -16,6 +16,20 @@ import { addCssFiles, addJsFiles, addImageFiles, addDocumentFiles } from "./file
 import { fixFilename } from "./urlUtils";
 import { serverClient } from "./server-client";
 
+/**
+ * Generate a short hash suffix from a URL for filename collision avoidance.
+ * Returns a 4-character alphanumeric string derived from the URL.
+ * Matches the algorithm exported from link-converter.ts but inlined here
+ * to avoid transitive linkedom dependency in test environments.
+ */
+function shortHash(url: string): string {
+  let hash = 0;
+  for (let i = 0; i < url.length; i++) {
+    hash = ((hash << 5) - hash + url.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash).toString(36).slice(0, 4).padEnd(4, "0");
+}
+
 // Global image filename map shared across main page and all linked pages
 let globalImageFilenameMap = new Map<string, string>();
 
@@ -50,6 +64,11 @@ export interface ScrapedPageData {
   /** (12.11) Image filename map for this page's newly downloaded images.
    * Used to build incremental filename map uploads in server mode. */
   localImageMap: Map<string, string>;
+  /** Combined image filename map (global + local) for link conversion in local mode. */
+  combinedImageMap: Map<string, string>;
+  /** Body text extracted from the page via getResources().text.
+   * Used to accumulate content text across all linked pages. */
+  text: string;
   assets: {
     images: string[];
     css: string[];
@@ -80,6 +99,8 @@ export class LinkedPageScraper {
   private isStopped: boolean = false;
   private resumePromise: Promise<void> | null = null;
   private resumeResolve: (() => void) | null = null;
+  /** When true, extract and accumulate body text from linked pages. */
+  private extractText: boolean = true;
 
   constructor(
     assetRegistry: AssetRegistry,
@@ -119,6 +140,14 @@ export class LinkedPageScraper {
     if (this.isPaused) {
       this.resume();
     }
+  }
+
+  /**
+   * Set whether to extract body text from linked pages.
+   * When false, text extraction is skipped (for downloadContentAsText disabled).
+   */
+  setExtractText(enabled: boolean) {
+    this.extractText = enabled;
   }
 
   /**
@@ -189,16 +218,19 @@ export class LinkedPageScraper {
   }
 
   /**
-   * Process all queued pages sequentially
+   * Process all queued pages sequentially.
+   * Returns accumulated body text from all linked pages, with page-URL delimiters.
    */
   async processQueue(
     tabId: number,
     storage: IStorageAdapter,
     sendMessage: (message: string | { key: string; options?: any }) => void,
-  ): Promise<void> {
+  ): Promise<string> {
     if (this.queue.length === 0) {
-      return;
+      return "";
     }
+
+    let accumulatedText = "";
 
     try {
       const tab = await chrome.tabs.get(tabId);
@@ -206,6 +238,17 @@ export class LinkedPageScraper {
     } catch {
       // Ignore
     }
+
+    // Track used filenames for collision avoidance in local mode.
+    // When two linked pages share the same base filename (e.g. /about/team
+    // and /contact/team both → team.html), the second gets a short hash
+    // suffix (e.g. team-a1b2.html), matching the server assembler logic.
+    const usedFilenames = new Set<string>();
+    // Maps finalUrl → collision-resolved filename (e.g. "https://example.com/contact/team" → "team-a1b2.html")
+    const pageFilenameMap = new Map<string, string>();
+    // Collect raw (un-link-converted) HTML + metadata for local mode so we
+    // can convert all links with the full collision map after scraping completes.
+    const localModePages: Array<{ finalUrl: string; filename: string; rawHtml: string; combinedImageMap: Map<string, string> }> = [];
 
     // Using storage adapter directly
 
@@ -272,13 +315,36 @@ export class LinkedPageScraper {
             await serverClient.uploadFilenameMap(this.options.serverSessionId, deltaMap);
           }
         } else {
-          // Local mode: save the converted HTML to the pages folder
-          const filename = this.generateFilename(scrapedData.finalUrl);
-          await storage.addFile(`pages/${filename}`, scrapedData.html, "text/html");
+          // Local mode: determine filename with collision handling.
+          // Defer link conversion until all pages are scraped so that
+          // cross-page links use the correct collision-resolved filenames.
+          const baseFilename = this.generateFilename(scrapedData.finalUrl);
+          let filename = baseFilename;
+          if (usedFilenames.has(filename)) {
+            // Collision — append short hash suffix (matches server assembler logic)
+            const nameBase = baseFilename.replace(/\.html$/i, "");
+            const hashSuffix = shortHash(scrapedData.finalUrl);
+            filename = `${nameBase}-${hashSuffix}.html`;
+          }
+          usedFilenames.add(filename);
+          pageFilenameMap.set(scrapedData.finalUrl, filename);
+
+          // Store raw HTML for deferred link conversion
+          localModePages.push({
+            finalUrl: scrapedData.finalUrl,
+            filename,
+            rawHtml: scrapedData.html, // raw (un-link-converted) HTML
+            combinedImageMap: scrapedData.combinedImageMap,
+          });
         }
 
         job.status = "completed";
         this.successCount++;
+
+        // Accumulate linked page text with page-URL delimiters
+        if (this.extractText && scrapedData.text) {
+          accumulatedText += `\n--- ${scrapedData.finalUrl} ---\n${scrapedData.text}`;
+        }
       } catch (error) {
         job.status = "failed";
         this.failCount++;
@@ -296,11 +362,24 @@ export class LinkedPageScraper {
     // Restore original page
     await this.restoreOriginalPage(tabId);
 
+    // Local mode: now that all pages are scraped and the full pageFilenameMap
+    // is built, convert links and save each page to storage. This ensures
+    // cross-page links use collision-resolved filenames (e.g. a link from
+    // page A to page B will use "team-a1b2.html" if B had a collision).
+    for (const page of localModePages) {
+      const convertedHtml = convertHtml(
+        page.rawHtml, page.finalUrl, "../", page.combinedImageMap, pageFilenameMap,
+      );
+      await storage.addFile(`pages/${page.filename}`, convertedHtml, "text/html");
+    }
+
     // Send completion message
     sendMessage({
       key: "status.linkedPagesComplete",
       options: { succeeded: this.successCount, failed: this.failCount },
     });
+
+    return accumulatedText;
   }
 
   /**
@@ -326,6 +405,7 @@ export class LinkedPageScraper {
 
     // Extract resources
     const resources = getResources(html);
+    const pageText = resources.text;
 
     // (12.11) Download assets (checking registry first to avoid duplicates).
     // Returns the image filename map for this page's newly downloaded images.
@@ -347,6 +427,8 @@ export class LinkedPageScraper {
         url,
         finalUrl,
         localImageMap,
+        combinedImageMap,
+        text: pageText,
         assets: {
           images: resources.images,
           css: resources.css,
@@ -356,16 +438,17 @@ export class LinkedPageScraper {
       };
     }
 
-    // Local mode: convert HTML with proper link rewriting
-    // (pages are in pages/ folder, assets are at root level)
-    const convertedHtml = convertHtml(html, finalUrl, "../", combinedImageMap);
-
+    // Local mode: return raw (un-link-converted) HTML. Link conversion is
+    // deferred to processQueue() so that all pages' cross-page links can
+    // be resolved with the full collision-aware pageFilenameMap.
     return {
-      html: convertedHtml,
-      htmlChunks: [convertedHtml],
+      html,
+      htmlChunks: [html],
       url,
       finalUrl,
       localImageMap,
+      combinedImageMap,
+      text: pageText,
       assets: {
         images: resources.images,
         css: resources.css,
@@ -528,30 +611,74 @@ export class LinkedPageScraper {
   }
 
   /**
-   * Scroll the page to trigger lazy loading
+   * Scroll the page to trigger lazy loading.
+   *
+   * Two-pass strategy:
+   * 1. First pass: smooth scroll top→bottom with 300ms per step
+   * 2. 500ms settle delay at the bottom
+   * 3. Second pass: quick scroll top→bottom with 150ms per step
+   *
+   * The settle delay ensures IntersectionObserver callbacks fire for
+   * elements that need to be visible for ≥200–300ms. The second pass
+   * catches content loaded during the first pass that wasn't visible
+   * long enough to trigger observers.
+   *
+   * The combined two-pass strategy stays within a budget derived from
+   * `pageTimeout` (roughly half the timeout), so the overall scrape
+   * (navigation + scroll + capture) remains within bounds.
    */
   private async scrollPageForLazyLoading(tabId: number): Promise<void> {
+    // Budget: use roughly 40% of pageTimeout for scrolling, leaving
+    // the rest for navigation and DOM capture. Minimum 5 seconds.
+    const scrollBudgetMs = Math.max(this.options.pageTimeout * 0.4, 5000);
+
     try {
       await chrome.scripting.executeScript({
         target: { tabId },
-        func: async () => {
-          // Smooth scroll to bottom to trigger lazy loading
+        func: async (budgetMs: number) => {
+          const startTime = Date.now();
+          const remaining = () => Math.max(0, budgetMs - (Date.now() - startTime));
+
           const scrollHeight = document.documentElement.scrollHeight;
           const viewportHeight = window.innerHeight;
           const scrollSteps = Math.ceil(scrollHeight / viewportHeight);
 
+          // --- Pass 1: smooth scroll to bottom (300ms per step) ---
           for (let i = 0; i < scrollSteps; i++) {
+            if (remaining() < 300) break; // Not enough time for another step
             window.scrollTo({
               top: (i + 1) * viewportHeight,
               behavior: "smooth",
             });
-            await new Promise((resolve) => setTimeout(resolve, 200));
+            await new Promise((resolve) => setTimeout(resolve, Math.min(300, remaining())));
+          }
+
+          // --- Settle delay at the bottom (500ms, or remaining budget) ---
+          const settleDelay = Math.min(500, remaining());
+          if (settleDelay > 0) {
+            await new Promise((resolve) => setTimeout(resolve, settleDelay));
+          }
+
+          // --- Pass 2: quick scroll top → bottom (150ms per step) ---
+          if (remaining() > 300) {
+            window.scrollTo({ top: 0, behavior: "instant" });
+            await new Promise((resolve) => setTimeout(resolve, Math.min(150, remaining())));
+
+            for (let i = 0; i < scrollSteps; i++) {
+              if (remaining() < 150) break; // Not enough time for another step
+              window.scrollTo({
+                top: (i + 1) * viewportHeight,
+                behavior: "smooth",
+              });
+              await new Promise((resolve) => setTimeout(resolve, Math.min(150, remaining())));
+            }
           }
 
           // Scroll back to top
           window.scrollTo({ top: 0, behavior: "smooth" });
           await new Promise((resolve) => setTimeout(resolve, 200));
         },
+        args: [scrollBudgetMs],
       });
     } catch {
       // Non-critical error, continue anyway
@@ -622,21 +749,21 @@ export class LinkedPageScraper {
     for (const url of resources.css) {
       const fullUrl = new URL(url, pageUrl).href;
       if (!this.assetRegistry.has(fullUrl)) {
-        this.assetRegistry.register(fullUrl, `assets/css/${fixFilename(url)}`, 0);
+        this.assetRegistry.register(fullUrl, `styles/${fixFilename(url)}`, 0);
       }
     }
 
     for (const url of resources.js) {
       const fullUrl = new URL(url, pageUrl).href;
       if (!this.assetRegistry.has(fullUrl)) {
-        this.assetRegistry.register(fullUrl, `assets/js/${fixFilename(url)}`, 0);
+        this.assetRegistry.register(fullUrl, `scripts/${fixFilename(url)}`, 0);
       }
     }
 
     for (const url of resources.images) {
       const fullUrl = new URL(url, pageUrl).href;
       if (!this.assetRegistry.has(fullUrl)) {
-        this.assetRegistry.register(fullUrl, `assets/images/${fixFilename(url)}`, 0);
+        this.assetRegistry.register(fullUrl, `images/${fixFilename(url)}`, 0);
       }
     }
 
