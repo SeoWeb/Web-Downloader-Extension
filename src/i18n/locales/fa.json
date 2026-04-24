@@ -49,7 +49,9 @@
       "pageDelay": "تاخیر بین صفحات",
       "includeExternal": "شامل لینک‌های خارجی",
       "fullWebsite": "دانلود کامل وب‌سایت",
-      "fullWebsiteDescription": "بهترین گزینه برای وب‌سایت‌های پیچیده (سطح اول صفحات لینک‌شده را دانلود می‌کند)"
+      "fullWebsiteDescription": "بهترین گزینه برای وب‌سایت‌های پیچیده (سطح اول صفحات لینک‌شده را دانلود می‌کند)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "اقدامات:",

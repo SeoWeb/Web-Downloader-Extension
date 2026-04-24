@@ -13,7 +13,13 @@ export interface AssemblyJob {
   createdAt: number;
   lastUpdated: number;
   insertionPoint: string; // Where to insert chunks (default: "</body>")
-  chunkHashes: Set<string>; // Track chunk hashes for deduplication
+  /**
+   * Dedup set storing composite "hash:scrollIndex" keys.
+   * Using composite key (not hash-alone) so identical content at different scroll
+   * positions is NOT dropped — only genuine retransmissions of the same (content, position)
+   * are deduplicated. (Fix for issue C2.)
+   */
+  chunkHashes: Set<string>;
 }
 
 export interface AssemblyOptions {
@@ -71,9 +77,13 @@ export class HtmlAssembler {
   }
 
   /**
-   * Add a chunk to an existing assembly job
+   * Add a chunk to an existing assembly job.
+   * @param scrollIndex - The scroll position index for this chunk. Required for correct
+   *   deduplication: two chunks with identical content but different scrollIndex values
+   *   are treated as distinct (not duplicates). Two chunks with the same content AND
+   *   same scrollIndex are treated as retransmissions and the second is dropped.
    */
-  addChunk(jobId: string, chunkHtml: string, options: AssemblyOptions = {}): {
+  addChunk(jobId: string, chunkHtml: string, options: AssemblyOptions & { scrollIndex?: number } = {}): {
     success: boolean;
     added: boolean;
     reason?: string;
@@ -88,6 +98,7 @@ export class HtmlAssembler {
       };
     }
 
+    const { scrollIndex = 0 } = options;
     const finalOptions = { ...this.defaultOptions, ...options };
     
     // Check memory pressure
@@ -142,17 +153,20 @@ export class HtmlAssembler {
       };
     }
 
-    // Deduplication check
+    // Deduplication check: composite (contentHash, scrollIndex) key.
+    // Same content at a different scroll position is intentionally NOT a duplicate;
+    // only an exact retransmission of the same (content, position) pair is skipped.
     if (finalOptions.enableDeduplication) {
       const chunkHash = this.generateHash(processedChunk);
-      if (job.chunkHashes.has(chunkHash)) {
+      const dedupKey = `${chunkHash}:${scrollIndex}`;
+      if (job.chunkHashes.has(dedupKey)) {
         return {
           success: true,
           added: false,
-          reason: 'Duplicate chunk detected',
+          reason: `Duplicate chunk detected (hash:scrollIndex = ${dedupKey})`,
         };
       }
-      job.chunkHashes.add(chunkHash);
+      job.chunkHashes.add(dedupKey);
     }
 
     // Check total size limit with safety margin
@@ -332,16 +346,21 @@ export class HtmlAssembler {
   }
 
   /**
-   * Generate a simple hash for deduplication
+   * Generate a hash for chunk deduplication.
+   * Uses a two-accumulator approach for a wider effective bit-width (~53 bits)
+   * than a single 32-bit djb2, reducing collision probability for large chunk sets.
+   * (S2 improvement: replaces the original 32-bit hash.)
    */
   private generateHash(content: string): string {
-    let hash = 0;
+    let h1 = 0x811c9dc5; // FNV offset basis
+    let h2 = 0xdeadbeef;
     for (let i = 0; i < content.length; i++) {
-      const char = content.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+      const c = content.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 0x01000193); // FNV prime
+      h2 = Math.imul(h2 ^ c, 0x9e3779b9); // Fibonacci hashing constant
     }
-    return hash.toString(36);
+    // Combine into a hex string (up to 16 hex chars ≈ 64 bits effective)
+    return ((h1 >>> 0).toString(16) + (h2 >>> 0).toString(16));
   }
 
   /**

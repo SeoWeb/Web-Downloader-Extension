@@ -49,7 +49,9 @@
       "pageDelay": "பக்கங்களுக்கு இடையிலான தாமதம்",
       "includeExternal": "வெளிப்புற இணைப்புகளைச் சேர்க்கவும்",
       "fullWebsite": "முழு இணையதளத்தையும் பதிவிறக்கவும்",
-      "fullWebsiteDescription": "சிக்கலான இணையதளங்களுக்கு சிறந்தது (இணைக்கப்பட்ட பக்கங்களின் முதல் நிலையை பதிவிறக்குகிறது)"
+      "fullWebsiteDescription": "சிக்கலான இணையதளங்களுக்கு சிறந்தது (இணைக்கப்பட்ட பக்கங்களின் முதல் நிலையை பதிவிறக்குகிறது)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "செயல்கள்:",

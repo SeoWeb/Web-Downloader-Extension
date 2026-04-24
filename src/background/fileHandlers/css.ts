@@ -3,6 +3,7 @@ import { fixFilename } from "../urlUtils";
 import { DEFAULT_MEMORY_LIMITS } from "../../utils/memoryLimits";
 import { requestQueue } from "../../utils/RequestQueue";
 import { RequestPriority, ResourceType } from "../../types/queue";
+import { IS_SERVER_MODE } from "../../common/server-mode";
 
 export async function addCssFiles(
   csss: string[],
@@ -102,14 +103,21 @@ export async function addCssFiles(
               );
             }
 
-            // Convert background image URLs to relative paths in CSS
-            const updatedCssContent = convertBackgroundImageUrlsToRelative(
-              cssContent,
-              baseUrl,
-              "../",
-            );
-
-            const blob = new Blob([updatedCssContent], { type: "text/css" });
+            let cssBlob: Blob;
+            if (IS_SERVER_MODE) {
+              // Server mode: upload raw CSS so the server can rewrite url() references
+              // consistently during finalization (spec D10 / task 5.10). Client-side
+              // rewriting is intentionally skipped to avoid double-rewriting. (M2 fix.)
+              cssBlob = new Blob([cssContent], { type: "text/css" });
+            } else {
+              // Local mode: rewrite url() references to relative paths before storing.
+              const updatedCssContent = convertBackgroundImageUrlsToRelative(
+                cssContent,
+                baseUrl,
+                "../",
+              );
+              cssBlob = new Blob([updatedCssContent], { type: "text/css" });
+            }
             const filename = new URL(fullCssUrl).pathname.split("/").pop();
             if (!filename) {
               failCount++;
@@ -117,7 +125,7 @@ export async function addCssFiles(
               return;
             }
 
-            await storage.addFile(`styles/${fixFilename(filename)}`, blob, "text/css");
+            await storage.addFile(`styles/${fixFilename(filename)}`, cssBlob, "text/css");
             successCount++;
             resolve(css);
           } catch (error) {

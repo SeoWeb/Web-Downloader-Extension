@@ -14,9 +14,13 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
-  Globe
+  Globe,
+  Server,
+  ShieldAlert
 } from "lucide-react";
 import cn from "classnames";
+
+import { IS_SERVER_MODE, SERVER_URL } from "../common/server-mode";
 
 import {
   useFilterOptions,
@@ -186,6 +190,32 @@ export default function Filter({
           <Download className="w-6 h-6" />
           <span>{t('filter.startDownload')}</span>
         </button>
+
+        {/* Server mode badge */}
+        {IS_SERVER_MODE && (
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+              <Server className="w-3.5 h-3.5" />
+              {t('filter.serverMode')}
+            </span>
+            {/* HTTP warning when server URL uses non-HTTPS with non-loopback host */}
+            {(() => {
+              try {
+                const url = new URL(SERVER_URL!);
+                const isLoopback = ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+                if (url.protocol === "http:" && !isLoopback) {
+                  return (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                      {t('filter.insecureServerWarning')}
+                    </span>
+                  );
+                }
+              } catch { /* invalid URL — ignore */ }
+              return null;
+            })()}
+          </div>
+        )}
 
         <p className="text-center text-xs text-slate-500 mt-3">
           {options.singleFile

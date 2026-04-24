@@ -49,7 +49,9 @@
       "pageDelay": "Verzögerung zwischen Seiten",
       "includeExternal": "Externe Links einbeziehen",
       "fullWebsite": "Vollständige Website herunterladen",
-      "fullWebsiteDescription": "Am besten für komplexe Websites (lädt die erste Ebene verlinkter Seiten herunter)"
+      "fullWebsiteDescription": "Am besten für komplexe Websites (lädt die erste Ebene verlinkter Seiten herunter)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Aktionen:",

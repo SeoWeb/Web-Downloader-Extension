@@ -49,7 +49,9 @@
       "pageDelay": "ページ間の遅延",
       "includeExternal": "外部リンクを含める",
       "fullWebsite": "ウェブサイト全体をダウンロード",
-      "fullWebsiteDescription": "複雑なウェブサイトに最適（リンクされたページの最初のレベルをダウンロードします）"
+      "fullWebsiteDescription": "複雑なウェブサイトに最適（リンクされたページの最初のレベルをダウンロードします）",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "アクション:",

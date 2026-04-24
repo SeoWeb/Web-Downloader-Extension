@@ -70,7 +70,23 @@ export async function addDocumentFiles(
               return;
             }
 
-            await storage.addFile(`documents/${fixFilename(filename)}`, blob);
+            // Determine content type from filename extension
+            const ext = filename.split('.').pop()?.toLowerCase() || '';
+            const docContentTypes: Record<string, string> = {
+              pdf: 'application/pdf',
+              doc: 'application/msword',
+              docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              xls: 'application/vnd.ms-excel',
+              xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              ppt: 'application/vnd.ms-powerpoint',
+              pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+              txt: 'text/plain',
+              rtf: 'application/rtf',
+              csv: 'text/csv',
+            };
+            const docContentType = docContentTypes[ext] || 'application/octet-stream';
+
+            await storage.addFile(`documents/${fixFilename(filename)}`, blob, docContentType);
             successCount++;
             resolve(document);
           } catch (error) {

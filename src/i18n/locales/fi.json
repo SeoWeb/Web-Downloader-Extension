@@ -49,7 +49,9 @@
       "pageDelay": "Viive sivujen välillä",
       "includeExternal": "Sisällytä ulkoiset linkit",
       "fullWebsite": "Lataa koko verkkosivusto",
-      "fullWebsiteDescription": "Paras monimutkaisille verkkosivustoille (lataa linkitettyjen sivujen ensimmäisen tason)"
+      "fullWebsiteDescription": "Paras monimutkaisille verkkosivustoille (lataa linkitettyjen sivujen ensimmäisen tason)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Toiminnot:",

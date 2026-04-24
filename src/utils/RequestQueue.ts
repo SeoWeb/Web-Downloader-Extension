@@ -479,7 +479,7 @@ export class RequestQueue {
       ...request.fetchOptions,
     };
 
-    let response: Response;
+    let response: Response | undefined;
     
     try {
       // Make the request
@@ -489,26 +489,44 @@ export class RequestQueue {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
-      // If standard fetch fails for CSS/JS/Images, try fallback with no-cors mode
-      if (request.resourceType === ResourceType.CSS || request.resourceType === ResourceType.JS || request.resourceType === ResourceType.IMAGE) {
-        try {
-          response = await fetch(request.url, {
-            method: 'GET',
-            mode: 'no-cors',
-            cache: 'no-cache',
-            credentials: 'omit',
-            signal: controller.signal,
-            headers: {
-              'Accept': this.getAcceptHeader(request.resourceType),
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            },
-          });
-          
-          // no-cors mode will return opaque responses, which is expected
-          if (response.type === 'opaque') {
+      // If standard fetch fails, try fallback strategies.
+      // For CSS/JS/Images: no-cors mode (opaque response OK for some use cases),
+      // then navigate mode as last resort.
+      // For Documents: skip no-cors (opaque responses can't be read — .blob()
+      // throws) and go directly to navigate mode which returns readable responses.
+      const needsFallback = request.resourceType === ResourceType.CSS
+        || request.resourceType === ResourceType.JS
+        || request.resourceType === ResourceType.IMAGE
+        || request.resourceType === ResourceType.DOCUMENT;
+
+      if (needsFallback) {
+        // For documents, skip no-cors and go straight to navigate mode
+        // since opaque responses can't be read (blob()/text() throw TypeError).
+        if (request.resourceType !== ResourceType.DOCUMENT) {
+          try {
+            response = await fetch(request.url, {
+              method: 'GET',
+              mode: 'no-cors',
+              cache: 'no-cache',
+              credentials: 'omit',
+              signal: controller.signal,
+              headers: {
+                'Accept': this.getAcceptHeader(request.resourceType),
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              },
+            });
+
+            // no-cors mode will return opaque responses, which is expected
+            if (response.type === 'opaque') {
+            }
+          } catch (fallbackError) {
+            // If no-cors fails, fall through to navigate mode below
           }
-        } catch (fallbackError) {
-          // If even no-cors fails, try one more time with navigate mode
+        }
+
+        // If we still don't have a usable response (or resource type is DOCUMENT),
+        // try navigate mode which bypasses CORS and returns readable responses.
+        if (response === undefined || (response.type === 'opaque' && request.resourceType === ResourceType.DOCUMENT)) {
           try {
             response = await fetch(request.url, {
               method: 'GET',
@@ -526,6 +544,11 @@ export class RequestQueue {
         // For other resource types, just re-throw the error
         throw error;
       }
+    }
+
+    // If all fetch strategies failed, throw the error
+    if (!response) {
+      throw new Error(`Failed to fetch ${request.url}: all strategies exhausted`);
     }
 
     // Get response size

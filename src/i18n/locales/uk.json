@@ -49,7 +49,9 @@
       "pageDelay": "Затримка між сторінками",
       "includeExternal": "Включити зовнішні посилання",
       "fullWebsite": "Завантажити весь веб-сайт",
-      "fullWebsiteDescription": "Найкраще для складних веб-сайтів (завантажує перший рівень пов'язаних сторінок)"
+      "fullWebsiteDescription": "Найкраще для складних веб-сайтів (завантажує перший рівень пов'язаних сторінок)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Дії:",

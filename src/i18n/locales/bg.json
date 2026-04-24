@@ -49,7 +49,9 @@
       "pageDelay": "Забавяне между страниците",
       "includeExternal": "Включване на външни връзки",
       "fullWebsite": "Изтегляне на целия уебсайт",
-      "fullWebsiteDescription": "Най-добро за сложни уебсайтове (изтегля първото ниво на свързаните страници)"
+      "fullWebsiteDescription": "Най-добро за сложни уебсайтове (изтегля първото ниво на свързаните страници)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Действия:",

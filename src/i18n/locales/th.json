@@ -49,7 +49,9 @@
       "pageDelay": "ความล่าช้าระหว่างหน้า",
       "includeExternal": "รวมลิงก์ภายนอก",
       "fullWebsite": "ดาวน์โหลดเว็บไซต์เต็มรูปแบบ",
-      "fullWebsiteDescription": "ดีที่สุดสำหรับเว็บไซต์ที่ซับซ้อน (ดาวน์โหลดระดับแรกของหน้าที่เชื่อมโยง)"
+      "fullWebsiteDescription": "ดีที่สุดสำหรับเว็บไซต์ที่ซับซ้อน (ดาวน์โหลดระดับแรกของหน้าที่เชื่อมโยง)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "การดำเนินการ:",

@@ -49,7 +49,9 @@
       "pageDelay": "Vertraging tussen pagina's",
       "includeExternal": "Externe links opnemen",
       "fullWebsite": "Volledige website downloaden",
-      "fullWebsiteDescription": "Het beste voor complexe websites (downloadt het eerste niveau van gelinkte pagina's)"
+      "fullWebsiteDescription": "Het beste voor complexe websites (downloadt het eerste niveau van gelinkte pagina's)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Acties:",

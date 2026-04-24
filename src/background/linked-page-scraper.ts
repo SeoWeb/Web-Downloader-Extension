@@ -12,8 +12,9 @@ import { IStorageAdapter } from "./storage/storage-adapter";
 import { AssetRegistry } from "./asset-registry";
 import { getResources } from "./resources";
 import { convertHtml } from "./htmlUtils";
-import { addCssFiles, addJsFiles, addImageFiles } from "./fileHandlers";
+import { addCssFiles, addJsFiles, addImageFiles, addDocumentFiles } from "./fileHandlers";
 import { fixFilename } from "./urlUtils";
+import { serverClient } from "./server-client";
 
 // Global image filename map shared across main page and all linked pages
 let globalImageFilenameMap = new Map<string, string>();
@@ -35,8 +36,20 @@ export interface LinkedPageJob {
 
 export interface ScrapedPageData {
   html: string;
+  /**
+   * Chunked representation of the HTML body content for server-mode streaming.
+   * Each chunk is a self-contained serialization of a group of top-level body children,
+   * wrapped in the page skeleton. In local mode this is always a single-element array
+   * containing the full HTML. In server mode the caller uploads each chunk separately
+   * via uploadHtmlChunk(pageType: 'linked') to avoid holding the entire page DOM in
+   * extension memory at once. (C3 fix: defines the linked page DOM chunking mechanism.)
+   */
+  htmlChunks: string[];
   url: string;
   finalUrl: string; // After redirects
+  /** (12.11) Image filename map for this page's newly downloaded images.
+   * Used to build incremental filename map uploads in server mode. */
+  localImageMap: Map<string, string>;
   assets: {
     images: string[];
     css: string[];
@@ -50,13 +63,17 @@ export interface LinkedPageScraperOptions {
   delayBetweenPages?: number; // Default: 500ms
   includeExternal?: boolean; // Default: false
   pageTimeout?: number; // Default: 30000ms
+  /** (12.10) Server session ID — when set, linked page HTML chunks are uploaded
+   * to the server with pageType: "linked" and pageUrl metadata instead of
+   * being stored locally. Also triggers incremental filename map uploads (12.11). */
+  serverSessionId?: string;
 }
 
 export class LinkedPageScraper {
   private queue: LinkedPageJob[] = [];
   private assetRegistry: AssetRegistry;
   private originalTabUrl: string = "";
-  private options: Required<LinkedPageScraperOptions>;
+  private options: Required<Omit<LinkedPageScraperOptions, 'serverSessionId'>> & { serverSessionId?: string };
   private successCount: number = 0;
   private failCount: number = 0;
   private isPaused: boolean = false;
@@ -74,6 +91,7 @@ export class LinkedPageScraper {
       delayBetweenPages: options.delayBetweenPages ?? 500,
       includeExternal: options.includeExternal ?? false,
       pageTimeout: options.pageTimeout ?? 30000,
+      serverSessionId: options.serverSessionId,
     };
   }
 
@@ -222,9 +240,42 @@ export class LinkedPageScraper {
           sendMessage,
         );
 
-        // Save the HTML to the pages folder
-        const filename = this.generateFilename(scrapedData.finalUrl);
-        await storage.addFile(`pages/${filename}`, scrapedData.html, "text/html");
+        if (this.options.serverSessionId) {
+          // (12.10) Server mode: upload HTML chunks with pageType "linked"
+          // and pageUrl metadata. Each chunk is uploaded individually to
+          // avoid holding the entire page DOM in extension memory.
+          // Use per-page scroll index (ci) instead of the global counter so
+          // each page's first chunk has scrollIndex=0, matching the server's
+          // skeleton initialization logic and disk-based chunk loading.
+          for (let ci = 0; ci < scrapedData.htmlChunks.length; ci++) {
+            await serverClient.uploadHtmlChunk(
+              this.options.serverSessionId,
+              scrapedData.htmlChunks[ci],
+              ci,
+              "linked",
+              scrapedData.finalUrl,
+            );
+          }
+
+          // (12.11) Upload incremental filename map after this linked page's
+          // assets are downloaded. The delta map contains only the new entries
+          // discovered for this linked page, ensuring the server always holds
+          // an up-to-date mapping for URL conversion.
+          const deltaMap: Record<string, string> = {};
+          for (const [key, value] of scrapedData.localImageMap ?? []) {
+            // Only include entries not already in the global map
+            if (!globalImageFilenameMap.has(key)) {
+              deltaMap[key] = value;
+            }
+          }
+          if (Object.keys(deltaMap).length > 0) {
+            await serverClient.uploadFilenameMap(this.options.serverSessionId, deltaMap);
+          }
+        } else {
+          // Local mode: save the converted HTML to the pages folder
+          const filename = this.generateFilename(scrapedData.finalUrl);
+          await storage.addFile(`pages/${filename}`, scrapedData.html, "text/html");
+        }
 
         job.status = "completed";
         this.successCount++;
@@ -267,29 +318,54 @@ export class LinkedPageScraper {
     // Execute scroll script for lazy-loaded content
     await this.scrollPageForLazyLoading(tabId);
 
-    // Capture the DOM
-    const html = await this.capturePageDOM(tabId);
+    // Capture the DOM. For server mode we capture in chunks to avoid holding
+    // the entire page outerHTML as a single large string in extension memory.
+    // For local mode we use the full single-string capture as before.
+    const htmlChunks = await this.capturePageDOMChunks(tabId);
+    const html = htmlChunks.join('');
 
     // Extract resources
     const resources = getResources(html);
 
-    // Download assets (checking registry first to avoid duplicates)
+    // (12.11) Download assets (checking registry first to avoid duplicates).
+    // Returns the image filename map for this page's newly downloaded images.
     const localImageMap = await this.downloadAssets(resources, storage, finalUrl, sendMessage);
 
     // Build a combined filename map: global (main page + previous linked pages) + local (this page)
-    // This ensures images already downloaded by the main page have correct filenames
     const combinedImageMap = new Map<string, string>(globalImageFilenameMap);
     for (const [key, value] of localImageMap) {
       combinedImageMap.set(key, value);
     }
 
-    // Convert HTML with proper link rewriting (pages are in pages/ folder, assets are at root level)
+    if (this.options.serverSessionId) {
+      // (12.10) Server mode: return raw HTML chunks (unconverted) — the
+      // server handles URL conversion. The caller uploads each chunk
+      // separately with pageType: "linked" and pageUrl.
+      return {
+        html,
+        htmlChunks,
+        url,
+        finalUrl,
+        localImageMap,
+        assets: {
+          images: resources.images,
+          css: resources.css,
+          js: resources.js,
+          documents: resources.documents,
+        },
+      };
+    }
+
+    // Local mode: convert HTML with proper link rewriting
+    // (pages are in pages/ folder, assets are at root level)
     const convertedHtml = convertHtml(html, finalUrl, "../", combinedImageMap);
 
     return {
       html: convertedHtml,
+      htmlChunks: [convertedHtml],
       url,
       finalUrl,
+      localImageMap,
       assets: {
         images: resources.images,
         css: resources.css,
@@ -339,7 +415,8 @@ export class LinkedPageScraper {
   }
 
   /**
-   * Capture the page DOM after JavaScript execution
+   * Capture the page DOM after JavaScript execution.
+   * Returns the full outerHTML as a single string.
    */
   private async capturePageDOM(tabId: number): Promise<string> {
     const timeout = 10000; // 10 second timeout for DOM capture
@@ -362,6 +439,92 @@ export class LinkedPageScraper {
     }
 
     return result[0].result as string;
+  }
+
+  /**
+   * Capture the page DOM as an array of HTML chunk strings.
+   *
+   * Strategy: serialize top-level `<body>` children in batches until each batch
+   * reaches the target chunk size (default 512 KB). Each chunk contains the page
+   * skeleton (doctype + `<html><head>...</head><body>`) wrapping only that batch
+   * of children, so each chunk is a valid, parseable HTML fragment.
+   *
+   * This avoids holding a single monolithic `outerHTML` string in the extension's
+   * JS heap, which can spike memory for large linked pages. (C3 fix.)
+   *
+   * Falls back to a single-chunk capture if scripting fails or the body is empty.
+   *
+   * @param targetChunkBytes - Target uncompressed size per chunk (default 512 KB).
+   */
+  private async capturePageDOMChunks(
+    tabId: number,
+    targetChunkBytes: number = 512 * 1024,
+  ): Promise<string[]> {
+    const timeout = 15000;
+
+    type ChunkResult = { skeleton: string; bodyChildren: string[] };
+
+    const result = await Promise.race([
+      chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          // Serialise each top-level body child individually so the caller can
+          // batch them into target-sized chunks without parsing the full HTML.
+          const skeleton = document.documentElement.outerHTML
+            .replace(/<body[^>]*>[\s\S]*<\/body>/i, '<body></body>');
+          const children: string[] = [];
+          for (const child of Array.from(document.body.children)) {
+            children.push((child as Element).outerHTML);
+          }
+          return { skeleton, bodyChildren: children } as { skeleton: string; bodyChildren: string[] };
+        },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("DOM chunk capture timeout")), timeout)
+      ),
+    ]);
+
+    if (!result || result.length === 0 || !result[0].result) {
+      // Fallback: single full outerHTML capture
+      const html = await this.capturePageDOM(tabId);
+      return [html];
+    }
+
+    const { skeleton, bodyChildren } = result[0].result as ChunkResult;
+
+    if (bodyChildren.length === 0) {
+      // Empty body — return the skeleton as a single chunk
+      return [skeleton];
+    }
+
+    // Group children into target-sized chunks
+    const chunks: string[] = [];
+    let currentChildren: string[] = [];
+    let currentSize = 0;
+
+    // Extract the body open tag from the skeleton so we can reconstruct each chunk
+    const bodyOpenMatch = skeleton.match(/<body[^>]*>/i);
+    const bodyOpen = bodyOpenMatch ? bodyOpenMatch[0] : '<body>';
+    const skeletonBeforeBody = skeleton.slice(0, skeleton.indexOf(bodyOpen));
+    const skeletonAfterBody = '</body>' + skeleton.slice(skeleton.indexOf('</body>') + '</body>'.length);
+
+    for (const child of bodyChildren) {
+      currentChildren.push(child);
+      currentSize += child.length;
+
+      if (currentSize >= targetChunkBytes) {
+        chunks.push(skeletonBeforeBody + bodyOpen + currentChildren.join('') + skeletonAfterBody);
+        currentChildren = [];
+        currentSize = 0;
+      }
+    }
+
+    // Flush the last batch
+    if (currentChildren.length > 0) {
+      chunks.push(skeletonBeforeBody + bodyOpen + currentChildren.join('') + skeletonAfterBody);
+    }
+
+    return chunks.length > 0 ? chunks : [skeleton];
   }
 
   /**
@@ -428,6 +591,11 @@ export class LinkedPageScraper {
       return !this.assetRegistry.has(fullUrl);
     });
 
+    const newDocuments = resources.documents.filter((url) => {
+      const fullUrl = new URL(url, pageUrl).href;
+      return !this.assetRegistry.has(fullUrl);
+    });
+
     // Download new assets
     if (newCss.length > 0) {
       await addCssFiles(newCss, storage, pageUrl, sendMessage);
@@ -444,6 +612,10 @@ export class LinkedPageScraper {
         localImageFilenameMap.set(key, value);
         globalImageFilenameMap.set(key, value);
       }
+    }
+
+    if (newDocuments.length > 0) {
+      await addDocumentFiles(newDocuments, storage, pageUrl, sendMessage);
     }
 
     // Register all assets (including ones we skipped)
@@ -465,6 +637,13 @@ export class LinkedPageScraper {
       const fullUrl = new URL(url, pageUrl).href;
       if (!this.assetRegistry.has(fullUrl)) {
         this.assetRegistry.register(fullUrl, `assets/images/${fixFilename(url)}`, 0);
+      }
+    }
+
+    for (const url of resources.documents) {
+      const fullUrl = new URL(url, pageUrl).href;
+      if (!this.assetRegistry.has(fullUrl)) {
+        this.assetRegistry.register(fullUrl, `documents/${fixFilename(url)}`, 0);
       }
     }
 

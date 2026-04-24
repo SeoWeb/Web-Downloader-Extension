@@ -49,7 +49,9 @@
       "pageDelay": "Ritardo tra le pagine",
       "includeExternal": "Includi collegamenti esterni",
       "fullWebsite": "Scarica sito web completo",
-      "fullWebsiteDescription": "Ideale per siti web complessi (scarica il primo livello delle pagine collegate)"
+      "fullWebsiteDescription": "Ideale per siti web complessi (scarica il primo livello delle pagine collegate)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Azioni:",

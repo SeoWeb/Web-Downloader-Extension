@@ -49,7 +49,9 @@
       "pageDelay": "Forsinkelse mellem sider",
       "includeExternal": "Inkluder eksterne links",
       "fullWebsite": "Download hele hjemmesiden",
-      "fullWebsiteDescription": "Bedst til komplekse hjemmesider (downloader første niveau af linkede sider)"
+      "fullWebsiteDescription": "Bedst til komplekse hjemmesider (downloader første niveau af linkede sider)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Handlinger:",

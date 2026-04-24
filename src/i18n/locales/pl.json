@@ -49,7 +49,9 @@
       "pageDelay": "Opóźnienie między stronami",
       "includeExternal": "Uwzględnij linki zewnętrzne",
       "fullWebsite": "Pobierz całą stronę internetową",
-      "fullWebsiteDescription": "Najlepsze dla złożonych stron (pobiera pierwszy poziom połączonych stron)"
+      "fullWebsiteDescription": "Najlepsze dla złożonych stron (pobiera pierwszy poziom połączonych stron)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Akcje:",

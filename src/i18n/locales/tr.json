@@ -49,7 +49,9 @@
       "pageDelay": "Sayfalar arası gecikme",
       "includeExternal": "Harici bağlantıları dahil et",
       "fullWebsite": "Tam web sitesini indir",
-      "fullWebsiteDescription": "Karmaşık web siteleri için en iyisi (bağlantılı sayfaların ilk seviyesini indirir)"
+      "fullWebsiteDescription": "Karmaşık web siteleri için en iyisi (bağlantılı sayfaların ilk seviyesini indirir)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "İşlemler:",

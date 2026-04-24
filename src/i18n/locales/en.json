@@ -52,7 +52,9 @@
       "fullScrapingInfo": "Opens linked pages sequentially in this tab to capture dynamic content and assets. You'll see each page load during the process.",
       "maxPages": "Max pages to scrape",
       "pageDelay": "Delay between pages",
-      "includeExternal": "Include external links"
+      "includeExternal": "Include external links",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Actions:",
@@ -156,7 +158,35 @@
       "linkedPageProgress": "Scraping page {{current}} of {{total}}",
       "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
       "linkedPagesFailed": "{{count}} pages failed to scrape",
-      "scraperPaused": "Scraping paused"
+      "scraperPaused": "Scraping paused",
+      "uploadProgress": "Uploading resources: {{completed}}/{{total}}",
+      "uploadingResources": "Uploading resources to server...",
+      "sendingScrapeComplete": "Finalizing scrape...",
+      "scrapeComplete": "Scrape complete",
+      "waitingForUploads": "Waiting for uploads to complete...",
+      "finalizingServer": "Finalizing on server...",
+      "assemblingServer": "Assembling on server...",
+      "assemblyProgress": "Assembling: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Merging HTML",
+      "assemblyPhaseConverting": "Converting URLs",
+      "assemblyPhaseZipping": "Creating ZIP",
+      "assemblyPhaseInlining": "Inlining resources",
+      "serverFallbackOffer": "Server issue: {{reason}}",
+      "serverError": "Server error: {{error}}",
+      "serverUnavailable": "Server unavailable",
+      "assemblyTimeout": "Assembly timed out",
+      "assemblyFailed": "Assembly failed",
+      "authFailed": "Authentication failed",
+      "retryServer": "Retry",
+      "downloadLocally": "Download locally",
+      "localFallbackWarning": "Falling back to local mode requires re-scraping the page from scratch. Continue?",
+      "downloadFromServer": "Download from server",
+      "serverDownloadUrl": "Server download URL",
+      "copyUrl": "Copy URL",
+      "urlCopied": "URL copied!",
+      "serverSessionFailed": "Failed to create server session: {{error}}",
+      "memoryWarningServerMode": "Low memory warning ({{availableMB}}MB available) — server mode active",
+      "serverModeActive": "Server mode active"
     },
     "permissions": {
       "storage": {

@@ -49,7 +49,9 @@
       "pageDelay": "Kelewatan antara halaman",
       "includeExternal": "Sertakan pautan luar",
       "fullWebsite": "Muat turun laman web penuh",
-      "fullWebsiteDescription": "Terbaik untuk laman web yang kompleks (memuat turun tahap pertama halaman yang dipautkan)"
+      "fullWebsiteDescription": "Terbaik untuk laman web yang kompleks (memuat turun tahap pertama halaman yang dipautkan)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Tindakan:",

@@ -49,7 +49,9 @@
       "pageDelay": "页面间延迟",
       "includeExternal": "包含外部链接",
       "fullWebsite": "下载完整网站",
-      "fullWebsiteDescription": "最适合复杂网站（下载链接页面的第一层级）"
+      "fullWebsiteDescription": "最适合复杂网站（下载链接页面的第一层级）",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "操作：",

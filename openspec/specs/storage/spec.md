@@ -8,38 +8,64 @@ Persistent storage and ZIP generation for the Website Downloader extension. Cove
 
 ### Requirement: Storage Adapter Abstraction
 
-The system SHALL provide a unified storage interface that supports multiple backends.
+The system SHALL provide a unified storage interface that supports multiple backends including a new ServerStorageAdapter for server mode.
 
-#### Scenario: Adding a file to storage
+#### Scenario: Adding a file to local storage (IndexedDB)
 
-- GIVEN a file path, content (Blob, string, or ArrayBuffer), and optional MIME type
-- WHEN the file is added to storage
-- THEN the file is stored at the specified path
+- GIVEN a file path, content, and optional MIME type
+- WHEN the file is added to the IndexedDB storage adapter
+- THEN the file is stored at the specified path in IndexedDB
 - AND the content is normalized to a Blob
 
-#### Scenario: Retrieving a file from storage
+#### Scenario: Adding a file to server storage
 
-- GIVEN a file path that exists in storage
-- WHEN the file is requested
+- GIVEN a file path, content, and optional MIME type
+- WHEN the file is added to the ServerStorageAdapter
+- THEN the content is uploaded to the server as a resource
+- AND the upload is tracked in the upload queue
+- AND the content is not stored locally
+
+#### Scenario: Storage adapter selection based on build configuration
+
+- GIVEN the `VITE_SERVER_URL` env variable is set at build time
+- WHEN a download session starts
+- THEN the ServerStorageAdapter is used for all file storage operations
+- AND when the env variable is not set, the IndexedDB adapter is used
+
+#### Scenario: Retrieving a file from local storage
+
+- GIVEN a file path that exists in local storage
+- WHEN the file is requested from the IndexedDB adapter
 - THEN the file content is returned as a Blob
 
-#### Scenario: Retrieving a non-existent file
+#### Scenario: Retrieving a file from server storage
 
-- GIVEN a file path that does not exist in storage
-- WHEN the file is requested
-- THEN null is returned
+- **GIVEN** a file path requested from the ServerStorageAdapter
+- **WHEN** the file is requested
+- **THEN** null is returned (server storage is write-only from the extension's perspective)
 
-#### Scenario: Listing all files
+#### Scenario: Listing files from server storage
 
-- GIVEN a storage adapter with multiple files
-- WHEN all files are enumerated
-- THEN a list of file paths and sizes is returned
+- **GIVEN** the ServerStorageAdapter is used
+- **WHEN** `getAllFiles()` is called
+- **THEN** an empty array is returned
+- **AND** consumers of the storage adapter MUST NOT depend on this method for resource enumeration in server mode (the server manages file enumeration during assembly)
 
-#### Scenario: Clearing storage
+#### Scenario: Resource count from server storage
 
-- GIVEN a storage adapter with stored files
-- WHEN the clear operation is invoked
-- THEN all files are removed from storage
+- **GIVEN** the ServerStorageAdapter is used
+- **WHEN** `getResourceCount()` is called
+- **THEN** the method returns the current count of resources that have been submitted to the UploadQueue (including queued, in-progress, and completed uploads)
+- **AND** this count is used by the UI for upload progress display ("X/Y resources uploaded")
+- **AND** `getResourceCount()` is a method on `ServerStorageAdapter` only (not part of the base `IStorageAdapter` interface, which retains `getAllFiles()` for local mode)
+
+#### Scenario: Clearing server storage
+
+- **GIVEN** the ServerStorageAdapter is used
+- **WHEN** `clear()` is called
+- **THEN** a DELETE request is sent to the session endpoint
+- **AND** the server removes all session data
+- **AND** no local cleanup is needed
 
 ### Requirement: IndexedDB File Storage
 
@@ -81,115 +107,54 @@ The system SHALL store downloaded files in IndexedDB for persistence beyond the 
 - WHEN storage statistics are requested
 - THEN the total file count, total size, and active session count are returned
 
-### Requirement: Download Session Management
+### Requirement: Session Management
 
-The system SHALL manage download sessions with status tracking.
+The system SHALL support both local session management (IndexedDB) and remote session management (server API).
 
-#### Scenario: Creating a new session
+#### Scenario: Local session management
 
-- GIVEN a base URL for the download
-- WHEN a session is created
-- THEN a unique session ID is generated
-- AND the session is stored with status "scraping"
-- AND the start time is recorded
+- GIVEN local mode is active
+- WHEN a download session is created
+- THEN the session is managed via SessionManager with IndexedDB persistence
+- AND the session lifecycle follows the existing local flow
 
-#### Scenario: Updating session status
+#### Scenario: Remote session management
 
-- GIVEN an existing session
-- WHEN the session status is updated
-- THEN the session record is modified with the new status and any additional fields
+- GIVEN server mode is active
+- WHEN a download session is created
+- THEN the session is created on the server via the API
+- **AND** the session ID from the server is a UUIDv4
+- **AND** the session starts in `scraping` status
+- **AND** the extension calls scrape-complete after all HTML chunks are uploaded, transitioning to `uploading` status
+- **AND** the session status transitions to `uploading` when the scrape-complete signal is received by the server
+- **AND** session status is queried from the server rather than local IndexedDB
+- **AND** valid server statuses are: `scraping`, `uploading`, `assembling`, `ready`, `failed`, `expired`
 
-#### Scenario: Completing a session
+#### Scenario: Remote session status tracking
 
-- GIVEN a session that has finished successfully
-- WHEN the session is completed
-- THEN the status is set to "complete"
-- AND the end time is recorded
+- GIVEN server mode is active and a session exists on the server
+- WHEN the extension polls the session status
+- THEN the server returns the current status (scraping, uploading, assembling, ready, failed)
+- AND the extension updates its UI accordingly
+- AND during `assembling` status, the assembly phase and progress percentage are included
 
-#### Scenario: Failing a session
+### Requirement: Blob Storage for Panel Delegation
 
-- GIVEN a session that encountered an error
-- WHEN the session is failed
-- THEN the status is set to "failed"
-- AND the end time and error message are recorded
+The system SHALL provide blob storage for delegating downloads to the side panel in local mode. In server mode, blob storage and panel delegation are not needed.
 
-#### Scenario: Pausing a session
+#### Scenario: Local mode blob storage
 
-- GIVEN an active session
-- WHEN the session is paused
-- THEN the status is set to "paused"
-- AND the pause timestamp is recorded
+- GIVEN local mode is active and a ZIP file has been generated
+- WHEN the download needs to be delegated to the side panel
+- THEN the blob is stored in shared IndexedDB (blobStorage)
+- AND the side panel reads the blob and creates a download URL
 
-#### Scenario: Resuming a paused session
+#### Scenario: Server mode skips blob storage
 
-- GIVEN a paused session
-- WHEN the session is resumed
-- THEN the status is set back to "scraping"
-- AND the resume timestamp is recorded
-
-#### Scenario: Finding a resumable session
-
-- GIVEN a base URL
-- AND a paused session exists for that URL
-- WHEN a resumable session is requested
-- THEN the paused session is returned
-
-#### Scenario: Cannot resume non-paused session
-
-- GIVEN a session that is not in the "paused" state
-- WHEN a resume is attempted
-- THEN an error is thrown
-
-### Requirement: Blob Storage
-
-The system SHALL provide a separate blob storage system for temporary data with metadata tracking.
-
-#### Scenario: Saving a blob with metadata
-
-- GIVEN a blob key, Blob content, and optional download ID
-- WHEN the blob is saved
-- THEN the blob is stored in the blob object store
-- AND metadata is stored including size, timestamp, access count, and download ID
-
-#### Scenario: Retrieving a blob with access tracking
-
-- GIVEN a blob key
-- WHEN the blob is retrieved
-- THEN the blob content is returned
-- AND the access count is incremented
-- AND the last-accessed timestamp is updated
-
-#### Scenario: Deleting a blob
-
-- GIVEN a blob key
-- WHEN the blob is deleted
-- THEN both the blob content and its metadata are removed
-
-#### Scenario: Cleaning up old blobs by age
-
-- GIVEN blobs older than a configurable age (default 30 minutes)
-- WHEN the cleanup routine runs
-- THEN all blobs older than the cutoff are deleted
-- AND their metadata is removed
-
-#### Scenario: Cleaning up blobs by download ID
-
-- GIVEN a download ID
-- WHEN download-specific blob cleanup is requested
-- THEN all blobs associated with that download ID are deleted
-- AND their metadata is removed
-
-#### Scenario: Emergency blob cleanup
-
-- GIVEN the system needs to free memory immediately
-- WHEN force cleanup is invoked
-- THEN all blobs and metadata are cleared regardless of age or usage
-
-#### Scenario: Blob memory usage reporting
-
-- GIVEN blobs stored in the blob storage
-- WHEN memory usage is queried
-- THEN the blob count, total size, oldest blob date, and newest blob date are returned
+- GIVEN server mode is active and the server ZIP is ready
+- WHEN the download is triggered
+- THEN no blob storage or side panel delegation is needed
+- AND the browser downloads directly from the server URL
 
 ### Requirement: Multi-Part ZIP Generation
 

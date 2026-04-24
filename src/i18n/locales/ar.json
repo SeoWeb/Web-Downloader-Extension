@@ -49,7 +49,9 @@
       "pageDelay": "التأخير بين الصفحات",
       "includeExternal": "تضمين الروابط الخارجية",
       "fullWebsite": "تحميل الموقع بالكامل",
-      "fullWebsiteDescription": "الأفضل للمواقع المعقدة (يقوم بتنزيل المستوى الأول من الصفحات المرتبطة)"
+      "fullWebsiteDescription": "الأفضل للمواقع المعقدة (يقوم بتنزيل المستوى الأول من الصفحات المرتبطة)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "الإجراءات:",

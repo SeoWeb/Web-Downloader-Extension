@@ -49,7 +49,9 @@
       "pageDelay": "পৃষ্ঠাগুলির মধ্যে বিলম্ব",
       "includeExternal": "বাহ্যিক লিঙ্ক অন্তর্ভুক্ত করুন",
       "fullWebsite": "संपूर्ण ওয়েবসাইট ডাউনলোড করুন",
-      "fullWebsiteDescription": "জটিল ওয়েবসাইটের জন্য সেরা (লিঙ্ক করা পৃষ্ঠাগুলির প্রথম স্তর ডাউনলোড করে)"
+      "fullWebsiteDescription": "জটিল ওয়েবসাইটের জন্য সেরা (লিঙ্ক করা পৃষ্ঠাগুলির প্রথম স্তর ডাউনলোড করে)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "অ্যাকশন:",

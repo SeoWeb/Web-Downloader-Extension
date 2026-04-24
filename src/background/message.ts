@@ -1,9 +1,69 @@
 import { sendMessage } from "../common/chrome";
 import { MessageAction, messageActions } from "../common/message";
+import { IS_SERVER_MODE } from "../common/server-mode";
 import { scrollDownAndScrape, startDownload } from "./jobs";
 import { downloadResourcesWithIncrementalAssembly } from "./download";
 import { mergeHtmlIncremental } from "./merge-html";
 import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
+import { serverClient } from "./server-client";
+
+// Active server session ID for HTML chunk uploads during scrolling
+let activeServerSessionId: string | null = null;
+let serverScrollIndex = 0;
+
+/**
+ * Create a server session and optionally store it as the active session.
+ * Shared by INITIALIZE_DIFFERENTIAL_SCRAPING and SERVER_CREATE_SESSION
+ * to avoid duplicating session-creation logic.
+ */
+async function createServerSession(
+  url: string,
+  options?: { singleFile?: boolean; retentionDays?: number },
+  setActive: boolean = true,
+): Promise<{ success: boolean; sessionId?: string; error?: string }> {
+  try {
+    const sessionId = await serverClient.createSession(url, options);
+    if (setActive) {
+      activeServerSessionId = sessionId;
+      serverScrollIndex = 0;
+    }
+    return { success: true, sessionId };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Set the active server session ID for HTML chunk uploads during scrolling.
+ * Called by download-core.ts when a server session is created.
+ */
+export function setActiveServerSession(sessionId: string | null): void {
+  activeServerSessionId = sessionId;
+  serverScrollIndex = 0;
+}
+
+/**
+ * Get the active server session ID (if any).
+ * Used by selectStorageAdapter to reuse a session created during
+ * INITIALIZE_DIFFERENTIAL_SCRAPING instead of creating a new one.
+ */
+export function getActiveServerSessionId(): string | null {
+  return activeServerSessionId;
+}
+
+/**
+ * Check whether HTML chunks have been uploaded during the scrolling phase.
+ * Used by executeDownloadServerMode (download-core.ts) to skip the
+ * initial HTML upload when chunks have already been streamed to the
+ * server via SCROLL_AND_EXTRACT_DIFF or SERVER_UPLOAD_HTML_CHUNK
+ * during scrolling (task 13.3).
+ */
+export function hasStreamedHtmlChunks(): boolean {
+  return activeServerSessionId !== null && serverScrollIndex > 0;
+}
 
 export async function sendMessageToPanel(
   action: MessageAction,
@@ -55,6 +115,20 @@ export async function messageWorker(
       // Initialize differential scraping and return assembly job ID
       const assemblyJobId = `assembly-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       try {
+        // (12.3) In server mode, create a server session before scrolling
+        // starts so that SCROLL_AND_EXTRACT_DIFF can upload HTML chunks
+        // in real-time. Uses shared createServerSession helper (task 13.2
+        // SERVER_CREATE_SESSION uses the same logic).
+        if (IS_SERVER_MODE && data.tabUrl) {
+          const result = await createServerSession(data.tabUrl, {
+            singleFile: data.downloadOptions?.singleFile ?? false,
+            retentionDays: 7, // Match selectStorageAdapter default
+          });
+          if (!result.success) {
+            return { success: false, error: result.error };
+          }
+        }
+
         await mergeHtmlIncremental(data.html, "", assemblyJobId, {
           useIncrementalAssembly: true,
           jobId: assemblyJobId,
@@ -73,6 +147,28 @@ export async function messageWorker(
     case messageActions.SCROLL_AND_EXTRACT_DIFF:
       // Process a new content chunk
       try {
+        // (12.3) In server mode, upload each HTML chunk to the server
+        // instead of merging locally. This streams the page content to
+        // the server in real-time as the user scrolls.
+        if (IS_SERVER_MODE && activeServerSessionId) {
+          await serverClient.uploadHtmlChunk(
+            activeServerSessionId,
+            data.htmlChunk,
+            serverScrollIndex++,
+            "main",
+            // Do NOT send pageUrl for main pages — the server uses the
+            // absence of pageUrl to set page_url_hash="main", which the
+            // assembler looks up as merge_results.get("main").
+            undefined,
+          );
+          return {
+            success: true,
+            assemblyJobId: data.assemblyJobId,
+            chunkProcessed: true,
+          };
+        }
+
+        // Local mode: merge incrementally
         await mergeHtmlIncremental(
           "", // Empty base HTML since we're adding to existing job
           data.htmlChunk,
@@ -122,6 +218,203 @@ export async function messageWorker(
     case messageActions.SCRAPER_STOP:
       stopScraping();
       return true;
+
+    // ------------------------------------------------------------------
+    // Server-mode message actions (task 13.2)
+    //
+    // These actions provide direct server API access from the UI,
+    // enabling health checks, session status polling, local fallback
+    // triggering, and explicit server session management.
+    // ------------------------------------------------------------------
+
+    case messageActions.SERVER_CREATE_SESSION:
+      // Create a new server session. Used when the UI needs to
+      // explicitly create a session (e.g., after local fallback
+      // cancellation, or to pre-create a session for a new download).
+      // Delegates to shared createServerSession helper (unified with
+      // INITIALIZE_DIFFERENTIAL_SCRAPING session creation).
+      return await createServerSession(data.url, data.options, data.setActive ?? true);
+
+    case messageActions.SERVER_UPLOAD_HTML_CHUNK:
+      // Upload an HTML chunk to the active server session.
+      // Used by the sidepanel to stream HTML during scrolling (task 13.3)
+      // instead of accumulating chunks in downloadResponse.
+      try {
+        const targetSessionId = data.sessionId || activeServerSessionId;
+        if (!targetSessionId) {
+          return {
+            success: false,
+            error: "No active server session",
+          };
+        }
+        const result = await serverClient.uploadHtmlChunk(
+          targetSessionId,
+          data.html,
+          data.scrollIndex ?? serverScrollIndex++,
+          data.pageType,
+          data.pageUrl,
+        );
+        return { success: true, result };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+
+    case messageActions.SERVER_SCRAPE_COMPLETE:
+      // Signal that all HTML chunks have been uploaded.
+      // Transitions the server session from "scraping" to "uploading".
+      try {
+        const scSessionId = data.sessionId || activeServerSessionId;
+        if (!scSessionId) {
+          return {
+            success: false,
+            error: "No active server session",
+          };
+        }
+        const result = await serverClient.scrapeComplete(
+          scSessionId,
+          data.resourceCount ?? 0,
+        );
+        return { success: true, result };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+
+    case messageActions.SERVER_UPLOAD_RESOURCE:
+      // Upload a single resource to the server.
+      // Used for ad-hoc resource uploads from the UI layer when
+      // ServerStorageAdapter is not in play (e.g., retry scenarios).
+      try {
+        const urSessionId = data.sessionId || activeServerSessionId;
+        if (!urSessionId) {
+          return {
+            success: false,
+            error: "No active server session",
+          };
+        }
+        const result = await serverClient.uploadResource(
+          urSessionId,
+          data.path,
+          data.blob,
+          data.originalUrl,
+          data.contentType,
+        );
+        return { success: true, result };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+
+    case messageActions.SERVER_UPLOAD_CONTENT:
+      // Upload text content for content.txt inclusion in the ZIP.
+      try {
+        const ucSessionId = data.sessionId || activeServerSessionId;
+        if (!ucSessionId) {
+          return {
+            success: false,
+            error: "No active server session",
+          };
+        }
+        const result = await serverClient.uploadContent(
+          ucSessionId,
+          data.text,
+        );
+        return { success: true, result };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+
+    case messageActions.SERVER_FINALIZE_SESSION:
+      // Finalize a server session — trigger assembly pipeline.
+      // The session must be in "uploading" status.
+      try {
+        const fsSessionId = data.sessionId || activeServerSessionId;
+        if (!fsSessionId) {
+          return {
+            success: false,
+            error: "No active server session",
+          };
+        }
+        const result = await serverClient.finalizeSession(fsSessionId);
+        return { success: true, result };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+
+    case messageActions.SERVER_SESSION_STATUS:
+      // Get the current status of a server session.
+      // Used for polling assembly progress from the UI.
+      try {
+        const ssSessionId = data.sessionId || activeServerSessionId;
+        if (!ssSessionId) {
+          return {
+            success: false,
+            error: "No active server session",
+          };
+        }
+        const result = await serverClient.getSessionStatus(ssSessionId);
+        return { success: true, result };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+
+    case messageActions.SERVER_HEALTH_CHECK:
+      // Check server health — no authentication required.
+      // Used by the UI to show server availability status.
+      try {
+        const result = await serverClient.checkHealth();
+        return { success: true, result };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+
+    case messageActions.SERVER_LOCAL_FALLBACK:
+      // User chose to fall back to local mode after server failure.
+      // Clear the active server session and restart the download in
+      // local mode (IndexedDB path). The UI should have already shown
+      // the re-scrape warning.
+      try {
+        // Clear the active server session
+        setActiveServerSession(null);
+        // Re-run the download in local mode by calling startDownload
+        // with server mode temporarily disabled. The download-core.ts
+        // will use IndexedDB instead of ServerStorageAdapter.
+        return await startDownload(
+          data.html,
+          data.tabUrl,
+          { ...data.downloadOptions, _forceLocal: true },
+          (message: string | { key: string; options?: any }) =>
+            addMessage({
+              action: messageActions.PANEL_MESSAGE,
+              data: { message },
+            }),
+          data.tabId,
+        );
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
 
     default:
       return null;

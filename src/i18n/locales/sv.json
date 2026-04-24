@@ -49,7 +49,9 @@
       "pageDelay": "Fördröjning mellan sidor",
       "includeExternal": "Inkludera externa länkar",
       "fullWebsite": "Ladda ner hela webbplatsen",
-      "fullWebsiteDescription": "Bäst för komplexa webbplatser (laddar ner första nivån av länkade sidor)"
+      "fullWebsiteDescription": "Bäst för komplexa webbplatser (laddar ner första nivån av länkade sidor)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Åtgärder:",

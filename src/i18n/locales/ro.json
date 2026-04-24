@@ -49,7 +49,9 @@
       "pageDelay": "Întârziere între pagini",
       "includeExternal": "Include linkuri externe",
       "fullWebsite": "Descarcă site-ul complet",
-      "fullWebsiteDescription": "Cel mai bun pentru site-uri complexe (descarcă primul nivel de pagini conectate)"
+      "fullWebsiteDescription": "Cel mai bun pentru site-uri complexe (descarcă primul nivel de pagini conectate)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Acțiuni:",

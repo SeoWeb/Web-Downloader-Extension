@@ -49,7 +49,9 @@
       "pageDelay": "Atraso entre páginas",
       "includeExternal": "Incluir links externos",
       "fullWebsite": "Baixar site completo",
-      "fullWebsiteDescription": "Melhor para sites complexos (baixa o primeiro nível de páginas vinculadas)"
+      "fullWebsiteDescription": "Melhor para sites complexos (baixa o primeiro nível de páginas vinculadas)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Ações:",

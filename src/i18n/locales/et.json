@@ -49,7 +49,9 @@
       "pageDelay": "Viivitus lehtede vahel",
       "includeExternal": "Kaasa välised lingid",
       "fullWebsite": "Laadi alla kogu veebileht",
-      "fullWebsiteDescription": "Parim keerukate veebilehtede jaoks (laadib alla lingitud lehtede esimese taseme)"
+      "fullWebsiteDescription": "Parim keerukate veebilehtede jaoks (laadib alla lingitud lehtede esimese taseme)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Tegevused:",

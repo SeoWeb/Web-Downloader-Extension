@@ -49,7 +49,9 @@
       "pageDelay": "Oneskorenie medzi stránkami",
       "includeExternal": "Zahrnúť externé odkazy",
       "fullWebsite": "Stiahnuť celú webovú stránku",
-      "fullWebsiteDescription": "Najlepšie pre zložité weby (stiahne prvú úroveň odkazovaných stránok)"
+      "fullWebsiteDescription": "Najlepšie pre zložité weby (stiahne prvú úroveň odkazovaných stránok)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Akcie:",

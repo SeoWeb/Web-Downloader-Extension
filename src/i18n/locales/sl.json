@@ -49,7 +49,9 @@
       "pageDelay": "Zakasnitev med stranmi",
       "includeExternal": "Vključi zunanje povezave",
       "fullWebsite": "Prenesi celotno spletno mesto",
-      "fullWebsiteDescription": "Najbolje za zapletena spletna mesta (prenese prvo raven povezanih strani)"
+      "fullWebsiteDescription": "Najbolje za zapletena spletna mesta (prenese prvo raven povezanih strani)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Dejanja:",

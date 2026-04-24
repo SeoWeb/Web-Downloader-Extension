@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { MessageAction, messageActions } from "../../common/message";
 import { useTranslation } from "react-i18next";
-import { CheckCircle, FolderOpen, RefreshCcw, Info, ChevronDown } from "lucide-react";
+import { CheckCircle, FolderOpen, RefreshCcw, Info, ChevronDown, Copy, Check, Server, FileText } from "lucide-react";
 
 const ChromeExtensionRating = React.lazy(
   () => import("../../components/ChromeExtensionRating"),
@@ -13,16 +13,23 @@ interface DownloadCompleteProps {
   links: string[];
   action: MessageAction | null;
   reset: (newTabUrl: string) => void;
+  /** (15.4) Server download URL to display with copy button. */
+  serverDownloadUrl?: string | null;
+  /** (15.4) Whether the download is a single-file HTML (affects filename display). */
+  isSingleFile?: boolean;
 }
 
 export function DownloadComplete({
   tabUrl,
   action,
   reset,
+  serverDownloadUrl,
+  isSingleFile,
 }: DownloadCompleteProps) {
   const { t } = useTranslation();
   const [downloadId, setDownloadId] = useState<number | null>(null);
   const [isAlertExpanded, setIsAlertExpanded] = useState<boolean>(true);
+  const [urlCopied, setUrlCopied] = useState<boolean>(false);
 
   // Load alert preference from Chrome storage
   useEffect(() => {
@@ -53,6 +60,18 @@ export function DownloadComplete({
     reset(tabUrl);
   };
 
+  const handleCopyUrl = async () => {
+    if (serverDownloadUrl) {
+      try {
+        await navigator.clipboard.writeText(serverDownloadUrl);
+        setUrlCopied(true);
+        setTimeout(() => setUrlCopied(false), 2000);
+      } catch {
+        // Clipboard API may not be available in all contexts
+      }
+    }
+  };
+
   const handleToggleAlert = () => {
     setIsAlertExpanded(!isAlertExpanded);
   };
@@ -80,6 +99,40 @@ export function DownloadComplete({
           <h2 className="text-2xl font-bold text-slate-800">{t('status.completeTitle')}</h2>
           <p className="text-slate-500 mt-2">{t('status.zipLocation')}</p>
         </div>
+
+        {/* (15.4) Server download URL with copy button */}
+        {serverDownloadUrl && (
+          <div className="w-full bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <Server className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+              <span className="text-sm font-medium text-indigo-900">{t('status.serverDownloadUrl')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs text-indigo-700 bg-white/60 rounded px-3 py-2 break-all select-all">
+                {serverDownloadUrl}
+              </code>
+              <button
+                onClick={handleCopyUrl}
+                className="flex-shrink-0 p-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 transition-colors cursor-pointer"
+                title={t('status.copyUrl')}
+              >
+                {urlCopied ? (
+                  <Check className="w-4 h-4 text-green-600" />
+                ) : (
+                  <Copy className="w-4 h-4 text-indigo-600" />
+                )}
+              </button>
+            </div>
+            {isSingleFile && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="text-xs text-indigo-600">
+                  {t('filter.singleFile')}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Extraction Alert - Accordion */}
         <div className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg overflow-hidden">

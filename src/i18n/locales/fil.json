@@ -49,7 +49,9 @@
       "pageDelay": "Pagkaantala sa pagitan ng mga pahina",
       "includeExternal": "Isama ang mga panlabas na link",
       "fullWebsite": "I-download ang buong website",
-      "fullWebsiteDescription": "Pinakamahusay para sa mga kumplikadong website (idina-download ang unang antas ng mga naka-link na pahina)"
+      "fullWebsiteDescription": "Pinakamahusay para sa mga kumplikadong website (idina-download ang unang antas ng mga naka-link na pahina)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Mga Aksyon:",

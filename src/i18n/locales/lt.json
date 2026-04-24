@@ -49,7 +49,9 @@
       "pageDelay": "Delsa tarp puslapių",
       "includeExternal": "Įtraukti išorines nuorodas",
       "fullWebsite": "Atsisiųsti visą svetainę",
-      "fullWebsiteDescription": "Geriausiai tinka sudėtingoms svetainėms (atsisiunčia pirmąjį susietų puslapių lygį)"
+      "fullWebsiteDescription": "Geriausiai tinka sudėtingoms svetainėms (atsisiunčia pirmąjį susietų puslapių lygį)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Veiksmai:",

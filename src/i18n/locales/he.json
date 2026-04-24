@@ -49,7 +49,9 @@
       "pageDelay": "השהייה בין דפים",
       "includeExternal": "כלול קישורים חיצוניים",
       "fullWebsite": "הורד את כל האתר",
-      "fullWebsiteDescription": "הטוב ביותר לאתרים מורכבים (מוריד את הרמה הראשונה של דפים מקושרים)"
+      "fullWebsiteDescription": "הטוב ביותר לאתרים מורכבים (מוריד את הרמה הראשונה של דפים מקושרים)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "פעולות:",

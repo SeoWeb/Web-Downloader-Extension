@@ -49,7 +49,9 @@
       "pageDelay": "Aizkave starp lapām",
       "includeExternal": "Iekļaut ārējās saites",
       "fullWebsite": "Lejupielādēt visu vietni",
-      "fullWebsiteDescription": "Vislabāk piemērots sarežģītām vietnēm (lejupielādē saistīto lapu pirmo līmeni)"
+      "fullWebsiteDescription": "Vislabāk piemērots sarežģītām vietnēm (lejupielādē saistīto lapu pirmo līmeni)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Darbības:",

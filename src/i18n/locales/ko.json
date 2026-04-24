@@ -49,7 +49,9 @@
       "pageDelay": "페이지 간 지연",
       "includeExternal": "외부 링크 포함",
       "fullWebsite": "전체 웹사이트 다운로드",
-      "fullWebsiteDescription": "복잡한 웹사이트에 최적 (연결된 페이지의 첫 번째 레벨을 다운로드함)"
+      "fullWebsiteDescription": "복잡한 웹사이트에 최적 (연결된 페이지의 첫 번째 레벨을 다운로드함)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "작업:",

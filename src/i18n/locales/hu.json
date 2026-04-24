@@ -49,7 +49,9 @@
       "pageDelay": "Késleltetés az oldalak között",
       "includeExternal": "Külső hivatkozások belefoglalása",
       "fullWebsite": "Teljes webhely letöltése",
-      "fullWebsiteDescription": "Legjobb összetett webhelyekhez (a hivatkozott oldalak első szintjét tölti le)"
+      "fullWebsiteDescription": "Legjobb összetett webhelyekhez (a hivatkozott oldalak első szintjét tölti le)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Műveletek:",

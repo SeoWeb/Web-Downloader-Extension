@@ -1,0 +1,44 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - MYSQL_CONNECTION_STRING=mysql+aiomysql://webdownloader:webdownloader_password@db:3306/website_downloader
+      - STORAGE_ROOT=/app/storage
+      - CORS_ALLOWED_ORIGINS=[]
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: website_downloader
+      MYSQL_USER: webdownloader
+      MYSQL_PASSWORD: webdownloader_password
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=256M
+      --max-allowed-packet=64M
+    volumes:
+      - mysql_data:/var/lib/mysql
+    # Exposing MySQL port for development/debugging only.
+    # Remove the 'ports' mapping in production to avoid external DB access.
+    ports:
+      - "33060:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  storage_data:

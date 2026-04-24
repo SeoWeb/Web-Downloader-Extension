@@ -49,7 +49,9 @@
       "pageDelay": "Délai entre les pages",
       "includeExternal": "Inclure les liens externes",
       "fullWebsite": "Télécharger le site web complet",
-      "fullWebsiteDescription": "Idéal pour les sites web complexes (télécharge le premier niveau des pages liées)"
+      "fullWebsiteDescription": "Idéal pour les sites web complexes (télécharge le premier niveau des pages liées)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Actions :",

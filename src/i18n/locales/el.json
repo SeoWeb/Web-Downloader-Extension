@@ -49,7 +49,9 @@
       "pageDelay": "Καθυστέρηση μεταξύ σελίδων",
       "includeExternal": "Συμπερίληψη εξωτερικών συνδέσμων",
       "fullWebsite": "Λήψη πλήρους ιστοσελίδας",
-      "fullWebsiteDescription": "Καλύτερο για πολύπλοκες ιστοσελίδες (κατεβάζει το πρώτο επίπεδο συνδεδεμένων σελίδων)"
+      "fullWebsiteDescription": "Καλύτερο για πολύπλοκες ιστοσελίδες (κατεβάζει το πρώτο επίπεδο συνδεδεμένων σελίδων)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Ενέργειες:",

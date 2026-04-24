@@ -49,7 +49,9 @@
       "pageDelay": "Độ trễ giữa các trang",
       "includeExternal": "Bao gồm các liên kết bên ngoài",
       "fullWebsite": "Tải xuống toàn bộ trang web",
-      "fullWebsiteDescription": "Tốt nhất cho các trang web phức tạp (tải xuống cấp độ đầu tiên của các trang được liên kết)"
+      "fullWebsiteDescription": "Tốt nhất cho các trang web phức tạp (tải xuống cấp độ đầu tiên của các trang được liên kết)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Hành động:",

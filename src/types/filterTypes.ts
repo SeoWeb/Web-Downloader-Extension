@@ -16,6 +16,10 @@ export interface FilterOptions {
   linkedPagesDelay?: number; // Default: 500ms (delay between page loads)
   linkedPagesIncludeExternal?: boolean; // Default: false
   linkedPagesTimeout?: number; // Default: 30000ms (per page)
+
+  // Internal flag: force local mode for this download even when VITE_SERVER_URL
+  // is set. Used by SERVER_LOCAL_FALLBACK to rerun in local mode (task 13.2).
+  _forceLocal?: boolean;
 }
 
 

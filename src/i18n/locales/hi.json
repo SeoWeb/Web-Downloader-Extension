@@ -49,7 +49,9 @@
       "pageDelay": "पृष्ठों के बीच देरी",
       "includeExternal": "बाहरी लिंक शामिल करें",
       "fullWebsite": "पूरी वेबसाइट डाउनलोड करें",
-      "fullWebsiteDescription": "जटिल वेबसाइटों के लिए सर्वश्रेष्ठ (लिंक किए गए पेजों का पहला स्तर डाउनलोड करता है)"
+      "fullWebsiteDescription": "जटिल वेबसाइटों के लिए सर्वश्रेष्ठ (लिंक किए गए पेजों का पहला स्तर डाउनलोड करता है)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "क्रियाएं:",

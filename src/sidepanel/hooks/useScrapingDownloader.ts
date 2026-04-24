@@ -1,10 +1,13 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   handleStartScroll,
   handleStartDownload,
 } from "../utils/messageHandlers";
 import { mergeDownloadResponse } from "../utils/downloadUtils";
+import { sendMessageToBackground } from "../../client/message";
+import { messageActions } from "../../common/message";
+import { IS_SERVER_MODE } from "../../common/server-mode";
 
 export interface DownloadOptions {
   downloadHTML: boolean;
@@ -45,6 +48,19 @@ export function useScrapingDownloader({
     useState<ScrollingResponse | null>(null);
   const [scrollAttempts, setScrollAttempts] = useState<number>(0);
 
+  // (13.3) In server mode, track the server session ID and scroll index
+  // for streaming HTML chunks during scrolling instead of accumulating
+  // the full HTML in downloadResponse.
+  const serverSessionIdRef = useRef<string | null>(null);
+  const serverScrollIndexRef = useRef<number>(0);
+  // Track whether we've created a server session during this scraping session
+  const serverSessionCreatedRef = useRef<boolean>(false);
+  // In server mode, track the last scroll response's HTML for resource extraction
+  // (we still need it for the download phase, but we don't accumulate ALL chunks)
+  const lastHtmlRef = useRef<string>("");
+  // Flag: scrolling is done and HTML has been fully streamed to the server
+  const [serverStreamingDone, setServerStreamingDone] = useState<boolean>(false);
+
   const startScrolling = useCallback(async (): Promise<
     ScrollingResponse | undefined
   > => {
@@ -71,11 +87,66 @@ export function useScrapingDownloader({
       return;
     }
 
+    // (13.3) In server mode, create a server session before the first scroll
+    // so that HTML chunks can be streamed in real-time.
+    if (IS_SERVER_MODE && !serverSessionCreatedRef.current) {
+      try {
+        const result = await sendMessageToBackground(
+          messageActions.SERVER_CREATE_SESSION,
+          {
+            url: tabUrl,
+            options: {
+              singleFile: downloadOptions?.singleFile ?? false,
+              retentionDays: 7,
+            },
+            setActive: true, // Store as active session in background
+          },
+        );
+        if (result?.success && result.sessionId) {
+          serverSessionIdRef.current = result.sessionId;
+          serverScrollIndexRef.current = 0;
+          serverSessionCreatedRef.current = true;
+        } else {
+          // Failed to create server session — fall back to local accumulation
+          setMessages((prev) => [...prev, { key: "status.serverSessionFailed", options: { error: result?.error } }]);
+        }
+      } catch {
+        // Failed to create server session — fall back to local accumulation
+      }
+    }
+
     const response = await startScrolling();
 
     if (response?.height && response.html) {
+      // (13.3) In server mode, stream the HTML chunk to the server immediately
+      // instead of accumulating it in downloadResponse. This prevents memory
+      // buildup for long pages with many scroll iterations.
+      if (IS_SERVER_MODE && serverSessionIdRef.current) {
+        try {
+          await sendMessageToBackground(
+            messageActions.SERVER_UPLOAD_HTML_CHUNK,
+            {
+              sessionId: serverSessionIdRef.current,
+              html: response.html,
+              scrollIndex: serverScrollIndexRef.current++,
+              pageType: "main",
+              pageUrl: tabUrl,
+            },
+          );
+        } catch {
+          // Upload failed — continue scrolling; the download phase will
+          // handle the error when it tries to finalize the session.
+        }
+        // Keep only the last HTML for resource extraction (not accumulated)
+        lastHtmlRef.current = response.html;
+      }
+
       setDownloadResponse((prev) => {
-        const data = mergeDownloadResponse(prev, response);
+        // (13.3) In server mode, don't accumulate HTML — only track scroll metadata.
+        // The HTML has already been streamed to the server.
+        const data = IS_SERVER_MODE && serverSessionIdRef.current
+          ? { top: response.top, height: response.height, viewportHeight: response.viewportHeight }
+          : mergeDownloadResponse(prev, response);
 
         // Check if we've reached the bottom of the page
         const prevTop = prev?.top || 0;
@@ -110,22 +181,38 @@ export function useScrapingDownloader({
       setIsScraping(false);
       setMessages((prev) => [...prev, { key: "status.failed" }]);
     }
-  }, [tabId, startScrolling, setIsScraping, setMessages, scrollAttempts]);
+  }, [tabId, tabUrl, startScrolling, setIsScraping, setMessages, scrollAttempts, downloadOptions?.singleFile]);
 
   useEffect(() => {
     if (isScraping) {
       scrape();
-    } else if (downloadResponse?.html && downloadOptions) {
-      startDownload(downloadResponse.html)
-        .then(() => {
-          // Don't reset downloadResponse here - keep it to maintain filter hidden state
-          // It will be cleared when DOWNLOAD_COMPLETE or DOWNLOAD_CANCELLED message is received
-        })
-        .catch(() => {
-          setMessages((prev) => [...prev, { key: "status.failed" }]);
-          // Reset on error
-          setDownloadResponse(null);
-        });
+    } else if (downloadOptions) {
+      // (13.3) In server mode, HTML chunks have already been streamed to
+      // the server during scrolling. We pass the LAST scroll response's HTML
+      // to startDownload so that download-core.ts can extract resource URLs
+      // from it. The actual HTML content is already on the server.
+      //
+      // In local mode, the full accumulated HTML is in downloadResponse.html.
+      const htmlForDownload = IS_SERVER_MODE && serverSessionIdRef.current
+        ? lastHtmlRef.current
+        : downloadResponse?.html;
+
+      if (htmlForDownload) {
+        startDownload(htmlForDownload)
+          .then(() => {
+            // (13.3) Mark streaming as done in server mode
+            if (IS_SERVER_MODE && serverSessionIdRef.current) {
+              setServerStreamingDone(true);
+            }
+            // Don't reset downloadResponse here - keep it to maintain filter hidden state
+            // It will be cleared when DOWNLOAD_COMPLETE or DOWNLOAD_CANCELLED message is received
+          })
+          .catch(() => {
+            setMessages((prev) => [...prev, { key: "status.failed" }]);
+            // Reset on error
+            setDownloadResponse(null);
+          });
+      }
     }
   }, [
     isScraping,
@@ -140,7 +227,19 @@ export function useScrapingDownloader({
   return {
     downloadResponse,
     scrollAttempts,
-    setDownloadResponse,
+    setDownloadResponse: (value: React.SetStateAction<ScrollingResponse | null>) => {
+      setDownloadResponse(value);
+      // (13.3) Reset server streaming state when downloadResponse is cleared
+      // (e.g., when a new download starts or the current one completes/cancels)
+      if (value === null) {
+        serverSessionIdRef.current = null;
+        serverScrollIndexRef.current = 0;
+        serverSessionCreatedRef.current = false;
+        lastHtmlRef.current = "";
+        setServerStreamingDone(false);
+      }
+    },
     setScrollAttempts,
+    serverStreamingDone,
   };
 }

@@ -49,7 +49,9 @@
       "pageDelay": "Odgoda između stranica",
       "includeExternal": "Uključi vanjske poveznice",
       "fullWebsite": "Preuzmi cijelu web stranicu",
-      "fullWebsiteDescription": "Najbolje za složene web stranice (preuzima prvu razinu povezanih stranica)"
+      "fullWebsiteDescription": "Najbolje za složene web stranice (preuzima prvu razinu povezanih stranica)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Radnje:",

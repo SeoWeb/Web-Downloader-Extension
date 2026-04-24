@@ -49,7 +49,9 @@
       "pageDelay": "Kašnjenje između stranica",
       "includeExternal": "Uključi spoljne veze",
       "fullWebsite": "Preuzmite ceo veb sajt",
-      "fullWebsiteDescription": "Najbolje za složene veb sajtove (preuzima prvi nivo povezanih stranica)"
+      "fullWebsiteDescription": "Najbolje za složene veb sajtove (preuzima prvi nivo povezanih stranica)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Акције:",

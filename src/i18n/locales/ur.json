@@ -49,7 +49,9 @@
       "pageDelay": "صفحات کے درمیان تاخیر",
       "includeExternal": "بیرونی روابط شامل کریں",
       "fullWebsite": "پوری ویب سائٹ ڈاؤن لوڈ کریں",
-      "fullWebsiteDescription": "پیچیدہ ویب سائٹس کے لیے بہترین (منسلک صفحات کا پہلا لیول ڈاؤن لوڈ کرتا ہے)"
+      "fullWebsiteDescription": "پیچیدہ ویب سائٹس کے لیے بہترین (منسلک صفحات کا پہلا لیول ڈاؤن لوڈ کرتا ہے)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "اقدامات:",

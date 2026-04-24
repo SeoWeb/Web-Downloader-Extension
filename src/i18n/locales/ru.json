@@ -49,7 +49,9 @@
       "pageDelay": "Задержка между страницами",
       "includeExternal": "Включить внешние ссылки",
       "fullWebsite": "Скачать весь веб-сайт",
-      "fullWebsiteDescription": "Лучше всего подходит для сложных веб-сайтов (скачивает первый уровень связанных страниц)"
+      "fullWebsiteDescription": "Лучше всего подходит для сложных веб-сайтов (скачивает первый уровень связанных страниц)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Действия:",

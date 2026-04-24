@@ -49,7 +49,9 @@
       "pageDelay": "Kuchelewa kati ya kurasa",
       "includeExternal": "Jumuisha viungo vya nje",
       "fullWebsite": "Pakua tovuti kamili",
-      "fullWebsiteDescription": "Bora kwa tovuti ngumu (inapakua kiwango cha kwanza cha kurasa zilizounganishwa)"
+      "fullWebsiteDescription": "Bora kwa tovuti ngumu (inapakua kiwango cha kwanza cha kurasa zilizounganishwa)",
+      "serverMode": "Server mode",
+      "insecureServerWarning": "Not using HTTPS"
     },
     "actions": {
       "title": "Vitendo:",

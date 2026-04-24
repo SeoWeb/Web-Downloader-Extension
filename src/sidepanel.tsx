@@ -15,6 +15,15 @@ import { useScrapingDownloader } from "./sidepanel/hooks/useScrapingDownloader";
 import { usePermissions } from "./common/hooks/usePermissions";
 import { GlobalPermissionRequest } from "./common/components/GlobalPermissionRequest";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { IS_SERVER_MODE } from "./common/server-mode";
+import {
+  ServerModeState,
+  initialServerModeState,
+  applyServerModeMessage,
+} from "./sidepanel/server-mode-state";
+
+// ServerModeState type and transition logic are imported from
+// server-mode-state.ts to avoid duplication and enable unit testing.
 
 // Keep track of blob URLs created by this side panel instance so they can be revoked later
 const activeBlobUrls = new Map<number, string>();
@@ -71,6 +80,8 @@ export default function SidePanel() {
   const [isScrapingLinkedPages, setIsScrapingLinkedPages] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
+  // (15.1–15.7) Server-mode UI state
+  const [serverModeState, setServerModeState] = useState<ServerModeState>(initialServerModeState);
   // downloadResponse and scrollAttempts are now managed by useScrapingDownloader hook
   const [downloadOptions, setDownloadOptions] = useState<{
     downloadHTML: boolean;
@@ -162,6 +173,17 @@ export default function SidePanel() {
             setIsScrapingLinkedPages(true);
           } else if (data.message?.key === "status.creatingPackage") {
             setIsScrapingLinkedPages(false);
+          }
+
+          // (15.7) Track server-mode phase transitions from messages.
+          // Delegates to applyServerModeMessage() pure function (testable).
+          if (IS_SERVER_MODE) {
+            const msgKey = data.message?.key;
+            if (msgKey) {
+              setServerModeState((prev) =>
+                applyServerModeMessage(prev, msgKey, data.message?.options),
+              );
+            }
           }
           // Update completion based on message type if needed
           break;
@@ -273,6 +295,7 @@ export default function SidePanel() {
       setDownloadResponse(null); // Use setter from hook
       setScrollAttempts(0); // Use setter from hook
       setDownloadOptions(null);
+      setServerModeState(initialServerModeState); // Reset server-mode state
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [setDownloadResponse, setScrollAttempts],
@@ -283,6 +306,10 @@ export default function SidePanel() {
     setIsScraping(true);
     setDownloadOptions(options);
     setMessages((prev) => [...prev, { key: "status.scraping" }]);
+    // (15.7) Track singleFile option in server-mode state
+    if (IS_SERVER_MODE) {
+      setServerModeState((prev) => ({ ...prev, phase: 'scraping', isSingleFile: options.singleFile }));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Keep dependencies minimal
 
@@ -344,6 +371,33 @@ export default function SidePanel() {
         downloadResponse={downloadResponse}
         setIsScraping={setIsScraping}
         setIsPaused={setIsPaused}
+        serverModeState={IS_SERVER_MODE ? serverModeState : undefined}
+        onRetryServer={() => {
+          // Re-trigger download with same options
+          if (downloadOptions) {
+            setIsScraping(true);
+            setMessages((prev) => [...prev, { key: "status.scraping" }]);
+            setServerModeState((prev) => ({ ...prev, phase: 'scraping', serverError: null }));
+          }
+        }}
+        onLocalFallback={() => {
+          // Send SERVER_LOCAL_FALLBACK message to background to re-run in local mode
+          import("./client/message").then(({ sendMessageToBackground }) => {
+            sendMessageToBackground(messageActions.SERVER_LOCAL_FALLBACK, {
+              tabId,
+              tabUrl,
+            });
+          });
+          setServerModeState(initialServerModeState);
+        }}
+        onDownloadFromServer={() => {
+          if (serverModeState.serverDownloadUrl) {
+            chrome.downloads.download({
+              url: serverModeState.serverDownloadUrl,
+              saveAs: true,
+            });
+          }
+        }}
       />
       <DownloadComplete
         tabId={tabId}
@@ -351,6 +405,8 @@ export default function SidePanel() {
         links={links}
         action={action}
         reset={reset}
+        serverDownloadUrl={IS_SERVER_MODE ? serverModeState.serverDownloadUrl : undefined}
+        isSingleFile={IS_SERVER_MODE ? serverModeState.isSingleFile : undefined}
       />
     </div>
   );
