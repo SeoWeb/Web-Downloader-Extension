@@ -14,7 +14,10 @@
       "memoryPressure": "ไม่สามารถเริ่มการดาวน์โหลดได้เนื่องจากหน่วยความจำไม่เพียงพออย่างวิกฤต โปรดลองใหม่อีกครั้งในภายหลัง",
       "unknownError": "ข้อผิดพลาดที่ไม่ทราบสาเหตุ",
       "invalidTabId": "รหัสแท็บไม่ถูกต้อง",
-      "maxScrollAttempts": "ถึงจำนวนครั้งที่เลื่อนสูงสุดแล้ว"
+      "maxScrollAttempts": "ถึงจำนวนครั้งที่เลื่อนสูงสุดแล้ว",
+      "panelUnavailable": "ไม่สามารถดาวน์โหลดให้เสร็จสมบูรณ์ได้เนื่องจากแผงส่วนขยายถูกปิดหรือใช้งานไม่ได้ โปรดเปิดแผงนี้ไว้ขณะดาวน์โหลดและลองอีกครั้ง",
+      "panelUnavailableTitle": "ต้องการแผงส่วนขยาย",
+      "panelUnavailableTip": "เพื่อป้องกันปัญหานี้ ให้เปิดแผงนี้ไว้และหลีกเลี่ยงการสลับแท็บระหว่างการดาวน์โหลด"
     },
     "filter": {
       "title": "กรองสิ่งที่คุณต้องการดาวน์โหลด",
@@ -50,16 +53,16 @@
       "includeExternal": "รวมลิงก์ภายนอก",
       "fullWebsite": "ดาวน์โหลดเว็บไซต์เต็มรูปแบบ",
       "fullWebsiteDescription": "ดีที่สุดสำหรับเว็บไซต์ที่ซับซ้อน (ดาวน์โหลดระดับแรกของหน้าที่เชื่อมโยง)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "โหมดเซิร์ฟเวอร์",
+      "insecureServerWarning": "ไม่ได้ใช้ HTTPS"
     },
     "actions": {
       "title": "การดำเนินการ:",
       "stop": "หยุด",
       "showInFolder": "แสดงในโฟลเดอร์",
       "downloadAnother": "ดาวน์โหลดอื่น",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "ดำเนินการต่อ",
+      "pause": "หยุดชั่วคราว"
     },
     "status": {
       "waiting": "กำลังรอการเชื่อมต่อ...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "กำลังสแกรปหน้า {{current}} จาก {{total}}",
       "linkedPagesComplete": "การสแกรปหน้าที่เชื่อมโยงเสร็จสิ้น: {{succeeded}} สำเร็จ, {{failed}} ล้มเหลว",
       "linkedPagesFailed": "{{count}} หน้าล้มเหลวในการสแกรป",
-      "scraperPaused": "หยุดการดึงข้อมูลชั่วคราว"
+      "scraperPaused": "หยุดการดึงข้อมูลชั่วคราว",
+      "uploadProgress": "กำลังอัปโหลดทรัพยากร: {{completed}}/{{total}}",
+      "uploadingResources": "กำลังอัปโหลดทรัพยากรไปยังเซิร์ฟเวอร์...",
+      "sendingScrapeComplete": "กำลังเสร็จสิ้นการสแกรป...",
+      "scrapeComplete": "การสแกรปเสร็จสมบูรณ์",
+      "waitingForUploads": "กำลังรอให้การอัปโหลดเสร็จสมบูรณ์...",
+      "finalizingServer": "กำลังเสร็จสิ้นบนเซิร์ฟเวอร์...",
+      "assemblingServer": "กำลังประกอบบนเซิร์ฟเวอร์...",
+      "assemblyProgress": "กำลังประกอบ: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "กำลังรวม HTML",
+      "assemblyPhaseConverting": "กำลังแปลง URL",
+      "assemblyPhaseZipping": "กำลังสร้าง ZIP",
+      "assemblyPhaseInlining": "กำลังฝังทรัพยากร",
+      "serverFallbackOffer": "ปัญหาเซิร์ฟเวอร์: {{reason}}",
+      "serverError": "ข้อผิดพลาดของเซิร์ฟเวอร์: {{error}}",
+      "serverUnavailable": "เซิร์ฟเวอร์ไม่พร้อมใช้งาน",
+      "assemblyTimeout": "การประกอบหมดเวลา",
+      "assemblyFailed": "การประกอบล้มเหลว",
+      "authFailed": "การตรวจสอบสิทธิ์ล้มเหลว",
+      "retryServer": "ลองอีกครั้ง",
+      "downloadLocally": "ดาวน์โหลดในเครื่อง",
+      "localFallbackWarning": "การกลับสู่โหมดท้องถิ่นต้องสแกรปหน้าใหม่ตั้งแต่เริ่มต้น ดำเนินการต่อ?",
+      "downloadFromServer": "ดาวน์โหลดจากเซิร์ฟเวอร์",
+      "serverDownloadUrl": "URL การดาวน์โหลดจากเซิร์ฟเวอร์",
+      "copyUrl": "คัดลอก URL",
+      "urlCopied": "คัดลอก URL แล้ว!",
+      "serverSessionFailed": "ล้มเหลวในการสร้างเซสชันเซิร์ฟเวอร์: {{error}}",
+      "memoryWarningServerMode": "คำเตือนหน่วยความจำต่ำ (เหลือ {{availableMB}}MB) — โหมดเซิร์ฟเวอร์กำลังทำงาน",
+      "serverModeActive": "โหมดเซิร์ฟเวอร์กำลังทำงาน"
     },
     "permissions": {
       "storage": {

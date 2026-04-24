@@ -14,7 +14,10 @@
       "memoryPressure": "Kan inte starta nedladdning på grund av kritiskt minnestryck. Försök igen senare.",
       "unknownError": "Okänt fel",
       "invalidTabId": "Ogiltigt flik-ID",
-      "maxScrollAttempts": "Maximalt antal rullningsförsök uppnått"
+      "maxScrollAttempts": "Maximalt antal rullningsförsök uppnått",
+      "panelUnavailable": "Nedladdningen kunde inte slutföras eftersom tilläggspanelen stängdes eller blev otillgänglig. Vänligen håll denna panel öppen under nedladdning och försök igen.",
+      "panelUnavailableTitle": "Tilläggspanel krävs",
+      "panelUnavailableTip": "För att förhindra detta, håll denna panel öppen och undvik att byta flikar under nedladdning."
     },
     "filter": {
       "title": "Filtrera vad du vill ladda ner",
@@ -50,16 +53,16 @@
       "includeExternal": "Inkludera externa länkar",
       "fullWebsite": "Ladda ner hela webbplatsen",
       "fullWebsiteDescription": "Bäst för komplexa webbplatser (laddar ner första nivån av länkade sidor)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Serverläge",
+      "insecureServerWarning": "Använder inte HTTPS"
     },
     "actions": {
       "title": "Åtgärder:",
       "stop": "Stoppa",
       "showInFolder": "Visa i mapp",
       "downloadAnother": "Ladda ner en annan",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Återuppta",
+      "pause": "Paus"
     },
     "status": {
       "waiting": "Väntar på anslutning...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Skrapar sida {{current}} av {{total}}",
       "linkedPagesComplete": "Skrapning av länkade sidor klar: {{succeeded}} lyckades, {{failed}} misslyckades",
       "linkedPagesFailed": "{{count}} sidor kunde inte skrapas",
-      "scraperPaused": "Skrapning pausad"
+      "scraperPaused": "Skrapning pausad",
+      "uploadProgress": "Laddar upp resurser: {{completed}}/{{total}}",
+      "uploadingResources": "Laddar upp resurser till server...",
+      "sendingScrapeComplete": "Slutför skrapning...",
+      "scrapeComplete": "Skrapning slutförd",
+      "waitingForUploads": "Väntar på att uppladdningar slutförs...",
+      "finalizingServer": "Slutför på server...",
+      "assemblingServer": "Monterar på server...",
+      "assemblyProgress": "Montering: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Sammanfogar HTML",
+      "assemblyPhaseConverting": "Konverterar URL:er",
+      "assemblyPhaseZipping": "Skapar ZIP",
+      "assemblyPhaseInlining": "Bäddar in resurser",
+      "serverFallbackOffer": "Serverproblem: {{reason}}",
+      "serverError": "Serverfel: {{error}}",
+      "serverUnavailable": "Server otillgänglig",
+      "assemblyTimeout": "Montering tidsgräns överskriden",
+      "assemblyFailed": "Montering misslyckades",
+      "authFailed": "Autentisering misslyckades",
+      "retryServer": "Försök igen",
+      "downloadLocally": "Ladda ner lokalt",
+      "localFallbackWarning": "Att återgå till lokalt läge kräver att sidan skrapas från början. Fortsätt?",
+      "downloadFromServer": "Ladda ner från server",
+      "serverDownloadUrl": "Servernedladdnings-URL",
+      "copyUrl": "Kopiera URL",
+      "urlCopied": "URL kopierad!",
+      "serverSessionFailed": "Kunde inte skapa serversession: {{error}}",
+      "memoryWarningServerMode": "Låg minnesvarning ({{availableMB}}MB tillgängligt) — serverläge aktivt",
+      "serverModeActive": "Serverläge aktivt"
     },
     "permissions": {
       "storage": {

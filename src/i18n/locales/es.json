@@ -14,7 +14,10 @@
       "memoryPressure": "No se puede iniciar la descarga debido a la presión crítica de la memoria. Inténtelo de nuevo más tarde.",
       "unknownError": "Error desconocido",
       "invalidTabId": "ID de pestaña no válido",
-      "maxScrollAttempts": "Se alcanzó el número máximo de intentos de desplazamiento"
+      "maxScrollAttempts": "Se alcanzó el número máximo de intentos de desplazamiento",
+      "panelUnavailable": "No se pudo completar la descarga porque el panel de la extensión se cerró o dejó de estar disponible. Mantenga este panel abierto durante la descarga e inténtelo de nuevo.",
+      "panelUnavailableTitle": "Panel de extensión requerido",
+      "panelUnavailableTip": "Para evitar esto, mantenga este panel abierto y evite cambiar de pestaña durante la descarga."
     },
     "filter": {
       "title": "Filtra lo que quieres descargar",
@@ -50,16 +53,16 @@
       "includeExternal": "Incluir enlaces externos",
       "fullWebsite": "Descargar sitio web completo",
       "fullWebsiteDescription": "Lo mejor para sitios web complejos (descarga el primer nivel de páginas vinculadas)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Modo servidor",
+      "insecureServerWarning": "Sin HTTPS"
     },
     "actions": {
       "title": "Acciones:",
       "stop": "Detener",
       "showInFolder": "Mostrar en carpeta",
       "downloadAnother": "Descargar otro",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Reanudar",
+      "pause": "Pausar"
     },
     "status": {
       "waiting": "Esperando conexión...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Extrayendo página {{current}} de {{total}}",
       "linkedPagesComplete": "Extracción de páginas enlazadas completada: {{succeeded}} exitosas, {{failed}} fallidas",
       "linkedPagesFailed": "{{count}} páginas no se pudieron extraer",
-      "scraperPaused": "Scraping en pausa"
+      "scraperPaused": "Scraping en pausa",
+      "uploadProgress": "Subiendo recursos: {{completed}}/{{total}}",
+      "uploadingResources": "Subiendo recursos al servidor...",
+      "sendingScrapeComplete": "Finalizando scraping...",
+      "scrapeComplete": "Scraping completado",
+      "waitingForUploads": "Esperando a que se completen las subidas...",
+      "finalizingServer": "Finalizando en el servidor...",
+      "assemblingServer": "Ensamblado en el servidor...",
+      "assemblyProgress": "Ensamblado: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Combinando HTML",
+      "assemblyPhaseConverting": "Convirtiendo URL",
+      "assemblyPhaseZipping": "Creando ZIP",
+      "assemblyPhaseInlining": "Insertando recursos",
+      "serverFallbackOffer": "Problema del servidor: {{reason}}",
+      "serverError": "Error del servidor: {{error}}",
+      "serverUnavailable": "Servidor no disponible",
+      "assemblyTimeout": "Tiempo de ensamblado agotado",
+      "assemblyFailed": "Ensamblado fallido",
+      "authFailed": "Autenticación fallida",
+      "retryServer": "Reintentar",
+      "downloadLocally": "Descargar localmente",
+      "localFallbackWarning": "Volver al modo local requiere volver a scrapear la página desde cero. ¿Continuar?",
+      "downloadFromServer": "Descargar del servidor",
+      "serverDownloadUrl": "URL de descarga del servidor",
+      "copyUrl": "Copiar URL",
+      "urlCopied": "¡URL copiada!",
+      "serverSessionFailed": "Error al crear la sesión del servidor: {{error}}",
+      "memoryWarningServerMode": "Advertencia de memoria baja ({{availableMB}}MB disponible) — modo servidor activo",
+      "serverModeActive": "Modo servidor activo"
     },
     "permissions": {
       "storage": {

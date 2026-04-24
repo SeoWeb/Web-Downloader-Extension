@@ -14,7 +14,10 @@
       "memoryPressure": "গুরুতর মেমরি চাপের কারণে ডাউনলোড শুরু করা যাচ্ছে না। অনুগ্রহ করে পরে আবার চেষ্টা করুন।",
       "unknownError": "অজানা ত্রুটি",
       "invalidTabId": "अকার্যকর ট্যাব আইডি",
-      "maxScrollAttempts": "সর্বাধিক স্ক্রোল প্রচেষ্টা পৌঁছেছে"
+      "maxScrollAttempts": "সর্বাধিক স্ক্রোল প্রচেষ্টা পৌঁছেছে",
+      "panelUnavailable": "ডাউনলোড সম্পন্ন হতে পারেনি কারণ এক্সটেনশন প্যানেল বন্ধ হয়ে গেছে বা অনুপলব্ধ হয়েছে। ডাউনলোডের সময় এই প্যানেলটি খোলা রাখুন এবং আবার চেষ্টা করুন।",
+      "panelUnavailableTitle": "এক্সটেনশন প্যানেল প্রয়োজন",
+      "panelUnavailableTip": "এটি এড়াতে, ডাউনলোডের সময় এই প্যানেলটি খোলা রাখুন এবং ট্যাব পরিবর্তন করবেন না।"
     },
     "filter": {
       "title": "আপনি যা ডাউনলোড করতে চান তা ফিল্টার করুন",
@@ -50,16 +53,16 @@
       "includeExternal": "বাহ্যিক লিঙ্ক অন্তর্ভুক্ত করুন",
       "fullWebsite": "संपूर्ण ওয়েবসাইট ডাউনলোড করুন",
       "fullWebsiteDescription": "জটিল ওয়েবসাইটের জন্য সেরা (লিঙ্ক করা পৃষ্ঠাগুলির প্রথম স্তর ডাউনলোড করে)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "সার্ভার মোড",
+      "insecureServerWarning": "HTTPS ব্যবহার করা হচ্ছে না"
     },
     "actions": {
       "title": "অ্যাকশন:",
       "stop": "থামুন",
       "showInFolder": "ফোল্ডারে দেখান",
       "downloadAnother": "অন্যটি ডাউনলোড করুন",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "পুনরায় শুরু",
+      "pause": "বিরতি"
     },
     "status": {
       "waiting": "সংযোগের জন্য অপেক্ষা করা হচ্ছে...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "পৃষ্ঠা {{current}}/{{total}} স্ক্র্যাপ করা হচ্ছে",
       "linkedPagesComplete": "লিঙ্কযুক্ত পৃষ্ঠা স্ক্র্যাপিং সম্পূর্ণ: {{succeeded}} সফল, {{failed}} ব্যর্থ",
       "linkedPagesFailed": "{{count}} পৃষ্ঠা স্ক্র্যাপ করতে ব্যর্থ",
-      "scraperPaused": "স্ক্র্যাপিং থামানো হয়েছে"
+      "scraperPaused": "স্ক্র্যাপিং থামানো হয়েছে",
+      "uploadProgress": "রিসোর্স আপলোড: {{completed}}/{{total}}",
+      "uploadingResources": "সার্ভারে রিসোর্স আপলোড হচ্ছে...",
+      "sendingScrapeComplete": "স্ক্র্যাপ চূড়ান্ত করা হচ্ছে...",
+      "scrapeComplete": "স্ক্র্যাপ সম্পন্ন",
+      "waitingForUploads": "আপলোড সম্পন্ন হওয়ার জন্য অপেক্ষা করা হচ্ছে...",
+      "finalizingServer": "সার্ভারে চূড়ান্ত করা হচ্ছে...",
+      "assemblingServer": "সার্ভারে অ্যাসেম্বল হচ্ছে...",
+      "assemblyProgress": "অ্যাসেম্বলিং: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTML মার্জ হচ্ছে",
+      "assemblyPhaseConverting": "URL রূপান্তর হচ্ছে",
+      "assemblyPhaseZipping": "ZIP তৈরি হচ্ছে",
+      "assemblyPhaseInlining": "রিসোর্স ইনলাইন হচ্ছে",
+      "serverFallbackOffer": "সার্ভার সমস্যা: {{reason}}",
+      "serverError": "সার্ভার ত্রুটি: {{error}}",
+      "serverUnavailable": "সার্ভার অনুপলব্ধ",
+      "assemblyTimeout": "অ্যাসেম্বলির সময়সীমা শেষ হয়েছে",
+      "assemblyFailed": "অ্যাসেম্বলি ব্যর্থ হয়েছে",
+      "authFailed": "প্রমাণীকরণ ব্যর্থ হয়েছে",
+      "retryServer": "পুনরায় চেষ্টা করুন",
+      "downloadLocally": "স্থানীয়ভাবে ডাউনলোড করুন",
+      "localFallbackWarning": "স্থানীয় মোডে ফিরে যেতে পৃষ্ঠাটি আবার স্ক্র্যাপ করতে হবে। চালিয়ে যাবেন?",
+      "downloadFromServer": "সার্ভার থেকে ডাউনলোড করুন",
+      "serverDownloadUrl": "সার্ভার ডাউনলোড URL",
+      "copyUrl": "URL কপি করুন",
+      "urlCopied": "URL কপি হয়েছে!",
+      "serverSessionFailed": "সার্ভার সেশন তৈরি করতে ব্যর্থ: {{error}}",
+      "memoryWarningServerMode": "কম মেমরি সতর্কতা ({{availableMB}}MB উপলব্ধ) — সার্ভার মোড সক্রিয়",
+      "serverModeActive": "সার্ভার মোড সক্রিয়"
     },
     "permissions": {
       "storage": {

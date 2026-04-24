@@ -14,7 +14,10 @@
       "memoryPressure": "Не може да започне изтеглянето поради критичен недостиг на памет. Моля, опитайте отново по-късно.",
       "unknownError": "Неизвестна грешка",
       "invalidTabId": "Невалиден идентификатор на раздел",
-      "maxScrollAttempts": "Достигнат е максималният брой опити за превъртане"
+      "maxScrollAttempts": "Достигнат е максималният брой опити за превъртане",
+      "panelUnavailable": "Изтеглянето не можа да завърши, защото панелът на разширението беше затворен или стана недостъпен. Моля, дръжте този панел отворен по време на изтеглянето и опитайте отново.",
+      "panelUnavailableTitle": "Изисква се панел на разширението",
+      "panelUnavailableTip": "За да предотвратите това, дръжте този панел отворен и не превключвайте разделите по време на изтеглянето."
     },
     "filter": {
       "title": "Филтрирайте какво искате да свалите",
@@ -50,16 +53,16 @@
       "includeExternal": "Включване на външни връзки",
       "fullWebsite": "Изтегляне на целия уебсайт",
       "fullWebsiteDescription": "Най-добро за сложни уебсайтове (изтегля първото ниво на свързаните страници)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Сървърен режим",
+      "insecureServerWarning": "Не се използва HTTPS"
     },
     "actions": {
       "title": "Действия:",
       "stop": "Стоп",
       "showInFolder": "Покажи в папка",
       "downloadAnother": "Изтегли друг",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Продължи",
+      "pause": "Пауза"
     },
     "status": {
       "waiting": "Очакване на връзка...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Извличане на страница {{current}} от {{total}}",
       "linkedPagesComplete": "Извличането на свързани страници завърши: {{succeeded}} успешни, {{failed}} неуспешни",
       "linkedPagesFailed": "{{count}} страници не успяха да се извлекат",
-      "scraperPaused": "Скрапингът е на пауза"
+      "scraperPaused": "Скрапингът е на пауза",
+      "uploadProgress": "Качване на ресурси: {{completed}}/{{total}}",
+      "uploadingResources": "Качване на ресурси към сървъра...",
+      "sendingScrapeComplete": "Финализиране на скрапинга...",
+      "scrapeComplete": "Скрапингът завърши",
+      "waitingForUploads": "Изчакване на качванията да завършат...",
+      "finalizingServer": "Финализиране на сървъра...",
+      "assemblingServer": "Сглобяване на сървъра...",
+      "assemblyProgress": "Сглобяване: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Обединяване на HTML",
+      "assemblyPhaseConverting": "Конвертиране на URL адреси",
+      "assemblyPhaseZipping": "Създаване на ZIP",
+      "assemblyPhaseInlining": "Вмъкване на ресурси",
+      "serverFallbackOffer": "Сървърен проблем: {{reason}}",
+      "serverError": "Сървърна грешка: {{error}}",
+      "serverUnavailable": "Сървърът не е наличен",
+      "assemblyTimeout": "Времето за сглобяване изтече",
+      "assemblyFailed": "Сглобяването се провали",
+      "authFailed": "Удостоверяването се провали",
+      "retryServer": "Повтори",
+      "downloadLocally": "Изтегли локално",
+      "localFallbackWarning": "Връщането към локален режим изисква повторно скрапиране на страницата отначало. Продължи?",
+      "downloadFromServer": "Изтегли от сървъра",
+      "serverDownloadUrl": "URL адрес за изтегляне от сървъра",
+      "copyUrl": "Копирай URL",
+      "urlCopied": "URL адресът е копиран!",
+      "serverSessionFailed": "Неуспешно създаване на сървърна сесия: {{error}}",
+      "memoryWarningServerMode": "Предупреждение за ниска памет ({{availableMB}}MB налични) — сървърният режим е активен",
+      "serverModeActive": "Сървърният режим е активен"
     },
     "permissions": {
       "storage": {

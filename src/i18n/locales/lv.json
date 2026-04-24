@@ -14,7 +14,10 @@
       "memoryPressure": "Nevar sākt lejupielādi kritiskā atmiņas trūkuma dēļ. Lūdzu, mēģiniet vēlāk.",
       "unknownError": "Nezināma kļūda",
       "invalidTabId": "Nederīgs cilnes ID",
-      "maxScrollAttempts": "Sasniegts maksimālais ritināšanas mēģinājumu skaits"
+      "maxScrollAttempts": "Sasniegts maksimālais ritināšanas mēģinājumu skaits",
+      "panelUnavailable": "Lejupielādi nevarēja pabeigt, jo paplašinājuma panelis tika aizvērts vai kļuva nepieejams. Lūdzu, atstājiet šo paneli atvērtu lejupielādes laikā un mēģiniet vēlreiz.",
+      "panelUnavailableTitle": "Nepieciešams paplašinājuma panelis",
+      "panelUnavailableTip": "Lai to novērstu, atstājiet šo paneli atvērtu un izvairieties pārslēgt cilnes lejupielādes laikā."
     },
     "filter": {
       "title": "Filtrējiet to, ko vēlaties lejupielādēt",
@@ -50,16 +53,16 @@
       "includeExternal": "Iekļaut ārējās saites",
       "fullWebsite": "Lejupielādēt visu vietni",
       "fullWebsiteDescription": "Vislabāk piemērots sarežģītām vietnēm (lejupielādē saistīto lapu pirmo līmeni)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Servera režīms",
+      "insecureServerWarning": "Netiek izmantots HTTPS"
     },
     "actions": {
       "title": "Darbības:",
       "stop": "Apturēt",
       "showInFolder": "Rādīt mapē",
       "downloadAnother": "Lejupielādēt citu",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Turpināt",
+      "pause": "Pauzēt"
     },
     "status": {
       "waiting": "Gaida savienojumu...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Izgūst lapu {{current}} no {{total}}",
       "linkedPagesComplete": "Saistīto lapu izgūšana pabeigta: {{succeeded}} izdevās, {{failed}} neizdevās",
       "linkedPagesFailed": "{{count}} lapas neizdevās izgūt",
-      "scraperPaused": "Skrāpēšana apturēta"
+      "scraperPaused": "Skrāpēšana apturēta",
+      "uploadProgress": "Resursu augšupielāde: {{completed}}/{{total}}",
+      "uploadingResources": "Resursu augšupielāde serverī...",
+      "sendingScrapeComplete": "Nokasīšanas pabeigšana...",
+      "scrapeComplete": "Nokasīšana pabeigta",
+      "waitingForUploads": "Gaida augšupielāžu pabeigšanu...",
+      "finalizingServer": "Pabeigšana serverī...",
+      "assemblingServer": "Salikšana serverī...",
+      "assemblyProgress": "Salikšana: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTML sapludināšana",
+      "assemblyPhaseConverting": "URL konvertēšana",
+      "assemblyPhaseZipping": "ZIP izveide",
+      "assemblyPhaseInlining": "Resursu iegulšana",
+      "serverFallbackOffer": "Servera problēma: {{reason}}",
+      "serverError": "Servera kļūda: {{error}}",
+      "serverUnavailable": "Serveris nav pieejams",
+      "assemblyTimeout": "Salikšanas noilgums",
+      "assemblyFailed": "Salikšana neizdevās",
+      "authFailed": "Autentifikācija neizdevās",
+      "retryServer": "Mēģināt vēlreiz",
+      "downloadLocally": "Lejupielādēt lokāli",
+      "localFallbackWarning": "Atgriešanās lokālajā režīmā prasa lapas nokasīšanu no jauna. Turpināt?",
+      "downloadFromServer": "Lejupielādēt no servera",
+      "serverDownloadUrl": "Servera lejupielādes URL",
+      "copyUrl": "Kopēt URL",
+      "urlCopied": "URL nokopēts!",
+      "serverSessionFailed": "Neizdevās izveidot servera sesiju: {{error}}",
+      "memoryWarningServerMode": "Zema atmiņas brīdinājums ({{availableMB}}MB pieejams) — servera režīms aktīvs",
+      "serverModeActive": "Servera režīms aktīvs"
     },
     "permissions": {
       "storage": {

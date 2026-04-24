@@ -14,7 +14,10 @@
       "memoryPressure": "கடுமையான நினைவக அழுத்தம் காரணமாக பதிவிறக்கத்தைத் தொடங்க முடியவில்லை. பின்னர் மீண்டும் முயற்சிக்கவும்.",
       "unknownError": "தெரியாத பிழை",
       "invalidTabId": "செல்லuபடியாகாத தாவல் ஐடி",
-      "maxScrollAttempts": "அதிகபட்ச சுருள் முயற்சிகள் அடையப்பட்டன"
+      "maxScrollAttempts": "அதிகபட்ச சுருள் முயற்சிகள் அடையப்பட்டன",
+      "panelUnavailable": "நீட்டிப்புப் பலகம் மூடப்பட்டதால் அல்லது கிடைக்காததால் பதிவிறக்கம் முடிக்கமுடியவில்லை. பதிவிறக்கத்தின் போது இந்தப் பலகத்தைத் திறந்திருக்கவும், மீண்டும் முயற்சிக்கவும்.",
+      "panelUnavailableTitle": "நீட்டிப்புப் பலகம் தேவை",
+      "panelUnavailableTip": "இதைத் தவிர்க்க, பதிவிறக்கத்தின் போது இந்தப் பலகத்தைத் திறந்திருக்கவும் மற்றும் தாவல்களை மாற்ற வேண்டாம்."
     },
     "filter": {
       "title": "நீங்கள் பதிவிறக்க விரும்புவதை வடிகட்டவும்",
@@ -50,16 +53,16 @@
       "includeExternal": "வெளிப்புற இணைப்புகளைச் சேர்க்கவும்",
       "fullWebsite": "முழு இணையதளத்தையும் பதிவிறக்கவும்",
       "fullWebsiteDescription": "சிக்கலான இணையதளங்களுக்கு சிறந்தது (இணைக்கப்பட்ட பக்கங்களின் முதல் நிலையை பதிவிறக்குகிறது)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "சேவர் பயன்முறை",
+      "insecureServerWarning": "HTTPS பயன்படுத்தப்படவில்லை"
     },
     "actions": {
       "title": "செயல்கள்:",
       "stop": "நிறுத்து",
       "showInFolder": "கோப்புறையில் காட்டு",
       "downloadAnother": "மற்றொன்றைப் பதிவிறக்கு",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "மீண்டும் தொடங்கு",
+      "pause": "இடைநிறுத்து"
     },
     "status": {
       "waiting": "இணைப்பிற்காக காத்திருக்கிறது...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "பக்கம் {{current}}/{{total}} ஸ்கிராப் செய்கிறது",
       "linkedPagesComplete": "இணைக்கப்பட்ட பக்க ஸ்கிராப்பிங் முடிந்தது: {{succeeded}} வெற்றி, {{failed}} தோல்வி",
       "linkedPagesFailed": "{{count}} பக்கங்கள் ஸ்கிராப் செய்ய முடியவில்லை",
-      "scraperPaused": "ஸ்கிராப்பிங் இடைநிறுத்தப்பட்டது"
+      "scraperPaused": "ஸ்கிராப்பிங் இடைநிறுத்தப்பட்டது",
+      "uploadProgress": "வளங்கள் பதிவேற்றம்: {{completed}}/{{total}}",
+      "uploadingResources": "சேவையகத்திற்கு வளங்கள் பதிவேற்றப்படுகின்றன...",
+      "sendingScrapeComplete": "ஸ்கிராப் இறுதி செய்யப்படுகிறது...",
+      "scrapeComplete": "ஸ்கிராப் முடிந்தது",
+      "waitingForUploads": "பதிவேற்றங்கள் முடிவடைய காத்திருக்கிறது...",
+      "finalizingServer": "சேவையகத்தில் இறுதி செய்யப்படுகிறது...",
+      "assemblingServer": "சேவையகத்தில் தொகுக்கப்படுகிறது...",
+      "assemblyProgress": "தொகுப்பு: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTML இணைக்கப்படுகிறது",
+      "assemblyPhaseConverting": "URLகள் மாற்றப்படுகின்றன",
+      "assemblyPhaseZipping": "ZIP உருவாக்கப்படுகிறது",
+      "assemblyPhaseInlining": "வளங்கள் உள்ளடக்கப்படுகின்றன",
+      "serverFallbackOffer": "சேவையக சிக்கல்: {{reason}}",
+      "serverError": "சேவையக பிழை: {{error}}",
+      "serverUnavailable": "சேவையகம் கிடைக்கவில்லை",
+      "assemblyTimeout": "தொகுப்பு நேரம் முடிந்தது",
+      "assemblyFailed": "தொகுப்பு தோல்வியடைந்தது",
+      "authFailed": "அங்கீகாரம் தோல்வியடைந்தது",
+      "retryServer": "மீண்டும் முயற்சிக்கவும்",
+      "downloadLocally": "உள்ளூரில் பதிவிறக்கவும்",
+      "localFallbackWarning": "உள்ளூர் பயன்முறைக்கு மாற பக்கத்தை மீண்டும் ஸ்கிராப் செய்ய வேண்டும். தொடரவும்?",
+      "downloadFromServer": "சேவையகத்திலிருந்து பதிவிறக்கவும்",
+      "serverDownloadUrl": "சேவையக பதிவிறக்க URL",
+      "copyUrl": "URL நகலெடுக்கவும்",
+      "urlCopied": "URL நகலெடுக்கப்பட்டது!",
+      "serverSessionFailed": "சேவையக அமர்வை உருவாக்க முடியவில்லை: {{error}}",
+      "memoryWarningServerMode": "குறைந்த நினைவக எச்சரிக்கை ({{availableMB}}MB கிடைக்கும்) — சேவையக பயன்முறை செயலில்",
+      "serverModeActive": "சேவையக பயன்முறை செயலில்"
     },
     "permissions": {
       "storage": {

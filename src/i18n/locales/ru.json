@@ -14,7 +14,10 @@
       "memoryPressure": "Невозможно начать загрузку из-за критической нехватки памяти. Пожалуйста, повторите попытку позже.",
       "unknownError": "Неизвестная ошибка",
       "invalidTabId": "Неверный ID вкладки",
-      "maxScrollAttempts": "Достигнуто максимальное количество попыток прокрутки"
+      "maxScrollAttempts": "Достигнуто максимальное количество попыток прокрутки",
+      "panelUnavailable": "Загрузка не могла быть завершена, потому что панель расширения была закрыта или стала недоступной. Пожалуйста, держите эту панель открытой во время загрузки и попробуйте снова.",
+      "panelUnavailableTitle": "Требуется панель расширения",
+      "panelUnavailableTip": "Чтобы предотвратить это, держите эту панель открытой и избегайте переключения вкладок во время загрузки."
     },
     "filter": {
       "title": "Отфильтруйте то, что вы хотите скачать",
@@ -50,16 +53,16 @@
       "includeExternal": "Включить внешние ссылки",
       "fullWebsite": "Скачать весь веб-сайт",
       "fullWebsiteDescription": "Лучше всего подходит для сложных веб-сайтов (скачивает первый уровень связанных страниц)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Режим сервера",
+      "insecureServerWarning": "Не использует HTTPS"
     },
     "actions": {
       "title": "Действия:",
       "stop": "Стоп",
       "showInFolder": "Показать в папке",
       "downloadAnother": "Скачать еще",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Продолжить",
+      "pause": "Приостановить"
     },
     "status": {
       "waiting": "Ожидание подключения...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Извлечение страницы {{current}} из {{total}}",
       "linkedPagesComplete": "Извлечение связанных страниц завершено: {{succeeded}} успешно, {{failed}} неудачно",
       "linkedPagesFailed": "{{count}} страниц не удалось извлечь",
-      "scraperPaused": "Скрапинг приостановлен"
+      "scraperPaused": "Скрапинг приостановлен",
+      "uploadProgress": "Загрузка ресурсов: {{completed}}/{{total}}",
+      "uploadingResources": "Загрузка ресурсов на сервер...",
+      "sendingScrapeComplete": "Завершение скрапинга...",
+      "scrapeComplete": "Скрапинг завершен",
+      "waitingForUploads": "Ожидание завершения загрузки...",
+      "finalizingServer": "Завершение на сервере...",
+      "assemblingServer": "Сборка на сервере...",
+      "assemblyProgress": "Сборка: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Объединение HTML",
+      "assemblyPhaseConverting": "Преобразование URL",
+      "assemblyPhaseZipping": "Создание ZIP",
+      "assemblyPhaseInlining": "Встраивание ресурсов",
+      "serverFallbackOffer": "Проблема с сервером: {{reason}}",
+      "serverError": "Ошибка сервера: {{error}}",
+      "serverUnavailable": "Сервер недоступен",
+      "assemblyTimeout": "Время сборки истекло",
+      "assemblyFailed": "Сборка не удалась",
+      "authFailed": "Аутентификация не удалась",
+      "retryServer": "Повторить попытку",
+      "downloadLocally": "Скачать локально",
+      "localFallbackWarning": "Возврат к локальному режиму требует повторного скрапинга страницы с начала. Продолжить?",
+      "downloadFromServer": "Скачать с сервера",
+      "serverDownloadUrl": "URL загрузки с сервера",
+      "copyUrl": "Копировать URL",
+      "urlCopied": "URL скопирован!",
+      "serverSessionFailed": "Не удалось создать сессию сервера: {{error}}",
+      "memoryWarningServerMode": "Предупреждение о низкой памяти ({{availableMB}}МБ доступно) — режим сервера активен",
+      "serverModeActive": "Режим сервера активен"
     },
     "permissions": {
       "storage": {

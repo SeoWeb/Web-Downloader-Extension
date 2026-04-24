@@ -14,7 +14,10 @@
       "memoryPressure": "Kan ikke starte download på grund af kritisk hukommelsespres. Prøv igen senere.",
       "unknownError": "Ukendt fejl",
       "invalidTabId": "Ugyldigt fane-ID",
-      "maxScrollAttempts": "Maksimalt antal rulningsforsøg nået"
+      "maxScrollAttempts": "Maksimalt antal rulningsforsøg nået",
+      "panelUnavailable": "Downloaden kunne ikke fuldføres, fordi udvidelsespanelet blev lukket eller utilgængeligt. Hold venligst dette panel åbent under download og prøv igen.",
+      "panelUnavailableTitle": "Udvidelsespanel påkrævet",
+      "panelUnavailableTip": "For at forhindre dette, hold dette panel åbent og undgå at skifte faner under download."
     },
     "filter": {
       "title": "Filtrer hvad du vil downloade",
@@ -50,15 +53,15 @@
       "includeExternal": "Inkluder eksterne links",
       "fullWebsite": "Download hele hjemmesiden",
       "fullWebsiteDescription": "Bedst til komplekse hjemmesider (downloader første niveau af linkede sider)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Servertilstand",
+      "insecureServerWarning": "Bruger ikke HTTPS"
     },
     "actions": {
       "title": "Handlinger:",
       "stop": "Afbryd",
       "showInFolder": "Vis i mappe",
       "downloadAnother": "Download en anden",
-      "resume": "Resume",
+      "resume": "Genoptag",
       "pause": "Pause"
     },
     "status": {
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Scraper side {{current}} af {{total}}",
       "linkedPagesComplete": "Scraping af linkede sider fuldført: {{succeeded}} lykkedes, {{failed}} mislykkedes",
       "linkedPagesFailed": "{{count}} sider kunne ikke scrapes",
-      "scraperPaused": "Skrabning sat på pause"
+      "scraperPaused": "Skrabning sat på pause",
+      "uploadProgress": "Uploader ressourcer: {{completed}}/{{total}}",
+      "uploadingResources": "Uploader ressourcer til server...",
+      "sendingScrapeComplete": "Afslutter scraping...",
+      "scrapeComplete": "Scraping fuldført",
+      "waitingForUploads": "Venter på uploads fuldføres...",
+      "finalizingServer": "Afslutter på server...",
+      "assemblingServer": "Samler på server...",
+      "assemblyProgress": "Samling: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Samler HTML",
+      "assemblyPhaseConverting": "Konverterer URL'er",
+      "assemblyPhaseZipping": "Opretter ZIP",
+      "assemblyPhaseInlining": "Indlejrer ressourcer",
+      "serverFallbackOffer": "Serverproblem: {{reason}}",
+      "serverError": "Serverfejl: {{error}}",
+      "serverUnavailable": "Server utilgængelig",
+      "assemblyTimeout": "Samling timeout",
+      "assemblyFailed": "Samling mislykkedes",
+      "authFailed": "Godkendelse mislykkedes",
+      "retryServer": "Prøv igen",
+      "downloadLocally": "Download lokalt",
+      "localFallbackWarning": "At vende tilbage til lokal tilstand kræver at siden scrapes fra bunden. Fortsæt?",
+      "downloadFromServer": "Download fra server",
+      "serverDownloadUrl": "Server download URL",
+      "copyUrl": "Kopier URL",
+      "urlCopied": "URL kopieret!",
+      "serverSessionFailed": "Kunne ikke oprette server-session: {{error}}",
+      "memoryWarningServerMode": "Lav lageradvarsel ({{availableMB}}MB tilgængelig) — servertilstand aktiv",
+      "serverModeActive": "Servertilstand aktiv"
     },
     "permissions": {
       "storage": {

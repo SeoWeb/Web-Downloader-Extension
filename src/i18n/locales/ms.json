@@ -14,7 +14,10 @@
       "memoryPressure": "Tidak dapat memulakan muat turun kerana tekanan memori kritikal. Sila cuba lagi kemudian.",
       "unknownError": "Ralat tidak diketahui",
       "invalidTabId": "ID tab tidak sah",
-      "maxScrollAttempts": "Mencapai percubaan tatal maksimum"
+      "maxScrollAttempts": "Mencapai percubaan tatal maksimum",
+      "panelUnavailable": "Muat turun tidak dapat diselesaikan kerana panel sambungan ditutup atau tidak tersedia. Sila buka panel ini semasa memuat turun dan cuba lagi.",
+      "panelUnavailableTitle": "Panel Sambungan Diperlukan",
+      "panelUnavailableTip": "Untuk mencegah ini, kekalkan panel ini terbuka dan elakkan daripada menukar tab semasa muat turun."
     },
     "filter": {
       "title": "Tapis apa yang anda mahu muat turun",
@@ -50,16 +53,16 @@
       "includeExternal": "Sertakan pautan luar",
       "fullWebsite": "Muat turun laman web penuh",
       "fullWebsiteDescription": "Terbaik untuk laman web yang kompleks (memuat turun tahap pertama halaman yang dipautkan)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Mod pelayan",
+      "insecureServerWarning": "Tidak menggunakan HTTPS"
     },
     "actions": {
       "title": "Tindakan:",
       "stop": "Berhenti",
       "showInFolder": "Tunjukkan dalam folder",
       "downloadAnother": "Muat turun yang lain",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Sambung semula",
+      "pause": "Jeda"
     },
     "status": {
       "waiting": "Menunggu sambungan...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Mengikis halaman {{current}} daripada {{total}}",
       "linkedPagesComplete": "Pengikisan halaman terpaut selesai: {{succeeded}} berjaya, {{failed}} gagal",
       "linkedPagesFailed": "{{count}} halaman gagal dikis",
-      "scraperPaused": "Pengikisan dijeda"
+      "scraperPaused": "Pengikisan dijeda",
+      "uploadProgress": "Memuat naik sumber: {{completed}}/{{total}}",
+      "uploadingResources": "Memuat naik sumber ke pelayan...",
+      "sendingScrapeComplete": "Menyelesaikan scrape...",
+      "scrapeComplete": "Scrape selesai",
+      "waitingForUploads": "Menunggu muat naik selesai...",
+      "finalizingServer": "Menyelesaikan di pelayan...",
+      "assemblingServer": "Memasang di pelayan...",
+      "assemblyProgress": "Memasang: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Menggabungkan HTML",
+      "assemblyPhaseConverting": "Menukar URL",
+      "assemblyPhaseZipping": "Mencipta ZIP",
+      "assemblyPhaseInlining": "Menyematkan sumber",
+      "serverFallbackOffer": "Masalah pelayan: {{reason}}",
+      "serverError": "Ralat pelayan: {{error}}",
+      "serverUnavailable": "Pelayan tidak tersedia",
+      "assemblyTimeout": "Masa pemasangan tamat",
+      "assemblyFailed": "Pemasangan gagal",
+      "authFailed": "Pengesahan gagal",
+      "retryServer": "Cuba lagi",
+      "downloadLocally": "Muat turun secara tempatan",
+      "localFallbackWarning": "Kembali ke mod tempatan memerlukan scraping semula halaman dari awal. Teruskan?",
+      "downloadFromServer": "Muat turun dari pelayan",
+      "serverDownloadUrl": "URL muat turun pelayan",
+      "copyUrl": "Salin URL",
+      "urlCopied": "URL disalin!",
+      "serverSessionFailed": "Gagal mencipta sesi pelayan: {{error}}",
+      "memoryWarningServerMode": "Amaran memori rendah ({{availableMB}}MB tersedia) — mod pelayan aktif",
+      "serverModeActive": "Mod pelayan aktif"
     },
     "permissions": {
       "storage": {

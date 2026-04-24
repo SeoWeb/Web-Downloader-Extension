@@ -14,7 +14,10 @@
       "memoryPressure": "Hindi masimulan ang pag-download dahil sa kritikal na memory pressure. Pakisubukan muli mamaya.",
       "unknownError": "Hindi kilalang error",
       "invalidTabId": "Hindi wastong tab ID",
-      "maxScrollAttempts": "Naabot na ang maximum na pagtatangka ng pag-scroll"
+      "maxScrollAttempts": "Naabot na ang maximum na pagtatangka ng pag-scroll",
+      "panelUnavailable": "Hindi makumpleto ang pag-download dahil isinara o hindi available ang extension panel. Paki-panatili ang panel na ito na bukas habang nagda-download at subukan muli.",
+      "panelUnavailableTitle": "Kailangan ng Extension Panel",
+      "panelUnavailableTip": "Upang maiwasan ito, panatilihing bukas ang panel na ito at iwasan ang paglipat ng tabs habang nagda-download."
     },
     "filter": {
       "title": "I-filter kung ano ang gusto mong i-download",
@@ -50,16 +53,16 @@
       "includeExternal": "Isama ang mga panlabas na link",
       "fullWebsite": "I-download ang buong website",
       "fullWebsiteDescription": "Pinakamahusay para sa mga kumplikadong website (idina-download ang unang antas ng mga naka-link na pahina)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Mode ng server",
+      "insecureServerWarning": "Hindi gumagamit ng HTTPS"
     },
     "actions": {
       "title": "Mga Aksyon:",
       "stop": "Hinto",
       "showInFolder": "Ipakita sa folder",
       "downloadAnother": "Mag-download ng iba",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Ipagpatuloy",
+      "pause": "I-pause"
     },
     "status": {
       "waiting": "Naghihintay ng koneksyon...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Nag-scrape ng pahina {{current}} ng {{total}}",
       "linkedPagesComplete": "Natapos ang pag-scrape ng mga naka-link na pahina: {{succeeded}} nagtagumpay, {{failed}} nabigo",
       "linkedPagesFailed": "{{count}} pahina ang nabigong i-scrape",
-      "scraperPaused": "Naka-pause ang pag-scrape"
+      "scraperPaused": "Naka-pause ang pag-scrape",
+      "uploadProgress": "Nag-a-upload ng mga resources: {{completed}}/{{total}}",
+      "uploadingResources": "Nag-a-upload ng mga resources sa server...",
+      "sendingScrapeComplete": "Kinokompleto ang scrape...",
+      "scrapeComplete": "Kumpleto na ang scrape",
+      "waitingForUploads": "Hinihintay na matapos ang mga upload...",
+      "finalizingServer": "Kinokompleto sa server...",
+      "assemblingServer": "Ina-assemble sa server...",
+      "assemblyProgress": "Ina-assemble: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Pinagsasama ang HTML",
+      "assemblyPhaseConverting": "Kino-convert ang mga URL",
+      "assemblyPhaseZipping": "Gumagawa ng ZIP",
+      "assemblyPhaseInlining": "Ini-inline ang mga resource",
+      "serverFallbackOffer": "Isyu sa server: {{reason}}",
+      "serverError": "Error sa server: {{error}}",
+      "serverUnavailable": "Hindi available ang server",
+      "assemblyTimeout": "Nag-timeout ang assembly",
+      "assemblyFailed": "Nabigo ang assembly",
+      "authFailed": "Nabigo ang authentication",
+      "retryServer": "Subukan muli",
+      "downloadLocally": "I-download nang lokal",
+      "localFallbackWarning": "Ang pagbalik sa lokal na mode ay nangangailangan ng muling pag-scrape ng page mula sa simula. Magpatuloy?",
+      "downloadFromServer": "I-download mula sa server",
+      "serverDownloadUrl": "URL ng pag-download mula sa server",
+      "copyUrl": "Kopyahin ang URL",
+      "urlCopied": "Nakopya na ang URL!",
+      "serverSessionFailed": "Nabigong lumikha ng server session: {{error}}",
+      "memoryWarningServerMode": "Babala sa mababang memorya ({{availableMB}}MB available) — aktibo ang server mode",
+      "serverModeActive": "Aktibo ang server mode"
     },
     "permissions": {
       "storage": {

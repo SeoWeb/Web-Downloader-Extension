@@ -14,7 +14,10 @@
       "memoryPressure": "לא ניתן להתחיל בהורדה עקב לחץ זיכרון קריטי. נסה שוב מאוחר יותר.",
       "unknownError": "שגיאה לא ידועה",
       "invalidTabId": "מזהה כרטיסייה לא חוקי",
-      "maxScrollAttempts": "הגעת למספר המרבי של ניסיונות גלילה"
+      "maxScrollAttempts": "הגעת למספר המרבי של ניסיונות גלילה",
+      "panelUnavailable": "לא ניתן היה להשלים את ההורדה כי לוח התוסף נסגר או הפך ללא זמין. אנא השאר לוח זה פתוח במהלך ההורדה ונסה שוב.",
+      "panelUnavailableTitle": "נדרש לוח תוסף",
+      "panelUnavailableTip": "כדי למנוע זאת, השאר לוח זה פתוח והימנע מהחלפת כרטיסיות במהלך ההורדה."
     },
     "filter": {
       "title": "סנן את מה שברצונך להוריד",
@@ -50,16 +53,16 @@
       "includeExternal": "כלול קישורים חיצוניים",
       "fullWebsite": "הורד את כל האתר",
       "fullWebsiteDescription": "הטוב ביותר לאתרים מורכבים (מוריד את הרמה הראשונה של דפים מקושרים)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "מצב שרת",
+      "insecureServerWarning": "לא משתמש ב-HTTPS"
     },
     "actions": {
       "title": "פעולות:",
       "stop": "עצור",
       "showInFolder": "הצג בתיקייה",
       "downloadAnother": "הורד עוד אחד",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "המשך",
+      "pause": "השהה"
     },
     "status": {
       "waiting": "ממתין לחיבור...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "גורד דף {{current}} מתוך {{total}}",
       "linkedPagesComplete": "גרידת דפים מקושרים הושלמה: {{succeeded}} הצליחו, {{failed}} נכשלו",
       "linkedPagesFailed": "{{count}} דפים נכשלו בגרידה",
-      "scraperPaused": "הסריקה הושהתה"
+      "scraperPaused": "הגרידה הושהתה",
+      "uploadProgress": "מעלה משאבים: {{completed}}/{{total}}",
+      "uploadingResources": "מעלה משאבים לשרת...",
+      "sendingScrapeComplete": "מסיים גרידה...",
+      "scrapeComplete": "הגרידה הושלמה",
+      "waitingForUploads": "ממתין להשלמת העלאות...",
+      "finalizingServer": "מסיים בשרת...",
+      "assemblingServer": "מרכיב בשרת...",
+      "assemblyProgress": "הרכבה: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "מזגה HTML",
+      "assemblyPhaseConverting": "ממיר כתובות URL",
+      "assemblyPhaseZipping": "יוצר ZIP",
+      "assemblyPhaseInlining": "מטמיע משאבים",
+      "serverFallbackOffer": "בעיית שרת: {{reason}}",
+      "serverError": "שגיאת שרת: {{error}}",
+      "serverUnavailable": "השרת אינו זמין",
+      "assemblyTimeout": "פסק זמן הרכבה",
+      "assemblyFailed": "ההרכבה נכשלה",
+      "authFailed": "האימות נכשל",
+      "retryServer": "נסה שוב",
+      "downloadLocally": "הורד מקומית",
+      "localFallbackWarning": "חזרה למצב מקומי דורשת גרידה מחדש של הדף מאפס. להמשיך?",
+      "downloadFromServer": "הורד מהשרת",
+      "serverDownloadUrl": "כתובת הורדה מהשרת",
+      "copyUrl": "העתק כתובת",
+      "urlCopied": "הכתובת הועתקה!",
+      "serverSessionFailed": "נכשל ביצירת הפעלת שרת: {{error}}",
+      "memoryWarningServerMode": "אזהרת זיכרון נמוך ({{availableMB}}MB זמין) — מצב שרת פעיל",
+      "serverModeActive": "מצב שרת פעיל"
     },
     "permissions": {
       "storage": {

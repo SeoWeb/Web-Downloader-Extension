@@ -14,7 +14,10 @@
       "memoryPressure": "Nie można rozpocząć pobierania z powodu krytycznego braku pamięci. Spróbuj ponownie później.",
       "unknownError": "Nieznany błąd",
       "invalidTabId": "Nieprawidłowy identyfikator karty",
-      "maxScrollAttempts": "Osiągnięto maksymalną liczbę prób przewijania"
+      "maxScrollAttempts": "Osiągnięto maksymalną liczbę prób przewijania",
+      "panelUnavailable": "Pobieranie nie mogło zostać ukończone, ponieważ panel rozszerzenia został zamknięty lub stał się niedostępny. Proszę mieć ten panel otwarty podczas pobierania i spróbować ponownie.",
+      "panelUnavailableTitle": "Wymagany panel rozszerzenia",
+      "panelUnavailableTip": "Aby temu zapobiec, trzymaj ten panel otwarty i unikaj przełączania kart podczas pobierania."
     },
     "filter": {
       "title": "Filtruj to, co chcesz pobrać",
@@ -50,16 +53,16 @@
       "includeExternal": "Uwzględnij linki zewnętrzne",
       "fullWebsite": "Pobierz całą stronę internetową",
       "fullWebsiteDescription": "Najlepsze dla złożonych stron (pobiera pierwszy poziom połączonych stron)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Tryb serwera",
+      "insecureServerWarning": "Nie używa HTTPS"
     },
     "actions": {
       "title": "Akcje:",
       "stop": "Zatrzymaj",
       "showInFolder": "Pokaż w folderze",
       "downloadAnother": "Pobierz inny",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Wznów",
+      "pause": "Wstrzymaj"
     },
     "status": {
       "waiting": "Oczekiwanie na połączenie...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Pobieranie strony {{current}} z {{total}}",
       "linkedPagesComplete": "Pobieranie połączonych stron zakończone: {{succeeded}} udanych, {{failed}} nieudanych",
       "linkedPagesFailed": "{{count}} stron nie udało się pobrać",
-      "scraperPaused": "Pobieranie wstrzymane"
+      "scraperPaused": "Pobieranie wstrzymane",
+      "uploadProgress": "Przesyłanie zasobów: {{completed}}/{{total}}",
+      "uploadingResources": "Przesyłanie zasobów na serwer...",
+      "sendingScrapeComplete": "Finalizacja zgrzebywania...",
+      "scrapeComplete": "Zgrzebywanie zakończone",
+      "waitingForUploads": "Oczekiwanie na zakończenie przesyłania...",
+      "finalizingServer": "Finalizacja na serwerze...",
+      "assemblingServer": "Składanie na serwerze...",
+      "assemblyProgress": "Składanie: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Łączenie HTML",
+      "assemblyPhaseConverting": "Konwertowanie URL",
+      "assemblyPhaseZipping": "Tworzenie ZIP",
+      "assemblyPhaseInlining": "Osadzanie zasobów",
+      "serverFallbackOffer": "Problem z serwerem: {{reason}}",
+      "serverError": "Błąd serwera: {{error}}",
+      "serverUnavailable": "Serwer niedostępny",
+      "assemblyTimeout": "Przekroczono czas składania",
+      "assemblyFailed": "Składanie nie powiodło się",
+      "authFailed": "Uwierzytelnianie nie powiodło się",
+      "retryServer": "Ponów próbę",
+      "downloadLocally": "Pobierz lokalnie",
+      "localFallbackWarning": "Powrót do trybu lokalnego wymaga ponownego zgrzebywania strony od początku. Kontynuować?",
+      "downloadFromServer": "Pobierz z serwera",
+      "serverDownloadUrl": "URL pobierania z serwera",
+      "copyUrl": "Kopiuj URL",
+      "urlCopied": "URL skopiowany!",
+      "serverSessionFailed": "Nie udało się utworzyć sesji serwera: {{error}}",
+      "memoryWarningServerMode": "Ostrzeżenie o niskiej pamięci ({{availableMB}}MB dostępne) — tryb serwera aktywny",
+      "serverModeActive": "Tryb serwera aktywny"
     },
     "permissions": {
       "storage": {

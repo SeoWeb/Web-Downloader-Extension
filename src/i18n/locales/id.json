@@ -14,7 +14,10 @@
       "memoryPressure": "Tidak dapat memulai unduhan karena tekanan memori kritis. Silakan coba lagi nanti.",
       "unknownError": "Kesalahan tidak diketahui",
       "invalidTabId": "ID tab tidak valid",
-      "maxScrollAttempts": "Mencapai upaya gulir maksimum"
+      "maxScrollAttempts": "Mencapai upaya gulir maksimum",
+      "panelUnavailable": "Unduhan tidak dapat diselesaikan karena panel ekstensi ditutup atau tidak tersedia. Harap buka panel ini saat mengunduh dan coba lagi.",
+      "panelUnavailableTitle": "Panel Ekstensi Diperlukan",
+      "panelUnavailableTip": "Untuk mencegah hal ini, tetap buka panel ini dan hindari berpindah tab selama pengunduhan."
     },
     "filter": {
       "title": "Filter apa yang ingin Anda unduh",
@@ -50,16 +53,16 @@
       "includeExternal": "Sertakan tautan eksternal",
       "fullWebsite": "Unduh situs web lengkap",
       "fullWebsiteDescription": "Terbaik untuk situs web yang kompleks (mengunduh tingkat pertama halaman yang ditautkan)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Mode server",
+      "insecureServerWarning": "Tidak menggunakan HTTPS"
     },
     "actions": {
       "title": "Tindakan:",
       "stop": "Berhenti",
       "showInFolder": "Tampilkan di folder",
       "downloadAnother": "Unduh yang lain",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Lanjutkan",
+      "pause": "Jeda"
     },
     "status": {
       "waiting": "Menunggu koneksi...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Mengekstrak halaman {{current}} dari {{total}}",
       "linkedPagesComplete": "Ekstraksi halaman tertaut selesai: {{succeeded}} berhasil, {{failed}} gagal",
       "linkedPagesFailed": "{{count}} halaman gagal diekstrak",
-      "scraperPaused": "Scraping dijeda"
+      "scraperPaused": "Scraping dijeda",
+      "uploadProgress": "Mengunggah sumber daya: {{completed}}/{{total}}",
+      "uploadingResources": "Mengunggah sumber daya ke server...",
+      "sendingScrapeComplete": "Menyelesaikan scrape...",
+      "scrapeComplete": "Scrape selesai",
+      "waitingForUploads": "Menunggu unggahan selesai...",
+      "finalizingServer": "Menyelesaikan di server...",
+      "assemblingServer": "Merakit di server...",
+      "assemblyProgress": "Merakit: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Menggabungkan HTML",
+      "assemblyPhaseConverting": "Mengonversi URL",
+      "assemblyPhaseZipping": "Membuat ZIP",
+      "assemblyPhaseInlining": "Menyematkan sumber daya",
+      "serverFallbackOffer": "Masalah server: {{reason}}",
+      "serverError": "Kesalahan server: {{error}}",
+      "serverUnavailable": "Server tidak tersedia",
+      "assemblyTimeout": "Waktu perakitan habis",
+      "assemblyFailed": "Perakitan gagal",
+      "authFailed": "Autentikasi gagal",
+      "retryServer": "Coba lagi",
+      "downloadLocally": "Unduh secara lokal",
+      "localFallbackWarning": "Kembali ke mode lokal memerlukan scraping ulang halaman dari awal. Lanjutkan?",
+      "downloadFromServer": "Unduh dari server",
+      "serverDownloadUrl": "URL unduhan server",
+      "copyUrl": "Salin URL",
+      "urlCopied": "URL disalin!",
+      "serverSessionFailed": "Gagal membuat sesi server: {{error}}",
+      "memoryWarningServerMode": "Peringatan memori rendah ({{availableMB}}MB tersedia) — mode server aktif",
+      "serverModeActive": "Mode server aktif"
     },
     "permissions": {
       "storage": {

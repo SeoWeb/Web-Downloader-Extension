@@ -14,7 +14,10 @@
       "memoryPressure": "Kan download niet starten vanwege kritiek geheugentekort. Probeer het later opnieuw.",
       "unknownError": "Onbekende fout",
       "invalidTabId": "Ongeldig tabblad-ID",
-      "maxScrollAttempts": "Maximaal aantal scrollpogingen bereikt"
+      "maxScrollAttempts": "Maximaal aantal scrollpogingen bereikt",
+      "panelUnavailable": "Download kan niet worden voltooid omdat het extensiepaneel is gesloten of niet beschikbaar is geworden. Houd dit paneel open tijdens het downloaden en probeer het opnieuw.",
+      "panelUnavailableTitle": "Extensiepaneel vereist",
+      "panelUnavailableTip": "Om dit te voorkomen, houd dit paneel open en vermijd het wisselen van tabbladen tijdens de download."
     },
     "filter": {
       "title": "Filter wat je wilt downloaden",
@@ -50,16 +53,16 @@
       "includeExternal": "Externe links opnemen",
       "fullWebsite": "Volledige website downloaden",
       "fullWebsiteDescription": "Het beste voor complexe websites (downloadt het eerste niveau van gelinkte pagina's)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Servermodus",
+      "insecureServerWarning": "Geen HTTPS"
     },
     "actions": {
       "title": "Acties:",
       "stop": "Stoppen",
       "showInFolder": "Toon in map",
       "downloadAnother": "Download een andere",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Hervatten",
+      "pause": "Pauzeren"
     },
     "status": {
       "waiting": "Wachten op verbinding...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Pagina {{current}} van {{total}} scrapen",
       "linkedPagesComplete": "Scrapen van gekoppelde pagina's voltooid: {{succeeded}} geslaagd, {{failed}} mislukt",
       "linkedPagesFailed": "{{count}} pagina's konden niet worden gescraped",
-      "scraperPaused": "Scrapen gepauzeerd"
+      "scraperPaused": "Scrapen gepauzeerd",
+      "uploadProgress": "Bronnen uploaden: {{completed}}/{{total}}",
+      "uploadingResources": "Bronnen uploaden naar server...",
+      "sendingScrapeComplete": "Scrapen afronden...",
+      "scrapeComplete": "Scrapen voltooid",
+      "waitingForUploads": "Wachten op voltooien van uploads...",
+      "finalizingServer": "Afronden op server...",
+      "assemblingServer": "Samenvoegen op server...",
+      "assemblyProgress": "Samenvoegen: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTML samenvoegen",
+      "assemblyPhaseConverting": "URL's converteren",
+      "assemblyPhaseZipping": "ZIP maken",
+      "assemblyPhaseInlining": "Bronnen inlinen",
+      "serverFallbackOffer": "Serverprobleem: {{reason}}",
+      "serverError": "Serverfout: {{error}}",
+      "serverUnavailable": "Server niet beschikbaar",
+      "assemblyTimeout": "Samenvoegen time-out",
+      "assemblyFailed": "Samenvoegen mislukt",
+      "authFailed": "Authenticatie mislukt",
+      "retryServer": "Opnieuw proberen",
+      "downloadLocally": "Lokaal downloaden",
+      "localFallbackWarning": "Terugvallen op lokale modus vereist opnieuw scrapen van de pagina vanaf nul. Doorgaan?",
+      "downloadFromServer": "Downloaden van server",
+      "serverDownloadUrl": "Server download-URL",
+      "copyUrl": "URL kopiëren",
+      "urlCopied": "URL gekopieerd!",
+      "serverSessionFailed": "Maken van serversessie mislukt: {{error}}",
+      "memoryWarningServerMode": "Laag geheugenwaarschuwing ({{availableMB}}MB beschikbaar) — servermodus actief",
+      "serverModeActive": "Servermodus actief"
     },
     "permissions": {
       "storage": {

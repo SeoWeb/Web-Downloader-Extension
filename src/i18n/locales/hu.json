@@ -14,7 +14,10 @@
       "memoryPressure": "A letöltés nem indítható kritikus memóriahiány miatt. Kérjük, próbálja újra később.",
       "unknownError": "Ismeretlen hiba",
       "invalidTabId": "Érvénytelen lapazonosító",
-      "maxScrollAttempts": "Elérte a maximális görgetési kísérletek számát"
+      "maxScrollAttempts": "Elérte a maximális görgetési kísérletek számát",
+      "panelUnavailable": "A letöltés nem fejeződhetett be, mert a bővítmény panelja bezárult vagy elérhetetlenné vált. Kérjük, tartsa nyitva ezt a panelt letöltés közben, és próbálja újra.",
+      "panelUnavailableTitle": "Bővítmény panel szükséges",
+      "panelUnavailableTip": "Ennek elkerülése érdekében tartsa nyitva ezt a panelt, és kerülje a lapok váltását letöltés közben."
     },
     "filter": {
       "title": "Szűrje ki, mit szeretne letölteni",
@@ -50,16 +53,16 @@
       "includeExternal": "Külső hivatkozások belefoglalása",
       "fullWebsite": "Teljes webhely letöltése",
       "fullWebsiteDescription": "Legjobb összetett webhelyekhez (a hivatkozott oldalak első szintjét tölti le)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Szerver mód",
+      "insecureServerWarning": "Nem HTTPS kapcsolatot használ"
     },
     "actions": {
       "title": "Műveletek:",
       "stop": "Állj",
       "showInFolder": "Megjelenítés mappában",
       "downloadAnother": "Másik letöltése",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Folytatás",
+      "pause": "Szünet"
     },
     "status": {
       "waiting": "Várakozás a kapcsolatra...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "{{current}}/{{total}} oldal kinyerése",
       "linkedPagesComplete": "Hivatkozott oldalak kinyerése befejezve: {{succeeded}} sikeres, {{failed}} sikertelen",
       "linkedPagesFailed": "{{count}} oldal kinyerése sikertelen",
-      "scraperPaused": "Kaparás szüneteltetve"
+      "scraperPaused": "Kaparás szüneteltetve",
+      "uploadProgress": "Erőforrások feltöltése: {{completed}}/{{total}}",
+      "uploadingResources": "Erőforrások feltöltése a szerverre...",
+      "sendingScrapeComplete": "Kinyerés befejezése...",
+      "scrapeComplete": "Kinyerés befejeződött",
+      "waitingForUploads": "Várakozás a feltöltések befejezésére...",
+      "finalizingServer": "Befejezés a szerveren...",
+      "assemblingServer": "Összeállítás a szerveren...",
+      "assemblyProgress": "Összeállítás: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTML egyesítés",
+      "assemblyPhaseConverting": "URL-ek konvertálása",
+      "assemblyPhaseZipping": "ZIP létrehozása",
+      "assemblyPhaseInlining": "Erőforrások beágyazása",
+      "serverFallbackOffer": "Szerver probléma: {{reason}}",
+      "serverError": "Szerver hiba: {{error}}",
+      "serverUnavailable": "Szerver nem elérhető",
+      "assemblyTimeout": "Az összeállítás időtúllépés miatt meghiúsult",
+      "assemblyFailed": "Az összeállítás sikertelen",
+      "authFailed": "Hitelesítés sikertelen",
+      "retryServer": "Újrapróbálkozás",
+      "downloadLocally": "Letöltés helyileg",
+      "localFallbackWarning": "A helyi módra való visszatéréshez a lapot nulláról újra kell kinyerni. Folytatja?",
+      "downloadFromServer": "Letöltés szerverről",
+      "serverDownloadUrl": "Szerver letöltési URL",
+      "copyUrl": "URL másolása",
+      "urlCopied": "URL másolva!",
+      "serverSessionFailed": "Nem sikerült létrehozni a szerver munkamenetet: {{error}}",
+      "memoryWarningServerMode": "Alacsony memória figyelmeztetés ({{availableMB}}MB elérhető) — szerver mód aktív",
+      "serverModeActive": "Szerver mód aktív"
     },
     "permissions": {
       "storage": {

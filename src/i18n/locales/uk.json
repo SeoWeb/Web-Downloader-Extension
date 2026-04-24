@@ -14,7 +14,10 @@
       "memoryPressure": "Неможливо розпочати завантаження через критичну нестачу пам'яті. Будь ласка, спробуйте пізніше.",
       "unknownError": "Невідома помилка",
       "invalidTabId": "Недійсний ідентифікатор вкладки",
-      "maxScrollAttempts": "Досягнуто максимальної кількості спроб прокручування"
+      "maxScrollAttempts": "Досягнуто максимальної кількості спроб прокручування",
+      "panelUnavailable": "Завантаження не могло бути завершено, тому що панель розширення була закрита або стала недоступною. Будь ласка, тримайте цю панель відкритою під час завантаження і спробуйте знову.",
+      "panelUnavailableTitle": "Потрібна панель розширення",
+      "panelUnavailableTip": "Щоб запобігти цьому, тримайте цю панель відкритою і уникайте перемикання вкладок під час завантаження."
     },
     "filter": {
       "title": "Відфільтруйте те, що ви хочете завантажити",
@@ -50,16 +53,16 @@
       "includeExternal": "Включити зовнішні посилання",
       "fullWebsite": "Завантажити весь веб-сайт",
       "fullWebsiteDescription": "Найкраще для складних веб-сайтів (завантажує перший рівень пов'язаних сторінок)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Режим сервера",
+      "insecureServerWarning": "Не використовує HTTPS"
     },
     "actions": {
       "title": "Дії:",
       "stop": "Стоп",
       "showInFolder": "Показати в папці",
       "downloadAnother": "Завантажити ще",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Продовжити",
+      "pause": "Призупинити"
     },
     "status": {
       "waiting": "Очікування підключення...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Вилучення сторінки {{current}} з {{total}}",
       "linkedPagesComplete": "Вилучення пов'язаних сторінок завершено: {{succeeded}} успішно, {{failed}} невдало",
       "linkedPagesFailed": "{{count}} сторінок не вдалося вилучити",
-      "scraperPaused": "Скрапінг призупинено"
+      "scraperPaused": "Скрапінг призупинено",
+      "uploadProgress": "Завантаження ресурсів: {{completed}}/{{total}}",
+      "uploadingResources": "Завантаження ресурсів на сервер...",
+      "sendingScrapeComplete": "Завершення скрапінгу...",
+      "scrapeComplete": "Скрапінг завершено",
+      "waitingForUploads": "Очікування завершення завантаження...",
+      "finalizingServer": "Завершення на сервері...",
+      "assemblingServer": "Збірка на сервері...",
+      "assemblyProgress": "Збірка: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Об'єднання HTML",
+      "assemblyPhaseConverting": "Перетворення URL",
+      "assemblyPhaseZipping": "Створення ZIP",
+      "assemblyPhaseInlining": "Вбудовування ресурсів",
+      "serverFallbackOffer": "Проблема з сервером: {{reason}}",
+      "serverError": "Помилка сервера: {{error}}",
+      "serverUnavailable": "Сервер недоступний",
+      "assemblyTimeout": "Час збірки минув",
+      "assemblyFailed": "Збірка не вдалася",
+      "authFailed": "Автентифікація не вдалася",
+      "retryServer": "Повторити спробу",
+      "downloadLocally": "Завантажити локально",
+      "localFallbackWarning": "Повернення до локального режиму вимагає повторного скрапінгу сторінки з початку. Продовжити?",
+      "downloadFromServer": "Завантажити з сервера",
+      "serverDownloadUrl": "URL завантаження з сервера",
+      "copyUrl": "Копіювати URL",
+      "urlCopied": "URL скопійовано!",
+      "serverSessionFailed": "Не вдалося створити сесію сервера: {{error}}",
+      "memoryWarningServerMode": "Попередження про низьку пам'ять ({{availableMB}}МБ доступно) — режим сервера активний",
+      "serverModeActive": "Режим сервера активний"
     },
     "permissions": {
       "storage": {

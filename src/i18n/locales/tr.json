@@ -14,7 +14,10 @@
       "memoryPressure": "Kritik bellek baskısı nedeniyle indirme başlatılamıyor. Lütfen daha sonra tekrar deneyin.",
       "unknownError": "Bilinmeyen hata",
       "invalidTabId": "Geçersiz sekme kimliği",
-      "maxScrollAttempts": "Maksimum kaydırma denemesine ulaşıldı"
+      "maxScrollAttempts": "Maksimum kaydırma denemesine ulaşıldı",
+      "panelUnavailable": "Uzantı paneli kapalı veya kullanılamaz olduğu için indirme tamamlanamadı. Lütfen indirme sırasında bu paneli açık tutun ve tekrar deneyin.",
+      "panelUnavailableTitle": "Uzantı Paneli Gerekli",
+      "panelUnavailableTip": "Bunu önlemek için, bu paneli açık tutun ve indirme sırasında sekmeler arasında geçiş yapmaktan kaçının."
     },
     "filter": {
       "title": "İndirmek istediklerinizi filtreleyin",
@@ -50,16 +53,16 @@
       "includeExternal": "Harici bağlantıları dahil et",
       "fullWebsite": "Tam web sitesini indir",
       "fullWebsiteDescription": "Karmaşık web siteleri için en iyisi (bağlantılı sayfaların ilk seviyesini indirir)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Sunucu modu",
+      "insecureServerWarning": "HTTPS kullanılmıyor"
     },
     "actions": {
       "title": "İşlemler:",
       "stop": "Durdur",
       "showInFolder": "Klasörde göster",
       "downloadAnother": "Başka indir",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Devam Et",
+      "pause": "Duraklat"
     },
     "status": {
       "waiting": "Bağlantı bekleniyor...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "{{current}}/{{total}} sayfa kazınıyor",
       "linkedPagesComplete": "Bağlantılı sayfa kazıma tamamlandı: {{succeeded}} başarılı, {{failed}} başarısız",
       "linkedPagesFailed": "{{count}} sayfa kazınamadı",
-      "scraperPaused": "Kazıma duraklatıldı"
+      "scraperPaused": "Kazıma duraklatıldı",
+      "uploadProgress": "Kaynaklar yükleniyor: {{completed}}/{{total}}",
+      "uploadingResources": "Kaynaklar sunucuya yükleniyor...",
+      "sendingScrapeComplete": "Kazıma tamamlanıyor...",
+      "scrapeComplete": "Kazıma tamamlandı",
+      "waitingForUploads": "Yüklemelerin tamamlanması bekleniyor...",
+      "finalizingServer": "Sunucuda tamamlanıyor...",
+      "assemblingServer": "Sunucuda birleştiriliyor...",
+      "assemblyProgress": "Birleştirme: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTML birleştiriliyor",
+      "assemblyPhaseConverting": "URL'ler dönüştürülüyor",
+      "assemblyPhaseZipping": "ZIP oluşturuluyor",
+      "assemblyPhaseInlining": "Kaynaklar gömülüyor",
+      "serverFallbackOffer": "Sunucu sorunu: {{reason}}",
+      "serverError": "Sunucu hatası: {{error}}",
+      "serverUnavailable": "Sunucu kullanılamıyor",
+      "assemblyTimeout": "Birleştirme zaman aşımına uğradı",
+      "assemblyFailed": "Birleştirme başarısız oldu",
+      "authFailed": "Kimlik doğrulama başarısız oldu",
+      "retryServer": "Tekrar Dene",
+      "downloadLocally": "Yerel olarak indir",
+      "localFallbackWarning": "Yerel moda geri dönmek, sayfanın baştan tekrar kazınmasını gerektirir. Devam edilsin mi?",
+      "downloadFromServer": "Sunucudan indir",
+      "serverDownloadUrl": "Sunucu indirme URL'si",
+      "copyUrl": "URL'yi Kopyala",
+      "urlCopied": "URL kopyalandı!",
+      "serverSessionFailed": "Sunucu oturumu oluşturulamadı: {{error}}",
+      "memoryWarningServerMode": "Düşük bellek uyarısı ({{availableMB}}MB mevcut) — sunucu modu etkin",
+      "serverModeActive": "Sunucu modu etkin"
     },
     "permissions": {
       "storage": {

@@ -14,7 +14,10 @@
       "tryAgain": "Réessayer",
       "unknownError": "Erreur inconnu",
       "invalidTabId": "ID d'onglet invalide",
-      "maxScrollAttempts": "Nombre maximum de tentatives de défilement atteint"
+      "maxScrollAttempts": "Nombre maximum de tentatives de défilement atteint",
+      "panelUnavailable": "Le téléchargement n'a pas pu se terminer car le panneau d'extension a été fermé ou est devenu indisponible. Veuillez garder ce panneau ouvert pendant le téléchargement et réessayer.",
+      "panelUnavailableTitle": "Panneau d'extension requis",
+      "panelUnavailableTip": "Pour éviter cela, gardez ce panneau ouvert et évitez de changer d'onglet pendant le téléchargement."
     },
     "filter": {
       "loading": "Chargement des filtres...",
@@ -50,15 +53,15 @@
       "includeExternal": "Inclure les liens externes",
       "fullWebsite": "Télécharger le site web complet",
       "fullWebsiteDescription": "Idéal pour les sites web complexes (télécharge le premier niveau des pages liées)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Mode serveur",
+      "insecureServerWarning": "Pas de HTTPS"
     },
     "actions": {
       "title": "Actions :",
       "stop": "Arrêter",
       "showInFolder": "Afficher dans le dossier",
       "downloadAnother": "Télécharger un autre",
-      "resume": "Resume",
+      "resume": "Reprendre",
       "pause": "Pause"
     },
     "status": {
@@ -160,7 +163,35 @@
       "linkedPageProgress": "Extraction de la page {{current}} sur {{total}}",
       "linkedPagesComplete": "Extraction des pages liées terminée : {{succeeded}} réussies, {{failed}} échouées",
       "linkedPagesFailed": "{{count}} pages n'ont pas pu être extraites",
-      "scraperPaused": "Scraping en pause"
+      "scraperPaused": "Scraping en pause",
+      "uploadProgress": "Téléversement des ressources : {{completed}}/{{total}}",
+      "uploadingResources": "Téléversement des ressources vers le serveur...",
+      "sendingScrapeComplete": "Finalisation du scraping...",
+      "scrapeComplete": "Scraping terminé",
+      "waitingForUploads": "En attente de la fin des téléversements...",
+      "finalizingServer": "Finalisation sur le serveur...",
+      "assemblingServer": "Assemblage sur le serveur...",
+      "assemblyProgress": "Assemblage : {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Fusion HTML",
+      "assemblyPhaseConverting": "Conversion des URL",
+      "assemblyPhaseZipping": "Création du ZIP",
+      "assemblyPhaseInlining": "Insertion des ressources",
+      "serverFallbackOffer": "Problème serveur : {{reason}}",
+      "serverError": "Erreur serveur : {{error}}",
+      "serverUnavailable": "Serveur indisponible",
+      "assemblyTimeout": "Délai d'assemblage expiré",
+      "assemblyFailed": "Assemblage échoué",
+      "authFailed": "Authentification échouée",
+      "retryServer": "Réessayer",
+      "downloadLocally": "Télécharger localement",
+      "localFallbackWarning": "Le retour en mode local nécessite de rescrapper la page depuis le début. Continuer ?",
+      "downloadFromServer": "Télécharger depuis le serveur",
+      "serverDownloadUrl": "URL de téléchargement du serveur",
+      "copyUrl": "Copier l'URL",
+      "urlCopied": "URL copiée !",
+      "serverSessionFailed": "Échec de la création de la session serveur : {{error}}",
+      "memoryWarningServerMode": "Avertissement de mémoire faible ({{availableMB}}MB disponible) — mode serveur actif",
+      "serverModeActive": "Mode serveur actif"
     },
     "permissions": {
       "storage": {

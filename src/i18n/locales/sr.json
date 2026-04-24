@@ -14,7 +14,10 @@
       "memoryPressure": "Ne mogu započeti preuzimanje zbog kritičnog nedostatka memorije. Molimo pokušajte ponovo kasnije.",
       "unknownError": "Непозната грешка",
       "invalidTabId": "Nevažeći ID kartice",
-      "maxScrollAttempts": "Dostignut maksimalan broj pokušaja pomicanja"
+      "maxScrollAttempts": "Dostignut maksimalan broj pokušaja pomicanja",
+      "panelUnavailable": "Преузимање није могло да се заврши јер је панел екстензије затворен или постао недоступан. Молимо, држите овај панел отвореним током преузимања и покушајте поново.",
+      "panelUnavailableTitle": "Потребан панел екстензије",
+      "panelUnavailableTip": "Да бисте то спречили, држите овај панел отвореним и избегавајте пребацивање картица током преузимања."
     },
     "filter": {
       "title": "Филтрирајте оно што желите да преузмете",
@@ -50,16 +53,16 @@
       "includeExternal": "Uključi spoljne veze",
       "fullWebsite": "Preuzmite ceo veb sajt",
       "fullWebsiteDescription": "Najbolje za složene veb sajtove (preuzima prvi nivo povezanih stranica)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Режим сервера",
+      "insecureServerWarning": "Не користи HTTPS"
     },
     "actions": {
       "title": "Акције:",
       "stop": "Стани",
       "showInFolder": "Prikaži u fascikli",
       "downloadAnother": "Preuzmi drugo",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Настави",
+      "pause": "Паузирај"
     },
     "status": {
       "waiting": "Чекање везе...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Извлачење странице {{current}} од {{total}}",
       "linkedPagesComplete": "Извлачење повезаних страница завршено: {{succeeded}} успешних, {{failed}} неуспешних",
       "linkedPagesFailed": "{{count}} страница није успело да се извуче",
-      "scraperPaused": "Скрапинг паузиран"
+      "scraperPaused": "Скрапинг паузиран",
+      "uploadProgress": "Отпремање ресурса: {{completed}}/{{total}}",
+      "uploadingResources": "Отпремање ресурса на сервер...",
+      "sendingScrapeComplete": "Завршавање стругања...",
+      "scrapeComplete": "Стругање завршено",
+      "waitingForUploads": "Чекање да се отпремања заврше...",
+      "finalizingServer": "Завршавање на серверу...",
+      "assemblingServer": "Састављање на серверу...",
+      "assemblyProgress": "Састављање: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Стапање HTML-а",
+      "assemblyPhaseConverting": "Конвертовање URL-ова",
+      "assemblyPhaseZipping": "Стварање ZIP-а",
+      "assemblyPhaseInlining": "Уградња ресурса",
+      "serverFallbackOffer": "Проблем са сервером: {{reason}}",
+      "serverError": "Грешка сервера: {{error}}",
+      "serverUnavailable": "Сервер није доступан",
+      "assemblyTimeout": "Истекло време за састављање",
+      "assemblyFailed": "Састављање није успело",
+      "authFailed": "Аутентификација није успела",
+      "retryServer": "Покушај поново",
+      "downloadLocally": "Преузми локално",
+      "localFallbackWarning": "Повратак на локални режим захтева поновно стругање странице од почетка. Наставити?",
+      "downloadFromServer": "Преузми са сервера",
+      "serverDownloadUrl": "URL за преузимање са сервера",
+      "copyUrl": "Копирај URL",
+      "urlCopied": "URL копиран!",
+      "serverSessionFailed": "Стварање сесије сервера није успело: {{error}}",
+      "memoryWarningServerMode": "Упозорење о малој меморији ({{availableMB}}MB доступно) — режим сервера активан",
+      "serverModeActive": "Режим сервера активан"
     },
     "permissions": {
       "storage": {

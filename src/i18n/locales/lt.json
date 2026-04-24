@@ -14,7 +14,10 @@
       "memoryPressure": "Negalima pradėti atsisiuntimo dėl kritinio atminties trūkumo. Bandykite vėliau.",
       "unknownError": "Nežinoma klaida",
       "invalidTabId": "Netinkamas skirtuko ID",
-      "maxScrollAttempts": "Pasiektas maksimalus slinkimo bandymų skaičius"
+      "maxScrollAttempts": "Pasiektas maksimalus slinkimo bandymų skaičius",
+      "panelUnavailable": "Atsisiuntimas negalėjo būti baigtas, nes plėtinio skydelis buvo uždarytas arba tapo nepasiekiamas. Prašome laikyti šį skydelį atvirą atsisiuntimo metu ir bandyti dar kartą.",
+      "panelUnavailableTitle": "Reikalingas plėtinio skydelis",
+      "panelUnavailableTip": "Kad taip neatsitiktų, laikykite šį skydelį atvirą ir venkite perjungti skirtukus atsisiuntimo metu."
     },
     "filter": {
       "title": "Filtruokite, ką norite atsisiųsti",
@@ -50,16 +53,16 @@
       "includeExternal": "Įtraukti išorines nuorodas",
       "fullWebsite": "Atsisiųsti visą svetainę",
       "fullWebsiteDescription": "Geriausiai tinka sudėtingoms svetainėms (atsisiunčia pirmąjį susietų puslapių lygį)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Serverio režimas",
+      "insecureServerWarning": "Nenaudojamas HTTPS"
     },
     "actions": {
       "title": "Veiksmai:",
       "stop": "Stabdyti",
       "showInFolder": "Rodyti aplanke",
       "downloadAnother": "Atsisiųsti kitą",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Tęsti",
+      "pause": "Pristabdyti"
     },
     "status": {
       "waiting": "Laukiama ryšio...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Išgaunamas puslapis {{current}} iš {{total}}",
       "linkedPagesComplete": "Susietų puslapių išgavimas baigtas: {{succeeded}} pavyko, {{failed}} nepavyko",
       "linkedPagesFailed": "{{count}} puslapių išgauti nepavyko",
-      "scraperPaused": "Grandymas pristabdytas"
+      "scraperPaused": "Grandymas pristabdytas",
+      "uploadProgress": "Išteklių įkėlimas: {{completed}}/{{total}}",
+      "uploadingResources": "Išteklių įkėlimas į serverį...",
+      "sendingScrapeComplete": "Baigiamas nuskaitymas...",
+      "scrapeComplete": "Nuskaitymas baigtas",
+      "waitingForUploads": "Laukiama, kol bus baigti įkėlimai...",
+      "finalizingServer": "Baigiama serveryje...",
+      "assemblingServer": "Surinkimas serveryje...",
+      "assemblyProgress": "Surinkimas: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTML sujungimas",
+      "assemblyPhaseConverting": "URL konvertavimas",
+      "assemblyPhaseZipping": "ZIP sukūrimas",
+      "assemblyPhaseInlining": "Išteklių įterpimas",
+      "serverFallbackOffer": "Serverio problema: {{reason}}",
+      "serverError": "Serverio klaida: {{error}}",
+      "serverUnavailable": "Serveris nepasiekiamas",
+      "assemblyTimeout": "Surinkimo laikas baigėsi",
+      "assemblyFailed": "Surinkimas nepavyko",
+      "authFailed": "Autentifikacija nepavyko",
+      "retryServer": "Bandyti dar kartą",
+      "downloadLocally": "Atsisiųsti vietoje",
+      "localFallbackWarning": "Grįžtant į vietinį režimą reikia iš naujo nuskaityti puslapį nuo pradžių. Tęsti?",
+      "downloadFromServer": "Atsisiųsti iš serverio",
+      "serverDownloadUrl": "Serverio atsisiuntimo URL",
+      "copyUrl": "Kopijuoti URL",
+      "urlCopied": "URL nukopijuotas!",
+      "serverSessionFailed": "Nepavyko sukurti serverio sesijos: {{error}}",
+      "memoryWarningServerMode": "Mažos atminties įspėjimas ({{availableMB}}MB prieinama) — serverio režimas aktyvus",
+      "serverModeActive": "Serverio režimas aktyvus"
     },
     "permissions": {
       "storage": {

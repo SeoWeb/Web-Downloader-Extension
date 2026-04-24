@@ -14,7 +14,10 @@
       "memoryPressure": "Latausta ei voida aloittaa kriittisen muistinpuutteen vuoksi. Yritä myöhemmin uudelleen.",
       "unknownError": "Tuntematon virhe",
       "invalidTabId": "Virheellinen välilehden tunnus",
-      "maxScrollAttempts": "Vierityskertojen enimmäismäärä saavutettu"
+      "maxScrollAttempts": "Vierityskertojen enimmäismäärä saavutettu",
+      "panelUnavailable": "Latausta ei voitu suorittaa loppuun, koska laajennuspaneeli suljettiin tai ei ollut käytettävissä. Pidä tämä paneeli auki latauksen aikana ja yritä uudelleen.",
+      "panelUnavailableTitle": "Laajennuspaneeli vaaditaan",
+      "panelUnavailableTip": "Tämän estämiseksi pidä tämä paneeli auki ja vältä välilehtien vaihtamista latauksen aikana."
     },
     "filter": {
       "title": "Suodata mitä haluat ladata",
@@ -50,16 +53,16 @@
       "includeExternal": "Sisällytä ulkoiset linkit",
       "fullWebsite": "Lataa koko verkkosivusto",
       "fullWebsiteDescription": "Paras monimutkaisille verkkosivustoille (lataa linkitettyjen sivujen ensimmäisen tason)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Palvelintila",
+      "insecureServerWarning": "HTTPS ei käytössä"
     },
     "actions": {
       "title": "Toiminnot:",
       "stop": "Pysäytä",
       "showInFolder": "Näytä kansiossa",
       "downloadAnother": "Lataa toinen",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Jatka",
+      "pause": "Tauko"
     },
     "status": {
       "waiting": "Odotetaan yhteyttä...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Kaapataan sivua {{current}}/{{total}}",
       "linkedPagesComplete": "Linkitettyjen sivujen kaappaus valmis: {{succeeded}} onnistui, {{failed}} epäonnistui",
       "linkedPagesFailed": "{{count}} sivun kaappaus epäonnistui",
-      "scraperPaused": "Raavinta keskeytetty"
+      "scraperPaused": "Raavinta keskeytetty",
+      "uploadProgress": "Resurssien lähetys: {{completed}}/{{total}}",
+      "uploadingResources": "Resurssien lähetys palvelimelle...",
+      "sendingScrapeComplete": "Kaappauksen viimeistely...",
+      "scrapeComplete": "Kaappaus valmis",
+      "waitingForUploads": "Odottaa lähetyksien valmistumista...",
+      "finalizingServer": "Viimeistely palvelimella...",
+      "assemblingServer": "Koostaminen palvelimella...",
+      "assemblyProgress": "Koostaminen: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTML:n yhdistäminen",
+      "assemblyPhaseConverting": "URL-osoitteiden muuntaminen",
+      "assemblyPhaseZipping": "ZIP-tiedoston luominen",
+      "assemblyPhaseInlining": "Resurssien upottaminen",
+      "serverFallbackOffer": "Palvelinongelma: {{reason}}",
+      "serverError": "Palvelinvirhe: {{error}}",
+      "serverUnavailable": "Palvelin ei käytettävissä",
+      "assemblyTimeout": "Koostaminen aikakatkaistu",
+      "assemblyFailed": "Koostaminen epäonnistui",
+      "authFailed": "Todennus epäonnistui",
+      "retryServer": "Yritä uudelleen",
+      "downloadLocally": "Lataa paikallisesti",
+      "localFallbackWarning": "Paikalliseen tilaan palauttaminen vaatii sivun uudelleenkaappauksen alusta. Jatketaanko?",
+      "downloadFromServer": "Lataa palvelimelta",
+      "serverDownloadUrl": "Palvelimen latausosoite",
+      "copyUrl": "Kopioi URL",
+      "urlCopied": "URL kopioitu!",
+      "serverSessionFailed": "Palvelinistunnon luominen epäonnistui: {{error}}",
+      "memoryWarningServerMode": "Vähäinen muistivaroitus ({{availableMB}}MB käytettävissä) — palvelintila aktiivinen",
+      "serverModeActive": "Palvelintila aktiivinen"
     },
     "permissions": {
       "storage": {

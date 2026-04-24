@@ -14,7 +14,10 @@
       "memoryPressure": "Αδυναμία έναρξης λήψης λόγω κρίσιμης πίεσης μνήμης. Δοκιμάστε ξανά αργότερα.",
       "unknownError": "Άγνωστο σφάλμα",
       "invalidTabId": "Μη έγκυρο ID καρτέλας",
-      "maxScrollAttempts": "Συμπληρώθηκε ο μέγιστος αριθμός προσπαθειών κύλισης"
+      "maxScrollAttempts": "Συμπληρώθηκε ο μέγιστος αριθμός προσπαθειών κύλισης",
+      "panelUnavailable": "Η λήψη δεν μπόρεσε να ολοκληρωθεί επειδή ο πίνακας επέκτασης έκλεισε ή έγινε μη διαθέσιμος. Παρακαλώ κρατήστε αυτόν τον πίνακα ανοιχτό κατά τη λήψη και δοκιμάστε ξανά.",
+      "panelUnavailableTitle": "Απαιτείται Πίνακας Επέκτασης",
+      "panelUnavailableTip": "Για να το αποφύγετε αυτό, κρατήστε αυτόν τον πίνακα ανοιχτό και αποφύγετε την εναλλαγή καρτελών κατά τη λήψη."
     },
     "filter": {
       "title": "Φιλτράρετε τι θέλετε να κατεβάσετε",
@@ -50,16 +53,16 @@
       "includeExternal": "Συμπερίληψη εξωτερικών συνδέσμων",
       "fullWebsite": "Λήψη πλήρους ιστοσελίδας",
       "fullWebsiteDescription": "Καλύτερο για πολύπλοκες ιστοσελίδες (κατεβάζει το πρώτο επίπεδο συνδεδεμένων σελίδων)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Λειτουργία διακομιστή",
+      "insecureServerWarning": "Δεν χρησιμοποιείται HTTPS"
     },
     "actions": {
       "title": "Ενέργειες:",
       "stop": "Διακοπή",
       "showInFolder": "Εμφάνιση στο φάκελο",
       "downloadAnother": "Λήψη άλλου",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Συνέχιση",
+      "pause": "Παύση"
     },
     "status": {
       "waiting": "Αναμονή σύνδεσης...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Εξαγωγή σελίδας {{current}} από {{total}}",
       "linkedPagesComplete": "Η εξαγωγή συνδεδεμένων σελίδων ολοκληρώθηκε: {{succeeded}} επιτυχημένες, {{failed}} αποτυχημένες",
       "linkedPagesFailed": "{{count}} σελίδες απέτυχαν να εξαχθούν",
-      "scraperPaused": "Η σάρωση διακόπηκε"
+      "scraperPaused": "Η σάρωση διακόπηκε",
+      "uploadProgress": "Ανέβασμα πόρων: {{completed}}/{{total}}",
+      "uploadingResources": "Ανέβασμα πόρων στον διακομιστή...",
+      "sendingScrapeComplete": "Ολοκλήρωση εξαγωγής...",
+      "scrapeComplete": "Η εξαγωγή ολοκληρώθηκε",
+      "waitingForUploads": "Αναμονή για ολοκλήρωση ανεβάσματος...",
+      "finalizingServer": "Ολοκλήρωση στον διακομιστή...",
+      "assemblingServer": "Συναρμολόγηση στον διακομιστή...",
+      "assemblyProgress": "Συναρμολόγηση: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Συγχώνευση HTML",
+      "assemblyPhaseConverting": "Μετατροπή URLs",
+      "assemblyPhaseZipping": "Δημιουργία ZIP",
+      "assemblyPhaseInlining": "Ενσωμάτωση πόρων",
+      "serverFallbackOffer": "Πρόβλημα διακομιστή: {{reason}}",
+      "serverError": "Σφάλμα διακομιστή: {{error}}",
+      "serverUnavailable": "Ο διακομιστής δεν είναι διαθέσιμος",
+      "assemblyTimeout": "Η συναρμολόγηση έληξε",
+      "assemblyFailed": "Η συναρμολόγηση απέτυχε",
+      "authFailed": "Ο έλεγχος ταυτότητας απέτυχε",
+      "retryServer": "Επανάληψη",
+      "downloadLocally": "Λήψη τοπικά",
+      "localFallbackWarning": "Η επαναφορά στην τοπική λειτουργία απαιτεί εκ νέου εξαγωγή της σελίδας από την αρχή. Συνέχεια;",
+      "downloadFromServer": "Λήψη από διακομιστή",
+      "serverDownloadUrl": "URL λήψης διακομιστή",
+      "copyUrl": "Αντιγραφή URL",
+      "urlCopied": "Το URL αντιγράφηκε!",
+      "serverSessionFailed": "Αποτυχία δημιουργίας συνεδρίας διακομιστή: {{error}}",
+      "memoryWarningServerMode": "Προειδοποίηση χαμηλής μνήμης ({{availableMB}}MB διαθέσιμα) — λειτουργία διακομιστή ενεργή",
+      "serverModeActive": "Λειτουργία διακομιστή ενεργή"
     },
     "permissions": {
       "storage": {

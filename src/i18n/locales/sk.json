@@ -14,7 +14,10 @@
       "memoryPressure": "Nie je možné spustiť sťahovanie kvôli kritickému nedostatku pamäte. Skúste to prosím neskôr.",
       "unknownError": "Neznáma chyba",
       "invalidTabId": "Neplatné ID karty",
-      "maxScrollAttempts": "Dosiahnutý maximálny počet pokusov o posúvanie"
+      "maxScrollAttempts": "Dosiahnutý maximálny počet pokusov o posúvanie",
+      "panelUnavailable": "Sťahovanie nemohlo byť dokončené, pretože panel rozšírenia bol zatvorený alebo sa stal nedostupným. Prosím, majte tento panel otvorený počas sťahovania a skúste to znova.",
+      "panelUnavailableTitle": "Vyžaduje sa panel rozšírenia",
+      "panelUnavailableTip": "Aby ste tomu zabránili, majte tento panel otvorený a neprepínajte karty počas sťahovania."
     },
     "filter": {
       "title": "Filtrujte, čo chcete stiahnuť",
@@ -50,16 +53,16 @@
       "includeExternal": "Zahrnúť externé odkazy",
       "fullWebsite": "Stiahnuť celú webovú stránku",
       "fullWebsiteDescription": "Najlepšie pre zložité weby (stiahne prvú úroveň odkazovaných stránok)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Režim servera",
+      "insecureServerWarning": "Nepoužíva HTTPS"
     },
     "actions": {
       "title": "Akcie:",
       "stop": "Zastaviť",
       "showInFolder": "Zobraziť v priečinku",
       "downloadAnother": "Stiahnuť ďalší",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Pokračovať",
+      "pause": "Pozastaviť"
     },
     "status": {
       "waiting": "Čakanie na pripojenie...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Získavanie stránky {{current}} z {{total}}",
       "linkedPagesComplete": "Získavanie prepojených stránok dokončené: {{succeeded}} úspešných, {{failed}} neúspešných",
       "linkedPagesFailed": "{{count}} stránok sa nepodarilo získať",
-      "scraperPaused": "Sťahovanie pozastavené"
+      "scraperPaused": "Sťahovanie pozastavené",
+      "uploadProgress": "Nahrávanie zdrojov: {{completed}}/{{total}}",
+      "uploadingResources": "Nahrávanie zdrojov na server...",
+      "sendingScrapeComplete": "Dokončovanie škrabania...",
+      "scrapeComplete": "Škrabanie dokončené",
+      "waitingForUploads": "Čakanie na dokončenie nahrávania...",
+      "finalizingServer": "Dokončovanie na serveri...",
+      "assemblingServer": "Zostavovanie na serveri...",
+      "assemblyProgress": "Zostavovanie: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Zlučovanie HTML",
+      "assemblyPhaseConverting": "Konverzia URL adries",
+      "assemblyPhaseZipping": "Vytváranie ZIP",
+      "assemblyPhaseInlining": "Vkladanie zdrojov",
+      "serverFallbackOffer": "Problém so serverom: {{reason}}",
+      "serverError": "Chyba servera: {{error}}",
+      "serverUnavailable": "Server nie je dostupný",
+      "assemblyTimeout": "Časový limit zostavovania vypršal",
+      "assemblyFailed": "Zostavovanie zlyhalo",
+      "authFailed": "Overenie zlyhalo",
+      "retryServer": "Skúsiť znova",
+      "downloadLocally": "Stiahnuť lokálne",
+      "localFallbackWarning": "Návrat k lokálnemu režimu vyžaduje opätovné škrabanie stránky od začiatku. Pokračovať?",
+      "downloadFromServer": "Stiahnuť zo servera",
+      "serverDownloadUrl": "URL adresa sťahovania zo servera",
+      "copyUrl": "Kopírovať URL",
+      "urlCopied": "URL skopírovaná!",
+      "serverSessionFailed": "Nepodarilo sa vytvoriť reláciu servera: {{error}}",
+      "memoryWarningServerMode": "Upozornenie na nízku pamäť ({{availableMB}}MB dostupných) — režim servera aktívny",
+      "serverModeActive": "Režim servera aktívny"
     },
     "permissions": {
       "storage": {

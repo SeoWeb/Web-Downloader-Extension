@@ -14,7 +14,10 @@
       "memoryPressure": "Kan ikke starte nedlasting på grunn av kritisk minnepress. Vennligst prøv igjen senere.",
       "unknownError": "Ukjent feil",
       "invalidTabId": "Ugyldig fane-ID",
-      "maxScrollAttempts": "Maksimalt antall rulleforsøk nådd"
+      "maxScrollAttempts": "Maksimalt antall rulleforsøk nådd",
+      "panelUnavailable": "Nedlastingen kunne ikke fullføres fordi utvidelsespanelet ble lukket eller utilgjengelig. Vennligst hold dette panelet åpent under nedlasting og prøv igjen.",
+      "panelUnavailableTitle": "Utvidelsespanel kreves",
+      "panelUnavailableTip": "For å forhindre dette, hold dette panelet åpent og unngå å bytte faner under nedlasting."
     },
     "filter": {
       "title": "Filtrer ut hva du vil laste ned",
@@ -50,15 +53,15 @@
       "includeExternal": "Inkluder eksterne lenker",
       "fullWebsite": "Last ned hele nettsiden",
       "fullWebsiteDescription": "Best for komplekse nettsteder (laster ned første nivå av koblede sider)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Servermodus",
+      "insecureServerWarning": "Bruker ikke HTTPS"
     },
     "actions": {
       "title": "Handlinger:",
       "stop": "Stopp",
       "showInFolder": "Vis i mappe",
       "downloadAnother": "Last ned en annen",
-      "resume": "Resume",
+      "resume": "Fortsett",
       "pause": "Pause"
     },
     "status": {
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Skraper side {{current}} av {{total}}",
       "linkedPagesComplete": "Skraping av lenkede sider fullført: {{succeeded}} lyktes, {{failed}} mislyktes",
       "linkedPagesFailed": "{{count}} sider kunne ikke skrapes",
-      "scraperPaused": "Skraping pauset"
+      "scraperPaused": "Skraping pauset",
+      "uploadProgress": "Laster opp ressurser: {{completed}}/{{total}}",
+      "uploadingResources": "Laster opp ressurser til server...",
+      "sendingScrapeComplete": "Fullfører skraping...",
+      "scrapeComplete": "Skraping fullført",
+      "waitingForUploads": "Venter på at opplastinger fullføres...",
+      "finalizingServer": "Fullfører på server...",
+      "assemblingServer": "Samler på server...",
+      "assemblyProgress": "Samling: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Slår sammen HTML",
+      "assemblyPhaseConverting": "Konverterer URL-er",
+      "assemblyPhaseZipping": "Oppretter ZIP",
+      "assemblyPhaseInlining": "Bygger inn ressurser",
+      "serverFallbackOffer": "Serverproblem: {{reason}}",
+      "serverError": "Serverfeil: {{error}}",
+      "serverUnavailable": "Server utilgjengelig",
+      "assemblyTimeout": "Samling tidsavbrudd",
+      "assemblyFailed": "Samling mislyktes",
+      "authFailed": "Autentisering mislyktes",
+      "retryServer": "Prøv igjen",
+      "downloadLocally": "Last ned lokalt",
+      "localFallbackWarning": "Å gå tilbake til lokal modus krever at siden skrapes fra bunnen av. Fortsette?",
+      "downloadFromServer": "Last ned fra server",
+      "serverDownloadUrl": "Server nedlastings-URL",
+      "copyUrl": "Kopier URL",
+      "urlCopied": "URL kopiert!",
+      "serverSessionFailed": "Kunne ikke opprette serverøkt: {{error}}",
+      "memoryWarningServerMode": "Lav minneadvarsel ({{availableMB}}MB tilgjengelig) — servermodus aktiv",
+      "serverModeActive": "Servermodus aktiv"
     },
     "permissions": {
       "storage": {

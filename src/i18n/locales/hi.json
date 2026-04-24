@@ -14,7 +14,10 @@
       "memoryPressure": "महत्वपूर्ण मेमोरी दबाव के कारण डाउनलोड शुरू नहीं किया जा सकता है। कृपया बाद में पुनः प्रयास करें।",
       "unknownError": "अज्ञात त्रुटि",
       "invalidTabId": "अमान्य टैब आईडी",
-      "maxScrollAttempts": "अधिकतम स्क्रॉल प्रयास तक पहुंच गया"
+      "maxScrollAttempts": "अधिकतम स्क्रॉल प्रयास तक पहुंच गया",
+      "panelUnavailable": "डाउनलोड पूरा नहीं हो सका क्योंकि एक्सटेंशन पैनल बंद हो गया या अनुपलब्ध हो गया। कृपया डाउनलोड के दौरान इस पैनल को खुला रखें और पुनः प्रयास करें।",
+      "panelUnavailableTitle": "एक्सटेंशन पैनल आवश्यक है",
+      "panelUnavailableTip": "इसे रोकने के लिए, डाउनलोड के दौरान इस पैनल को खुला रखें और टैब बदलने से बचें।"
     },
     "filter": {
       "title": "आप जो डाउनलोड करना चाहते हैं उसे फ़िल्टर करें",
@@ -50,16 +53,16 @@
       "includeExternal": "बाहरी लिंक शामिल करें",
       "fullWebsite": "पूरी वेबसाइट डाउनलोड करें",
       "fullWebsiteDescription": "जटिल वेबसाइटों के लिए सर्वश्रेष्ठ (लिंक किए गए पेजों का पहला स्तर डाउनलोड करता है)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "सर्वर मोड",
+      "insecureServerWarning": "HTTPS का उपयोग नहीं हो रहा"
     },
     "actions": {
       "title": "क्रियाएं:",
       "stop": "रुकें",
       "showInFolder": "फ़ोल्डर में दिखाएं",
       "downloadAnother": "दूसरा डाउनलोड करें",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "फिर से शुरू करें",
+      "pause": "रोकें"
     },
     "status": {
       "waiting": "कनेक्शन की प्रतीक्षा कर रहा है...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "पृष्ठ {{current}}/{{total}} स्क्रैप कर रहे हैं",
       "linkedPagesComplete": "लिंक किए गए पृष्ठों की स्क्रैपिंग पूर्ण: {{succeeded}} सफल, {{failed}} विफल",
       "linkedPagesFailed": "{{count}} पृष्ठ स्क्रैप करने में विफल",
-      "scraperPaused": "स्क्रैपिंग रोक दी गई"
+      "scraperPaused": "स्क्रैपिंग रोक दी गई",
+      "uploadProgress": "संसाधन अपलोड: {{completed}}/{{total}}",
+      "uploadingResources": "सर्वर पर संसाधन अपलोड हो रहे हैं...",
+      "sendingScrapeComplete": "स्क्रैप अंतिम रूप दिया जा रहा है...",
+      "scrapeComplete": "स्क्रैप पूर्ण",
+      "waitingForUploads": "अपलोड पूर्ण होने की प्रतीक्षा...",
+      "finalizingServer": "सर्वर पर अंतिम रूप दिया जा रहा है...",
+      "assemblingServer": "सर्वर पर असेंबल हो रहा है...",
+      "assemblyProgress": "असेंबली: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTML विलय हो रहा है",
+      "assemblyPhaseConverting": "URL परिवर्तित हो रहे हैं",
+      "assemblyPhaseZipping": "ZIP बन रहा है",
+      "assemblyPhaseInlining": "संसाधन इनलाइन हो रहे हैं",
+      "serverFallbackOffer": "सर्वर समस्या: {{reason}}",
+      "serverError": "सर्वर त्रुटि: {{error}}",
+      "serverUnavailable": "सर्वर अनुपलब्ध",
+      "assemblyTimeout": "असेंबली का समय समाप्त",
+      "assemblyFailed": "असेंबली विफल",
+      "authFailed": "प्रमाणीकरण विफल",
+      "retryServer": "पुनः प्रयास करें",
+      "downloadLocally": "स्थानीय रूप से डाउनलोड करें",
+      "localFallbackWarning": "स्थानीय मोड पर वापस जाने के लिए पेज को फिर से स्क्रैप करना होगा। जारी रखें?",
+      "downloadFromServer": "सर्वर से डाउनलोड करें",
+      "serverDownloadUrl": "सर्वर डाउनलोड URL",
+      "copyUrl": "URL कॉपी करें",
+      "urlCopied": "URL कॉपी हो गया!",
+      "serverSessionFailed": "सर्वर सत्र बनाने में विफल: {{error}}",
+      "memoryWarningServerMode": "कम मेमोरी चेतावनी ({{availableMB}}MB उपलब्ध) — सर्वर मोड सक्रिय",
+      "serverModeActive": "सर्वर मोड सक्रिय"
     },
     "permissions": {
       "storage": {

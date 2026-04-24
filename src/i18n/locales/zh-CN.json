@@ -14,7 +14,10 @@
       "memoryPressure": "由于内存严重不足，无法开始下载。请稍后再试。",
       "unknownError": "未知错误",
       "invalidTabId": "无效的标签 ID",
-      "maxScrollAttempts": "已达到最大滚动尝试次数"
+      "maxScrollAttempts": "已达到最大滚动尝试次数",
+      "panelUnavailable": "下载无法完成,因为扩展面板已关闭或不可用。请在下载时保持此面板打开,然后重试。",
+      "panelUnavailableTitle": "需要扩展面板",
+      "panelUnavailableTip": "为防止这种情况,请在下载时保持此面板打开,避免切换标签页。"
     },
     "filter": {
       "title": "筛选您要下载的内容",
@@ -49,17 +52,17 @@
       "pageDelay": "页面间延迟",
       "includeExternal": "包含外部链接",
       "fullWebsite": "下载完整网站",
-      "fullWebsiteDescription": "最适合复杂网站（下载链接页面的第一层级）",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "fullWebsiteDescription": "最适合复杂网站(下载链接页面的第一层级)",
+      "serverMode": "服务器模式",
+      "insecureServerWarning": "未使用 HTTPS"
     },
     "actions": {
       "title": "操作：",
       "stop": "停止",
       "showInFolder": "在文件夹中显示",
       "downloadAnother": "下载另一个",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "恢复",
+      "pause": "暂停"
     },
     "status": {
       "waiting": "等待连接...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "正在抓取第{{current}}/{{total}}页",
       "linkedPagesComplete": "链接页面抓取完成：{{succeeded}}成功，{{failed}}失败",
       "linkedPagesFailed": "{{count}}个页面抓取失败",
-      "scraperPaused": "抓取已暂停"
+      "scraperPaused": "抓取已暂停",
+      "uploadProgress": "上传资源: {{completed}}/{{total}}",
+      "uploadingResources": "正在上传资源到服务器...",
+      "sendingScrapeComplete": "正在完成抓取...",
+      "scrapeComplete": "抓取完成",
+      "waitingForUploads": "等待上传完成...",
+      "finalizingServer": "正在服务器上完成...",
+      "assemblingServer": "正在服务器上组装...",
+      "assemblyProgress": "组装中: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "正在合并 HTML",
+      "assemblyPhaseConverting": "正在转换 URL",
+      "assemblyPhaseZipping": "正在创建 ZIP",
+      "assemblyPhaseInlining": "正在内联资源",
+      "serverFallbackOffer": "服务器问题: {{reason}}",
+      "serverError": "服务器错误: {{error}}",
+      "serverUnavailable": "服务器不可用",
+      "assemblyTimeout": "组装超时",
+      "assemblyFailed": "组装失败",
+      "authFailed": "认证失败",
+      "retryServer": "重试",
+      "downloadLocally": "本地下载",
+      "localFallbackWarning": "回退到本地模式需要重新抓取页面。继续?",
+      "downloadFromServer": "从服务器下载",
+      "serverDownloadUrl": "服务器下载 URL",
+      "copyUrl": "复制 URL",
+      "urlCopied": "URL 已复制!",
+      "serverSessionFailed": "创建服务器会话失败: {{error}}",
+      "memoryWarningServerMode": "低内存警告(可用{{availableMB}}MB)——服务器模式激活",
+      "serverModeActive": "服务器模式激活"
     },
     "permissions": {
       "storage": {

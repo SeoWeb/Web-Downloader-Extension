@@ -14,7 +14,10 @@
       "memoryPressure": "Haiwezi kuanza kupakua kwa sababu ya shinikizo kubwa la kumbukumbu. Tafadhali jaribu tena baadaye.",
       "unknownError": "Hitilafu isiyojulikana",
       "invalidTabId": "Kitambulisho cha kichupo batili",
-      "maxScrollAttempts": "Upeo wa majaribio ya kusogeza umefikiwa"
+      "maxScrollAttempts": "Upeo wa majaribio ya kusogeza umefikiwa",
+      "panelUnavailable": "Upakuaji haukuweza kukamilika kwa sababu paneli ya kiendelezi ilifungwa au haikuweza kupatikana. Tafadhali weka paneli hii wazi wakati wa upakuaji na ujaribu tena.",
+      "panelUnavailableTitle": "Paneli ya Kiendelezi Inahitajika",
+      "panelUnavailableTip": "Ili kuzuia hili, weka paneli hii wazi na uepuke kubadilisha vichupo wakati wa upakuaji."
     },
     "filter": {
       "title": "Chu ja unachotaka kupakua",
@@ -50,16 +53,16 @@
       "includeExternal": "Jumuisha viungo vya nje",
       "fullWebsite": "Pakua tovuti kamili",
       "fullWebsiteDescription": "Bora kwa tovuti ngumu (inapakua kiwango cha kwanza cha kurasa zilizounganishwa)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Hali ya seva",
+      "insecureServerWarning": "Haikutumii HTTPS"
     },
     "actions": {
       "title": "Vitendo:",
       "stop": "Simama",
       "showInFolder": "Onyesha kwenye folda",
       "downloadAnother": "Pakua nyingine",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Endelea",
+      "pause": "Sitisha"
     },
     "status": {
       "waiting": "Inasubiri muunganisho...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Kukusanya ukurasa {{current}} wa {{total}}",
       "linkedPagesComplete": "Ukusanyaji wa kurasa zilizounganishwa umekamilika: {{succeeded}} zimefanikiwa, {{failed}} zimeshindwa",
       "linkedPagesFailed": "Kurasa {{count}} zimeshindwa kukusanywa",
-      "scraperPaused": "Ukuaji umesitishwa"
+      "scraperPaused": "Ukuaji umesitishwa",
+      "uploadProgress": "Kupakia rasilimali: {{completed}}/{{total}}",
+      "uploadingResources": "Kupakia rasilimali kwenye seva...",
+      "sendingScrapeComplete": "Kukamilisha ukusanyaji...",
+      "scrapeComplete": "Ukusanyaji umekamilika",
+      "waitingForUploads": "Kusubiri kupakia kukamilike...",
+      "finalizingServer": "Kukamilisha kwenye seva...",
+      "assemblingServer": "Kukusanya kwenye seva...",
+      "assemblyProgress": "Kukusanya: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Kuchanganya HTML",
+      "assemblyPhaseConverting": "Kubadilisha URL",
+      "assemblyPhaseZipping": "Kutengeneza ZIP",
+      "assemblyPhaseInlining": "Kuingiza rasilimali",
+      "serverFallbackOffer": "Tatizo la seva: {{reason}}",
+      "serverError": "Hitilafu ya seva: {{error}}",
+      "serverUnavailable": "Seva haipatikani",
+      "assemblyTimeout": "Muda wa kukusanya umeisha",
+      "assemblyFailed": "Kukusanya kumeshindwa",
+      "authFailed": "Uthibitisho umeshindwa",
+      "retryServer": "Jaribu Tena",
+      "downloadLocally": "Pakua ndani",
+      "localFallbackWarning": "Kurudi kwa hali ya ndani kunahitaji ukusanyaji upya wa ukurasa kutoka mwanzo. Endelea?",
+      "downloadFromServer": "Pakua kutoka seva",
+      "serverDownloadUrl": "URL ya upakuaji wa seva",
+      "copyUrl": "Nakili URL",
+      "urlCopied": "URL imenakiliwa!",
+      "serverSessionFailed": "Imeshindwa kutengeneza kipindi cha seva: {{error}}",
+      "memoryWarningServerMode": "Onyo la kumbukumbu chini ({{availableMB}}MB inapatikana) — hali ya seva inatumika",
+      "serverModeActive": "Hali ya seva inatumika"
     },
     "permissions": {
       "storage": {

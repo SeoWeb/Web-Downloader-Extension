@@ -14,7 +14,10 @@
       "memoryPressure": "به دلیل فشار حافظه بحرانی امکان شروع دانلود وجود ندارد. لطفاً بعداً دوباره تلاش کنید.",
       "unknownError": "خطای ناشناخته",
       "invalidTabId": "شناسه برگه نامعتبر",
-      "maxScrollAttempts": "تعداد تلاش‌های اسکرول به حداکثر رسید"
+      "maxScrollAttempts": "تعداد تلاش‌های اسکرول به حداکثر رسید",
+      "panelUnavailable": "دانلود نتوانست کامل شود زیرا پنل افزونه بسته یا غیرقابل دسترس شد. لطفاً هنگام دانلود این پنل را باز نگه دارید و دوباره تلاش کنید.",
+      "panelUnavailableTitle": "پنل افزونه مورد نیاز است",
+      "panelUnavailableTip": "برای جلوگیری از این، این پنل را باز نگه دارید و هنگام دانلود از تغییر برگه‌ها خودداری کنید."
     },
     "filter": {
       "title": "آنچه را که می خواهید دانلود کنید فیلتر کنید",
@@ -50,16 +53,16 @@
       "includeExternal": "شامل لینک‌های خارجی",
       "fullWebsite": "دانلود کامل وب‌سایت",
       "fullWebsiteDescription": "بهترین گزینه برای وب‌سایت‌های پیچیده (سطح اول صفحات لینک‌شده را دانلود می‌کند)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "حالت سرور",
+      "insecureServerWarning": "عدم استفاده از HTTPS"
     },
     "actions": {
       "title": "اقدامات:",
       "stop": "توقف",
       "showInFolder": "نمایش در پوشه",
       "downloadAnother": "دانلود یکی دیگر",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "ادامه",
+      "pause": "توقف موقت"
     },
     "status": {
       "waiting": "در انتظار اتصال...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "استخراج صفحه {{current}} از {{total}}",
       "linkedPagesComplete": "استخراج صفحات پیوند شده کامل شد: {{succeeded}} موفق، {{failed}} ناموفق",
       "linkedPagesFailed": "{{count}} صفحه استخراج نشدند",
-      "scraperPaused": "اسکرپ متوقف شد"
+      "scraperPaused": "اسکرپ متوقف شد",
+      "uploadProgress": "آپلود منابع: {{completed}}/{{total}}",
+      "uploadingResources": "در حال آپلود منابع به سرور...",
+      "sendingScrapeComplete": "نهایی کردن اسکرپ...",
+      "scrapeComplete": "اسکرپ کامل شد",
+      "waitingForUploads": "در انتظار تکمیل آپلودها...",
+      "finalizingServer": "نهایی کردن در سرور...",
+      "assemblingServer": "در حال مونتاژ در سرور...",
+      "assemblyProgress": "در حال مونتاژ: {{phase}} ({{progressPct}}٪)",
+      "assemblyPhaseMerging": "ادغام HTML",
+      "assemblyPhaseConverting": "تبدیل URLها",
+      "assemblyPhaseZipping": "ایجاد ZIP",
+      "assemblyPhaseInlining": "جاسازی منابع",
+      "serverFallbackOffer": "مشکل سرور: {{reason}}",
+      "serverError": "خطای سرور: {{error}}",
+      "serverUnavailable": "سرور در دسترس نیست",
+      "assemblyTimeout": "زمان مونتاژ به پایان رسید",
+      "assemblyFailed": "مونتاژ ناموفق بود",
+      "authFailed": "احراز هویت ناموفق بود",
+      "retryServer": "تلاش مجدد",
+      "downloadLocally": "دانلود به صورت محلی",
+      "localFallbackWarning": "بازگشت به حالت محلی نیاز به اسکرپ مجدد صفحه از ابتدا دارد. ادامه می‌دهید؟",
+      "downloadFromServer": "دانلود از سرور",
+      "serverDownloadUrl": "URL دانلود سرور",
+      "copyUrl": "کپی URL",
+      "urlCopied": "URL کپی شد!",
+      "serverSessionFailed": "ایجاد جلسه سرور ناموفق بود: {{error}}",
+      "memoryWarningServerMode": "هشدار کمبود حافظه ({{availableMB}}MB موجود) — حالت سرور فعال",
+      "serverModeActive": "حالت سرور فعال"
     },
     "permissions": {
       "storage": {

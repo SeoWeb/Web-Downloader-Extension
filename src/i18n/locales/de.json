@@ -14,7 +14,10 @@
       "tryAgain": "Erneut versuchen",
       "unknownError": "Unbekannter Fehler",
       "invalidTabId": "Ungültige Tab-ID",
-      "maxScrollAttempts": "Maximale Scroll-Versuche erreicht"
+      "maxScrollAttempts": "Maximale Scroll-Versuche erreicht",
+      "panelUnavailable": "Download konnte nicht abgeschlossen werden, da das Erweiterungsfenster geschlossen oder nicht verfügbar wurde. Bitte halten Sie dieses Fenster während des Downloads geöffnet und versuchen Sie es erneut.",
+      "panelUnavailableTitle": "Erweiterungsfenster erforderlich",
+      "panelUnavailableTip": "Um dies zu verhindern, halten Sie dieses Fenster geöffnet und vermeiden Sie das Wechseln von Tabs während des Downloads."
     },
     "filter": {
       "loading": "Filter werden geladen...",
@@ -50,16 +53,16 @@
       "includeExternal": "Externe Links einbeziehen",
       "fullWebsite": "Vollständige Website herunterladen",
       "fullWebsiteDescription": "Am besten für komplexe Websites (lädt die erste Ebene verlinkter Seiten herunter)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Servermodus",
+      "insecureServerWarning": "Kein HTTPS"
     },
     "actions": {
       "title": "Aktionen:",
       "stop": "Stopp",
       "showInFolder": "Im Ordner anzeigen",
       "downloadAnother": "Weiteren herunterladen",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Fortsetzen",
+      "pause": "Pausieren"
     },
     "status": {
       "creatingIndex": "Erstelle index.html",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Scrape Seite {{current}} von {{total}}",
       "linkedPagesComplete": "Scraping verknüpfter Seiten abgeschlossen: {{succeeded}} erfolgreich, {{failed}} fehlgeschlagen",
       "linkedPagesFailed": "{{count}} Seiten konnten nicht gescrapt werden",
-      "scraperPaused": "Scraping pausiert"
+      "scraperPaused": "Scraping pausiert",
+      "uploadProgress": "Ressourcen hochladen: {{completed}}/{{total}}",
+      "uploadingResources": "Ressourcen werden auf den Server hochgeladen...",
+      "sendingScrapeComplete": "Scraping wird abgeschlossen...",
+      "scrapeComplete": "Scraping abgeschlossen",
+      "waitingForUploads": "Warten auf Abschluss der Uploads...",
+      "finalizingServer": "Abschluss auf dem Server...",
+      "assemblingServer": "Zusammenstellung auf dem Server...",
+      "assemblyProgress": "Zusammenstellung: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTML zusammenführen",
+      "assemblyPhaseConverting": "URLs konvertieren",
+      "assemblyPhaseZipping": "ZIP erstellen",
+      "assemblyPhaseInlining": "Ressourcen einbetten",
+      "serverFallbackOffer": "Serverproblem: {{reason}}",
+      "serverError": "Serverfehler: {{error}}",
+      "serverUnavailable": "Server nicht verfügbar",
+      "assemblyTimeout": "Zusammenstellung Zeitüberschreitung",
+      "assemblyFailed": "Zusammenstellung fehlgeschlagen",
+      "authFailed": "Authentifizierung fehlgeschlagen",
+      "retryServer": "Erneut versuchen",
+      "downloadLocally": "Lokal herunterladen",
+      "localFallbackWarning": "Der Rückfall auf den lokalen Modus erfordert ein erneutes Scrapen der Seite von Grund auf. Fortfahren?",
+      "downloadFromServer": "Vom Server herunterladen",
+      "serverDownloadUrl": "Server-Download-URL",
+      "copyUrl": "URL kopieren",
+      "urlCopied": "URL kopiert!",
+      "serverSessionFailed": "Erstellen der Serversitzung fehlgeschlagen: {{error}}",
+      "memoryWarningServerMode": "Warnung: Niedriger Speicher ({{availableMB}}MB verfügbar) — Servermodus aktiv",
+      "serverModeActive": "Servermodus aktiv"
     },
     "permissions": {
       "storage": {

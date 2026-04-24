@@ -14,7 +14,10 @@
       "memoryPressure": "Không thể bắt đầu tải xuống do bộ nhớ bị đầy. Vui lòng thử lại sau.",
       "unknownError": "Lỗi không xác định",
       "invalidTabId": "ID tab không hợp lệ",
-      "maxScrollAttempts": "Đã đạt số lần cuộn tối đa"
+      "maxScrollAttempts": "Đã đạt số lần cuộn tối đa",
+      "panelUnavailable": "Không thể hoàn tất tải xuống vì bảng tiện ích mở rộng đã đóng hoặc không khả dụng. Vui lòng giữ bảng này mở khi tải xuống và thử lại.",
+      "panelUnavailableTitle": "Yêu cầu bảng tiện ích mở rộng",
+      "panelUnavailableTip": "Để ngăn chặn điều này, hãy giữ bảng này mở và tránh chuyển tab trong khi tải xuống."
     },
     "filter": {
       "title": "Lọc những gì bạn muốn tải xuống",
@@ -50,16 +53,16 @@
       "includeExternal": "Bao gồm các liên kết bên ngoài",
       "fullWebsite": "Tải xuống toàn bộ trang web",
       "fullWebsiteDescription": "Tốt nhất cho các trang web phức tạp (tải xuống cấp độ đầu tiên của các trang được liên kết)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Chế độ máy chủ",
+      "insecureServerWarning": "Không sử dụng HTTPS"
     },
     "actions": {
       "title": "Hành động:",
       "stop": "Dừng",
       "showInFolder": "Hiển thị trong thư mục",
       "downloadAnother": "Tải xuống cái khác",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Tiếp tục",
+      "pause": "Tạm dừng"
     },
     "status": {
       "waiting": "Đang chờ kết nối...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Đang trích xuất trang {{current}} trong số {{total}}",
       "linkedPagesComplete": "Trích xuất các trang được liên kết hoàn tất: {{succeeded}} thành công, {{failed}} thất bại",
       "linkedPagesFailed": "{{count}} trang không thể trích xuất",
-      "scraperPaused": "Đã tạm dừng thu thập"
+      "scraperPaused": "Đã tạm dừng thu thập",
+      "uploadProgress": "Đang tải lên tài nguyên: {{completed}}/{{total}}",
+      "uploadingResources": "Đang tải lên tài nguyên lên máy chủ...",
+      "sendingScrapeComplete": "Đang hoàn tất thu thập...",
+      "scrapeComplete": "Thu thập hoàn tất",
+      "waitingForUploads": "Đang chờ tải lên hoàn tất...",
+      "finalizingServer": "Đang hoàn tất trên máy chủ...",
+      "assemblingServer": "Đang lắp ráp trên máy chủ...",
+      "assemblyProgress": "Đang lắp ráp: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Đang gộp HTML",
+      "assemblyPhaseConverting": "Đang chuyển đổi URL",
+      "assemblyPhaseZipping": "Đang tạo ZIP",
+      "assemblyPhaseInlining": "Đang nhúng tài nguyên",
+      "serverFallbackOffer": "Sự cố máy chủ: {{reason}}",
+      "serverError": "Lỗi máy chủ: {{error}}",
+      "serverUnavailable": "Máy chủ không khả dụng",
+      "assemblyTimeout": "Lắp ráp hết thời gian",
+      "assemblyFailed": "Lắp ráp thất bại",
+      "authFailed": "Xác thực thất bại",
+      "retryServer": "Thử lại",
+      "downloadLocally": "Tải xuống cục bộ",
+      "localFallbackWarning": "Quay lại chế độ cục bộ yêu cầu thu thập lại trang từ đầu. Tiếp tục?",
+      "downloadFromServer": "Tải xuống từ máy chủ",
+      "serverDownloadUrl": "URL tải xuống từ máy chủ",
+      "copyUrl": "Sao chép URL",
+      "urlCopied": "Đã sao chép URL!",
+      "serverSessionFailed": "Không thể tạo phiên máy chủ: {{error}}",
+      "memoryWarningServerMode": "Cảnh báo bộ nhớ thấp (còn {{availableMB}}MB) — chế độ máy chủ đang hoạt động",
+      "serverModeActive": "Chế độ máy chủ đang hoạt động"
     },
     "permissions": {
       "storage": {

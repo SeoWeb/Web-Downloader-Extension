@@ -14,7 +14,10 @@
       "memoryPressure": "Nelze zahájit stahování kvůli kritickému nedostatku paměti. Zkuste to prosím později.",
       "unknownError": "Neznámá chyba",
       "invalidTabId": "Neplatné ID karty",
-      "maxScrollAttempts": "Dosaženo maximálního počtu pokusů o posouvání"
+      "maxScrollAttempts": "Dosaženo maximálního počtu pokusů o posouvání",
+      "panelUnavailable": "Stahování nemohlo být dokončeno, protože panel rozšíření byl zavřen nebo stal se nedostupným. Prosím, mějte tento panel otevřený během stahování a zkuste to znovu.",
+      "panelUnavailableTitle": "Vyžaduje se panel rozšíření",
+      "panelUnavailableTip": "Abyste tomu zabránili, mějte tento panel otevřený a nepřepínejte karty během stahování."
     },
     "filter": {
       "title": "Vyfiltrujte, co chcete stáhnout",
@@ -50,16 +53,16 @@
       "includeExternal": "Zahrnout externí odkazy",
       "fullWebsite": "Stáhnout celý web",
       "fullWebsiteDescription": "Nejlepší pro složité weby (stáhne první úroveň odkazovaných stránek)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Režim serveru",
+      "insecureServerWarning": "Nepoužívá HTTPS"
     },
     "actions": {
       "title": "Akce:",
       "stop": "Zastavit",
       "showInFolder": "Zobrazit ve složce",
       "downloadAnother": "Stáhnout další",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Pokračovat",
+      "pause": "Pozastavit"
     },
     "status": {
       "waiting": "Čekání na připojení...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Stahování stránky {{current}} z {{total}}",
       "linkedPagesComplete": "Stahování propojených stránek dokončeno: {{succeeded}} úspěšných, {{failed}} neúspěšných",
       "linkedPagesFailed": "{{count}} stránek se nepodařilo stáhnout",
-      "scraperPaused": "Stahování pozastaveno"
+      "scraperPaused": "Stahování pozastaveno",
+      "uploadProgress": "Nahrávání zdrojů: {{completed}}/{{total}}",
+      "uploadingResources": "Nahrávání zdrojů na server...",
+      "sendingScrapeComplete": "Dokončování škrábání...",
+      "scrapeComplete": "Škrábání dokončeno",
+      "waitingForUploads": "Čekání na dokončení nahrávání...",
+      "finalizingServer": "Dokončování na serveru...",
+      "assemblingServer": "Sestavování na serveru...",
+      "assemblyProgress": "Sestavování: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Slučování HTML",
+      "assemblyPhaseConverting": "Převod URL adres",
+      "assemblyPhaseZipping": "Vytváření ZIP",
+      "assemblyPhaseInlining": "Vkládání zdrojů",
+      "serverFallbackOffer": "Problém se serverem: {{reason}}",
+      "serverError": "Chyba serveru: {{error}}",
+      "serverUnavailable": "Server není dostupný",
+      "assemblyTimeout": "Časový limit sestavování vypršel",
+      "assemblyFailed": "Sestavování selhalo",
+      "authFailed": "Ověření selhalo",
+      "retryServer": "Zkusit znovu",
+      "downloadLocally": "Stáhnout lokálně",
+      "localFallbackWarning": "Návrat k lokálnímu režimu vyžaduje opětovné škrábání stránky od začátku. Pokračovat?",
+      "downloadFromServer": "Stáhnout ze serveru",
+      "serverDownloadUrl": "URL adresa stahování ze serveru",
+      "copyUrl": "Kopírovat URL",
+      "urlCopied": "URL zkopírována!",
+      "serverSessionFailed": "Nepodařilo se vytvořit relaci serveru: {{error}}",
+      "memoryWarningServerMode": "Upozornění na nízkou paměť ({{availableMB}}MB dostupných) — režim serveru aktivní",
+      "serverModeActive": "Režim serveru aktivní"
     },
     "permissions": {
       "storage": {

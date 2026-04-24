@@ -14,7 +14,10 @@
       "memoryPressure": "لا يمكن بدء التنزيل بسبب ضغط الذاكرة الحرج. يرجى المحاولة مرة أخرى لاحقًا.",
       "unknownError": "خطأ غير معروف",
       "invalidTabId": "معرف علامة تبويب غير صالح",
-      "maxScrollAttempts": "تم الوصول إلى الحد الأقصى لمحاولات التمرير"
+      "maxScrollAttempts": "تم الوصول إلى الحد الأقصى لمحاولات التمرير",
+      "panelUnavailable": "تعذر إكمال التنزيل لأنه تم إغلاق لوحة الامتداد أو أصبحت غير متاحة. يرجى إبقاء هذه اللوحة مفتوحة أثناء التنزيل والمحاولة مرة أخرى.",
+      "panelUnavailableTitle": "لوحة الامتداد مطلوبة",
+      "panelUnavailableTip": "لمنع ذلك، احتفظ بهذه اللوحة مفتوحة وتجنب التبديل بين علامات التبويب أثناء التنزيل."
     },
     "filter": {
       "title": "تصفية ما تريد تحميله",
@@ -50,16 +53,16 @@
       "includeExternal": "تضمين الروابط الخارجية",
       "fullWebsite": "تحميل الموقع بالكامل",
       "fullWebsiteDescription": "الأفضل للمواقع المعقدة (يقوم بتنزيل المستوى الأول من الصفحات المرتبطة)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "وضع الخادم",
+      "insecureServerWarning": "لا يستخدم HTTPS"
     },
     "actions": {
       "title": "الإجراءات:",
       "stop": "توقف",
       "showInFolder": "عرض في المجلد",
       "downloadAnother": "تحميل آخر",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "استئناف",
+      "pause": "إيقاف مؤقت"
     },
     "status": {
       "waiting": "في انتظار الاتصال...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "استخراج الصفحة {{current}} من {{total}}",
       "linkedPagesComplete": "اكتمل استخراج الصفحات المرتبطة: {{succeeded}} نجح، {{failed}} فشل",
       "linkedPagesFailed": "فشل استخراج {{count}} صفحة",
-      "scraperPaused": "توقف الكشط مؤقتًا"
+      "scraperPaused": "توقف الكشط مؤقتًا",
+      "uploadProgress": "تحميل الموارد: {{completed}}/{{total}}",
+      "uploadingResources": "تحميل الموارد إلى الخادم...",
+      "sendingScrapeComplete": "إنهاء الاستخراج...",
+      "scrapeComplete": "اكتمل الاستخراج",
+      "waitingForUploads": "في انتظار اكتمال التحميلات...",
+      "finalizingServer": "إنهاء على الخادم...",
+      "assemblingServer": "تجميع على الخادم...",
+      "assemblyProgress": "التجميع: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "دمج HTML",
+      "assemblyPhaseConverting": "تحويل عناوين URL",
+      "assemblyPhaseZipping": "إنشاء ZIP",
+      "assemblyPhaseInlining": "تضمين الموارد",
+      "serverFallbackOffer": "مشكلة في الخادم: {{reason}}",
+      "serverError": "خطأ في الخادم: {{error}}",
+      "serverUnavailable": "الخادم غير متاح",
+      "assemblyTimeout": "انتهت مهلة التجميع",
+      "assemblyFailed": "فشل التجميع",
+      "authFailed": "فشل المصادقة",
+      "retryServer": "إعادة المحاولة",
+      "downloadLocally": "تحميل محليًا",
+      "localFallbackWarning": "يتطلب العودة إلى الوضع المحلي إعادة استخراج الصفحة من البداية. متابعة؟",
+      "downloadFromServer": "تحميل من الخادم",
+      "serverDownloadUrl": "عنوان تنزيل الخادم",
+      "copyUrl": "نسخ العنوان",
+      "urlCopied": "تم نسخ العنوان!",
+      "serverSessionFailed": "فشل إنشاء جلسة الخادم: {{error}}",
+      "memoryWarningServerMode": "تحذير انخفاض الذاكرة ({{availableMB}}MB متاح) — وضع الخادم نشط",
+      "serverModeActive": "وضع الخادم نشط"
     },
     "permissions": {
       "storage": {

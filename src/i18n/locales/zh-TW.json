@@ -14,7 +14,10 @@
       "memoryPressure": "由於記憶體嚴重不足，無法開始下載。請稍後再試。",
       "unknownError": "未知錯誤",
       "invalidTabId": "無效的分頁 ID",
-      "maxScrollAttempts": "已達到最大捲動嘗試次數"
+      "maxScrollAttempts": "已達到最大捲動嘗試次數",
+      "panelUnavailable": "下載無法完成,因為擴充功能面板已關閉或無法使用。請在下載時保持此面板開啟,然後重試。",
+      "panelUnavailableTitle": "需要擴充功能面板",
+      "panelUnavailableTip": "為防止這種情況,請在下載時保持此面板開啟,避免切換分頁。"
     },
     "filter": {
       "title": "篩選您要下載的內容",
@@ -49,17 +52,17 @@
       "pageDelay": "頁面間延遲",
       "includeExternal": "包含外部連結",
       "fullWebsite": "下載完整網站",
-      "fullWebsiteDescription": "最適合複雜網站（下載連結頁面的第一層級）",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "fullWebsiteDescription": "最適合複雜網站(下載連結頁面的第一層級)",
+      "serverMode": "伺服器模式",
+      "insecureServerWarning": "未使用 HTTPS"
     },
     "actions": {
       "title": "操作：",
       "stop": "停止",
       "showInFolder": "在資料夾中顯示",
       "downloadAnother": "下載另一個",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "恢復",
+      "pause": "暫停"
     },
     "status": {
       "waiting": "等待連線...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "正在擷取第{{current}}/{{total}}頁",
       "linkedPagesComplete": "連結頁面擷取完成：{{succeeded}}成功，{{failed}}失敗",
       "linkedPagesFailed": "{{count}}個頁面擷取失敗",
-      "scraperPaused": "抓取已暫停"
+      "scraperPaused": "抓取已暫停",
+      "uploadProgress": "上傳資源: {{completed}}/{{total}}",
+      "uploadingResources": "正在上傳資源到伺服器...",
+      "sendingScrapeComplete": "正在完成擷取...",
+      "scrapeComplete": "擷取完成",
+      "waitingForUploads": "等待上傳完成...",
+      "finalizingServer": "正在伺服器上完成...",
+      "assemblingServer": "正在伺服器上組裝...",
+      "assemblyProgress": "組裝中: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "正在合併 HTML",
+      "assemblyPhaseConverting": "正在轉換 URL",
+      "assemblyPhaseZipping": "正在建立 ZIP",
+      "assemblyPhaseInlining": "正在內嵌資源",
+      "serverFallbackOffer": "伺服器問題: {{reason}}",
+      "serverError": "伺服器錯誤: {{error}}",
+      "serverUnavailable": "伺服器無法使用",
+      "assemblyTimeout": "組裝超時",
+      "assemblyFailed": "組裝失敗",
+      "authFailed": "驗證失敗",
+      "retryServer": "重試",
+      "downloadLocally": "本機下載",
+      "localFallbackWarning": "回退到本機模式需要重新擷取頁面。繼續?",
+      "downloadFromServer": "從伺服器下載",
+      "serverDownloadUrl": "伺服器下載 URL",
+      "copyUrl": "複製 URL",
+      "urlCopied": "URL 已複製!",
+      "serverSessionFailed": "建立伺服器工作階段失敗: {{error}}",
+      "memoryWarningServerMode": "低記憶體警告(可用{{availableMB}}MB)——伺服器模式啟動",
+      "serverModeActive": "伺服器模式啟動"
     },
     "permissions": {
       "storage": {

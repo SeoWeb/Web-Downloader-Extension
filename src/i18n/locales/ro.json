@@ -14,7 +14,10 @@
       "memoryPressure": "Nu se poate începe descărcarea din cauza presiunii critice asupra memoriei. Vă rugăm să încercați din nou mai târziu.",
       "unknownError": "Eroare necunoscută",
       "invalidTabId": "ID filă nevalid",
-      "maxScrollAttempts": "Numărul maxim de încercări de defilare a fost atins"
+      "maxScrollAttempts": "Numărul maxim de încercări de defilare a fost atins",
+      "panelUnavailable": "Descărcarea nu a putut fi finalizată deoarece panoul extensiei a fost închis sau a devenit indisponibil. Vă rugăm să păstrați acest panou deschis în timpul descărcării și încercați din nou.",
+      "panelUnavailableTitle": "Panou extensie necesar",
+      "panelUnavailableTip": "Pentru a evita acest lucru, păstrați acest panou deschis și evitați schimbarea filelor în timpul descărcării."
     },
     "filter": {
       "title": "Filtrează ce vrei să descarci",
@@ -50,16 +53,16 @@
       "includeExternal": "Include linkuri externe",
       "fullWebsite": "Descarcă site-ul complet",
       "fullWebsiteDescription": "Cel mai bun pentru site-uri complexe (descarcă primul nivel de pagini conectate)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Mod server",
+      "insecureServerWarning": "Fără HTTPS"
     },
     "actions": {
       "title": "Acțiuni:",
       "stop": "Oprește",
       "showInFolder": "Arată în dosar",
       "downloadAnother": "Descarcă altul",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Reluați",
+      "pause": "Pauză"
     },
     "status": {
       "waiting": "Așteptare conexiune...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Se extrage pagina {{current}} din {{total}}",
       "linkedPagesComplete": "Extragerea paginilor legate finalizată: {{succeeded}} reușite, {{failed}} eșuate",
       "linkedPagesFailed": "{{count}} pagini nu au putut fi extrase",
-      "scraperPaused": "Răzuire întreruptă"
+      "scraperPaused": "Răzuire întreruptă",
+      "uploadProgress": "Încărcare resurse: {{completed}}/{{total}}",
+      "uploadingResources": "Încărcare resurse pe server...",
+      "sendingScrapeComplete": "Finalizare răzuire...",
+      "scrapeComplete": "Răzuire completă",
+      "waitingForUploads": "Se așteaptă finalizarea încărcărilor...",
+      "finalizingServer": "Finalizare pe server...",
+      "assemblingServer": "Asamblare pe server...",
+      "assemblyProgress": "Asamblare: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Combinare HTML",
+      "assemblyPhaseConverting": "Conversie URL-uri",
+      "assemblyPhaseZipping": "Creare ZIP",
+      "assemblyPhaseInlining": "Inserare resurse",
+      "serverFallbackOffer": "Problemă server: {{reason}}",
+      "serverError": "Eroare server: {{error}}",
+      "serverUnavailable": "Server indisponibil",
+      "assemblyTimeout": "Timp de asamblare expirat",
+      "assemblyFailed": "Asamblare eșuată",
+      "authFailed": "Autentificare eșuată",
+      "retryServer": "Reîncercare",
+      "downloadLocally": "Descărcare locală",
+      "localFallbackWarning": "Revenirea la modul local necesită răzuirea paginii de la zero. Continuați?",
+      "downloadFromServer": "Descărcare de pe server",
+      "serverDownloadUrl": "URL descărcare server",
+      "copyUrl": "Copiază URL",
+      "urlCopied": "URL copiat!",
+      "serverSessionFailed": "Eroare la crearea sesiunii server: {{error}}",
+      "memoryWarningServerMode": "Avertisment memorie scăzută ({{availableMB}}MB disponibil) — mod server activ",
+      "serverModeActive": "Mod server activ"
     },
     "permissions": {
       "storage": {

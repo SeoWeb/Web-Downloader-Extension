@@ -14,7 +14,10 @@
       "memoryPressure": "重大なメモリ不足のため、ダウンロードを開始できません。後でもう一度お試しください。",
       "unknownError": "不明なエラー",
       "invalidTabId": "無効なタブID",
-      "maxScrollAttempts": "最大スクロール試行回数に達しました"
+      "maxScrollAttempts": "最大スクロール試行回数に達しました",
+      "panelUnavailable": "拡張機能パネルが閉じられたか利用できないため、ダウンロードを完了できませんでした。ダウンロード中はこのパネルを開いたままにして、もう一度お試しください。",
+      "panelUnavailableTitle": "拡張機能パネルが必要です",
+      "panelUnavailableTip": "これを防ぐには、ダウンロード中はこのパネルを開いたままにし、タブを切り替えないでください。"
     },
     "filter": {
       "title": "ダウンロードしたい内容をフィルタリング",
@@ -49,17 +52,17 @@
       "pageDelay": "ページ間の遅延",
       "includeExternal": "外部リンクを含める",
       "fullWebsite": "ウェブサイト全体をダウンロード",
-      "fullWebsiteDescription": "複雑なウェブサイトに最適（リンクされたページの最初のレベルをダウンロードします）",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "fullWebsiteDescription": "複雑なウェブサイトに最適(リンクされたページの最初のレベルをダウンロードします)",
+      "serverMode": "サーバーモード",
+      "insecureServerWarning": "HTTPSを使用していません"
     },
     "actions": {
       "title": "アクション:",
       "stop": "停止",
       "showInFolder": "フォルダで表示",
       "downloadAnother": "別をダウンロード",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "再開",
+      "pause": "一時停止"
     },
     "status": {
       "waiting": "接続待機中...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "ページ{{current}}/{{total}}をスクレイピング中",
       "linkedPagesComplete": "リンクされたページのスクレイピングが完了しました: {{succeeded}}成功、{{failed}}失敗",
       "linkedPagesFailed": "{{count}}ページのスクレイピングに失敗しました",
-      "scraperPaused": "スクレイピング一時停止中"
+      "scraperPaused": "スクレイピング一時停止中",
+      "uploadProgress": "リソースアップロード: {{completed}}/{{total}}",
+      "uploadingResources": "サーバーにリソースをアップロード中...",
+      "sendingScrapeComplete": "スクレイプを最終処理中...",
+      "scrapeComplete": "スクレイプ完了",
+      "waitingForUploads": "アップロードの完了を待機中...",
+      "finalizingServer": "サーバーで最終処理中...",
+      "assemblingServer": "サーバーでアセンブル中...",
+      "assemblyProgress": "アセンブリ: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTMLをマージ中",
+      "assemblyPhaseConverting": "URLを変換中",
+      "assemblyPhaseZipping": "ZIPを作成中",
+      "assemblyPhaseInlining": "リソースをインライン化中",
+      "serverFallbackOffer": "サーバーの問題: {{reason}}",
+      "serverError": "サーバーエラー: {{error}}",
+      "serverUnavailable": "サーバーが利用できません",
+      "assemblyTimeout": "アセンブリがタイムアウトしました",
+      "assemblyFailed": "アセンブリに失敗しました",
+      "authFailed": "認証に失敗しました",
+      "retryServer": "再試行",
+      "downloadLocally": "ローカルにダウンロード",
+      "localFallbackWarning": "ローカルモードにフォールバックするには、ページを最初から再スクレイプする必要があります。続行しますか?",
+      "downloadFromServer": "サーバーからダウンロード",
+      "serverDownloadUrl": "サーバーダウンロードURL",
+      "copyUrl": "URLをコピー",
+      "urlCopied": "URLをコピーしました!",
+      "serverSessionFailed": "サーバーセッションの作成に失敗: {{error}}",
+      "memoryWarningServerMode": "メモリ不足警告(利用可能{{availableMB}}MB) — サーバーモード有効",
+      "serverModeActive": "サーバーモード有効"
     },
     "permissions": {
       "storage": {

@@ -14,7 +14,10 @@
       "memoryPressure": "Kriitilise mälupuuduse tõttu ei saa allalaadimist alustada. Palun proovige hiljem uuesti.",
       "unknownError": "Tundmatu viga",
       "invalidTabId": "Vigane vahekaardi ID",
-      "maxScrollAttempts": "Maksimaalne kerimiskatsete arv saavutatud"
+      "maxScrollAttempts": "Maksimaalne kerimiskatsete arv saavutatud",
+      "panelUnavailable": "Allalaadimine ei saanud lõpule viia, kuna laienduse paneel suleti või muutus kättesaamatuks. Palun hoidke see paneel allalaadimise ajal avatuna ja proovige uuesti.",
+      "panelUnavailableTitle": "Laienduse paneel on vajalik",
+      "panelUnavailableTip": "Selle vältimiseks hoidke see paneel avatuna ja vältige vahekaartide vahetamist allalaadimise ajal."
     },
     "filter": {
       "title": "Filtreeri, mida soovid alla laadida",
@@ -50,16 +53,16 @@
       "includeExternal": "Kaasa välised lingid",
       "fullWebsite": "Laadi alla kogu veebileht",
       "fullWebsiteDescription": "Parim keerukate veebilehtede jaoks (laadib alla lingitud lehtede esimese taseme)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Serverirežiim",
+      "insecureServerWarning": "HTTPS ei ole kasutusel"
     },
     "actions": {
       "title": "Tegevused:",
       "stop": "Peata",
       "showInFolder": "Näita kaustas",
       "downloadAnother": "Laadi teine alla",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Jätka",
+      "pause": "Paus"
     },
     "status": {
       "waiting": "Ühenduse ootel...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Lehe {{current}}/{{total}} kraapimine",
       "linkedPagesComplete": "Lingitud lehtede kraapimine lõpetatud: {{succeeded}} õnnestus, {{failed}} ebaõnnestus",
       "linkedPagesFailed": "{{count}} lehte ei õnnestunud kraapida",
-      "scraperPaused": "Kraapimine peatatud"
+      "scraperPaused": "Kraapimine peatatud",
+      "uploadProgress": "Ressursside üleslaadimine: {{completed}}/{{total}}",
+      "uploadingResources": "Ressursside üleslaadimine serverisse...",
+      "sendingScrapeComplete": "Kraapimise lõpuleviimine...",
+      "scrapeComplete": "Kraapimine lõpetatud",
+      "waitingForUploads": "Üleslaadimiste lõpuleviimise ootamine...",
+      "finalizingServer": "Serveris lõpuleviimine...",
+      "assemblingServer": "Serveris koostamine...",
+      "assemblyProgress": "Koostamine: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "HTML ühendamine",
+      "assemblyPhaseConverting": "URL-ide teisendamine",
+      "assemblyPhaseZipping": "ZIP-i loomine",
+      "assemblyPhaseInlining": "Ressursside sisestamine",
+      "serverFallbackOffer": "Serveri probleem: {{reason}}",
+      "serverError": "Serveri viga: {{error}}",
+      "serverUnavailable": "Server pole saadaval",
+      "assemblyTimeout": "Koostamine aegus",
+      "assemblyFailed": "Koostamine ebaõnnestus",
+      "authFailed": "Autentimine ebaõnnestus",
+      "retryServer": "Proovi uuesti",
+      "downloadLocally": "Laadi alla lokaalselt",
+      "localFallbackWarning": "Lokaalsele režiimile tagasipöördumine nõuab lehe nullist uuesti kraapimist. Jätkata?",
+      "downloadFromServer": "Laadi alla serverist",
+      "serverDownloadUrl": "Serveri allalaadimise URL",
+      "copyUrl": "Kopeeri URL",
+      "urlCopied": "URL kopeeritud!",
+      "serverSessionFailed": "Serveri seansi loomine ebaõnnestus: {{error}}",
+      "memoryWarningServerMode": "Madala mälu hoiatus ({{availableMB}}MB saadaval) — serverirežiim aktiivne",
+      "serverModeActive": "Serverirežiim aktiivne"
     },
     "permissions": {
       "storage": {

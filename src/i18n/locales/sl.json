@@ -14,7 +14,10 @@
       "memoryPressure": "Prenosa ni mogoče začeti zaradi kritičnega pomanjkanja pomnilnika. Poskusite znova pozneje.",
       "unknownError": "Neznana napaka",
       "invalidTabId": "Neveljaven ID zavihka",
-      "maxScrollAttempts": "Doseženo največje število poskusov drsenja"
+      "maxScrollAttempts": "Doseženo največje število poskusov drsenja",
+      "panelUnavailable": "Prenos ni mogel biti dokončan, ker je bila razširitvena plošča zaprta ali je postala nedostopna. Prosimo, hranite to ploščo odprto med prenosom in poskusite znova.",
+      "panelUnavailableTitle": "Zahteva se razširitvena plošča",
+      "panelUnavailableTip": "Da to preprečite, hranite to ploščo odprto in se izogibajte preklapljanju zavihkov med prenosom."
     },
     "filter": {
       "title": "Filtrirajte, kaj želite prenesti",
@@ -50,16 +53,16 @@
       "includeExternal": "Vključi zunanje povezave",
       "fullWebsite": "Prenesi celotno spletno mesto",
       "fullWebsiteDescription": "Najbolje za zapletena spletna mesta (prenese prvo raven povezanih strani)",
-      "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "serverMode": "Način strežnika",
+      "insecureServerWarning": "Ne uporablja HTTPS"
     },
     "actions": {
       "title": "Dejanja:",
       "stop": "Ustavi",
       "showInFolder": "Prikaži v mapi",
       "downloadAnother": "Prenesi drugo",
-      "resume": "Resume",
-      "pause": "Pause"
+      "resume": "Nadaljuj",
+      "pause": "Začasno ustavi"
     },
     "status": {
       "waiting": "Čakanje na povezavo...",
@@ -155,7 +158,35 @@
       "linkedPageProgress": "Pridobivanje strani {{current}} od {{total}}",
       "linkedPagesComplete": "Pridobivanje povezanih strani zaključeno: {{succeeded}} uspešnih, {{failed}} neuspešnih",
       "linkedPagesFailed": "{{count}} strani ni bilo mogoče pridobiti",
-      "scraperPaused": "Strganje zaustavljeno"
+      "scraperPaused": "Strganje zaustavljeno",
+      "uploadProgress": "Nalaganje virov: {{completed}}/{{total}}",
+      "uploadingResources": "Nalaganje virov na strežnik...",
+      "sendingScrapeComplete": "Dokončevanje strganja...",
+      "scrapeComplete": "Strganje dokončano",
+      "waitingForUploads": "Čakanje na dokončanje nalaganja...",
+      "finalizingServer": "Dokončevanje na strežniku...",
+      "assemblingServer": "Sestavljanje na strežniku...",
+      "assemblyProgress": "Sestavljanje: {{phase}} ({{progressPct}}%)",
+      "assemblyPhaseMerging": "Spajanje HTML",
+      "assemblyPhaseConverting": "Pretvarjanje URL-jev",
+      "assemblyPhaseZipping": "Ustvarjanje ZIP",
+      "assemblyPhaseInlining": "Vstavljanje virov",
+      "serverFallbackOffer": "Težava s strežnikom: {{reason}}",
+      "serverError": "Napaka strežnika: {{error}}",
+      "serverUnavailable": "Strežnik ni na voljo",
+      "assemblyTimeout": "Čas za sestavljanje je potekel",
+      "assemblyFailed": "Sestavljanje ni uspelo",
+      "authFailed": "Preverjanje pristnosti ni uspelo",
+      "retryServer": "Poskusi znova",
+      "downloadLocally": "Prenesi lokalno",
+      "localFallbackWarning": "Vrnitev na lokalni način zahteva ponovno strganje strani od začetka. Nadaljevati?",
+      "downloadFromServer": "Prenesi s strežnika",
+      "serverDownloadUrl": "URL za prenos s strežnika",
+      "copyUrl": "Kopiraj URL",
+      "urlCopied": "URL kopiran!",
+      "serverSessionFailed": "Ustvarjanje seje strežnika ni uspelo: {{error}}",
+      "memoryWarningServerMode": "Opozorilo o nizkem pomnilniku ({{availableMB}}MB na voljo) — način strežnika aktiven",
+      "serverModeActive": "Način strežnika aktiven"
     },
     "permissions": {
       "storage": {
