@@ -342,8 +342,9 @@ export class ServerClient {
       extraHeaders["X-Content-Gzipped"] = "true";
     }
 
-    // Use XHR when progress tracking is requested (fetch lacks upload progress)
-    if (onUploadProgress) {
+    // Use XHR when progress tracking is requested AND XHR is available
+    // (Chrome MV3 service workers don't have XMLHttpRequest)
+    if (onUploadProgress && typeof XMLHttpRequest !== "undefined") {
       const result = await this.xhrUpload(
         `/api/v1/sessions/${sessionId}/resources`,
         formData,

@@ -16,6 +16,8 @@ export interface ScrollResult {
   newContent?: string;
   containerSelector?: string;
   error?: string;
+  /** Whether the page's scrollHeight changed during this scroll step. */
+  heightChanged?: boolean;
 }
 
 export interface DifferentialScrapeResult {
@@ -30,11 +32,15 @@ export interface DifferentialScrapeResult {
 /**
  * Legacy function for backward compatibility
  * Returns the full HTML document (non-differential)
+ *
+ * Uses viewport-relative step size (Math.min(viewportHeight, 800)) for faster
+ * coverage, tracks scrollHeight before/after each step to detect page growth,
+ * and detects layout shifts where the viewport jumps upward.
  */
 export async function smoothScrollToBottom(): Promise<ScrollResult> {
-  const stepSize = 500;
+  const viewportHeight = window.innerHeight;
+  const stepSize = Math.min(viewportHeight, 800);
   const waitDelay = 200;
-  let lastScrollTop = getCurrentScrollTop();
 
   async function wait() {
     return new Promise<void>((resolve) => {
@@ -42,34 +48,35 @@ export async function smoothScrollToBottom(): Promise<ScrollResult> {
     });
   }
 
-  function getNextScrollTop() {
-    return lastScrollTop + stepSize;
-  }
-
-  async function scrollTo() {
-    const top = getNextScrollTop();
-    window.scrollTo({
-      top,
-    });
-
-    return await wait();
-  }
-
   function getCurrentScrollTop() {
     return window.scrollY || document.documentElement.scrollTop;
   }
 
-  async function scrollDown() {
-    await scrollTo();
+  // Capture scrollHeight BEFORE scrolling
+  const heightBefore = document.documentElement.scrollHeight;
+  const scrollYBefore = getCurrentScrollTop();
 
-    return {
-      success: true,
-      top: getCurrentScrollTop(),
-      height: document.documentElement.scrollHeight,
-      viewportHeight: window.innerHeight,
-      html: document.documentElement.outerHTML,
-    };
-  }
+  const nextTop = scrollYBefore + stepSize;
+  window.scrollTo({ top: nextTop });
 
-  return await scrollDown();
+  await wait();
+
+  // Capture scrollHeight AFTER scrolling
+  const heightAfter = document.documentElement.scrollHeight;
+  const scrollYAfter = getCurrentScrollTop();
+
+  // Height changed if page grew during this step
+  const heightChanged = heightAfter !== heightBefore;
+
+  // Detect layout shift: viewport jumped upward
+  const layoutShifted = scrollYAfter < scrollYBefore - 10;
+
+  return {
+    success: true,
+    top: scrollYAfter,
+    height: heightAfter,
+    viewportHeight: window.innerHeight,
+    html: document.documentElement.outerHTML,
+    heightChanged: heightChanged || layoutShifted,
+  };
 }

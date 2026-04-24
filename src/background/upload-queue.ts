@@ -333,15 +333,14 @@ export class UploadQueue {
       // (W1) Real-time progress callback: update task.bytesSent as XHR
       // reports upload progress, and notify listeners.
       // NOTE: XMLHttpRequest is NOT available in Chrome MV3 service workers,
-      // so we only pass the progress callback when XHR exists. When omitted,
-      // ServerClient.uploadResource() falls back to fetch() (which works in
-      // service workers but lacks upload progress events).
-      const onUploadProgress = typeof XMLHttpRequest !== "undefined"
-        ? (loaded: number, _total: number): void => {
-            task.bytesSent = loaded;
-            this.notifyProgress();
-          }
-        : undefined;
+      // so ServerClient.uploadResource() internally decides whether to use
+      // XHR (when available, for real-time progress) or fetch() (service
+      // worker fallback, no progress events). The callback is always passed
+      // so that when XHR is available, progress events flow through.
+      const onUploadProgress = (loaded: number, _total: number): void => {
+          task.bytesSent = loaded;
+          this.notifyProgress();
+        };
 
       // Delegate to ServerClient for the actual upload.
       // ServerClient handles gzip compression, auth, and 401 re-registration.

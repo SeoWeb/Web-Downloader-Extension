@@ -6,7 +6,7 @@ export async function handleStartScroll(
   tabId: number,
   setMessages: (message: any) => void,
   setIsScraping: (value: boolean) => void,
-): Promise<{ height?: number; html?: string; top?: number } | undefined> {
+): Promise<{ height?: number; html?: string; top?: number; heightChanged?: boolean } | undefined> {
   try {
     const response = await sendMessageToBackground(
       messageActions.START_SCROLL,

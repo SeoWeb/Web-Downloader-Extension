@@ -13,6 +13,7 @@ export async function scrollDownAndScrape(tabId: number) {
       html,
       height,
       viewportHeight: scrollResponse.viewportHeight,
+      heightChanged: scrollResponse.heightChanged,
     };
   }
 

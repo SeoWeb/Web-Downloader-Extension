@@ -24,6 +24,8 @@ export interface ScrollingResponse {
   html?: string;
   top?: number;
   viewportHeight?: number;
+  /** Whether the page's scrollHeight changed during the last scroll step. */
+  heightChanged?: boolean;
 }
 
 interface UseScrapingDownloaderProps {
@@ -47,6 +49,12 @@ export function useScrapingDownloader({
   const [downloadResponse, setDownloadResponse] =
     useState<ScrollingResponse | null>(null);
   const [scrollAttempts, setScrollAttempts] = useState<number>(0);
+
+  // Track previous height for page-growth-aware bottom detection
+  const prevHeightRef = useRef<number>(0);
+  // Settle mechanism: when we first reach the bottom, wait one more
+  // iteration to see if the page grows before declaring "at bottom"
+  const settleCountRef = useRef<number>(0);
 
   // (13.3) In server mode, track the server session ID and scroll index
   // for streaming HTML chunks during scrolling instead of accumulating
@@ -152,20 +160,39 @@ export function useScrapingDownloader({
         const prevTop = prev?.top || 0;
         const currentTop = response.top || 0;
         const currentHeight = response.height || 0;
+        const heightChanged = response.heightChanged ?? false;
         
         // Calculate if we're at the bottom: scrollTop + viewport height >= total page height
         const viewportHeight = response.viewportHeight || 1000;
         const isAtBottom = currentTop + viewportHeight >= currentHeight - 100; // 100px buffer
         
         const scrollPositionChanged = Math.abs(currentTop - prevTop) > 10; // More than 10px change
+
+        // Page-growth awareness: if height increased, don't stop even if at bottom
+        const pageGrew = currentHeight > prevHeightRef.current;
+        prevHeightRef.current = currentHeight;
+
+        // Settle mechanism: when at bottom, wait one more iteration to confirm
+        // the page isn't still growing. Only stop when: at bottom AND height
+        // unchanged AND position unchanged.
+        if (isAtBottom) {
+          if (pageGrew || heightChanged) {
+            // Page is still growing — reset settle counter and keep scrolling
+            settleCountRef.current = 0;
+          } else {
+            settleCountRef.current++;
+          }
+        } else {
+          settleCountRef.current = 0;
+        }
         
         // Stop scrolling if:
-        // 1. We're at the bottom of the page, OR
+        // 1. At bottom AND page hasn't grown AND position unchanged AND settle count >= 1, OR
         // 2. Position hasn't changed (stuck), OR
         // 3. We've exceeded the safety limit
-        if (isAtBottom) {
+        if (isAtBottom && !pageGrew && !heightChanged && !scrollPositionChanged && settleCountRef.current >= 1) {
           setIsScraping(false);
-        } else if (prev && !scrollPositionChanged) {
+        } else if (prev && !scrollPositionChanged && !pageGrew) {
           setIsScraping(false);
         } else if (scrollAttempts >= 500) { // Increased safety limit for very long pages
           setIsScraping(false);
@@ -237,6 +264,9 @@ export function useScrapingDownloader({
         serverSessionCreatedRef.current = false;
         lastHtmlRef.current = "";
         setServerStreamingDone(false);
+        // Reset page-growth and settle tracking for next session
+        prevHeightRef.current = 0;
+        settleCountRef.current = 0;
       }
     },
     setScrollAttempts,

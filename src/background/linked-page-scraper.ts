@@ -613,18 +613,14 @@ export class LinkedPageScraper {
   /**
    * Scroll the page to trigger lazy loading.
    *
-   * Two-pass strategy:
-   * 1. First pass: smooth scroll top→bottom with 300ms per step
-   * 2. 500ms settle delay at the bottom
-   * 3. Second pass: quick scroll top→bottom with 150ms per step
+   * Single adaptive pass: scrolls from top to bottom, re-checking
+   * scrollHeight after each step. Continues scrolling when the page
+   * grows (lazy content loads), and only stops after 3 consecutive
+   * stable-height checks at the bottom. A settle delay after the
+   * pass gives IntersectionObserver callbacks time to fire.
    *
-   * The settle delay ensures IntersectionObserver callbacks fire for
-   * elements that need to be visible for ≥200–300ms. The second pass
-   * catches content loaded during the first pass that wasn't visible
-   * long enough to trigger observers.
-   *
-   * The combined two-pass strategy stays within a budget derived from
-   * `pageTimeout` (roughly half the timeout), so the overall scrape
+   * The adaptive strategy stays within a budget derived from
+   * `pageTimeout` (roughly 40% of the timeout), so the overall scrape
    * (navigation + scroll + capture) remains within bounds.
    */
   private async scrollPageForLazyLoading(tabId: number): Promise<void> {
@@ -639,39 +635,61 @@ export class LinkedPageScraper {
           const startTime = Date.now();
           const remaining = () => Math.max(0, budgetMs - (Date.now() - startTime));
 
-          const scrollHeight = document.documentElement.scrollHeight;
           const viewportHeight = window.innerHeight;
-          const scrollSteps = Math.ceil(scrollHeight / viewportHeight);
+          const buffer = 100; // 100px buffer for "at bottom" detection
+          const maxIterations = 500; // Safety limit to prevent infinite scrolling
+          const stabilityThreshold = 3; // Consecutive stable-height checks needed
 
-          // --- Pass 1: smooth scroll to bottom (300ms per step) ---
-          for (let i = 0; i < scrollSteps; i++) {
-            if (remaining() < 300) break; // Not enough time for another step
-            window.scrollTo({
-              top: (i + 1) * viewportHeight,
-              behavior: "smooth",
-            });
-            await new Promise((resolve) => setTimeout(resolve, Math.min(300, remaining())));
-          }
+          // --- Pass 1: adaptive scroll to bottom (300ms per step) ---
+          {
+            let iterations = 0;
+            let lastScrollHeight = document.documentElement.scrollHeight;
+            let stableCount = 0;
+            let prevScrollY = window.scrollY;
 
-          // --- Settle delay at the bottom (500ms, or remaining budget) ---
-          const settleDelay = Math.min(500, remaining());
-          if (settleDelay > 0) {
-            await new Promise((resolve) => setTimeout(resolve, settleDelay));
-          }
+            while (iterations < maxIterations && remaining() >= 300) {
+              const currentScrollHeight = document.documentElement.scrollHeight;
+              const currentScrollY = window.scrollY;
 
-          // --- Pass 2: quick scroll top → bottom (150ms per step) ---
-          if (remaining() > 300) {
-            window.scrollTo({ top: 0, behavior: "instant" });
-            await new Promise((resolve) => setTimeout(resolve, Math.min(150, remaining())));
+              // Detect layout shift: page jumped up (scrollY decreased)
+              if (currentScrollY < prevScrollY - 10) {
+                stableCount = 0;
+              }
+              prevScrollY = currentScrollY;
 
-            for (let i = 0; i < scrollSteps; i++) {
-              if (remaining() < 150) break; // Not enough time for another step
+              // Check if page grew → reset stability counter
+              if (currentScrollHeight > lastScrollHeight) {
+                stableCount = 0;
+                lastScrollHeight = currentScrollHeight;
+              }
+
+              // Check if at bottom
+              const isAtBottom = currentScrollY + viewportHeight >= currentScrollHeight - buffer;
+              if (isAtBottom) {
+                stableCount++;
+                if (stableCount >= stabilityThreshold) break;
+              } else {
+                stableCount = 0;
+              }
+
+              // Scroll down by one viewport
               window.scrollTo({
-                top: (i + 1) * viewportHeight,
+                top: currentScrollY + viewportHeight,
                 behavior: "smooth",
               });
-              await new Promise((resolve) => setTimeout(resolve, Math.min(150, remaining())));
+              await new Promise((resolve) => setTimeout(resolve, Math.min(300, remaining())));
+              iterations++;
             }
+          }
+
+          // --- Single adaptive pass with settle delay ---
+          // The adaptive while-loop above continues scrolling until the page
+          // height is stable for 3 consecutive checks at the bottom, so a
+          // second pass from the top is no longer needed. The settle delay
+          // gives IntersectionObserver callbacks time to fire.
+          const settleDelay = Math.min(800, remaining());
+          if (settleDelay > 0) {
+            await new Promise((resolve) => setTimeout(resolve, settleDelay));
           }
 
           // Scroll back to top

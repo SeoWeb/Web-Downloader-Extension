@@ -95,8 +95,9 @@ describe("LinkedPageScraper text extraction", () => {
     // Default mock: navigation completes immediately
     mockChromeTabsGet.mockResolvedValue({ url: "https://example.com" });
     mockChromeTabsUpdate.mockImplementation((_tabId: any, opts: any) => {
-      // Simulate navigation completion
-      const listener = mockChromeTabsOnUpdated.addListener.mock.calls[0]?.[0];
+      // Simulate navigation completion by calling the most recently registered listener
+      const calls = mockChromeTabsOnUpdated.addListener.mock.calls;
+      const listener = calls[calls.length - 1]?.[0];
       if (listener) {
         setTimeout(() => listener(1, { status: "complete" }, { url: opts.url }), 0);
       }
@@ -105,11 +106,11 @@ describe("LinkedPageScraper text extraction", () => {
 
     // Default mock: scripting returns basic DOM
     mockChromeScriptingExecuteScript.mockImplementation((opts: any) => {
-      if (typeof opts.func === "function") {
-        // For scroll function, just resolve
+      // The scroll function is called with args (budgetMs); return null (no return value needed)
+      if (opts.args) {
         return Promise.resolve([{ result: null }]);
       }
-      // For DOM capture
+      // For DOM capture function (no args), return skeleton + bodyChildren
       return Promise.resolve([{
         result: {
           skeleton: "<html><head></head><body></body></html>",
@@ -160,7 +161,9 @@ describe("LinkedPageScraper text extraction", () => {
       let navCount = 0;
       mockChromeTabsUpdate.mockImplementation((_tabId: any, opts: any) => {
         navCount++;
-        const listener = mockChromeTabsOnUpdated.addListener.mock.calls[0]?.[0];
+        // Get the most recently registered listener (the one for THIS navigation)
+        const calls = mockChromeTabsOnUpdated.addListener.mock.calls;
+        const listener = calls[calls.length - 1]?.[0];
         if (listener) {
           const finalUrl = opts.url || `https://example.com/page${navCount}`;
           setTimeout(() => listener(1, { status: "complete" }, { url: finalUrl }), 0);
