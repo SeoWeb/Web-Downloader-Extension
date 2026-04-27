@@ -357,6 +357,7 @@ export default function SidePanel() {
         messages={messages}
         tabId={tabId}
         isScraping={isScraping}
+        isScrapingLinkedPages={isScrapingLinkedPages}
         action={action}
         downloadResponse={downloadResponse}
         onClickStartDownload={onClickStartDownload}

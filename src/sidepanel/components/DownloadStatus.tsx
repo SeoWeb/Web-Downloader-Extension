@@ -45,6 +45,54 @@ interface DownloadStatusProps {
 }
 
 // ---------------------------------------------------------------------------
+// Shared scraping control buttons
+// ---------------------------------------------------------------------------
+
+function ScrapingControls({
+  isPaused,
+  setIsPaused,
+  setIsScraping,
+}: {
+  isPaused: boolean;
+  setIsPaused: (value: boolean) => void;
+  setIsScraping: (value: boolean) => void;
+}) {
+  const { t } = useTranslation();
+
+  const handlePause = async () => {
+    setIsPaused(true);
+    await sendMessage("background", { action: messageActions.SCRAPER_PAUSE, data: {} });
+  };
+
+  const handleResume = async () => {
+    setIsPaused(false);
+    await sendMessage("background", { action: messageActions.SCRAPER_RESUME, data: {} });
+  };
+
+  const handleStop = async () => {
+    await sendMessage("background", { action: messageActions.SCRAPER_STOP, data: {} });
+    setIsScraping(false);
+  };
+
+  return (
+    <div className="flex gap-2">
+      {isPaused ? (
+        <Button onClick={handleResume} variant={"secondary"}>
+          {t('actions.resume')}
+        </Button>
+      ) : (
+        <Button onClick={handlePause} variant={"secondary"}>
+          {t('actions.pause')}
+        </Button>
+      )}
+      <Button onClick={handleStop} variant={"secondary"}>
+        {t('actions.stop')}
+      </Button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -201,6 +249,9 @@ export function DownloadStatus({
               {Math.round(progressPct)}%
             </p>
           )}
+
+          {/* Stop button */}
+          <ScrapingControls isPaused={isPaused} setIsPaused={setIsPaused} setIsScraping={setIsScraping} />
         </div>
       </div>
     );
@@ -237,6 +288,9 @@ export function DownloadStatus({
               />
             </div>
           )}
+
+          {/* Stop button */}
+          <ScrapingControls isPaused={isPaused} setIsPaused={setIsPaused} setIsScraping={setIsScraping} />
         </div>
       </div>
     );
@@ -247,21 +301,6 @@ export function DownloadStatus({
   // -----------------------------------------------------------------------
   // Show buttons during any scraping activity (main page or linked pages)
   if (isScraping || isScrapingLinkedPages) {
-    const handlePause = async () => {
-      setIsPaused(true); // Update UI immediately
-      await sendMessage("background", { action: messageActions.SCRAPER_PAUSE, data: {} });
-    };
-
-    const handleResume = async () => {
-      setIsPaused(false); // Update UI immediately
-      await sendMessage("background", { action: messageActions.SCRAPER_RESUME, data: {} });
-    };
-
-    const handleStop = async () => {
-      await sendMessage("background", { action: messageActions.SCRAPER_STOP, data: {} });
-      setIsScraping(false);
-    };
-
     return (
       <div className="pt-8">
         <div className="flex items-center gap-2">
@@ -273,50 +312,30 @@ export function DownloadStatus({
             </span>
           )}
         </div>
-        <div className="flex gap-2">
-          {isPaused ? (
-            <Button onClick={handleResume} variant={"secondary"}>
-              {t('actions.resume')}
-            </Button>
-          ) : (
-            <Button onClick={handlePause} variant={"secondary"}>
-              {t('actions.pause')}
-            </Button>
-          )}
-          <Button onClick={handleStop} variant={"secondary"}>
-            {t('actions.stop')}
-          </Button>
-        </div>
+        <ScrapingControls isPaused={isPaused} setIsPaused={setIsPaused} setIsScraping={setIsScraping} />
       </div>
     );
   }
 
-  // Show "Downloading website content..." when download is in progress but not scraping
+  // Show progress when download is in progress but not actively scraping
+  // and not in a server-mode phase (uploading/assembling/ready handled above).
   // Hide this component when download is complete (DOWNLOAD_DONE)
   if (
     !isScraping &&
     !isScrapingLinkedPages &&
     action !== messageActions.DOWNLOAD_DONE &&
-    !!downloadResponse?.html
+    !!downloadResponse
   ) {
     return (
       <div className="pt-8">
         <h3 className="pb-2 font-bold">{t('status.downloadingWebsiteContent')}</h3>
+        <ScrapingControls isPaused={isPaused} setIsPaused={setIsPaused} setIsScraping={setIsScraping} />
       </div>
     );
   }
 
   // Hide component when download is complete
   if (action === messageActions.DOWNLOAD_DONE) {
-    return null;
-  }
-
-  // Hide component if no scraping and no download response
-  if (
-    !isScraping &&
-    action !== messageActions.DOWNLOAD_DONE &&
-    !downloadResponse?.html
-  ) {
     return null;
   }
 

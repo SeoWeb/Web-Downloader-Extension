@@ -13,6 +13,7 @@ interface MainContentProps {
   messages: Message[];
   tabId: number;
   isScraping: boolean;
+  isScrapingLinkedPages: boolean;
   action: MessageAction | null;
   downloadResponse: ScrollingResponse | null;
   onClickStartDownload: (options: any) => void;
@@ -23,6 +24,7 @@ export function MainContent({
   messages,
   tabId,
   isScraping,
+  isScrapingLinkedPages,
   action,
   downloadResponse,
   onClickStartDownload,
@@ -39,8 +41,8 @@ export function MainContent({
 
       {!!tabId &&
         !isScraping &&
-        action !== messageActions.DOWNLOAD_DONE &&
-        !downloadResponse?.html && (
+        !isScrapingLinkedPages &&
+        !downloadResponse && (
           <div className="pt-4">
             <ErrorBoundary name="Filter">
               <React.Suspense fallback={<div className="p-4">{t('filter.loading')}</div>}>
