@@ -303,15 +303,7 @@ export function DownloadStatus({
   if (isScraping || isScrapingLinkedPages) {
     return (
       <div className="pt-8">
-        <div className="flex items-center gap-2">
-          <h3 className="pb-2 font-bold">{t('status.scraping')}</h3>
-          {serverModeState && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-              <Server className="w-3 h-3" />
-              {t('filter.serverMode')}
-            </span>
-          )}
-        </div>
+        <h3 className="pb-2 font-bold">{t('status.scraping')}</h3>
         <ScrapingControls isPaused={isPaused} setIsPaused={setIsPaused} setIsScraping={setIsScraping} />
       </div>
     );

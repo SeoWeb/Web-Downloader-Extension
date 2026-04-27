@@ -26,7 +26,7 @@ The extension SHALL operate through a Chrome side panel that opens when the exte
 
 ### Requirement: Filter Options Configuration
 
-The system SHALL provide configurable filter options for controlling what content is downloaded. A mode indicator SHALL be shown when server mode is active. The filter panel, download button, and configuration accordion SHALL be hidden while any scraping or download is in progress (including linked page scraping).
+The system SHALL provide configurable filter options for controlling what content is downloaded. The filter panel, download button, and configuration accordion SHALL be hidden while any scraping or download is in progress (including linked page scraping).
 
 #### Scenario: Default filter options
 
@@ -79,13 +79,6 @@ The system SHALL provide configurable filter options for controlling what conten
 - WHEN the reset action is triggered
 - THEN all options are restored to their default values
 - AND the defaults are saved to Chrome storage
-
-#### Scenario: Mode indicator in filter panel
-
-- GIVEN server mode is active (VITE_SERVER_URL is configured at build time)
-- WHEN the filter panel is displayed
-- THEN a visual badge shows "Server mode" next to the download button
-- AND when local mode is active (no VITE_SERVER_URL), no server badge is shown
 
 #### Scenario: Filter hidden during main page scraping
 
