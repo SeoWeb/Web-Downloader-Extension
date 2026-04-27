@@ -408,8 +408,132 @@ def test_no_body_tag():
 
 
 # ---------------------------------------------------------------------------
-# Main
+# Test 11: Safe merge deduplicates identical body content
 # ---------------------------------------------------------------------------
+
+def test_safe_merge_deduplication():
+    """Safe merge should not duplicate body content when chunks are identical to skeleton."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-dedup-safe"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    body_content = "<div id='__next'><p>Hello World</p></div>"
+    skeleton_html = f"""<!DOCTYPE html>
+<html>
+<head><title>Dedup Test</title></head>
+<body>{body_content}</body>
+</html>"""
+
+    service.initialize_skeleton(job, skeleton_html)
+
+    # Add 3 chunks with identical body content to the skeleton
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+
+    for i in range(1, 4):
+        chunk_html = f"<html><head><title>Dedup</title></head><body>{body_content}</body></html>"
+        chunk_path = os.path.join(chunk_dir, f"{i}.html")
+        with open(chunk_path, "w") as f:
+            f.write(chunk_html)
+        chunk_hash = service.compute_content_hash(chunk_html)
+        service.register_chunk(job, chunk_hash, scroll_index=i, storage_path=chunk_path, size=len(chunk_html))
+
+    # Force safe merge by making the content trigger complexity detection
+    # (We'll test _safe_merge directly since normal merge may take DOM path)
+    result = service._safe_merge(job, skeleton_html)
+    assert result.success, f"Safe merge should succeed: {result.reason}"
+
+    # Body content should appear exactly once
+    count = result.html.count("Hello World")
+    assert count == 1, f"Body content should appear once, but found {count} times"
+
+    print("  PASS: test_safe_merge_deduplication")
+
+
+# ---------------------------------------------------------------------------
+# Test 12: DOM merge superset detection with identical chunks
+# ---------------------------------------------------------------------------
+
+def test_dom_merge_superset_identical_chunks():
+    """DOM merge should detect identical chunks as superset and return skeleton."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-dom-superset"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    skeleton_html = """<!DOCTYPE html>
+<html>
+<head><title>Superset Test</title></head>
+<body><noscript>tracker</noscript><div id="__next"><p>Main content</p></div></body>
+</html>"""
+
+    service.initialize_skeleton(job, skeleton_html)
+
+    # Add chunk with identical body content
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+
+    chunk_html = """<html>
+<head><title>Superset Test</title></head>
+<body><noscript>tracker</noscript><div id="__next"><p>Main content</p></div></body>
+</html>"""
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    chunk_hash = service.compute_content_hash(chunk_html)
+    service.register_chunk(job, chunk_hash, scroll_index=1, storage_path=chunk_path, size=len(chunk_html))
+
+    # DOM merge should detect superset and return skeleton unchanged
+    result_html = service._dom_merge(job, skeleton_html)
+
+    # Body content should appear exactly once
+    count = result_html.count("Main content")
+    assert count == 1, f"Content should appear once in DOM merge, but found {count} times"
+
+    print("  PASS: test_dom_merge_superset_identical_chunks")
+
+
+# ---------------------------------------------------------------------------
+# Test 13: DOM merge full-body subset check
+# ---------------------------------------------------------------------------
+
+def test_dom_merge_full_body_subset():
+    """DOM merge should detect chunk body is subset of skeleton body."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-body-subset"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    skeleton_html = """<!DOCTYPE html>
+<html>
+<head><title>Subset Test</title></head>
+<body><p>Part 1</p><p>Part 2</p><p>Part 3</p></body>
+</html>"""
+
+    service.initialize_skeleton(job, skeleton_html)
+
+    # Add chunk whose body is a substring of skeleton body
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+
+    chunk_html = """<html>
+<head><title>Subset Test</title></head>
+<body><p>Part 1</p><p>Part 2</p><p>Part 3</p></body>
+</html>"""
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    chunk_hash = service.compute_content_hash(chunk_html)
+    service.register_chunk(job, chunk_hash, scroll_index=1, storage_path=chunk_path, size=len(chunk_html))
+
+    result_html = service._dom_merge(job, skeleton_html)
+
+    # Should return skeleton unchanged (subset detected)
+    count = result_html.count("Part 1")
+    assert count == 1, f"Content should appear once, but found {count} times"
+
+    print("  PASS: test_dom_merge_full_body_subset")
 
 def main():
     print("HTML Merge Service Verification (task 4.9)")
@@ -426,6 +550,9 @@ def main():
         test_disk_based_loading,
         test_chunk_cleanup_after_safe_merge,
         test_no_body_tag,
+        test_safe_merge_deduplication,
+        test_dom_merge_superset_identical_chunks,
+        test_dom_merge_full_body_subset,
     ]
 
     passed = 0

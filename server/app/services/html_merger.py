@@ -406,6 +406,19 @@ class HtmlMergerService:
         if not chunk_bodies:
             return skeleton_html
 
+        # Full-body subset check: if all chunk body content is already contained
+        # in the skeleton body, return the skeleton unchanged.
+        skeleton_body_text = self._extract_body_content(skeleton_html) or ""
+        if skeleton_body_text:
+            all_subset = all(cb in skeleton_body_text for cb in chunk_bodies)
+            if all_subset:
+                logger.info(
+                    "DOM merge: all chunk bodies are subsets of skeleton "
+                    "(session=%s page=%s) — returning skeleton",
+                    job.session_id, job.page_url_hash,
+                )
+                return skeleton_html
+
         # Combine all chunk body content into one HTML fragment for merge
         combined_chunk_html = f"<html><body>{''.join(chunk_bodies)}</body></html>"
         chunk_tree = etree.HTML(combined_chunk_html)
@@ -426,9 +439,18 @@ class HtmlMergerService:
             first_skel = etree.tostring(skel_children[0], encoding="unicode")
             first_chunk = etree.tostring(chunk_children[0], encoding="unicode")
             if self._compare_html_blocks(first_skel, first_chunk):
-                # Chunk document is a superset — use its body content
-                result = etree.tostring(skeleton_tree, encoding="unicode")
-                return result
+                # First child matches — verify remaining chunk children are
+                # already in the skeleton before declaring superset.
+                skel_html = "".join(
+                    etree.tostring(c, encoding="unicode") for c in skel_children
+                )
+                all_in_skeleton = all(
+                    etree.tostring(c, encoding="unicode") in skel_html
+                    for c in chunk_children
+                )
+                if all_in_skeleton:
+                    result = etree.tostring(skeleton_tree, encoding="unicode")
+                    return result
 
         # Append chunk children to skeleton body with incremental element tracking
         skeleton_element_count = len(list(skeleton_body.iter()))
@@ -479,23 +501,40 @@ class HtmlMergerService:
     def _safe_merge(self, job: AssemblyJob, skeleton_html: str) -> MergeResult:
         """Safe merge: extract body content and concatenate with size limits.
 
-        Port of safeHtmlMerge from merge-html.ts.
+        Port of safeHtmlMerge from merge-html.ts. Deduplicates chunk body
+        content that is identical to or a subset of the skeleton body to
+        prevent duplicated output.
         """
         try:
             # Extract body content from skeleton
             body1 = self._extract_body_content(skeleton_html) or ""
 
-            # Extract body content from all chunks
+            # Extract body content from all chunks, skipping duplicates
             chunk_bodies: list[str] = []
+            skipped_count = 0
             for chunk_path in job.chunks:
                 try:
                     with open(chunk_path, "r", encoding="utf-8") as f:
                         chunk_html = f.read()
                     body = self._extract_body_content(chunk_html)
                     if body:
-                        chunk_bodies.append(body)
+                        if body == body1 or body in body1:
+                            logger.debug(
+                                "Safe merge: skipping duplicate/subset chunk %s "
+                                "(session=%s page=%s)",
+                                chunk_path, job.session_id, job.page_url_hash,
+                            )
+                            skipped_count += 1
+                        else:
+                            chunk_bodies.append(body)
                 except OSError:
                     continue
+
+            if skipped_count > 0:
+                logger.info(
+                    "Safe merge: skipped %d duplicate chunks (session=%s page=%s)",
+                    skipped_count, job.session_id, job.page_url_hash,
+                )
 
             combined_content = body1 + "\n" + "\n".join(chunk_bodies)
 

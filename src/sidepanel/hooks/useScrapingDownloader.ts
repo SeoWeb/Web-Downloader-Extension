@@ -138,7 +138,10 @@ export function useScrapingDownloader({
               html: response.html,
               scrollIndex: serverScrollIndexRef.current++,
               pageType: "main",
-              pageUrl: tabUrl,
+              // Do NOT send pageUrl — the server defaults to page_url_hash="main"
+              // when pageUrl is absent, which groups all scroll chunks into the
+              // same job as the download-phase chunk. Sending pageUrl would create
+              // a phantom linked page job with duplicated body content.
             },
           );
         } catch {
