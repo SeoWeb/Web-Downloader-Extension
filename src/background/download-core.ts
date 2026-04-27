@@ -8,7 +8,8 @@ import { addIndexHtml } from "./fileHandlers";
 import { cleanupAfterDownload } from "./cleanupHandlers";
 import { finalizeIncrementalMerge } from "./merge-html";
 import { FilterOptions } from "../types/filterTypes";
-import { downloadId, setDownloadInProgress, getDownloadInProgress, setDownloadAbortController, getDownloadAbortController } from "./download-state";
+import { downloadId, setDownloadInProgress, getDownloadInProgress, setDownloadAbortController, getDownloadAbortController, createKeepalivePort, disconnectKeepalivePort } from "./download-state";
+import { writeCheckpoint, updateCheckpointPhase, clearCheckpoint } from "./download-checkpoint";
 import { initiateDownload, performInitialCleanup } from "./download-utils";
 import { isPanelAlive, downloadViaPanelAndWait, PanelUnavailableError } from "./panel-download";
 import { 
@@ -130,6 +131,18 @@ export async function downloadResources(
 
   await setDownloadInProgress(true);
 
+  // Create keepalive port to prevent Chrome from killing the service worker
+  // during the download lifecycle (scraping, uploading, packing).
+  createKeepalivePort();
+
+  // Write interrupt checkpoint so we can detect/recover if the SW is killed.
+  writeCheckpoint({
+    phase: "scraping",
+    serverSessionId: shouldUseServerMode() ? getActiveServerSessionId() ?? undefined : undefined,
+    tabId,
+    tabUrl,
+  });
+
   // Create abort controller for this download session so the user
   // can press Stop and cancel all in-progress uploads and the download flow.
   const downloadAbort = new AbortController();
@@ -181,11 +194,13 @@ export async function downloadResources(
     // Always reset the flag when done and cleanup
     await setDownloadInProgress(false);
     setDownloadAbortController(null);
+    disconnectKeepalivePort();
+    await clearCheckpoint();
 
     // Cleanup download-specific resources
     try {
       await cleanupAfterDownload(downloadId);
-      
+
       // Clear the queue after download completion
       await requestQueue.clear();
     } catch {
@@ -506,6 +521,7 @@ async function executeDownload(
       if (USE_INDEXEDDB) {
         // Stream-based Split Zip Generation
         sendMessage({ key: "status.creatingPackage" });
+        updateCheckpointPhase("packing");
         sendMessage({ key: "status.generatingSplitZip" });
 
         // Verify the side panel is available before starting multi-part download
@@ -862,6 +878,7 @@ async function executeDownloadServerMode(
     sendMessage({ key: "status.sendingScrapeComplete" });
     await serverClient.scrapeComplete(sessionId, totalResourceCount);
     sendMessage({ key: "status.scrapeComplete" });
+    updateCheckpointPhase("uploading");
 
     // Wait for all resource uploads to complete before finalizing.
     // Finalization requires all resources to be on the server.
@@ -883,6 +900,7 @@ async function executeDownloadServerMode(
     // (12.8) Replace ZIP generation with server finalization + polling.
     sendMessage({ key: "status.finalizingServer" });
     await serverClient.finalizeSession(sessionId);
+    updateCheckpointPhase("assembling");
 
     // Poll for assembly completion and trigger download
     sendMessage({ key: "status.assemblingServer" });

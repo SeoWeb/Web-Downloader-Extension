@@ -9,6 +9,9 @@ import {
   cleanupDownloadBlobs,
 } from "../common/blobStorage";
 import { getDownloadInProgress, setDownloadInProgress } from "./download";
+import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
+import { sendMessageToPanel } from "./message";
+import { messageActions } from "../common/message";
 import { DEFAULT_MEMORY_LIMITS } from "../utils/memoryLimits";
 
 // Type declarations for service worker events
@@ -89,14 +92,40 @@ async function performStartupCleanup(): Promise<void> {
  */
 async function handleInterruptedDownload(): Promise<void> {
   try {
-    // Reset download flag
+    // Read checkpoint before clearing it, so we can notify the sidepanel.
+    const checkpoint = await readCheckpoint();
+
+    // Reset download flag (always, even if notification fails)
     await setDownloadInProgress(false);
 
     // Force cleanup to free any stuck resources
     await memoryManager.forceCleanup();
 
     // Clean up any orphaned blobs
-    await cleanupOldBlobs(0); // Clean up all blobs since we can't track them
+    await cleanupOldBlobs(0);
+
+    // Notify sidepanel about the interrupted download.
+    // If the panel isn't open, we keep the checkpoint so
+    // CHECK_INTERRUPTED_DOWNLOAD can find it on panel open.
+    if (checkpoint) {
+      let panelNotified = false;
+      try {
+        await sendMessageToPanel(
+          messageActions.DOWNLOAD_INTERRUPTED,
+          checkpoint,
+        );
+        panelNotified = true;
+      } catch {
+        // Panel not connected — keep checkpoint for later discovery
+      }
+
+      if (panelNotified) {
+        await clearCheckpoint();
+      }
+    } else {
+      // No checkpoint but flag was set — clear any stale state
+      await clearCheckpoint();
+    }
   } catch {
     // ignore
   }

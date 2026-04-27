@@ -25,6 +25,12 @@ import { ServerModeState } from "../server-mode-state";
 // Props
 // ---------------------------------------------------------------------------
 
+export interface InterruptData {
+  phase: string;
+  tabUrl: string;
+  timestamp: number;
+}
+
 interface DownloadStatusProps {
   tabId: number;
   isScraping: boolean;
@@ -42,6 +48,12 @@ interface DownloadStatusProps {
   onLocalFallback?: () => void;
   /** (15.3) Trigger download from server when ZIP is ready. */
   onDownloadFromServer?: () => void;
+  /** Interrupt data: non-null when a download was interrupted by SW restart. */
+  interruptData?: InterruptData | null;
+  /** Restart the download after interruption. */
+  onRestartDownload?: () => void;
+  /** Dismiss the interrupted state without restarting. */
+  onDismissInterrupt?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -109,10 +121,55 @@ export function DownloadStatus({
   onRetryServer,
   onLocalFallback,
   onDownloadFromServer,
+  interruptData,
+  onRestartDownload,
+  onDismissInterrupt,
 }: DownloadStatusProps) {
   const { t } = useTranslation();
 
   if (!tabId) return null;
+
+  // -----------------------------------------------------------------------
+  // Download interrupted by service worker restart
+  // -----------------------------------------------------------------------
+  if (interruptData) {
+    const phaseLabel = t(`status.interruptedPhase.${interruptData.phase}`, interruptData.phase);
+    return (
+      <div className="pt-8 animate-fade-in">
+        <div className="card p-6 bg-gradient-to-b from-amber-50 to-white border-amber-200 space-y-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-8 h-8 text-amber-500 flex-shrink-0" />
+            <div>
+              <h3 className="font-bold text-slate-800">{t('status.downloadInterruptedTitle')}</h3>
+              <p className="text-sm text-slate-600 mt-1">
+                {t('status.downloadInterruptedMessage', { phase: phaseLabel })}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {onRestartDownload && (
+              <button
+                onClick={onRestartDownload}
+                className="btn-primary w-full flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" />
+                {t('status.restartDownload')}
+              </button>
+            )}
+            {onDismissInterrupt && (
+              <button
+                onClick={onDismissInterrupt}
+                className="btn-secondary w-full cursor-pointer"
+              >
+                {t('status.dismissInterrupt')}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // -----------------------------------------------------------------------
   // (15.5 + 15.6) Server error / timeout display

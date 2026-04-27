@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { MessageAction, messageActions } from "./common/message";
 import { Message } from "./components/Actions";
 import { MainContent } from "./sidepanel/components/MainContent";
-import { DownloadStatus } from "./sidepanel/components/DownloadStatus";
+import { DownloadStatus, InterruptData } from "./sidepanel/components/DownloadStatus";
 import { DownloadComplete } from "./sidepanel/components/DownloadComplete";
 import { useActiveTabInfo } from "./sidepanel/hooks/useActiveTabInfo"; // Added hook import
 import { useMessageListener } from "./sidepanel/hooks/useMessageListener"; // Added hook import
@@ -82,6 +82,8 @@ export default function SidePanel() {
   const [error, setError] = useState<Error | null>(null);
   // (15.1–15.7) Server-mode UI state
   const [serverModeState, setServerModeState] = useState<ServerModeState>(initialServerModeState);
+  // Interrupt state: shown when the service worker was killed during a download
+  const [interruptData, setInterruptData] = useState<InterruptData | null>(null);
   // downloadResponse and scrollAttempts are now managed by useScrapingDownloader hook
   const [downloadOptions, setDownloadOptions] = useState<{
     downloadHTML: boolean;
@@ -231,6 +233,23 @@ export default function SidePanel() {
           setDownloadResponse(null);
           break;
 
+        case messageActions.DOWNLOAD_INTERRUPTED:
+          // Service worker was killed during an active download
+          setInterruptData({
+            phase: data.phase || "scraping",
+            tabUrl: data.tabUrl || "",
+            timestamp: data.timestamp || Date.now(),
+          });
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
+          setAction(null);
+          setDownloadResponse(null);
+          setMessages([
+            { key: "status.connected" },
+            { key: "status.downloadInterrupted", options: { phase: data.phase || "scraping" } },
+          ]);
+          break;
+
         default:
           break;
       }
@@ -241,6 +260,31 @@ export default function SidePanel() {
   ); // Add setDownloadResponse to dependencies
 
   useMessageListener({ messageWorker });
+
+  // Check for interrupted downloads on panel open
+  useEffect(() => {
+    (async () => {
+      try {
+        const { sendMessageToBackground } = await import("./client/message");
+        const result = await sendMessageToBackground(messageActions.CHECK_INTERRUPTED_DOWNLOAD, {});
+        if (result && result.downloadInterrupted) {
+          setInterruptData({
+            phase: result.phase || "scraping",
+            tabUrl: result.tabUrl || "",
+            timestamp: result.timestamp || Date.now(),
+          });
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
+          setMessages([
+            { key: "status.connected" },
+            { key: "status.downloadInterrupted", options: { phase: result.phase || "scraping" } },
+          ]);
+        }
+      } catch {
+        // Background not ready yet — ignore
+      }
+    })();
+  }, []); // Run once on mount
 
   // Listen for download completion via chrome.storage
   useEffect(() => {
@@ -398,6 +442,22 @@ export default function SidePanel() {
               saveAs: true,
             });
           }
+        }}
+        interruptData={interruptData}
+        onRestartDownload={() => {
+          setInterruptData(null);
+          if (downloadOptions) {
+            setIsScraping(true);
+            setDownloadOptions(downloadOptions);
+            setMessages((prev) => [...prev, { key: "status.scraping" }]);
+            if (IS_SERVER_MODE) {
+              setServerModeState((prev) => ({ ...prev, phase: 'scraping', serverError: null }));
+            }
+          }
+        }}
+        onDismissInterrupt={() => {
+          setInterruptData(null);
+          setMessages([{ key: "status.connected" }]);
         }}
       />
       <DownloadComplete

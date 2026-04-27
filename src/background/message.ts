@@ -6,6 +6,7 @@ import { downloadResourcesWithIncrementalAssembly } from "./download";
 import { mergeHtmlIncremental } from "./merge-html";
 import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
 import { abortActiveDownload } from "./download-state";
+import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
 import { serverClient } from "./server-client";
 
 // Active server session ID for HTML chunk uploads during scrolling
@@ -207,6 +208,15 @@ export async function messageWorker(
 
     case messageActions.CHECK_ONLINE_STATUS:
       return true;
+
+    case messageActions.CHECK_INTERRUPTED_DOWNLOAD: {
+      const checkpoint = await readCheckpoint();
+      if (checkpoint) {
+        // Clear so it's only shown once
+        await clearCheckpoint();
+      }
+      return checkpoint;
+    }
 
     case messageActions.SCRAPER_PAUSE:
       pauseScraping();

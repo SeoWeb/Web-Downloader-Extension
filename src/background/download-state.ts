@@ -21,6 +21,7 @@ export const setDownloadAbortController = (controller: AbortController | null) =
 export const abortActiveDownload = (): boolean => {
   if (downloadAbortController && !downloadAbortController.signal.aborted) {
     downloadAbortController.abort();
+    disconnectKeepalivePort();
     return true;
   }
   return false;
@@ -29,6 +30,24 @@ export const abortActiveDownload = (): boolean => {
 let keepalivePort: chrome.runtime.Port | null = null;
 export const getKeepalivePort = () => keepalivePort;
 export const setKeepalivePort = (port: chrome.runtime.Port | null) => { keepalivePort = port; };
+
+/** Create a keepalive port to prevent the service worker from being killed.
+ *  Safe to call multiple times — reuses existing port. */
+export function createKeepalivePort(): void {
+  if (!keepalivePort) {
+    keepalivePort = chrome.runtime.connect({ name: "download-keepalive" });
+    console.log("[Keepalive] Port created");
+  }
+}
+
+/** Disconnect the keepalive port, allowing the service worker to idle out. */
+export function disconnectKeepalivePort(): void {
+  if (keepalivePort) {
+    keepalivePort.disconnect();
+    keepalivePort = null;
+    console.log("[Keepalive] Port disconnected");
+  }
+}
 
 export const setDownloadInProgress = async (inProgress: boolean) => {
   if (chrome.storage && chrome.storage.local) {
@@ -50,8 +69,8 @@ export const trackDownload = (id: number, filename: string, tabId?: number) => {
         filename,
     });
     
-    // Create keepalive connection if not already exists
+    // Reuse keepalive port if one was created at download start
     if (!keepalivePort) {
-        keepalivePort = chrome.runtime.connect({ name: "keepalive" });
+        keepalivePort = chrome.runtime.connect({ name: "download-keepalive" });
     }
 };
