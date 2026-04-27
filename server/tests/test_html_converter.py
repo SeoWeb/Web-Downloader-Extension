@@ -519,8 +519,14 @@ def test_fix_filename():
 
 def test_generate_image_filename():
     """generateImageFilename port works correctly."""
-    # With image extension
-    assert generate_image_filename("https://example.com/img/photo.jpg") == "photo.jpg"
+    # Single-segment path with image extension
+    assert generate_image_filename("https://example.com/photo.jpg") == "photo.jpg"
+    # Multi-segment path with image extension includes parent for uniqueness
+    result = generate_image_filename("https://example.com/img/photo.jpg")
+    assert result == "img_photo.jpg"
+    # eBay-style: unique parent segment prevents collision
+    result = generate_image_filename("https://i.ebayimg.com/images/g/hXIAAOSwu-BoJfB9/s-l960.webp")
+    assert "hXIAAOSwu-BoJfB9" in result and result.endswith(".webp")
     # Without image extension
     result = generate_image_filename("https://example.com/bbcswebdav/xid-31821076_1")
     assert result.endswith(".bin")  # Default extension when no Content-Type
@@ -603,6 +609,75 @@ def test_generate_page_filename_matches_convert_links():
     )
 
 
+def test_inline_style_css_custom_property_url():
+    """CSS custom property url() converted in inline styles (3.1)."""
+    html = '<html><body><div style="--image-url: url(\'https://example.com/images/photo.jpg\')"></div></body></html>'
+    result = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
+    assert "./images/photo.jpg" in result, (
+        f"Expected ./images/photo.jpg in custom property, got: {result}"
+    )
+
+
+def test_inline_style_shorthand_background_url():
+    """Shorthand background: url() converted in inline styles (3.2)."""
+    html = '<html><body><div style="background: url(\'https://example.com/images/photo.jpg\') no-repeat"></div></body></html>'
+    result = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
+    assert "./images/photo.jpg" in result, (
+        f"Expected ./images/photo.jpg in shorthand background, got: {result}"
+    )
+
+
+def test_inline_style_list_style_image_url():
+    """list-style-image: url() converted in inline styles (3.3)."""
+    html = '<html><body><ul><li style="list-style-image: url(\'https://example.com/images/bullet.png\')"></li></ul></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={
+        **SAMPLE_FILENAME_MAP,
+        "https://example.com/images/bullet.png": "images/bullet.png",
+    })
+    assert "./images/bullet.png" in result, (
+        f"Expected ./images/bullet.png in list-style-image, got: {result}"
+    )
+
+
+def test_style_tag_css_custom_property_url():
+    """CSS custom property url() in <style> tag converted (3.4)."""
+    html = '<html><head><style>.hero { --hero-image: url(\'https://example.com/images/photo.jpg\'); }</style></head><body></body></html>'
+    result = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
+    assert "./images/photo.jpg" in result, (
+        f"Expected ./images/photo.jpg in <style> custom property, got: {result}"
+    )
+
+
+def test_multiple_url_in_same_inline_style():
+    """Multiple url() references in same inline style each converted (3.5)."""
+    html = '<html><body><div style="background: url(\'https://example.com/images/photo.jpg\'); --icon: url(\'https://example.com/images/logo.png\')"></div></body></html>'
+    result = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
+    assert "./images/photo.jpg" in result, (
+        f"Expected ./images/photo.jpg, got: {result}"
+    )
+    assert "./images/logo.png" in result, (
+        f"Expected ./images/logo.png, got: {result}"
+    )
+
+
+def test_data_uri_preserved_in_non_bg_context():
+    """Data URI in non-background-image url() context preserved (3.6)."""
+    html = '<html><body><div style="content: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0=)"></div></body></html>'
+    result = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
+    assert "data:image/svg+xml;base64" in result, (
+        f"Data URI should be preserved, got: {result}"
+    )
+
+
+def test_fragment_url_preserved():
+    """Fragment-only url() reference preserved."""
+    html = '<html><body><div style="clip-path: url(#clipShape)"></div></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={})
+    assert "url(#clipShape)" in result, (
+        f"Fragment URL should be preserved, got: {result}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -665,6 +740,14 @@ def run_all():
         test_generate_page_filename_special_chars,
         test_generate_page_filename_empty_input,
         test_generate_page_filename_matches_convert_links,
+        # CSS url() conversion (fix-css-url-conversion)
+        test_inline_style_css_custom_property_url,
+        test_inline_style_shorthand_background_url,
+        test_inline_style_list_style_image_url,
+        test_style_tag_css_custom_property_url,
+        test_multiple_url_in_same_inline_style,
+        test_data_uri_preserved_in_non_bg_context,
+        test_fragment_url_preserved,
     ]
 
     passed = 0

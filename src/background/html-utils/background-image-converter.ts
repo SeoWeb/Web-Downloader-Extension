@@ -9,16 +9,14 @@ export function convertBackgroundImagesToRelative(
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlString, "text/html");
 
-  // Process inline styles with background images
-  const elementsWithBgImages = doc.querySelectorAll(
-    "[style*='background-image']",
+  const elementsWithUrl = doc.querySelectorAll(
+    "[style*='url(']",
   );
 
-  for (const element of elementsWithBgImages) {
+  for (const element of elementsWithUrl) {
     const style = element.getAttribute("style");
     if (!style) continue;
 
-    // Convert background-image URLs to relative paths
     const updatedStyle = convertBackgroundImageUrlsToRelative(
       style,
       tabUrl,
@@ -27,7 +25,6 @@ export function convertBackgroundImagesToRelative(
     element.setAttribute("style", updatedStyle);
   }
 
-  // Process style tags with background images
   const styleTags = doc.querySelectorAll("style");
   for (const styleTag of styleTags) {
     const cssContent = styleTag.textContent || "";
@@ -47,18 +44,15 @@ function convertBackgroundImageUrlsToRelative(
   tabUrl: string,
   path: string = "./",
 ): string {
-  // Regular expression to match background-image: url(...) patterns
-  const bgImagePattern = /background-image\s*:\s*url\(['"]?(.*?)['"]?\)/gi;
+  const bgImagePattern = /url\(['"]?(.*?)['"]?\)/gi;
   let updatedContent = cssContent;
 
-  // Replace all background image URLs with relative paths
   updatedContent = updatedContent.replace(bgImagePattern, (match, imageUrl) => {
     if (!imageUrl || imageUrl.startsWith("data:")) {
-      return match; // Skip data URLs
+      return match;
     }
 
     try {
-      // If URL is already relative, preserve its structure but ensure it points to images folder
       if (!imageUrl.startsWith("http")) {
         const filename = imageUrl.split("/").pop();
         if (filename) {
@@ -83,13 +77,12 @@ function convertBackgroundImageUrlsToRelative(
       // Ignore
     }
 
-    return match; // Return original if conversion fails
+    return match;
   });
 
   return updatedContent;
 }
 
-// Helper function to convert background images to base64
 export async function convertBackgroundImagesToBase64(
   htmlString: string,
   tabUrl: string,
@@ -97,16 +90,14 @@ export async function convertBackgroundImagesToBase64(
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlString, "text/html");
 
-  // Process inline styles with background images
-  const elementsWithBgImages = doc.querySelectorAll(
-    "[style*='background-image']",
+  const elementsWithUrl = doc.querySelectorAll(
+    "[style*='url(']",
   );
 
-  for (const element of elementsWithBgImages) {
+  for (const element of elementsWithUrl) {
     const style = element.getAttribute("style");
     if (!style) continue;
 
-    // Convert background-image URLs to base64
     const updatedStyle = await convertBackgroundImageUrlsToBase64(
       style,
       tabUrl,
@@ -114,7 +105,6 @@ export async function convertBackgroundImagesToBase64(
     element.setAttribute("style", updatedStyle);
   }
 
-  // Process style tags with background images
   const styleTags = doc.querySelectorAll("style");
   for (const styleTag of styleTags) {
     const cssContent = styleTag.textContent || "";
@@ -128,14 +118,12 @@ export async function convertBackgroundImagesToBase64(
   return doc.documentElement.outerHTML;
 }
 
-// Helper function to convert background image URLs to base64
 async function convertBackgroundImageUrlsToBase64(
   cssContent: string,
   tabUrl: string,
 ): Promise<string> {
   return new Promise((resolve) => {
-    // Regular expression to match background-image: url(...) patterns
-    const bgImagePattern = /background-image\s*:\s*url\(['"]?(.*?)['"]?\)/gi;
+    const bgImagePattern = /url\(['"]?(.*?)['"]?\)/gi;
     let match;
 
     const processImage = async (imageUrl: string) => {
@@ -153,7 +141,7 @@ async function convertBackgroundImageUrlsToBase64(
               resolveImage(base64);
             };
             reader.onerror = () => {
-              resolveImage(imageUrl); // Return original URL if conversion fails
+              resolveImage(imageUrl);
             };
             reader.readAsDataURL(blob);
           });
@@ -161,10 +149,9 @@ async function convertBackgroundImageUrlsToBase64(
       } catch {
         // Ignore
       }
-      return imageUrl; // Return original URL if conversion fails
+      return imageUrl;
     };
 
-    // Replace all background image URLs with base64
     const replacePromises: Promise<void>[] = [];
     const replacements: { original: string; replacement: string }[] = [];
 
@@ -185,7 +172,6 @@ async function convertBackgroundImageUrlsToBase64(
     }
 
     Promise.all(replacePromises).then(() => {
-      // Apply all replacements
       let finalContent = cssContent;
       for (const { original, replacement } of replacements) {
         finalContent = finalContent.replace(original, replacement);

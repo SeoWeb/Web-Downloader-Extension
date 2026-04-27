@@ -460,6 +460,12 @@ export function generateImageFilename(
     imageExtensions.includes(lastSegment.slice(dotIndex + 1).toLowerCase());
 
   if (hasImageExtension) {
+    if (segments.length > 1) {
+      // Include parent path segments to avoid collisions when different URLs
+      // share the same filename (e.g. eBay CDN: /g/ABC/s-l960.webp vs /g/XYZ/s-l960.webp)
+      const fullPath = segments.join("_");
+      return fixFilename(fullPath);
+    }
     return fixFilename(lastSegment);
   }
 

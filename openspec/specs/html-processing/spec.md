@@ -10,11 +10,28 @@ HTML conversion, merging, and incremental assembly for the Website Downloader ex
 
 The system SHALL convert all resource URLs in the HTML to relative local paths for ZIP archive packaging, ensuring that linked page filenames are deterministic and match across conversion and assembly in both local and server modes. In server mode, URL conversion is performed by the server using the uploaded filename map; in local mode, it is performed by the extension.
 
+Image filename generation SHALL include parent path segments when a URL has multiple path segments, to prevent collisions where different images share the same filename but reside in different URL directories.
+
+#### Scenario: Image with multi-segment URL path
+
+- GIVEN an HTML document containing `<img src="https://i.ebayimg.com/images/g/hXIAAOSwu-BoJfB9/s-l960.webp">`
+- WHEN ZIP mode conversion is applied
+- THEN the system generates a filename that includes parent path segments (e.g., `images_g_hXIAAOSwu-BoJfB9_s-l960.webp`)
+- AND the src is changed to `./images/<generated-filename>`
+- AND different images with the same last path segment but different parent paths produce different filenames
+
+#### Scenario: Image with single-segment URL path unchanged
+
+- GIVEN an HTML document containing `<img src="https://example.com/photo.jpg">`
+- WHEN ZIP mode conversion is applied
+- THEN the filename is `photo.jpg` (no parent path prefix)
+- AND the src is changed to `./images/photo.jpg`
+
 #### Scenario: Image src conversion
 
 - GIVEN an HTML document containing `<img src="https://example.com/images/photo.jpg">`
 - WHEN ZIP mode conversion is applied
-- THEN the src attribute is changed to `./images/photo.jpg`
+- THEN the src attribute is changed to `./images/images_photo.jpg`
 - AND the image filename map is consulted first for correct extensions from Content-Type headers
 
 #### Scenario: Image with extension-less URL
@@ -71,6 +88,18 @@ The system SHALL convert all resource URLs in the HTML to relative local paths f
 - GIVEN a `<style>` tag containing `background-image: url('https://example.com/bg.jpg')`
 - WHEN ZIP mode conversion is applied
 - THEN the background-image URL within the style tag is changed to `./images/bg.jpg`
+
+#### Scenario: CSS url() conversion in custom properties and other CSS properties
+
+- GIVEN an HTML element with `style="--image-url: url('https://example.com/photo.jpg')"`
+- WHEN ZIP mode conversion is applied
+- THEN the URL inside `url()` is changed to `./images/photo.jpg`
+
+#### Scenario: CSS url() conversion in shorthand background
+
+- GIVEN an HTML element with `style="background: url('https://example.com/bg.jpg') no-repeat"`
+- WHEN ZIP mode conversion is applied
+- THEN the URL inside `url()` is changed to `./images/bg.jpg`
 
 #### Scenario: Object element conversion
 

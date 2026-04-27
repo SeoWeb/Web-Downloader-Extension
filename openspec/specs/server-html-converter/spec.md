@@ -10,6 +10,8 @@ Server-side HTML URL conversion for the Website Downloader microservice. Covers 
 
 The server SHALL convert image `src` attributes in the merged HTML from absolute URLs to relative local paths using the uploaded filename map.
 
+Image filename generation SHALL include parent path segments when a URL has multiple path segments, matching the extension-side `generateImageFilename` behavior to prevent filename collisions.
+
 #### Scenario: Image mapped via filename map
 
 - **WHEN** an `<img>` element has a `src` that matches an entry in the uploaded filename map
@@ -29,12 +31,27 @@ The server SHALL convert image `src` attributes in the merged HTML from absolute
 #### Scenario: Image URL not in filename map
 
 - **WHEN** an `<img>` element has a `src` that does not match any entry in the filename map
-- **THEN** the server generates a filename from the URL path
+- **THEN** the server generates a filename from the URL path, including parent segments for multi-segment paths
 - **AND** replaces the `src` with `./images/<generated_filename>`
 
-#### Scenario: Inline style background-image conversion
+#### Scenario: Multi-segment URL generates collision-safe filename
 
-- **WHEN** an element has an inline `style` attribute containing `background-image: url(...)`
+- **WHEN** an image URL has multiple path segments and the last segment has an image extension (e.g., `https://i.ebayimg.com/images/g/hXIAAOSwu-BoJfB9/s-l960.webp`)
+- **THEN** the generated filename includes all path segments joined with underscores (e.g., `images_g_hXIAAOSwu-BoJfB9_s-l960.webp`)
+
+#### Scenario: Single-segment URL filename unchanged
+
+- **WHEN** an image URL has a single path segment with an image extension (e.g., `https://example.com/photo.jpg`)
+- **THEN** the generated filename uses only that segment (e.g., `photo.jpg`)
+
+#### Scenario: Inline style url() conversion
+
+- **WHEN** an element has an inline `style` attribute containing any `url(...)` reference
+- **THEN** the URL inside `url()` is converted to a local path using the filename map or generated filename
+
+#### Scenario: Inline style CSS custom property url() conversion
+
+- **WHEN** an element has an inline `style` attribute containing `--image-url: url(https://example.com/photo.jpg)`
 - **THEN** the URL inside `url()` is converted to a local path using the filename map or generated filename
 
 ### Requirement: Script URL Conversion
@@ -184,6 +201,12 @@ The server SHALL produce a self-contained HTML file when the single-file option 
 - **WHEN** a resource file referenced in the HTML is missing from disk during single-file conversion
 - **THEN** the original URL is preserved for images
 - **AND** empty content is used for scripts and stylesheets
+
+#### Scenario: Inline style url() inlining in single-file mode
+
+- **WHEN** converting HTML for a session with `singleFile` option enabled
+- **AND** an element has an inline `style` attribute containing any `url(...)` reference
+- **THEN** the URL inside `url()` is replaced with a base64 data URI read from disk
 
 ### Requirement: Linked Page Full Server-Side Processing
 

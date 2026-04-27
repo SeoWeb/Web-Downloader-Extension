@@ -2,7 +2,7 @@
 
 Ports the client-side html-utils/* converters to Python:
   - image-converter.ts   → convert_images
-  - background-image-converter.ts → convert_background_images
+  - background-image-converter.ts → convert_background_images (any CSS url())
   - script-converter.ts  → convert_scripts
   - style-converter.ts   → convert_stylesheets
   - link-converter.ts    → convert_links
@@ -13,7 +13,7 @@ Additional server-side capabilities:
   - Linked-page path prefix (../images/, ../styles/, etc.)
   - Lazy-load attribute handling (data-src, data-lazy-src, etc.)
   - srcset parsing and conversion
-  - Inline style background-image conversion
+  - Inline style url() conversion (any CSS property)
 
 The public entry points are:
   - convert_html(html, tab_url, filename_map, is_linked_page, path)
@@ -217,6 +217,9 @@ def generate_image_filename(url_src: str, content_type: Optional[str] = None) ->
     if dot_index > 0:
         ext = last_segment[dot_index + 1:].lower()
         if ext in IMAGE_EXTENSIONS:
+            if len(segments) > 1:
+                full_path = "_".join(segments)
+                return fix_filename(full_path)
             return fix_filename(last_segment)
 
     # No image extension — generate deterministic name from full path
@@ -483,7 +486,7 @@ def _convert_srcset_attr_value(
 
 
 # ---------------------------------------------------------------------------
-# Inline style background-image conversion (5.4)
+# Inline style url() conversion (5.4)
 # ---------------------------------------------------------------------------
 
 
@@ -493,14 +496,15 @@ def convert_background_images(
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
 ) -> str:
-    """Convert background-image URLs in inline styles and <style> tags.
+    """Convert url() references in inline styles and <style> tags.
 
     Port of convertBackgroundImagesToRelative from background-image-converter.ts.
+    Matches any CSS property containing url(), not just background-image.
     """
     soup = BeautifulSoup(html_string, "lxml")
 
     # Process inline styles with background images
-    for element in soup.find_all(attrs={"style": re.compile("background-image", re.IGNORECASE)}):
+    for element in soup.find_all(attrs={"style": re.compile(r"url\(", re.IGNORECASE)}):
         style = element.get("style", "")
         updated = _convert_bg_image_urls(style, tab_url, path, filename_map)
         element["style"] = updated
@@ -520,13 +524,10 @@ def _convert_bg_image_urls(
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
 ) -> str:
-    """Convert background-image: url(...) patterns in CSS content.
-
-    Port of convertBackgroundImageUrlsToRelative from background-image-converter.ts.
-    """
+    """Convert url() patterns in CSS content to relative local paths."""
     def _replace_bg_url(match: re.Match) -> str:
-        image_url = match.group(1).strip()
-        if not image_url or image_url.startswith("data:"):
+        image_url = match.group(2).strip()
+        if not image_url or image_url.startswith("data:") or image_url.startswith("#"):
             return match.group(0)
 
         # Try filename map first
@@ -557,7 +558,7 @@ def _convert_bg_image_urls(
 
         return match.group(0)
 
-    return BG_IMAGE_URL_PATTERN.sub(_replace_bg_url, css_content)
+    return CSS_URL_PATTERN.sub(_replace_bg_url, css_content)
 
 
 # ---------------------------------------------------------------------------
@@ -1129,7 +1130,7 @@ def _build_single_file_soup(
     # Inline background-image URLs in inline styles
     for element in soup.find_all(attrs={"style": True}):
         style = element.get("style", "")
-        if "background-image" in style.lower() and "url(" in style:
+        if "url(" in style:
             updated = _inline_style_bg_images(style, storage_root, session_id, filename_map)
             element["style"] = updated
 
@@ -1164,10 +1165,10 @@ def _inline_style_bg_images(
     session_id: str,
     filename_map: Optional[dict[str, str]] = None,
 ) -> str:
-    """Inline background-image URLs in an inline style attribute."""
+    """Inline url() references in an inline style attribute as base64 data URIs."""
 
     def _replace(match: re.Match) -> str:
-        url = match.group(1).strip()
+        url = match.group(2).strip()
         if url.startswith("data:"):
             return match.group(0)
 
@@ -1176,7 +1177,7 @@ def _inline_style_bg_images(
             return match.group(0).replace(url, data_uri)
         return match.group(0)
 
-    return BG_IMAGE_URL_PATTERN.sub(_replace, style)
+    return CSS_URL_PATTERN.sub(_replace, style)
 
 
 def _resolve_local_path(
