@@ -105,7 +105,7 @@ export function useScrapingDownloader({
             url: tabUrl,
             options: {
               singleFile: downloadOptions?.singleFile ?? false,
-              retentionDays: 7,
+              retentionDays: 1,
             },
             setActive: true, // Store as active session in background
           },

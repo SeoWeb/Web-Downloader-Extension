@@ -65,7 +65,7 @@ The server SHALL provide a `POST /api/v1/sessions` endpoint that creates a new d
 - **WHEN** a client sends a POST request to `/api/v1/sessions` with `options.retentionDays` set to a positive integer
 - **THEN** the server sets the session's `expires_at` to the specified number of days from creation
 - **AND** the value is clamped to a server-configured range (e.g., 1-30 days)
-- **AND** if not specified, the default retention is 7 days
+- **AND** if not specified, the default retention is 1 day
 
 #### Scenario: Missing API key
 

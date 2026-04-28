@@ -235,7 +235,7 @@ async function selectStorageAdapter(
     } else {
       serverSessionId = await serverClient.createSession(tabUrl, {
         singleFile: downloadOptions?.singleFile ?? false,
-        retentionDays: 7, // Default retention; could be made configurable via UI
+        retentionDays: 1,
       });
       // (12.3) Set the active server session so the SCROLL_AND_EXTRACT_DIFF
       // message handler can upload HTML chunks in real-time during scrolling.

@@ -93,7 +93,7 @@ The server SHALL automatically expire sessions after a configurable retention pe
 #### Scenario: Default retention period
 
 - **WHEN** a session is created without specifying a retention period
-- **THEN** the `expires_at` is set to 7 days from creation
+- **THEN** the `expires_at` is set to 1 day from creation
 
 #### Scenario: Configurable retention period
 

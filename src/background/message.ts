@@ -124,7 +124,7 @@ export async function messageWorker(
         if (IS_SERVER_MODE && data.tabUrl) {
           const result = await createServerSession(data.tabUrl, {
             singleFile: data.downloadOptions?.singleFile ?? false,
-            retentionDays: 7, // Match selectStorageAdapter default
+            retentionDays: 1,
           });
           if (!result.success) {
             return { success: false, error: result.error };
