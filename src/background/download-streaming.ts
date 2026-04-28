@@ -5,7 +5,7 @@ import { FilterOptions } from "../types/filterTypes";
 import { getResources } from "./resources";
 import { createZipFromDownloads } from "../utils/chunkedZip";
 import { addCssFiles, addJsFiles, addDocumentFiles, addImageFiles, addHtmlFiles, addContentText } from "./fileHandlers";
-import { downloadId, setDownloadInProgress, getDownloadInProgress } from "./download-state";
+import { downloadId, isAnyDownloadInProgress, setTabDownloadActive, setTabDownloadComplete, createKeepalivePort, disconnectKeepalivePort, setDownloadAbortController } from "./download-state";
 import { streamingDownloader, streamingFetcher } from "./download-services";
 import { initiateDownload } from "./download-utils";
 import { downloadResources } from "./download-core";
@@ -35,13 +35,17 @@ export async function downloadResourcesWithStreaming(
     return downloadResources(html, tabUrl, downloadOptions, sendMessage, undefined, tabId);
   }
 
-  // Prevent concurrent downloads
-  if (await getDownloadInProgress()) {
+  // Prevent concurrent downloads (streaming is local-only, same as incremental)
+  if (isAnyDownloadInProgress()) {
     sendMessage({ key: "error.downloadInProgress" });
     return;
   }
 
-  await setDownloadInProgress(true);
+  await setTabDownloadActive(tabId!);
+  createKeepalivePort(tabId!);
+
+  const downloadAbort = new AbortController();
+  setDownloadAbortController(downloadAbort, tabId!);
 
   try {
     await executeStreamingDownload(html, tabUrl, downloadOptions, sendMessage, data, tabId);
@@ -54,7 +58,9 @@ export async function downloadResourcesWithStreaming(
       sendMessage({ key: "status.failedWithError", options: { error: fallbackError instanceof Error ? fallbackError.message : 'Unknown error' } });
     }
   } finally {
-    await setDownloadInProgress(false);
+    await setTabDownloadComplete(tabId!);
+    setDownloadAbortController(null, tabId!);
+    disconnectKeepalivePort(tabId!);
   }
 }
 

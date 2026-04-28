@@ -8,11 +8,20 @@ import {
   cleanupOldBlobs,
   cleanupDownloadBlobs,
 } from "../common/blobStorage";
-import { getDownloadInProgress, setDownloadInProgress } from "./download";
+
 import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
-import { sendMessageToPanel } from "./message";
+import { sendMessageToPanel, deleteServerSessionState } from "./message";
 import { messageActions } from "../common/message";
 import { DEFAULT_MEMORY_LIMITS } from "../utils/memoryLimits";
+import {
+  abortActiveDownload,
+  setDownloadAbortController,
+  disconnectKeepalivePort,
+  setTabDownloadComplete,
+  removeDownloadsForTab,
+} from "./download-state";
+import { stopScraping, deleteScraper } from "./scraper-state";
+import { clearForceLocalMode } from "./download-core";
 
 // Type declarations for service worker events
 declare global {
@@ -64,6 +73,9 @@ export function initializeCleanupHandlers(): void {
 
   // Setup memory pressure monitoring
   setupMemoryPressureMonitoring();
+
+  // Clean up per-tab state when a tab is closed
+  setupTabLifecycleCleanup();
 }
 
 /**
@@ -71,9 +83,9 @@ export function initializeCleanupHandlers(): void {
  */
 async function performStartupCleanup(): Promise<void> {
   try {
-    // Check if there was an interrupted download
-    const downloadInProgress = await getDownloadInProgress();
-    if (downloadInProgress) {
+    // Check if there was an interrupted download (SW restart detection via chrome.storage.local)
+    const { isDownloadInProgress } = await chrome.storage.local.get("isDownloadInProgress");
+    if (isDownloadInProgress) {
       await handleInterruptedDownload();
     }
 
@@ -95,8 +107,8 @@ async function handleInterruptedDownload(): Promise<void> {
     // Read checkpoint before clearing it, so we can notify the sidepanel.
     const checkpoint = await readCheckpoint();
 
-    // Reset download flag (always, even if notification fails)
-    await setDownloadInProgress(false);
+    // Reset download flag and active tab IDs (always, even if notification fails)
+    await chrome.storage.local.set({ isDownloadInProgress: false });
 
     // Force cleanup to free any stuck resources
     await memoryManager.forceCleanup();
@@ -213,6 +225,29 @@ async function handleCriticalMemoryPressure(): Promise<void> {
   } catch {
     // ignore
   }
+}
+
+/**
+ * Clean up all per-tab state when a tab is closed.
+ * Prevents memory leaks in the Maps used for multi-tab downloads.
+ */
+function setupTabLifecycleCleanup(): void {
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    // Abort any active download for this tab
+    abortActiveDownload(tabId);
+
+    // Clear per-tab maps
+    setDownloadAbortController(null, tabId);
+    disconnectKeepalivePort(tabId);
+    stopScraping(tabId);
+    deleteScraper(tabId);
+    deleteServerSessionState(tabId);
+    clearForceLocalMode(tabId);
+
+    // Remove from active download tracking
+    setTabDownloadComplete(tabId);
+    removeDownloadsForTab(tabId);
+  });
 }
 
 /**

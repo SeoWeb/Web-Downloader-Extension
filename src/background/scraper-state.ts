@@ -1,25 +1,27 @@
 import { LinkedPageScraper } from "./linked-page-scraper";
 
-let currentScraper: LinkedPageScraper | null = null;
+const scrapers = new Map<number, LinkedPageScraper>();
 
-export function setCurrentScraper(scraper: LinkedPageScraper | null) {
-  currentScraper = scraper;
-}
-
-export function pauseScraping() {
-  if (currentScraper) {
-    currentScraper.pause();
+export function setCurrentScraper(tabId: number, scraper: LinkedPageScraper | null) {
+  if (scraper === null) {
+    scrapers.delete(tabId);
+  } else {
+    scrapers.set(tabId, scraper);
   }
 }
 
-export function resumeScraping() {
-  if (currentScraper) {
-    currentScraper.resume();
-  }
+export function pauseScraping(tabId: number) {
+  scrapers.get(tabId)?.pause();
 }
 
-export function stopScraping() {
-  if (currentScraper) {
-    currentScraper.stop();
-  }
+export function resumeScraping(tabId: number) {
+  scrapers.get(tabId)?.resume();
+}
+
+export function stopScraping(tabId: number) {
+  scrapers.get(tabId)?.stop();
+}
+
+export function deleteScraper(tabId: number) {
+  scrapers.delete(tabId);
 }

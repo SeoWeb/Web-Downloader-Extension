@@ -95,8 +95,9 @@ export function listenMessage(
 ): () => void {
   const listener: ListenerFn = (message, _sender, sendResponse) => {
     if (message.target === target) {
+      const tabId = (message.message as Message)?.data?.tabId;
       callback(message.message as Message, (message: Message) => {
-        sendMessageToPanel(message.action, message.data, true);
+        sendMessageToPanel(message.action, message.data, true, tabId);
       }).then(sendResponse);
       return true; // Only return true if we're handling this message
     }

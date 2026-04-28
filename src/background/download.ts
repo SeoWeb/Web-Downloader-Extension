@@ -10,7 +10,7 @@ import { initializeDownloadListener } from "./download-listener";
 import { downloadResources } from "./download-core";
 import { downloadResourcesWithStreaming } from "./download-streaming";
 import { downloadResourcesWithIncrementalAssembly } from "./download-incremental";
-import { setDownloadInProgress, getDownloadInProgress } from "./download-state";
+import { setTabDownloadActive, setTabDownloadComplete, isAnyDownloadInProgress, isTabDownloadInProgress } from "./download-state";
 
 // Initialize cleanup handlers when this module loads
 initializeCleanupHandlers();
@@ -99,6 +99,8 @@ export {
   downloadResources,
   downloadResourcesWithStreaming,
   downloadResourcesWithIncrementalAssembly,
-  setDownloadInProgress,
-  getDownloadInProgress
+  setTabDownloadActive,
+  setTabDownloadComplete,
+  isAnyDownloadInProgress,
+  isTabDownloadInProgress,
 };

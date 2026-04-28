@@ -8,7 +8,7 @@ import { addIndexHtml } from "./fileHandlers";
 import { cleanupAfterDownload } from "./cleanupHandlers";
 import { finalizeIncrementalMerge } from "./merge-html";
 import { FilterOptions } from "../types/filterTypes";
-import { downloadId, setDownloadInProgress, getDownloadInProgress, setDownloadAbortController, getDownloadAbortController, createKeepalivePort, disconnectKeepalivePort } from "./download-state";
+import { downloadId, setTabDownloadActive, setTabDownloadComplete, isAnyDownloadInProgress, isTabDownloadInProgress, setDownloadAbortController, getDownloadAbortController, createKeepalivePort, disconnectKeepalivePort } from "./download-state";
 import { writeCheckpoint, updateCheckpointPhase, clearCheckpoint } from "./download-checkpoint";
 import { initiateDownload, performInitialCleanup } from "./download-utils";
 import { isPanelAlive, downloadViaPanelAndWait, PanelUnavailableError } from "./panel-download";
@@ -42,30 +42,24 @@ const USE_INDEXEDDB = true; // Feature flag for IndexedDB mode
 // When set, ServerStorageAdapter is used and server-side assembly replaces local ZIP generation.
 import { IS_SERVER_MODE } from "../common/server-mode";
 
-// Runtime flag to force local mode for the current download (used by
-// SERVER_LOCAL_FALLBACK message handler — task 13.2). When true,
-// all IS_SERVER_MODE checks are bypassed and the download uses the
-// local IndexedDB/JSZip pipeline regardless of VITE_SERVER_URL.
-//
-// Scoped as a module-level variable because the force-local decision
-// must be available to shouldUseServerMode() which is called from
-// selectStorageAdapter() and other helpers inside downloadResources().
-// The concurrency guard (getDownloadInProgress) prevents overlapping
-// downloads, so there is no risk of the flag leaking between concurrent
-// downloads. The flag is always reset at the start of downloadResources().
-let forceLocalMode = false;
+// Per-tab force-local-mode map. When a tab's entry is true, that tab's
+// download uses the local IndexedDB/JSZip pipeline regardless of VITE_SERVER_URL.
+const forceLocalModes = new Map<number, boolean>();
 
-/** Set the force-local-mode flag for the next download. */
-export function setForceLocalMode(value: boolean): void {
-  forceLocalMode = value;
+/** Set the force-local-mode flag for a tab's download. */
+export function setForceLocalMode(tabId: number, value: boolean): void {
+  forceLocalModes.set(tabId, value);
 }
 
-/** Check if the current download should use server mode.
- *  Returns false if forceLocalMode is set, otherwise follows IS_SERVER_MODE.
- *  Exported for testability — production code should prefer the
- *  IS_SERVER_MODE import from server-mode.ts for static checks. */
-export function shouldUseServerMode(): boolean {
-  return IS_SERVER_MODE && !forceLocalMode;
+/** Check if the given tab should use server mode.
+ *  Returns false if forceLocalMode is set for that tab, otherwise follows IS_SERVER_MODE. */
+export function shouldUseServerMode(tabId?: number): boolean {
+  return IS_SERVER_MODE && !!tabId && !forceLocalModes.get(tabId);
+}
+
+/** Clear the force-local-mode entry for a tab. */
+export function clearForceLocalMode(tabId: number): void {
+  forceLocalModes.delete(tabId);
 }
 
 import { setCurrentScraper } from "./scraper-state";
@@ -89,17 +83,28 @@ export async function downloadResources(
     return;
   }
 
-  // Prevent concurrent downloads
-  if (await getDownloadInProgress()) {
-    sendMessage({ key: "error.downloadInProgress" });
-    return;
+  // Prevent concurrent downloads (mode-aware):
+  // Server mode → block only if this tab already has an active download.
+  // Local mode → block if any tab has an active download (shared resources).
+  if (tabId && shouldUseServerMode(tabId)) {
+    if (isTabDownloadInProgress(tabId)) {
+      sendMessage({ key: "error.downloadInProgress" });
+      return;
+    }
+  } else {
+    if (isAnyDownloadInProgress()) {
+      sendMessage({ key: "error.downloadInProgress" });
+      return;
+    }
   }
 
   // Reset force-local flag at the start of each download, then check
   // if the caller requested local mode via _forceLocal option.
-  forceLocalMode = false;
-  if (downloadOptions?._forceLocal) {
-    forceLocalMode = true;
+  if (tabId) {
+    forceLocalModes.delete(tabId);
+    if (downloadOptions?._forceLocal) {
+      forceLocalModes.set(tabId, true);
+    }
   }
 
   // Initial memory check and cleanup
@@ -110,7 +115,7 @@ export async function downloadResources(
   const availableMemoryBytes = initialMemoryStats.totalMemoryLimit - initialMemoryStats.totalMemoryUsed;
   const availableMemoryMB = availableMemoryBytes / (1024 * 1024);
 
-  if (shouldUseServerMode()) {
+  if (shouldUseServerMode(tabId)) {
     // Server mode: reject if < 100MB available (resources still need to be
     // held in memory before upload, but ZIP assembly is server-side)
     if (availableMemoryMB < 100) {
@@ -129,16 +134,16 @@ export async function downloadResources(
     }
   }
 
-  await setDownloadInProgress(true);
+  await setTabDownloadActive(tabId!);
 
   // Create keepalive port to prevent Chrome from killing the service worker
   // during the download lifecycle (scraping, uploading, packing).
-  createKeepalivePort();
+  createKeepalivePort(tabId!);
 
   // Write interrupt checkpoint so we can detect/recover if the SW is killed.
   writeCheckpoint({
     phase: "scraping",
-    serverSessionId: shouldUseServerMode() ? getActiveServerSessionId() ?? undefined : undefined,
+    serverSessionId: shouldUseServerMode(tabId) ? getActiveServerSessionId(tabId!) ?? undefined : undefined,
     tabId,
     tabUrl,
   });
@@ -146,7 +151,7 @@ export async function downloadResources(
   // Create abort controller for this download session so the user
   // can press Stop and cancel all in-progress uploads and the download flow.
   const downloadAbort = new AbortController();
-  setDownloadAbortController(downloadAbort);
+  setDownloadAbortController(downloadAbort, tabId!);
 
   try {
     // Perform initial cleanup
@@ -191,10 +196,11 @@ export async function downloadResources(
       sendMessage({ key: "status.memoryCleanupPerformed" });
     }
   } finally {
-    // Always reset the flag when done and cleanup
-    await setDownloadInProgress(false);
-    setDownloadAbortController(null);
-    disconnectKeepalivePort();
+    // Always reset the per-tab state when done and cleanup
+    await setTabDownloadComplete(tabId!);
+    setDownloadAbortController(null, tabId!);
+    disconnectKeepalivePort(tabId!);
+    clearForceLocalMode(tabId!);
     await clearCheckpoint();
 
     // Cleanup download-specific resources
@@ -221,13 +227,14 @@ async function selectStorageAdapter(
   tabUrl: string,
   sessionId?: string,
   downloadOptions?: FilterOptions,
+  tabId?: number,
 ): Promise<{ adapter: IStorageAdapter; sessionId: string; zip?: JSZip }> {
   // Server mode: upload resources to the microservice instead of storing locally.
-  if (shouldUseServerMode()) {
+  if (shouldUseServerMode(tabId)) {
     // Reuse existing session if one was created during INITIALIZE_DIFFERENTIAL_SCRAPING
     // (the incremental scrolling flow creates the session before scrolling starts
     // so that HTML chunks can be uploaded in real-time via SCROLL_AND_EXTRACT_DIFF).
-    const existingSessionId = getActiveServerSessionId();
+    const existingSessionId = getActiveServerSessionId(tabId!);
     let serverSessionId: string;
 
     if (existingSessionId) {
@@ -239,7 +246,7 @@ async function selectStorageAdapter(
       });
       // (12.3) Set the active server session so the SCROLL_AND_EXTRACT_DIFF
       // message handler can upload HTML chunks in real-time during scrolling.
-      setActiveServerSession(serverSessionId);
+      setActiveServerSession(tabId!, serverSessionId);
     }
 
     const adapter = new ServerStorageAdapter(serverClient);
@@ -310,14 +317,14 @@ async function executeDownload(
 
   // Select storage adapter (IndexedDB or JSZip)
   // (12.2) Pass downloadOptions so server session gets singleFile/retentionDays
-  const { adapter: storage, sessionId } = await selectStorageAdapter(tabUrl, undefined, downloadOptions);
+  const { adapter: storage, sessionId } = await selectStorageAdapter(tabUrl, undefined, downloadOptions, tabId);
   
   let currentSessionId = sessionId;
 
   // (12.1) Branch to server-mode flow when VITE_SERVER_URL is set.
   // This replaces local HTML merging, ZIP generation, and panel-download
   // with server-side HTML upload, finalization, and chrome.downloads.download.
-  if (shouldUseServerMode()) {
+  if (shouldUseServerMode(tabId)) {
     try {
       await executeDownloadServerMode(
         html, tabUrl, downloadOptions, sendMessage,
@@ -468,7 +475,7 @@ async function executeDownload(
       setGlobalImageFilenameMap(imageFilenameMap);
 
       // Queue all discovered links
-      setCurrentScraper(linkedPageScraper);
+      setCurrentScraper(tabId, linkedPageScraper);
       for (const link of data.links) {
         try {
           const fullUrl = new URL(link, tabUrl).href;
@@ -491,7 +498,7 @@ async function executeDownload(
           data.text += linkedPageText;
         }
       } finally {
-        setCurrentScraper(null);
+        setCurrentScraper(tabId, null);
       }
     } else {
       await processLinks(data.links, storage, tabUrl, sendMessage);
@@ -508,7 +515,7 @@ async function executeDownload(
     let blob: Blob | undefined;
     let zipFilenameFinal = zipFilename;
 
-    if (downloadOptions.singleFile && !shouldUseServerMode()) {
+    if (downloadOptions.singleFile && !shouldUseServerMode(tabId)) {
       // Single-file mode in local builds: fetch all resources and inline as base64.
       // In server mode this branch is intentionally skipped — the server's zip_assembler.py
       // handles single-file inlining on already-uploaded resources (task 6.5), preventing
@@ -701,7 +708,7 @@ async function executeDownloadServerMode(
 
   // Link the download-level abort controller to the upload queue
   // so that pressing Stop aborts in-flight uploads.
-  const downloadAbort = getDownloadAbortController();
+  const downloadAbort = getDownloadAbortController(tabId!);
   if (downloadAbort) {
     // If already aborted before we start, exit immediately
     if (downloadAbort.signal.aborted) {
@@ -738,7 +745,7 @@ async function executeDownloadServerMode(
     // server during scrolling (via SCROLL_AND_EXTRACT_DIFF or
     // SERVER_UPLOAD_HTML_CHUNK). This prevents double-uploading and
     // avoids sending an empty/placeholder HTML string.
-    if (!hasStreamedHtmlChunks()) {
+    if (!hasStreamedHtmlChunks(tabId!)) {
       sendMessage({ key: "status.uploadingHtml" });
       // Do NOT send tabUrl as pageUrl for main page — the server uses
       // the absence of pageUrl to set page_url_hash="main", which the
@@ -806,7 +813,7 @@ async function executeDownloadServerMode(
           delayBetweenPages: downloadOptions.linkedPagesDelay,
           includeExternal: downloadOptions.linkedPagesIncludeExternal,
           pageTimeout: downloadOptions.linkedPagesTimeout,
-          serverSessionId: shouldUseServerMode() ? sessionId : undefined,
+          serverSessionId: shouldUseServerMode(tabId) ? sessionId : undefined,
         });
 
         // Guard text extraction with downloadContentAsText check
@@ -816,7 +823,7 @@ async function executeDownloadServerMode(
         setGlobalImageFilenameMap(imageFilenameMap);
 
         // Queue all discovered links
-        setCurrentScraper(linkedPageScraper);
+        setCurrentScraper(tabId, linkedPageScraper);
         for (const link of data.links) {
           try {
             const fullUrl = new URL(link, tabUrl).href;
@@ -845,7 +852,7 @@ async function executeDownloadServerMode(
             await serverClient.uploadContent(sessionId, linkedPageText);
           }
         } finally {
-          setCurrentScraper(null);
+          setCurrentScraper(tabId, null);
         }
       } else {
         await processLinks(data.links, storage, tabUrl, sendMessage);
@@ -993,7 +1000,7 @@ async function executeDownloadServerMode(
   } finally {
     // Clear the active server session so subsequent scrolling
     // doesn't try to upload to a stale session.
-    setActiveServerSession(null);
+    setActiveServerSession(tabId!, null);
     // Cancel any remaining in-flight uploads, but do NOT delete the
     // server session. The session must remain alive so the user can
     // download the assembled ZIP/HTML from the server. The server's

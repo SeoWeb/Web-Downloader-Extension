@@ -166,6 +166,8 @@ export default function SidePanel() {
         }
 
         case messageActions.PANEL_MESSAGE:
+          // Ignore messages from other tabs
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
           setMessages((prev) => [...prev, data.message]);
           if (data.message?.options?.isPaused !== undefined) {
             setIsPaused(data.message.options.isPaused);
@@ -191,6 +193,7 @@ export default function SidePanel() {
           break;
 
         case messageActions.DOWNLOAD_COMPLETE:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
           if (data.downloadId) cleanupBlobUrl(data.downloadId);
           // Download actually completed - file was saved
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
@@ -209,6 +212,7 @@ export default function SidePanel() {
           break;
 
         case messageActions.DOWNLOAD_FAILED:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
           if (data.downloadId) cleanupBlobUrl(data.downloadId);
           // Download failed or was interrupted
           // Reset messages to connected status with error message
@@ -224,6 +228,7 @@ export default function SidePanel() {
           break;
 
         case messageActions.DOWNLOAD_CANCELLED:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
           if (data.downloadId) cleanupBlobUrl(data.downloadId);
           // User cancelled the download
           setMessages([{ key: "status.connected" }]);
@@ -296,7 +301,7 @@ export default function SidePanel() {
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
       if (areaName === "local" && changes.downloadComplete) {
         const downloadComplete = changes.downloadComplete.newValue;
-        if (downloadComplete) {
+        if (downloadComplete && downloadComplete.tabId !== undefined && downloadComplete.tabId === tabId) {
           if (downloadComplete.downloadId) cleanupBlobUrl(downloadComplete.downloadId);
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);

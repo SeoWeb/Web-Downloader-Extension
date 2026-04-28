@@ -5,7 +5,7 @@ import { finalizeIncrementalMerge, cleanupIncrementalMerges } from "./merge-html
 import { addIndexHtml, addContentText } from "./fileHandlers";
 import { memoryManager } from "../utils/MemoryManager";
 import { MemoryPressureLevel } from "../utils/memoryLimits";
-import { downloadId, setDownloadInProgress, getDownloadInProgress } from "./download-state";
+import { downloadId, isAnyDownloadInProgress, setTabDownloadActive, setTabDownloadComplete } from "./download-state";
 import { initiateDownload, performInitialCleanup } from "./download-utils";
 import { processAssets, processDocuments, processImages, processLinks, addIndexHtmlFromBlob } from "./download-processors";
 import { cleanupAfterDownload } from "./cleanupHandlers";
@@ -19,15 +19,15 @@ export async function downloadResourcesWithIncrementalAssembly(
   tabUrl: string,
   downloadOptions: FilterOptions,
   sendMessage: (message: string | { key: string; options?: any }) => void,
-  tabId?: number,
+  tabId: number,
 ) {
   if (!tabUrl) {
     sendMessage({ key: "error.noUrl" });
     return;
   }
 
-  // Prevent concurrent downloads
-  if (await getDownloadInProgress()) {
+  // Prevent concurrent downloads (local-only path blocks on any active download)
+  if (isAnyDownloadInProgress()) {
     sendMessage({ key: "error.downloadInProgress" });
     return;
   }
@@ -41,7 +41,7 @@ export async function downloadResourcesWithIncrementalAssembly(
     return;
   }
 
-  await setDownloadInProgress(true);
+  await setTabDownloadActive(tabId);
 
   try {
     // Perform initial cleanup
@@ -67,7 +67,7 @@ export async function downloadResourcesWithIncrementalAssembly(
     }
   } finally {
     // Always reset the flag when done and cleanup
-    await setDownloadInProgress(false);
+    await setTabDownloadComplete(tabId);
 
     // Cleanup download-specific resources
     try {
@@ -93,7 +93,7 @@ async function executeDownloadWithIncrementalAssembly(
   tabUrl: string,
   downloadOptions: FilterOptions,
   sendMessage: (message: string | { key: string; options?: any }) => void,
-  tabId?: number,
+  tabId: number,
 ) {
   const zip = new JSZip();
   const storage = new JSZipAdapter(zip);

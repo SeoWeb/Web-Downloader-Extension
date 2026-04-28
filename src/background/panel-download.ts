@@ -79,7 +79,7 @@ export async function downloadViaPanel(
         idbKey,
         filename,
         saveAs,
-      }, true),
+      }, true, tabId),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new PanelUnavailableError(
           "Extension panel did not respond. Please keep the extension panel open during downloads."

@@ -1,5 +1,5 @@
 
-import { activeDownloads, getKeepalivePort, setKeepalivePort } from "./download-state";
+import { activeDownloads, disconnectKeepalivePort } from "./download-state";
 
 import { sendMessageToPanel } from "./message";
 
@@ -32,8 +32,7 @@ export function initializeDownloadListener() {
             sendMessageToPanel("DOWNLOAD_COMPLETE", {
               downloadId: delta.id,
               filename: downloadInfo.filename,
-              tabId: downloadInfo.tabId,
-            }, false).then(() => {
+            }, false, downloadInfo.tabId).then(() => {
               // Side panel might be closed, that's ok - storage will handle it
             }).catch(() => {
               // Side panel might be closed, that's ok - storage will handle it
@@ -44,14 +43,11 @@ export function initializeDownloadListener() {
           
           // Remove from tracking
           activeDownloads.delete(delta.id);
-          
-          // Disconnect keepalive if no more active downloads
-          if (activeDownloads.size === 0) {
-            const keepalivePort = getKeepalivePort();
-            if (keepalivePort) {
-                keepalivePort.disconnect();
-                setKeepalivePort(null);
-            }
+
+          // Disconnect keepalive for this tab if it has no remaining downloads
+          const tabHasRemaining = Array.from(activeDownloads.values()).some(info => info.tabId === downloadInfo.tabId);
+          if (!tabHasRemaining && downloadInfo.tabId) {
+            disconnectKeepalivePort(downloadInfo.tabId);
           }
         }
       } else if (delta.state.current === "interrupted") {
@@ -71,8 +67,7 @@ export function initializeDownloadListener() {
             // Don't await since the side panel might be closed
             sendMessageToPanel("DOWNLOAD_CANCELLED", {
               downloadId: delta.id,
-              tabId: downloadInfo.tabId,
-            }, false).catch(() => {
+            }, false, downloadInfo.tabId).catch(() => {
               // Side panel might be closed, that's ok
             });
           } else {
@@ -84,27 +79,23 @@ export function initializeDownloadListener() {
             sendMessageToPanel("DOWNLOAD_FAILED", {
               downloadId: delta.id,
               error: errorMessage,
-              tabId: downloadInfo.tabId,
-            }, false).catch(() => {
+            }, false, downloadInfo.tabId).catch(() => {
               // Side panel might be closed, that's ok
             });
           }
           
           // Remove from tracking
           activeDownloads.delete(delta.id);
-          
-          // Disconnect keepalive if no more active downloads
-          if (activeDownloads.size === 0) {
-            const keepalivePort = getKeepalivePort();
-            if (keepalivePort) {
-                keepalivePort.disconnect();
-                setKeepalivePort(null);
-            }
+
+          // Disconnect keepalive for this tab if it has no remaining downloads
+          const tabHasRemaining = Array.from(activeDownloads.values()).some(info => info.tabId === downloadInfo.tabId);
+          if (!tabHasRemaining && downloadInfo.tabId) {
+            disconnectKeepalivePort(downloadInfo.tabId);
           }
         }
       }
     }
-    
+
     // Original cleanup logic for object URLs
     if (delta.state && delta.state.current !== "inprogress") {
       if (chrome.storage && chrome.storage.local) {
@@ -140,8 +131,7 @@ export function initializeDownloadListener() {
       // Send cancellation message to the side panel (fire-and-forget)
       sendMessageToPanel("DOWNLOAD_CANCELLED", {
         downloadId: downloadId,
-        tabId: downloadInfo.tabId,
-      }, false).catch(() => {
+      }, false, downloadInfo.tabId).catch(() => {
         // Side panel might be closed, that's ok
       });
       
@@ -169,14 +159,11 @@ export function initializeDownloadListener() {
       
       // Remove from tracking
       activeDownloads.delete(downloadId);
-      
-      // Disconnect keepalive if no more active downloads
-      if (activeDownloads.size === 0) {
-        const keepalivePort = getKeepalivePort();
-        if (keepalivePort) {
-          keepalivePort.disconnect();
-          setKeepalivePort(null);
-        }
+
+      // Disconnect keepalive for this tab if it has no remaining downloads
+      const tabHasRemaining = Array.from(activeDownloads.values()).some(info => info.tabId === downloadInfo.tabId);
+      if (!tabHasRemaining && downloadInfo.tabId) {
+        disconnectKeepalivePort(downloadInfo.tabId);
       }
     }
   });
