@@ -18,6 +18,7 @@ Verifies:
   7.14 – Session size limits are enforced
 """
 
+import asyncio
 import os
 import shutil
 import tempfile
@@ -392,11 +393,11 @@ class TestCleanupServicePeriodic:
         assert cleanup.cleanup_interval_hours == 1
 
     @pytest.mark.asyncio
-    async def test_periodic_cleanup_same_as_startup(self, cleanup, mock_db):
-        """Periodic cleanup runs the same steps as startup cleanup."""
+    async def test_periodic_cleanup_uses_stale_assembly_check(self, cleanup, mock_db):
+        """Periodic cleanup uses stale assembly check (not blanket startup check)."""
         # Mock the sub-methods to verify they are called
         cleanup._mark_stale_sessions_failed = AsyncMock(return_value=0)
-        cleanup._mark_assembling_sessions_failed = AsyncMock(return_value=0)
+        cleanup._mark_stale_assembling_sessions_failed = AsyncMock(return_value=0)
         cleanup._remove_expired_sessions = AsyncMock(return_value=0)
         cleanup._cleanup_orphaned_api_keys = AsyncMock(return_value=0)
         cleanup._cleanup_orphaned_directories = AsyncMock(return_value=0)
@@ -404,14 +405,14 @@ class TestCleanupServicePeriodic:
         result = await cleanup.run_periodic_cleanup(mock_db)
 
         cleanup._mark_stale_sessions_failed.assert_awaited_once_with(mock_db)
-        cleanup._mark_assembling_sessions_failed.assert_awaited_once_with(mock_db)
+        cleanup._mark_stale_assembling_sessions_failed.assert_awaited_once_with(mock_db)
         cleanup._remove_expired_sessions.assert_awaited_once_with(mock_db)
         cleanup._cleanup_orphaned_api_keys.assert_awaited_once_with(mock_db)
         cleanup._cleanup_orphaned_directories.assert_awaited_once_with(mock_db)
 
         assert result == {
             "stale_sessions_failed": 0,
-            "assembling_sessions_failed": 0,
+            "stale_assembling_sessions_failed": 0,
             "expired_sessions_removed": 0,
             "orphaned_keys_removed": 0,
             "orphaned_dirs_removed": 0,
@@ -1224,3 +1225,141 @@ class TestOrphanedDirectoryCleanup:
         count = await cleanup._cleanup_orphaned_directories(mock_db)
         assert count == 0
         assert os.path.exists(other_dir)
+
+
+# ---------------------------------------------------------------------------
+# Periodic cleanup: active assemblies not killed
+# ---------------------------------------------------------------------------
+
+
+class TestPeriodicCleanupAssemblyProtection:
+    """Verify periodic cleanup does not kill actively assembling sessions."""
+
+    @pytest.mark.asyncio
+    async def test_active_assembly_not_killed_by_periodic_cleanup(
+        self, cleanup, mock_db
+    ):
+        """Periodic cleanup does NOT mark an assembling session as failed
+        when an active task is registered in AssemblyTaskManager."""
+        from app.services.assembly_manager import assembly_task_manager
+
+        session_id = "active-assembly-1"
+        assembling_session = _make_session(
+            session_id=session_id,
+            status=SessionStatus.ASSEMBLING,
+            updated_at=datetime.now(timezone.utc) - timedelta(minutes=5),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [assembling_session]
+        mock_db.execute.return_value = mock_result
+
+        # Register a fake active task
+        fake_task = asyncio.create_task(asyncio.sleep(9999))
+        try:
+            assembly_task_manager.register(session_id, fake_task)
+
+            count = await cleanup._mark_stale_assembling_sessions_failed(mock_db)
+            assert count == 0
+            assert assembling_session.status == SessionStatus.ASSEMBLING
+        finally:
+            fake_task.cancel()
+            try:
+                await fake_task
+            except asyncio.CancelledError:
+                pass
+            assembly_task_manager.unregister(session_id)
+
+    @pytest.mark.asyncio
+    async def test_stale_assembly_killed_by_periodic_cleanup(
+        self, cleanup, mock_db
+    ):
+        """Periodic cleanup marks an assembling session as failed when it
+        has been in assembling status for > 30 minutes and no task is registered."""
+        stale_session = _make_session(
+            session_id="stale-assembly-1",
+            status=SessionStatus.ASSEMBLING,
+            updated_at=datetime.now(timezone.utc) - timedelta(minutes=31),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [stale_session]
+        mock_db.execute.return_value = mock_result
+
+        # No task registered — session should be marked as failed
+        count = await cleanup._mark_stale_assembling_sessions_failed(mock_db)
+        assert count == 1
+        assert stale_session.status == SessionStatus.FAILED
+        assert "timed out" in stale_session.error_message
+
+    @pytest.mark.asyncio
+    async def test_stale_assembly_with_active_task_not_killed(
+        self, cleanup, mock_db
+    ):
+        """Periodic cleanup does NOT mark a stale assembling session as failed
+        when an active task is registered — even if it has been assembling for
+        longer than the timeout threshold."""
+        from app.services.assembly_manager import assembly_task_manager
+
+        session_id = "stale-but-active-1"
+        stale_session = _make_session(
+            session_id=session_id,
+            status=SessionStatus.ASSEMBLING,
+            updated_at=datetime.now(timezone.utc) - timedelta(minutes=31),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [stale_session]
+        mock_db.execute.return_value = mock_result
+
+        fake_task = asyncio.create_task(asyncio.sleep(9999))
+        try:
+            assembly_task_manager.register(session_id, fake_task)
+
+            count = await cleanup._mark_stale_assembling_sessions_failed(mock_db)
+            assert count == 0
+            assert stale_session.status == SessionStatus.ASSEMBLING
+        finally:
+            fake_task.cancel()
+            try:
+                await fake_task
+            except asyncio.CancelledError:
+                pass
+            assembly_task_manager.unregister(session_id)
+
+    @pytest.mark.asyncio
+    async def test_startup_cleanup_kills_all_assemblies(
+        self, cleanup, mock_db
+    ):
+        """Startup cleanup still marks ALL assembling sessions as failed
+        regardless of age or task registration."""
+        from app.services.assembly_manager import assembly_task_manager
+
+        session_id = "startup-assembly-1"
+        # Recently updated session — would NOT be caught by stale check
+        assembling_session = _make_session(
+            session_id=session_id,
+            status=SessionStatus.ASSEMBLING,
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [assembling_session]
+        mock_db.execute.return_value = mock_result
+
+        # Register a fake active task — startup should still mark as failed
+        fake_task = asyncio.create_task(asyncio.sleep(9999))
+        try:
+            assembly_task_manager.register(session_id, fake_task)
+
+            count = await cleanup._mark_assembling_sessions_failed(mock_db)
+            assert count == 1
+            assert assembling_session.status == SessionStatus.FAILED
+            assert "interrupted" in assembling_session.error_message
+        finally:
+            fake_task.cancel()
+            try:
+                await fake_task
+            except asyncio.CancelledError:
+                pass
+            assembly_task_manager.unregister(session_id)

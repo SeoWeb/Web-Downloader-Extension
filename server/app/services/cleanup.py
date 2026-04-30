@@ -4,13 +4,18 @@ Cleanup runs:
   - On startup (stale session recovery, then expiry cleanup, then orphan cleanup)
   - Periodically (every ``cleanup_interval_hours``, default 1 hour)
 
-Steps on each run:
+Startup steps:
   1. Mark stale sessions in ``scraping``/``uploading`` status (last updated
      > 30 min ago) as ``failed``  — handles server-restart recovery.
-  2. Mark ``assembling`` sessions as ``failed``  — handles interrupted assembly.
+  2. Mark ALL ``assembling`` sessions as ``failed``  — background tasks are
+     lost on restart.
   3. Remove expired sessions and their files.
   4. Delete orphaned API keys (client records with no sessions and age > 30 days).
   5. Delete orphaned session directories (no matching DB record).
+
+Periodic steps differ for assembling sessions (step 2):
+  - Only mark sessions that have been ``assembling`` for > 30 min AND have no
+    active task registered in ``AssemblyTaskManager``.
 """
 
 import asyncio
@@ -27,6 +32,7 @@ from app.models.client import Client
 from app.models.html_chunk import HtmlChunk
 from app.models.resource import Resource
 from app.models.session import Session, SessionStatus
+from app.services.assembly_manager import assembly_task_manager
 from app.services.session_manager import session_manager
 
 logger = logging.getLogger(__name__)
@@ -98,9 +104,34 @@ class CleanupService:
         return result
 
     async def run_periodic_cleanup(self, db: AsyncSession) -> dict:
-        """Run periodic cleanup (same steps as startup cleanup)."""
+        """Run periodic cleanup.
+
+        Unlike startup cleanup, this does NOT blanket-fail all assembling
+        sessions. Instead, only assemblies that have been stale for longer
+        than the timeout AND have no registered task are marked as failed.
+        """
         logger.info("Running periodic cleanup...")
-        result = await self.run_startup_cleanup(db)
+        result: dict = {}
+
+        # Step 1a: Mark stale scraping/uploading sessions as failed
+        result["stale_sessions_failed"] = await self._mark_stale_sessions_failed(db)
+
+        # Step 1c: Mark stale assembling sessions as failed (age + no active task)
+        result["stale_assembling_sessions_failed"] = await self._mark_stale_assembling_sessions_failed(db)
+
+        await db.flush()
+
+        # Step 2: Remove expired sessions and files
+        result["expired_sessions_removed"] = await self._remove_expired_sessions(db)
+
+        # Step 3: Clean up orphaned API keys
+        result["orphaned_keys_removed"] = await self._cleanup_orphaned_api_keys(db)
+
+        # Step 4: Clean up orphaned session directories
+        result["orphaned_dirs_removed"] = await self._cleanup_orphaned_directories(db)
+
+        await db.flush()
+
         logger.info("Periodic cleanup complete: %s", result)
         return result
 
@@ -215,6 +246,61 @@ class CleanupService:
 
         if count > 0:
             logger.info("Marked %d assembling sessions as failed", count)
+        return count
+
+    # ------------------------------------------------------------------
+    # Step 1c: Stale assembling sessions (periodic cleanup only)
+    # ------------------------------------------------------------------
+
+    async def _mark_stale_assembling_sessions_failed(self, db: AsyncSession) -> int:
+        """Mark assembling sessions as failed only if stale AND no active task.
+
+        Unlike startup cleanup (which blanket-fails all assembling sessions),
+        periodic cleanup must not kill actively running assemblies. A session
+        is considered stale if it has been in ``assembling`` status for longer
+        than ``stale_timeout_minutes`` AND no task is registered in the
+        in-process ``AssemblyTaskManager``.
+
+        Returns:
+            Number of sessions marked as failed.
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(
+            minutes=self.stale_timeout_minutes
+        )
+
+        stmt = select(Session).where(
+            Session.status == SessionStatus.ASSEMBLING,
+            Session.updated_at < cutoff,
+        )
+        result = await db.execute(stmt)
+        sessions = result.scalars().all()
+
+        count = 0
+        for session in sessions:
+            # Skip if an active assembly task is still running
+            if assembly_task_manager.is_running(session.id):
+                continue
+
+            # Clean up partial output file
+            if session.zip_path and os.path.exists(session.zip_path):
+                try:
+                    os.remove(session.zip_path)
+                except OSError:
+                    logger.warning(
+                        "Failed to remove partial output: %s", session.zip_path
+                    )
+
+            await session_manager.mark_failed(
+                session,
+                db,
+                error_message="Assembly timed out (no progress for {} minutes)".format(
+                    self.stale_timeout_minutes
+                ),
+            )
+            count += 1
+
+        if count > 0:
+            logger.info("Marked %d stale assembling sessions as failed", count)
         return count
 
     # ------------------------------------------------------------------
