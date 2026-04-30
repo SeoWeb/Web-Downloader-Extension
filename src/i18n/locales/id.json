@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Terbaik untuk situs web yang kompleks (mengunduh tingkat pertama halaman yang ditautkan)",
       "serverMode": "Mode server",
       "insecureServerWarning": "Tidak menggunakan HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Selalu tanya lokasi penyimpanan file"
     },
     "actions": {
       "title": "Tindakan:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL disalin!",
       "serverSessionFailed": "Gagal membuat sesi server: {{error}}",
       "memoryWarningServerMode": "Peringatan memori rendah ({{availableMB}}MB tersedia) — mode server aktif",
-      "serverModeActive": "Mode server aktif"
+      "serverModeActive": "Mode server aktif",
+      "downloadInterruptedTitle": "Unduhan Terinterupsi",
+      "downloadInterruptedMessage": "Unduhan terinterupsi selama {{phase}} karena layanan ekstensi dimulai ulang.",
+      "restartDownload": "Mulai Ulang Unduhan",
+      "dismissInterrupt": "Tutup",
+      "downloadInterrupted": "Unduhan terinterupsi selama {{phase}}",
+      "interruptedPhase": {
+        "scraping": "scraping halaman",
+        "uploading": "unggah sumber daya",
+        "assembling": "perakitan server",
+        "packing": "pembuatan paket"
+      }
     },
     "permissions": {
       "storage": {

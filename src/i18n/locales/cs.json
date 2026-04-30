@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Nejlepší pro složité weby (stáhne první úroveň odkazovaných stránek)",
       "serverMode": "Režim serveru",
       "insecureServerWarning": "Nepoužívá HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Vždy se zeptat, kam uložit soubor"
     },
     "actions": {
       "title": "Akce:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL zkopírována!",
       "serverSessionFailed": "Nepodařilo se vytvořit relaci serveru: {{error}}",
       "memoryWarningServerMode": "Upozornění na nízkou paměť ({{availableMB}}MB dostupných) — režim serveru aktivní",
-      "serverModeActive": "Režim serveru aktivní"
+      "serverModeActive": "Režim serveru aktivní",
+      "downloadInterruptedTitle": "Stahování přerušeno",
+      "downloadInterruptedMessage": "Stahování bylo přerušeno během {{phase}}, protože byla restartována služba rozšíření.",
+      "restartDownload": "Restartovat stahování",
+      "dismissInterrupt": "Zavřít",
+      "downloadInterrupted": "Stahování bylo přerušeno během {{phase}}",
+      "interruptedPhase": {
+        "scraping": "scraping stránky",
+        "uploading": "nahrávání zdrojů",
+        "assembling": "sestavování na serveru",
+        "packing": "vytváření balíčku"
+      }
     },
     "permissions": {
       "storage": {

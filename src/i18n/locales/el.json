@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Καλύτερο για πολύπλοκες ιστοσελίδες (κατεβάζει το πρώτο επίπεδο συνδεδεμένων σελίδων)",
       "serverMode": "Λειτουργία διακομιστή",
       "insecureServerWarning": "Δεν χρησιμοποιείται HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Να γίνεται πάντα ερώτηση για την τοποθεσία αποθήκευσης"
     },
     "actions": {
       "title": "Ενέργειες:",
@@ -187,7 +187,18 @@
       "urlCopied": "Το URL αντιγράφηκε!",
       "serverSessionFailed": "Αποτυχία δημιουργίας συνεδρίας διακομιστή: {{error}}",
       "memoryWarningServerMode": "Προειδοποίηση χαμηλής μνήμης ({{availableMB}}MB διαθέσιμα) — λειτουργία διακομιστή ενεργή",
-      "serverModeActive": "Λειτουργία διακομιστή ενεργή"
+      "serverModeActive": "Λειτουργία διακομιστή ενεργή",
+      "downloadInterruptedTitle": "Λήψη διακόπηκε",
+      "downloadInterruptedMessage": "Η λήψη διακόπηκε κατά τη διάρκεια {{phase}} επειδή η υπηρεσία επέκτασης επανεκκινήθηκε.",
+      "restartDownload": "Επανεκκίνηση λήψης",
+      "dismissInterrupt": "Απόρριψη",
+      "downloadInterrupted": "Η λήψη διακόπηκε κατά τη διάρκεια {{phase}}",
+      "interruptedPhase": {
+        "scraping": "συλλογή δεδομένων σελίδας",
+        "uploading": "μεταφόρτωση πόρων",
+        "assembling": "συναρμολόγηση διακομιστή",
+        "packing": "δημιουργία πακέτου"
+      }
     },
     "permissions": {
       "storage": {

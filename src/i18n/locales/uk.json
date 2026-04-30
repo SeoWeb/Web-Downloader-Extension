@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Найкраще для складних веб-сайтів (завантажує перший рівень пов'язаних сторінок)",
       "serverMode": "Режим сервера",
       "insecureServerWarning": "Не використовує HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Завжди питати, куди зберегти файл"
     },
     "actions": {
       "title": "Дії:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL скопійовано!",
       "serverSessionFailed": "Не вдалося створити сесію сервера: {{error}}",
       "memoryWarningServerMode": "Попередження про низьку пам'ять ({{availableMB}}МБ доступно) — режим сервера активний",
-      "serverModeActive": "Режим сервера активний"
+      "serverModeActive": "Режим сервера активний",
+      "downloadInterruptedTitle": "Завантаження перервано",
+      "downloadInterruptedMessage": "Завантаження було перервано під час {{phase}}, оскільки службу розширення було перезапущено.",
+      "restartDownload": "Почати завантаження знову",
+      "dismissInterrupt": "Закрити",
+      "downloadInterrupted": "Завантаження було перервано під час {{phase}}",
+      "interruptedPhase": {
+        "scraping": "скрейпінг сторінки",
+        "uploading": "завантаження ресурсів",
+        "assembling": "збірка на сервері",
+        "packing": "створення пакету"
+      }
     },
     "permissions": {
       "storage": {

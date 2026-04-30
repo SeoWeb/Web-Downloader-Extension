@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "சிக்கலான இணையதளங்களுக்கு சிறந்தது (இணைக்கப்பட்ட பக்கங்களின் முதல் நிலையை பதிவிறக்குகிறது)",
       "serverMode": "சேவர் பயன்முறை",
       "insecureServerWarning": "HTTPS பயன்படுத்தப்படவில்லை",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "எப்போதும் கேளுங்கள் கோப்பை எங்கு சேமிக்க"
     },
     "actions": {
       "title": "செயல்கள்:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL நகலெடுக்கப்பட்டது!",
       "serverSessionFailed": "சேவையக அமர்வை உருவாக்க முடியவில்லை: {{error}}",
       "memoryWarningServerMode": "குறைந்த நினைவக எச்சரிக்கை ({{availableMB}}MB கிடைக்கும்) — சேவையக பயன்முறை செயலில்",
-      "serverModeActive": "சேவையக பயன்முறை செயலில்"
+      "serverModeActive": "சேவையக பயன்முறை செயலில்",
+      "downloadInterruptedTitle": "பதிவிறக்கம் குறுக்கிடப்பட்டது",
+      "downloadInterruptedMessage": "நீட்டிப்பு சேவை மறுதொடக்கம் செய்யப்பட்டதால் {{phase}} போது பதிவிறக்கம் குறுக்கிடப்பட்டது.",
+      "restartDownload": "பதிவிறக்கத்தை மறுதொடக்கம் செய்",
+      "dismissInterrupt": "நிராகரி",
+      "downloadInterrupted": "{{phase}} போது பதிவிறக்கம் குறுக்கிடப்பட்டது",
+      "interruptedPhase": {
+        "scraping": "பக்கம் சுரண்டல்",
+        "uploading": "வளங்கள் பதிவேற்றம்",
+        "assembling": "சேவையக ஒருங்கிணைப்பு",
+        "packing": "தொகுப்பு உருவாக்கம்"
+      }
     },
     "permissions": {
       "storage": {

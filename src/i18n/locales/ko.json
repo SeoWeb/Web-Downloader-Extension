@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "복잡한 웹사이트에 최적 (연결된 페이지의 첫 번째 레벨을 다운로드함)",
       "serverMode": "서버 모드",
       "insecureServerWarning": "HTTPS를 사용하지 않음",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "항상 파일 저장 위치 묻기"
     },
     "actions": {
       "title": "작업:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL 복사됨!",
       "serverSessionFailed": "서버 세션 생성 실패: {{error}}",
       "memoryWarningServerMode": "메모리 부족 경고(사용 가능 {{availableMB}}MB) — 서버 모드 활성화",
-      "serverModeActive": "서버 모드 활성화"
+      "serverModeActive": "서버 모드 활성화",
+      "downloadInterruptedTitle": "다운로드 중단됨",
+      "downloadInterruptedMessage": "확장 프로그램 서비스가 다시 시작되어 {{phase}} 중 다운로드가 중단되었습니다.",
+      "restartDownload": "다운로드 다시 시작",
+      "dismissInterrupt": "닫기",
+      "downloadInterrupted": "{{phase}} 중 다운로드가 중단되었습니다",
+      "interruptedPhase": {
+        "scraping": "페이지 스크래핑",
+        "uploading": "리소스 업로드",
+        "assembling": "서버 어셈블리",
+        "packing": "패키지 생성"
+      }
     },
     "permissions": {
       "storage": {

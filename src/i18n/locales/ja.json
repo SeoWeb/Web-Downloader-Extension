@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "複雑なウェブサイトに最適(リンクされたページの最初のレベルをダウンロードします)",
       "serverMode": "サーバーモード",
       "insecureServerWarning": "HTTPSを使用していません",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "常にファイルの保存先を確認する"
     },
     "actions": {
       "title": "アクション:",
@@ -187,7 +187,18 @@
       "urlCopied": "URLをコピーしました!",
       "serverSessionFailed": "サーバーセッションの作成に失敗: {{error}}",
       "memoryWarningServerMode": "メモリ不足警告(利用可能{{availableMB}}MB) — サーバーモード有効",
-      "serverModeActive": "サーバーモード有効"
+      "serverModeActive": "サーバーモード有効",
+      "downloadInterruptedTitle": "ダウンロードが中断されました",
+      "downloadInterruptedMessage": "拡張機能サービスが再起動されたため、{{phase}}中にダウンロードが中断されました。",
+      "restartDownload": "ダウンロードを再開",
+      "dismissInterrupt": "閉じる",
+      "downloadInterrupted": "{{phase}}中にダウンロードが中断されました",
+      "interruptedPhase": {
+        "scraping": "ページスクレイピング",
+        "uploading": "リソースアップロード",
+        "assembling": "サーバーアセンブリ",
+        "packing": "パッケージ作成"
+      }
     },
     "permissions": {
       "storage": {

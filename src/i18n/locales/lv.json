@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Vislabāk piemērots sarežģītām vietnēm (lejupielādē saistīto lapu pirmo līmeni)",
       "serverMode": "Servera režīms",
       "insecureServerWarning": "Netiek izmantots HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Vienmēr jautāt, kur saglabāt failu"
     },
     "actions": {
       "title": "Darbības:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL nokopēts!",
       "serverSessionFailed": "Neizdevās izveidot servera sesiju: {{error}}",
       "memoryWarningServerMode": "Zema atmiņas brīdinājums ({{availableMB}}MB pieejams) — servera režīms aktīvs",
-      "serverModeActive": "Servera režīms aktīvs"
+      "serverModeActive": "Servera režīms aktīvs",
+      "downloadInterruptedTitle": "Lejupielāde pārtraukta",
+      "downloadInterruptedMessage": "Lejupielāde tika pārtraukta {{phase}} laikā, jo paplašinājuma pakalpojums tika restartēts.",
+      "restartDownload": "Restartēt lejupielādi",
+      "dismissInterrupt": "Noraidīt",
+      "downloadInterrupted": "Lejupielāde tika pārtraukta {{phase}} laikā",
+      "interruptedPhase": {
+        "scraping": "lapas nolasīšana",
+        "uploading": "resursu augšupielāde",
+        "assembling": "servera salikšana",
+        "packing": "pakotnes izveide"
+      }
     },
     "permissions": {
       "storage": {

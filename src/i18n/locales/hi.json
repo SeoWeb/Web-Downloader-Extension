@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "जटिल वेबसाइटों के लिए सर्वश्रेष्ठ (लिंक किए गए पेजों का पहला स्तर डाउनलोड करता है)",
       "serverMode": "सर्वर मोड",
       "insecureServerWarning": "HTTPS का उपयोग नहीं हो रहा",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "हमेशा पूछें कि फ़ाइल कहाँ सहेजनी है"
     },
     "actions": {
       "title": "क्रियाएं:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL कॉपी हो गया!",
       "serverSessionFailed": "सर्वर सत्र बनाने में विफल: {{error}}",
       "memoryWarningServerMode": "कम मेमोरी चेतावनी ({{availableMB}}MB उपलब्ध) — सर्वर मोड सक्रिय",
-      "serverModeActive": "सर्वर मोड सक्रिय"
+      "serverModeActive": "सर्वर मोड सक्रिय",
+      "downloadInterruptedTitle": "डाउनलोड बाधित हुआ",
+      "downloadInterruptedMessage": "एक्सटेंशन सेवा के पुनरारंभ होने के कारण {{phase}} के दौरान डाउनलोड बाधित हुआ।",
+      "restartDownload": "डाउनलोड पुनरारंभ करें",
+      "dismissInterrupt": "खारिज करें",
+      "downloadInterrupted": "{{phase}} के दौरान डाउनलोड बाधित हुआ",
+      "interruptedPhase": {
+        "scraping": "पेज स्क्रैपिंग",
+        "uploading": "संसाधन अपलोड",
+        "assembling": "सर्वर असेंबली",
+        "packing": "पैकेज निर्माण"
+      }
     },
     "permissions": {
       "storage": {

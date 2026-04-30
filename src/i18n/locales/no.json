@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Best for komplekse nettsteder (laster ned første nivå av koblede sider)",
       "serverMode": "Servermodus",
       "insecureServerWarning": "Bruker ikke HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Alltid spør hvor filen skal lagres"
     },
     "actions": {
       "title": "Handlinger:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL kopiert!",
       "serverSessionFailed": "Kunne ikke opprette serverøkt: {{error}}",
       "memoryWarningServerMode": "Lav minneadvarsel ({{availableMB}}MB tilgjengelig) — servermodus aktiv",
-      "serverModeActive": "Servermodus aktiv"
+      "serverModeActive": "Servermodus aktiv",
+      "downloadInterruptedTitle": "Nedlasting avbrutt",
+      "downloadInterruptedMessage": "Nedlastingen ble avbrutt under {{phase}} fordi utvidelsestjenesten ble startet på nytt.",
+      "restartDownload": "Start nedlasting på nytt",
+      "dismissInterrupt": "Lukk",
+      "downloadInterrupted": "Nedlastingen ble avbrutt under {{phase}}",
+      "interruptedPhase": {
+        "scraping": "side-scraping",
+        "uploading": "opplasting av ressurser",
+        "assembling": "servermontering",
+        "packing": "pakkeopprettelse"
+      }
     },
     "permissions": {
       "storage": {

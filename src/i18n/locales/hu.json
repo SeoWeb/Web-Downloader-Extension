@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Legjobb összetett webhelyekhez (a hivatkozott oldalak első szintjét tölti le)",
       "serverMode": "Szerver mód",
       "insecureServerWarning": "Nem HTTPS kapcsolatot használ",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Mindig kérdezze meg, hova mentse a fájlt"
     },
     "actions": {
       "title": "Műveletek:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL másolva!",
       "serverSessionFailed": "Nem sikerült létrehozni a szerver munkamenetet: {{error}}",
       "memoryWarningServerMode": "Alacsony memória figyelmeztetés ({{availableMB}}MB elérhető) — szerver mód aktív",
-      "serverModeActive": "Szerver mód aktív"
+      "serverModeActive": "Szerver mód aktív",
+      "downloadInterruptedTitle": "Letöltés megszakítva",
+      "downloadInterruptedMessage": "A letöltés megszakadt {{phase}} közben, mert a bővítmény szolgáltatás újraindult.",
+      "restartDownload": "Letöltés újraindítása",
+      "dismissInterrupt": "Elvetés",
+      "downloadInterrupted": "A letöltés megszakadt {{phase}} közben",
+      "interruptedPhase": {
+        "scraping": "oldal scraping",
+        "uploading": "erőforrás feltöltés",
+        "assembling": "szerver összeállítás",
+        "packing": "csomag létrehozás"
+      }
     },
     "permissions": {
       "storage": {

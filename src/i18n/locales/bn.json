@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "জটিল ওয়েবসাইটের জন্য সেরা (লিঙ্ক করা পৃষ্ঠাগুলির প্রথম স্তর ডাউনলোড করে)",
       "serverMode": "সার্ভার মোড",
       "insecureServerWarning": "HTTPS ব্যবহার করা হচ্ছে না",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "সর্বদা জিজ্ঞাসা করুন ফাইল কোথায় সংরক্ষণ করবেন"
     },
     "actions": {
       "title": "অ্যাকশন:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL কপি হয়েছে!",
       "serverSessionFailed": "সার্ভার সেশন তৈরি করতে ব্যর্থ: {{error}}",
       "memoryWarningServerMode": "কম মেমরি সতর্কতা ({{availableMB}}MB উপলব্ধ) — সার্ভার মোড সক্রিয়",
-      "serverModeActive": "সার্ভার মোড সক্রিয়"
+      "serverModeActive": "সার্ভার মোড সক্রিয়",
+      "downloadInterruptedTitle": "ডাউনলোড বাধাপ্রাপ্ত হয়েছে",
+      "downloadInterruptedMessage": "এক্সটেনশন পরিষেবা পুনরায় চালু হওয়ার কারণে {{phase}} এর সময় ডাউনলোড বাধাপ্রাপ্ত হয়েছিল।",
+      "restartDownload": "ডাউনলোড পুনরায় শুরু করুন",
+      "dismissInterrupt": "বাতিল",
+      "downloadInterrupted": "{{phase}} এর সময় ডাউনলোড বাধাপ্রাপ্ত হয়েছিল",
+      "interruptedPhase": {
+        "scraping": "পৃষ্ঠা স্ক্র্যাপিং",
+        "uploading": "রিসোর্স আপলোড",
+        "assembling": "সার্ভার অ্যাসেম্বলি",
+        "packing": "প্যাকেজ তৈরি"
+      }
     },
     "permissions": {
       "storage": {

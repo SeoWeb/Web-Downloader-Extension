@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Pinakamahusay para sa mga kumplikadong website (idina-download ang unang antas ng mga naka-link na pahina)",
       "serverMode": "Mode ng server",
       "insecureServerWarning": "Hindi gumagamit ng HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Palaging magtanong kung saan ii-save ang file"
     },
     "actions": {
       "title": "Mga Aksyon:",
@@ -187,7 +187,18 @@
       "urlCopied": "Nakopya na ang URL!",
       "serverSessionFailed": "Nabigong lumikha ng server session: {{error}}",
       "memoryWarningServerMode": "Babala sa mababang memorya ({{availableMB}}MB available) — aktibo ang server mode",
-      "serverModeActive": "Aktibo ang server mode"
+      "serverModeActive": "Aktibo ang server mode",
+      "downloadInterruptedTitle": "Na-interupt ang Download",
+      "downloadInterruptedMessage": "Na-interupt ang download habang {{phase}} dahil na-restart ang extension service.",
+      "restartDownload": "I-restart ang Download",
+      "dismissInterrupt": "I-dismiss",
+      "downloadInterrupted": "Na-interupt ang download habang {{phase}}",
+      "interruptedPhase": {
+        "scraping": "scraping ng pahina",
+        "uploading": "pag-upload ng resources",
+        "assembling": "assembly ng server",
+        "packing": "paggawa ng package"
+      }
     },
     "permissions": {
       "storage": {

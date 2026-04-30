@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Najlepsze dla złożonych stron (pobiera pierwszy poziom połączonych stron)",
       "serverMode": "Tryb serwera",
       "insecureServerWarning": "Nie używa HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Zawsze pytaj, gdzie zapisać plik"
     },
     "actions": {
       "title": "Akcje:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL skopiowany!",
       "serverSessionFailed": "Nie udało się utworzyć sesji serwera: {{error}}",
       "memoryWarningServerMode": "Ostrzeżenie o niskiej pamięci ({{availableMB}}MB dostępne) — tryb serwera aktywny",
-      "serverModeActive": "Tryb serwera aktywny"
+      "serverModeActive": "Tryb serwera aktywny",
+      "downloadInterruptedTitle": "Pobieranie przerwane",
+      "downloadInterruptedMessage": "Pobieranie zostało przerwane podczas {{phase}}, ponieważ usługa rozszerzenia została uruchomiona ponownie.",
+      "restartDownload": "Uruchom pobieranie ponownie",
+      "dismissInterrupt": "Odrzuć",
+      "downloadInterrupted": "Pobieranie zostało przerwane podczas {{phase}}",
+      "interruptedPhase": {
+        "scraping": "scraping strony",
+        "uploading": "przesyłanie zasobów",
+        "assembling": "asemblacja serwera",
+        "packing": "tworzenie pakietu"
+      }
     },
     "permissions": {
       "storage": {

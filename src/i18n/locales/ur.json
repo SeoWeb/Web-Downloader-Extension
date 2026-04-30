@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "پیچیدہ ویب سائٹس کے لیے بہترین (منسلک صفحات کا پہلا لیول ڈاؤن لوڈ کرتا ہے)",
       "serverMode": "سرور موڈ",
       "insecureServerWarning": "HTTPS استعمال نہیں ہو رہا",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "ہمیشہ پوچھیں فائل کہاں محفوظ کرنی ہے"
     },
     "actions": {
       "title": "اقدامات:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL کاپی ہو گیا!",
       "serverSessionFailed": "سرور سیشن بنانے میں ناکام: {{error}}",
       "memoryWarningServerMode": "کم میموری وارننگ ({{availableMB}}MB دستیاب) — سرور موڈ فعال",
-      "serverModeActive": "سرور موڈ فعال"
+      "serverModeActive": "سرور موڈ فعال",
+      "downloadInterruptedTitle": "ڈاؤن لوڈ میں رکاوٹ",
+      "downloadInterruptedMessage": "ایکسٹینشن سروس دوبارہ شروع ہونے کی وجہ سے {{phase}} کے دوران ڈاؤن لوڈ میں رکاوٹ آئی۔",
+      "restartDownload": "ڈاؤن لوڈ دوبارہ شروع کریں",
+      "dismissInterrupt": "برخاست",
+      "downloadInterrupted": "{{phase}} کے دوران ڈاؤن لوڈ میں رکاوٹ آئی",
+      "interruptedPhase": {
+        "scraping": "صفحہ اسکریپنگ",
+        "uploading": "وسائل اپ لوڈ",
+        "assembling": "سرور اسمبلی",
+        "packing": "پیکیج بنانا"
+      }
     },
     "permissions": {
       "storage": {

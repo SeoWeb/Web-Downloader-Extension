@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "הטוב ביותר לאתרים מורכבים (מוריד את הרמה הראשונה של דפים מקושרים)",
       "serverMode": "מצב שרת",
       "insecureServerWarning": "לא משתמש ב-HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "תמיד לשאול איפה לשמור את הקובץ"
     },
     "actions": {
       "title": "פעולות:",
@@ -187,7 +187,18 @@
       "urlCopied": "הכתובת הועתקה!",
       "serverSessionFailed": "נכשל ביצירת הפעלת שרת: {{error}}",
       "memoryWarningServerMode": "אזהרת זיכרון נמוך ({{availableMB}}MB זמין) — מצב שרת פעיל",
-      "serverModeActive": "מצב שרת פעיל"
+      "serverModeActive": "מצב שרת פעיל",
+      "downloadInterruptedTitle": "ההורדה הופסקה",
+      "downloadInterruptedMessage": "ההורדה הופסקה במהלך {{phase}} מכיוון ששירות ההרחבה הופעל מחדש.",
+      "restartDownload": "הפעל הורדה מחדש",
+      "dismissInterrupt": "סגור",
+      "downloadInterrupted": "ההורדה הופסקה במהלך {{phase}}",
+      "interruptedPhase": {
+        "scraping": "גרידת עמוד",
+        "uploading": "העלאת משאבים",
+        "assembling": "הרכבת שרת",
+        "packing": "יצירת חבילה"
+      }
     },
     "permissions": {
       "storage": {

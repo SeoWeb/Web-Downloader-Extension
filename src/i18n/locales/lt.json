@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Geriausiai tinka sudėtingoms svetainėms (atsisiunčia pirmąjį susietų puslapių lygį)",
       "serverMode": "Serverio režimas",
       "insecureServerWarning": "Nenaudojamas HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Visada klausti, kur išsaugoti failą"
     },
     "actions": {
       "title": "Veiksmai:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL nukopijuotas!",
       "serverSessionFailed": "Nepavyko sukurti serverio sesijos: {{error}}",
       "memoryWarningServerMode": "Mažos atminties įspėjimas ({{availableMB}}MB prieinama) — serverio režimas aktyvus",
-      "serverModeActive": "Serverio režimas aktyvus"
+      "serverModeActive": "Serverio režimas aktyvus",
+      "downloadInterruptedTitle": "Atsisiuntimas nutrauktas",
+      "downloadInterruptedMessage": "Atsisiuntimas buvo nutrauktas {{phase}} metu, nes plėtinio paslauga buvo paleista iš naujo.",
+      "restartDownload": "Paleisti atsisiuntimą iš naujo",
+      "dismissInterrupt": "Atmesti",
+      "downloadInterrupted": "Atsisiuntimas buvo nutrauktas {{phase}} metu",
+      "interruptedPhase": {
+        "scraping": "puslapio scraping",
+        "uploading": "išteklių įkėlimas",
+        "assembling": "serverio surinkimas",
+        "packing": "paketo kūrimas"
+      }
     },
     "permissions": {
       "storage": {

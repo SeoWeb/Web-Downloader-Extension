@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "بهترین گزینه برای وب‌سایت‌های پیچیده (سطح اول صفحات لینک‌شده را دانلود می‌کند)",
       "serverMode": "حالت سرور",
       "insecureServerWarning": "عدم استفاده از HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "همیشه بپرس فایل کجا ذخیره شود"
     },
     "actions": {
       "title": "اقدامات:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL کپی شد!",
       "serverSessionFailed": "ایجاد جلسه سرور ناموفق بود: {{error}}",
       "memoryWarningServerMode": "هشدار کمبود حافظه ({{availableMB}}MB موجود) — حالت سرور فعال",
-      "serverModeActive": "حالت سرور فعال"
+      "serverModeActive": "حالت سرور فعال",
+      "downloadInterruptedTitle": "دانلود قطع شد",
+      "downloadInterruptedMessage": "دانلود در طول {{phase}} قطع شد زیرا سرویس افزونه مجدداً راه‌اندازی شد.",
+      "restartDownload": "شروع مجدد دانلود",
+      "dismissInterrupt": "رد کردن",
+      "downloadInterrupted": "دانلود در طول {{phase}} قطع شد",
+      "interruptedPhase": {
+        "scraping": "اسکرپ صفحه",
+        "uploading": "آپلود منابع",
+        "assembling": "مونتاژ سرور",
+        "packing": "ایجاد بسته"
+      }
     },
     "permissions": {
       "storage": {

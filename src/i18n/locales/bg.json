@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Най-добро за сложни уебсайтове (изтегля първото ниво на свързаните страници)",
       "serverMode": "Сървърен режим",
       "insecureServerWarning": "Не се използва HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Винаги питай къде да се запази файлът"
     },
     "actions": {
       "title": "Действия:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL адресът е копиран!",
       "serverSessionFailed": "Неуспешно създаване на сървърна сесия: {{error}}",
       "memoryWarningServerMode": "Предупреждение за ниска памет ({{availableMB}}MB налични) — сървърният режим е активен",
-      "serverModeActive": "Сървърният режим е активен"
+      "serverModeActive": "Сървърният режим е активен",
+      "downloadInterruptedTitle": "Изтеглянето е прекъснато",
+      "downloadInterruptedMessage": "Изтеглянето беше прекъснато по време на {{phase}}, защото услугата на разширението беше рестартирана.",
+      "restartDownload": "Рестартиране на изтеглянето",
+      "dismissInterrupt": "Затвори",
+      "downloadInterrupted": "Изтеглянето беше прекъснато по време на {{phase}}",
+      "interruptedPhase": {
+        "scraping": "извличане на данни от страницата",
+        "uploading": "качване на ресурси",
+        "assembling": "сглобяване на сървъра",
+        "packing": "създаване на пакет"
+      }
     },
     "permissions": {
       "storage": {

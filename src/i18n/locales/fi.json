@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Paras monimutkaisille verkkosivustoille (lataa linkitettyjen sivujen ensimmäisen tason)",
       "serverMode": "Palvelintila",
       "insecureServerWarning": "HTTPS ei käytössä",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Kysy aina tiedoston tallennuspaikkaa"
     },
     "actions": {
       "title": "Toiminnot:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL kopioitu!",
       "serverSessionFailed": "Palvelinistunnon luominen epäonnistui: {{error}}",
       "memoryWarningServerMode": "Vähäinen muistivaroitus ({{availableMB}}MB käytettävissä) — palvelintila aktiivinen",
-      "serverModeActive": "Palvelintila aktiivinen"
+      "serverModeActive": "Palvelintila aktiivinen",
+      "downloadInterruptedTitle": "Lataus keskeytyi",
+      "downloadInterruptedMessage": "Lataus keskeytyi vaiheen {{phase}} aikana, koska laajennuspalvelu käynnistettiin uudelleen.",
+      "restartDownload": "Käynnistä lataus uudelleen",
+      "dismissInterrupt": "Hylkää",
+      "downloadInterrupted": "Lataus keskeytyi vaiheen {{phase}} aikana",
+      "interruptedPhase": {
+        "scraping": "sivun keruu",
+        "uploading": "resurssien lataus",
+        "assembling": "palvelimen kokoaminen",
+        "packing": "paketin luonti"
+      }
     },
     "permissions": {
       "storage": {

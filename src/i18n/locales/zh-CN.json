@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "最适合复杂网站(下载链接页面的第一层级)",
       "serverMode": "服务器模式",
       "insecureServerWarning": "未使用 HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "始终询问保存文件的位置"
     },
     "actions": {
       "title": "操作：",
@@ -187,7 +187,18 @@
       "urlCopied": "URL 已复制!",
       "serverSessionFailed": "创建服务器会话失败: {{error}}",
       "memoryWarningServerMode": "低内存警告(可用{{availableMB}}MB)——服务器模式激活",
-      "serverModeActive": "服务器模式激活"
+      "serverModeActive": "服务器模式激活",
+      "downloadInterruptedTitle": "下载已中断",
+      "downloadInterruptedMessage": "由于扩展服务已重新启动，下载在{{phase}}期间被中断。",
+      "restartDownload": "重新开始下载",
+      "dismissInterrupt": "关闭",
+      "downloadInterrupted": "下载在{{phase}}期间被中断",
+      "interruptedPhase": {
+        "scraping": "页面抓取",
+        "uploading": "资源上传",
+        "assembling": "服务器组装",
+        "packing": "创建打包"
+      }
     },
     "permissions": {
       "storage": {

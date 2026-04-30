@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "ดีที่สุดสำหรับเว็บไซต์ที่ซับซ้อน (ดาวน์โหลดระดับแรกของหน้าที่เชื่อมโยง)",
       "serverMode": "โหมดเซิร์ฟเวอร์",
       "insecureServerWarning": "ไม่ได้ใช้ HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "ถามที่ตั้งบันทึกไฟล์เสมอ"
     },
     "actions": {
       "title": "การดำเนินการ:",
@@ -187,7 +187,18 @@
       "urlCopied": "คัดลอก URL แล้ว!",
       "serverSessionFailed": "ล้มเหลวในการสร้างเซสชันเซิร์ฟเวอร์: {{error}}",
       "memoryWarningServerMode": "คำเตือนหน่วยความจำต่ำ (เหลือ {{availableMB}}MB) — โหมดเซิร์ฟเวอร์กำลังทำงาน",
-      "serverModeActive": "โหมดเซิร์ฟเวอร์กำลังทำงาน"
+      "serverModeActive": "โหมดเซิร์ฟเวอร์กำลังทำงาน",
+      "downloadInterruptedTitle": "การดาวน์โหลดถูกขัดจังหวะ",
+      "downloadInterruptedMessage": "การดาวน์โหลดถูกขัดจังหวะระหว่าง {{phase}} เนื่องจากบริการส่วนขยายถูกรีสตาร์ท",
+      "restartDownload": "รีสตาร์ทการดาวน์โหลด",
+      "dismissInterrupt": "ปิด",
+      "downloadInterrupted": "การดาวน์โหลดถูกขัดจังหวะระหว่าง {{phase}}",
+      "interruptedPhase": {
+        "scraping": "สแครปหน้าเว็บ",
+        "uploading": "อัปโหลดทรัพยากร",
+        "assembling": "ประกอบเซิร์ฟเวอร์",
+        "packing": "สร้างแพ็กเกจ"
+      }
     },
     "permissions": {
       "storage": {

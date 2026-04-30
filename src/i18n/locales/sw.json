@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Bora kwa tovuti ngumu (inapakua kiwango cha kwanza cha kurasa zilizounganishwa)",
       "serverMode": "Hali ya seva",
       "insecureServerWarning": "Haikutumii HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Sikuhizi uliza wapi kuokoa faili"
     },
     "actions": {
       "title": "Vitendo:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL imenakiliwa!",
       "serverSessionFailed": "Imeshindwa kutengeneza kipindi cha seva: {{error}}",
       "memoryWarningServerMode": "Onyo la kumbukumbu chini ({{availableMB}}MB inapatikana) — hali ya seva inatumika",
-      "serverModeActive": "Hali ya seva inatumika"
+      "serverModeActive": "Hali ya seva inatumika",
+      "downloadInterruptedTitle": "Upakuaji Umekatizwa",
+      "downloadInterruptedMessage": "Upakuaji umekatizwa wakati wa {{phase}} kwa sababu huduma ya kiendelezi ilianzishwa upya.",
+      "restartDownload": "Anzisha Upakuaji Tena",
+      "dismissInterrupt": "Futa",
+      "downloadInterrupted": "Upakuaji umekatizwa wakati wa {{phase}}",
+      "interruptedPhase": {
+        "scraping": "ukusanyaji wa ukurasa",
+        "uploading": "upakiaji wa rasilimali",
+        "assembling": "mkusanyiko wa seva",
+        "packing": "uundaji wa kifurushi"
+      }
     },
     "permissions": {
       "storage": {

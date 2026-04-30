@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "الأفضل للمواقع المعقدة (يقوم بتنزيل المستوى الأول من الصفحات المرتبطة)",
       "serverMode": "وضع الخادم",
       "insecureServerWarning": "لا يستخدم HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "السؤال دائمًا عن مكان حفظ الملف"
     },
     "actions": {
       "title": "الإجراءات:",
@@ -187,7 +187,18 @@
       "urlCopied": "تم نسخ العنوان!",
       "serverSessionFailed": "فشل إنشاء جلسة الخادم: {{error}}",
       "memoryWarningServerMode": "تحذير انخفاض الذاكرة ({{availableMB}}MB متاح) — وضع الخادم نشط",
-      "serverModeActive": "وضع الخادم نشط"
+      "serverModeActive": "وضع الخادم نشط",
+      "downloadInterruptedTitle": "تم مقاطعة التنزيل",
+      "downloadInterruptedMessage": "تمت مقاطعة التنزيل أثناء {{phase}} لأنه تم إعادة تشغيل خدمة الإضافة.",
+      "restartDownload": "إعادة تشغيل التنزيل",
+      "dismissInterrupt": "تجاهل",
+      "downloadInterrupted": "تمت مقاطعة التنزيل أثناء {{phase}}",
+      "interruptedPhase": {
+        "scraping": "جمع بيانات الصفحة",
+        "uploading": "رفع الموارد",
+        "assembling": "تجميع الخادم",
+        "packing": "إنشاء الحزمة"
+      }
     },
     "permissions": {
       "storage": {

@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Terbaik untuk laman web yang kompleks (memuat turun tahap pertama halaman yang dipautkan)",
       "serverMode": "Mod pelayan",
       "insecureServerWarning": "Tidak menggunakan HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Sentiasa tanya di mana hendak menyimpan fail"
     },
     "actions": {
       "title": "Tindakan:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL disalin!",
       "serverSessionFailed": "Gagal mencipta sesi pelayan: {{error}}",
       "memoryWarningServerMode": "Amaran memori rendah ({{availableMB}}MB tersedia) — mod pelayan aktif",
-      "serverModeActive": "Mod pelayan aktif"
+      "serverModeActive": "Mod pelayan aktif",
+      "downloadInterruptedTitle": "Muat Turun Terputus",
+      "downloadInterruptedMessage": "Muat turun terputus semasa {{phase}} kerana perkhidmatan sambungan telah dimulakan semula.",
+      "restartDownload": "Mula Semula Muat Turun",
+      "dismissInterrupt": "Tutup",
+      "downloadInterrupted": "Muat turun terputus semasa {{phase}}",
+      "interruptedPhase": {
+        "scraping": "pengikisan halaman",
+        "uploading": "muat naik sumber",
+        "assembling": "pemasangan pelayan",
+        "packing": "penciptaan pakej"
+      }
     },
     "permissions": {
       "storage": {

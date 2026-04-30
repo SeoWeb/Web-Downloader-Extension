@@ -28,6 +28,21 @@ The system SHALL support 45 locales across multiple regions with complete transl
 - WHEN a translation key is missing in the current locale
 - THEN the English translation is used as the fallback
 
+#### Scenario: Save-as preference key available in all locales
+
+- GIVEN any of the 44 non-English locale files
+- WHEN the key `filter.alwaysAskWhereToSave` is looked up
+- THEN the key SHALL exist with a properly translated value (not English text)
+
+#### Scenario: Download-interruption keys available in all locales
+
+- GIVEN any of the 44 non-English locale files
+- WHEN the following keys are looked up in the `status` section
+- THEN each key SHALL exist with a properly translated value (not English text):
+  - `downloadInterruptedTitle`, `downloadInterruptedMessage`
+  - `restartDownload`, `dismissInterrupt`, `downloadInterrupted`
+  - `interruptedPhase.scraping`, `interruptedPhase.uploading`, `interruptedPhase.assembling`, `interruptedPhase.packing`
+
 #### Scenario: Server-mode keys available in all locales
 
 - GIVEN any of the 44 non-English locale files

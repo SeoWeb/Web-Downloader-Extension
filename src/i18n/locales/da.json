@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Bedst til komplekse hjemmesider (downloader første niveau af linkede sider)",
       "serverMode": "Servertilstand",
       "insecureServerWarning": "Bruger ikke HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Spørg altid, hvor filen skal gemmes"
     },
     "actions": {
       "title": "Handlinger:",
@@ -182,12 +182,23 @@
       "downloadLocally": "Download lokalt",
       "localFallbackWarning": "At vende tilbage til lokal tilstand kræver at siden scrapes fra bunden. Fortsæt?",
       "downloadFromServer": "Download fra server",
-      "serverDownloadUrl": "Server download URL",
+      "serverDownloadUrl": "Server-download-URL",
       "copyUrl": "Kopier URL",
       "urlCopied": "URL kopieret!",
       "serverSessionFailed": "Kunne ikke oprette server-session: {{error}}",
       "memoryWarningServerMode": "Lav lageradvarsel ({{availableMB}}MB tilgængelig) — servertilstand aktiv",
-      "serverModeActive": "Servertilstand aktiv"
+      "serverModeActive": "Servertilstand aktiv",
+      "downloadInterruptedTitle": "Download afbrudt",
+      "downloadInterruptedMessage": "Downloaden blev afbrudt under {{phase}}, fordi udvidelsesservicen blev genstartet.",
+      "restartDownload": "Genstart download",
+      "dismissInterrupt": "Luk",
+      "downloadInterrupted": "Downloaden blev afbrudt under {{phase}}",
+      "interruptedPhase": {
+        "scraping": "scraping af side",
+        "uploading": "upload af ressourcer",
+        "assembling": "server-samling",
+        "packing": "oprettelse af pakke"
+      }
     },
     "permissions": {
       "storage": {

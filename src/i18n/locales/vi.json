@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Tốt nhất cho các trang web phức tạp (tải xuống cấp độ đầu tiên của các trang được liên kết)",
       "serverMode": "Chế độ máy chủ",
       "insecureServerWarning": "Không sử dụng HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Luôn hỏi vị trí lưu tệp"
     },
     "actions": {
       "title": "Hành động:",
@@ -187,7 +187,18 @@
       "urlCopied": "Đã sao chép URL!",
       "serverSessionFailed": "Không thể tạo phiên máy chủ: {{error}}",
       "memoryWarningServerMode": "Cảnh báo bộ nhớ thấp (còn {{availableMB}}MB) — chế độ máy chủ đang hoạt động",
-      "serverModeActive": "Chế độ máy chủ đang hoạt động"
+      "serverModeActive": "Chế độ máy chủ đang hoạt động",
+      "downloadInterruptedTitle": "Tải xuống bị gián đoạn",
+      "downloadInterruptedMessage": "Tải xuống bị gián đoạn trong {{phase}} vì dịch vụ tiện ích mở rộng đã được khởi động lại.",
+      "restartDownload": "Tải lại từ đầu",
+      "dismissInterrupt": "Đóng",
+      "downloadInterrupted": "Tải xuống bị gián đoạn trong {{phase}}",
+      "interruptedPhase": {
+        "scraping": "thu thập trang",
+        "uploading": "tải lên tài nguyên",
+        "assembling": "lắp ráp máy chủ",
+        "packing": "tạo gói"
+      }
     },
     "permissions": {
       "storage": {

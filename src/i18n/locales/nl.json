@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Het beste voor complexe websites (downloadt het eerste niveau van gelinkte pagina's)",
       "serverMode": "Servermodus",
       "insecureServerWarning": "Geen HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Altijd vragen waar het bestand moet worden opgeslagen"
     },
     "actions": {
       "title": "Acties:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL gekopieerd!",
       "serverSessionFailed": "Maken van serversessie mislukt: {{error}}",
       "memoryWarningServerMode": "Laag geheugenwaarschuwing ({{availableMB}}MB beschikbaar) — servermodus actief",
-      "serverModeActive": "Servermodus actief"
+      "serverModeActive": "Servermodus actief",
+      "downloadInterruptedTitle": "Download onderbroken",
+      "downloadInterruptedMessage": "De download werd onderbroken tijdens {{phase}} omdat de extensieservice opnieuw is gestart.",
+      "restartDownload": "Download opnieuw starten",
+      "dismissInterrupt": "Sluiten",
+      "downloadInterrupted": "De download werd onderbroken tijdens {{phase}}",
+      "interruptedPhase": {
+        "scraping": "paginascraping",
+        "uploading": "resources uploaden",
+        "assembling": "serverassemblage",
+        "packing": "pakket aanmaken"
+      }
     },
     "permissions": {
       "storage": {
@@ -215,7 +226,7 @@
           "preferences": "Downloadvoorkeuren"
         },
         "privacy": {
-          "title": "Privacy:",
+          "title": "Privacy-instellingen:",
           "personal": "Geen persoonlijke gegevens",
           "history": "Geen browsegeschiedenis",
           "local": "Alle gegevens blijven lokaal in uw browser"

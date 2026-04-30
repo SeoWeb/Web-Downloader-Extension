@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Najbolje za složene web stranice (preuzima prvu razinu povezanih stranica)",
       "serverMode": "Način poslužitelja",
       "insecureServerWarning": "Ne koristi HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Uvijek pitaj gdje spremiti datoteku"
     },
     "actions": {
       "title": "Radnje:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL kopiran!",
       "serverSessionFailed": "Izrada sesije poslužitelja nije uspjela: {{error}}",
       "memoryWarningServerMode": "Upozorenje o niskoj memoriji ({{availableMB}}MB dostupno) — način poslužitelja aktivan",
-      "serverModeActive": "Način poslužitelja aktivan"
+      "serverModeActive": "Način poslužitelja aktivan",
+      "downloadInterruptedTitle": "Preuzimanje prekinuto",
+      "downloadInterruptedMessage": "Preuzimanje je prekinuto tijekom {{phase}} jer je usluga proširenja ponovno pokrenuta.",
+      "restartDownload": "Ponovno pokreni preuzimanje",
+      "dismissInterrupt": "Odbaci",
+      "downloadInterrupted": "Preuzimanje je prekinuto tijekom {{phase}}",
+      "interruptedPhase": {
+        "scraping": "scraping stranice",
+        "uploading": "prijenos resursa",
+        "assembling": "serversko sastavljanje",
+        "packing": "izrada paketa"
+      }
     },
     "permissions": {
       "storage": {

@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Ideale per siti web complessi (scarica il primo livello delle pagine collegate)",
       "serverMode": "Modalità server",
       "insecureServerWarning": "Senza HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Chiedi sempre dove salvare il file"
     },
     "actions": {
       "title": "Azioni:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL copiato!",
       "serverSessionFailed": "Impossibile creare la sessione server: {{error}}",
       "memoryWarningServerMode": "Avviso di memoria bassa ({{availableMB}}MB disponibili) — modalità server attiva",
-      "serverModeActive": "Modalità server attiva"
+      "serverModeActive": "Modalità server attiva",
+      "downloadInterruptedTitle": "Download interrotto",
+      "downloadInterruptedMessage": "Il download è stato interrotto durante {{phase}} perché il servizio dell'estensione è stato riavviato.",
+      "restartDownload": "Riavvia download",
+      "dismissInterrupt": "Chiudi",
+      "downloadInterrupted": "Il download è stato interrotto durante {{phase}}",
+      "interruptedPhase": {
+        "scraping": "scraping della pagina",
+        "uploading": "caricamento risorse",
+        "assembling": "assemblaggio server",
+        "packing": "creazione pacchetto"
+      }
     },
     "permissions": {
       "storage": {
@@ -215,7 +226,7 @@
           "preferences": "Preferenze di download"
         },
         "privacy": {
-          "title": "Privacy:",
+          "title": "Riservatezza:",
           "personal": "Nessun dato personale",
           "history": "Nessuna cronologia di navigazione",
           "local": "Tutti i dati rimangono localmente nel tuo browser"

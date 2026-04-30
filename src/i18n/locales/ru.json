@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Лучше всего подходит для сложных веб-сайтов (скачивает первый уровень связанных страниц)",
       "serverMode": "Режим сервера",
       "insecureServerWarning": "Не использует HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Всегда спрашивать, куда сохранить файл"
     },
     "actions": {
       "title": "Действия:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL скопирован!",
       "serverSessionFailed": "Не удалось создать сессию сервера: {{error}}",
       "memoryWarningServerMode": "Предупреждение о низкой памяти ({{availableMB}}МБ доступно) — режим сервера активен",
-      "serverModeActive": "Режим сервера активен"
+      "serverModeActive": "Режим сервера активен",
+      "downloadInterruptedTitle": "Загрузка прервана",
+      "downloadInterruptedMessage": "Загрузка была прервана на этапе {{phase}}, так как служба расширения была перезапущена.",
+      "restartDownload": "Начать загрузку заново",
+      "dismissInterrupt": "Закрыть",
+      "downloadInterrupted": "Загрузка была прервана на этапе {{phase}}",
+      "interruptedPhase": {
+        "scraping": "скрейпинг страницы",
+        "uploading": "загрузка ресурсов",
+        "assembling": "сборка на сервере",
+        "packing": "создание пакета"
+      }
     },
     "permissions": {
       "storage": {

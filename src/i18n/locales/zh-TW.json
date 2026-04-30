@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "最適合複雜網站(下載連結頁面的第一層級)",
       "serverMode": "伺服器模式",
       "insecureServerWarning": "未使用 HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "一律詢問檔案儲存位置"
     },
     "actions": {
       "title": "操作：",
@@ -187,7 +187,18 @@
       "urlCopied": "URL 已複製!",
       "serverSessionFailed": "建立伺服器工作階段失敗: {{error}}",
       "memoryWarningServerMode": "低記憶體警告(可用{{availableMB}}MB)——伺服器模式啟動",
-      "serverModeActive": "伺服器模式啟動"
+      "serverModeActive": "伺服器模式啟動",
+      "downloadInterruptedTitle": "下載已中斷",
+      "downloadInterruptedMessage": "由於擴充功能服務已重新啟動，下載在{{phase}}期間被中斷。",
+      "restartDownload": "重新開始下載",
+      "dismissInterrupt": "關閉",
+      "downloadInterrupted": "下載在{{phase}}期間被中斷",
+      "interruptedPhase": {
+        "scraping": "頁面抓取",
+        "uploading": "資源上傳",
+        "assembling": "伺服器組裝",
+        "packing": "建立封裝"
+      }
     },
     "permissions": {
       "storage": {

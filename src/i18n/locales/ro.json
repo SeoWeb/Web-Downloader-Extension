@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Cel mai bun pentru site-uri complexe (descarcă primul nivel de pagini conectate)",
       "serverMode": "Mod server",
       "insecureServerWarning": "Fără HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Întreabă întotdeauna unde să salvezi fișierul"
     },
     "actions": {
       "title": "Acțiuni:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL copiat!",
       "serverSessionFailed": "Eroare la crearea sesiunii server: {{error}}",
       "memoryWarningServerMode": "Avertisment memorie scăzută ({{availableMB}}MB disponibil) — mod server activ",
-      "serverModeActive": "Mod server activ"
+      "serverModeActive": "Mod server activ",
+      "downloadInterruptedTitle": "Descărcare întreruptă",
+      "downloadInterruptedMessage": "Descărcarea a fost întreruptă în timpul {{phase}} deoarece serviciul extensiei a fost repornit.",
+      "restartDownload": "Repornește descărcarea",
+      "dismissInterrupt": "Respinge",
+      "downloadInterrupted": "Descărcarea a fost întreruptă în timpul {{phase}}",
+      "interruptedPhase": {
+        "scraping": "extragere pagină",
+        "uploading": "încărcare resurse",
+        "assembling": "asamblare server",
+        "packing": "creare pachet"
+      }
     },
     "permissions": {
       "storage": {

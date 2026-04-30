@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Karmaşık web siteleri için en iyisi (bağlantılı sayfaların ilk seviyesini indirir)",
       "serverMode": "Sunucu modu",
       "insecureServerWarning": "HTTPS kullanılmıyor",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Her zaman nereye kaydedileceğini sor"
     },
     "actions": {
       "title": "İşlemler:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL kopyalandı!",
       "serverSessionFailed": "Sunucu oturumu oluşturulamadı: {{error}}",
       "memoryWarningServerMode": "Düşük bellek uyarısı ({{availableMB}}MB mevcut) — sunucu modu etkin",
-      "serverModeActive": "Sunucu modu etkin"
+      "serverModeActive": "Sunucu modu etkin",
+      "downloadInterruptedTitle": "İndirme Kesintiye Uğradı",
+      "downloadInterruptedMessage": "Uzantı hizmeti yeniden başlatıldığı için {{phase}} sırasında indirme kesintiye uğradı.",
+      "restartDownload": "İndirmeyi Yeniden Başlat",
+      "dismissInterrupt": "Kapat",
+      "downloadInterrupted": "{{phase}} sırasında indirme kesintiye uğradı",
+      "interruptedPhase": {
+        "scraping": "sayfa kazıma",
+        "uploading": "kaynak yükleme",
+        "assembling": "sunucu birleştirme",
+        "packing": "paket oluşturma"
+      }
     },
     "permissions": {
       "storage": {

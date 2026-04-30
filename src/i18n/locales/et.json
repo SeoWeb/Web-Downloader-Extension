@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Parim keerukate veebilehtede jaoks (laadib alla lingitud lehtede esimese taseme)",
       "serverMode": "Serverirežiim",
       "insecureServerWarning": "HTTPS ei ole kasutusel",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Küsi alati, kuhu fail salvestada"
     },
     "actions": {
       "title": "Tegevused:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL kopeeritud!",
       "serverSessionFailed": "Serveri seansi loomine ebaõnnestus: {{error}}",
       "memoryWarningServerMode": "Madala mälu hoiatus ({{availableMB}}MB saadaval) — serverirežiim aktiivne",
-      "serverModeActive": "Serverirežiim aktiivne"
+      "serverModeActive": "Serverirežiim aktiivne",
+      "downloadInterruptedTitle": "Allalaadimine katkes",
+      "downloadInterruptedMessage": "Allalaadimine katkes {{phase}} ajal, kuna laiendusteenus taaskäivitus.",
+      "restartDownload": "Taaskäivita allalaadimine",
+      "dismissInterrupt": "Loobu",
+      "downloadInterrupted": "Allalaadimine katkes {{phase}} ajal",
+      "interruptedPhase": {
+        "scraping": "lehe kraapimine",
+        "uploading": "ressursside üleslaadimine",
+        "assembling": "serveri kokkupanek",
+        "packing": "paketi loomine"
+      }
     },
     "permissions": {
       "storage": {

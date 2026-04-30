@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Idéal pour les sites web complexes (télécharge le premier niveau des pages liées)",
       "serverMode": "Mode serveur",
       "insecureServerWarning": "Pas de HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Toujours demander où enregistrer le fichier"
     },
     "actions": {
       "title": "Actions :",
@@ -192,7 +192,18 @@
       "urlCopied": "URL copiée !",
       "serverSessionFailed": "Échec de la création de la session serveur : {{error}}",
       "memoryWarningServerMode": "Avertissement de mémoire faible ({{availableMB}}MB disponible) — mode serveur actif",
-      "serverModeActive": "Mode serveur actif"
+      "serverModeActive": "Mode serveur actif",
+      "downloadInterruptedTitle": "Téléchargement interrompu",
+      "downloadInterruptedMessage": "Le téléchargement a été interrompu pendant {{phase}} car le service de l'extension a été redémarré.",
+      "restartDownload": "Redémarrer le téléchargement",
+      "dismissInterrupt": "Ignorer",
+      "downloadInterrupted": "Le téléchargement a été interrompu pendant {{phase}}",
+      "interruptedPhase": {
+        "scraping": "extraction de page",
+        "uploading": "téléchargement de ressources",
+        "assembling": "assemblage serveur",
+        "packing": "création du paquet"
+      }
     },
     "permissions": {
       "storage": {

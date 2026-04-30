@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Najlepšie pre zložité weby (stiahne prvú úroveň odkazovaných stránok)",
       "serverMode": "Režim servera",
       "insecureServerWarning": "Nepoužíva HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Vždy sa opýtať, kam uložiť súbor"
     },
     "actions": {
       "title": "Akcie:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL skopírovaná!",
       "serverSessionFailed": "Nepodarilo sa vytvoriť reláciu servera: {{error}}",
       "memoryWarningServerMode": "Upozornenie na nízku pamäť ({{availableMB}}MB dostupných) — režim servera aktívny",
-      "serverModeActive": "Režim servera aktívny"
+      "serverModeActive": "Režim servera aktívny",
+      "downloadInterruptedTitle": "Sťahovanie prerušené",
+      "downloadInterruptedMessage": "Sťahovanie bolo prerušené počas {{phase}}, pretože služba rozšírenia bola reštartovaná.",
+      "restartDownload": "Reštartovať sťahovanie",
+      "dismissInterrupt": "Zavrieť",
+      "downloadInterrupted": "Sťahovanie bolo prerušené počas {{phase}}",
+      "interruptedPhase": {
+        "scraping": "scraping stránky",
+        "uploading": "nahrávanie zdrojov",
+        "assembling": "zásobanie na serveri",
+        "packing": "vytváranie balíčka"
+      }
     },
     "permissions": {
       "storage": {

@@ -55,7 +55,7 @@
       "fullWebsiteDescription": "Bäst för komplexa webbplatser (laddar ner första nivån av länkade sidor)",
       "serverMode": "Serverläge",
       "insecureServerWarning": "Använder inte HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Fråga alltid var filen ska sparas"
     },
     "actions": {
       "title": "Åtgärder:",
@@ -187,7 +187,18 @@
       "urlCopied": "URL kopierad!",
       "serverSessionFailed": "Kunde inte skapa serversession: {{error}}",
       "memoryWarningServerMode": "Låg minnesvarning ({{availableMB}}MB tillgängligt) — serverläge aktivt",
-      "serverModeActive": "Serverläge aktivt"
+      "serverModeActive": "Serverläge aktivt",
+      "downloadInterruptedTitle": "Nedladdning avbruten",
+      "downloadInterruptedMessage": "Nedladdningen avbröts under {{phase}} eftersom tilläggstjänsten startades om.",
+      "restartDownload": "Starta om nedladdning",
+      "dismissInterrupt": "Stäng",
+      "downloadInterrupted": "Nedladdningen avbröts under {{phase}}",
+      "interruptedPhase": {
+        "scraping": "sidskrapning",
+        "uploading": "resursuppladdning",
+        "assembling": "servermontering",
+        "packing": "paketskapande"
+      }
     },
     "permissions": {
       "storage": {
