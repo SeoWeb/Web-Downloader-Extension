@@ -256,6 +256,7 @@ export function useScrapingDownloader({
 
   return {
     downloadResponse,
+    lastHtml: lastHtmlRef.current,
     scrollAttempts,
     setDownloadResponse: (value: React.SetStateAction<ScrollingResponse | null>) => {
       setDownloadResponse(value);

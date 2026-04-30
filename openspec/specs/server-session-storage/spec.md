@@ -187,3 +187,18 @@ The server SHALL isolate sessions and data between different registered clients 
 
 - **WHEN** a client attempts to access a session created by a different API key
 - **THEN** the server returns a 403 response
+
+### Requirement: Local Fallback Input Validation
+The `SERVER_LOCAL_FALLBACK` message handler SHALL validate that required data (HTML content) is present before attempting to start a local download.
+
+#### Scenario: Fallback with missing HTML returns error
+- **GIVEN** a `SERVER_LOCAL_FALLBACK` message is received
+- **WHEN** the `html` field is missing, undefined, or empty
+- **THEN** the handler returns `{ success: false, error: "No HTML content available for local fallback" }`
+- **AND** does not call `startDownload`
+
+#### Scenario: Fallback with valid HTML proceeds
+- **GIVEN** a `SERVER_LOCAL_FALLBACK` message is received
+- **WHEN** the `html` field contains a non-empty string
+- **THEN** the handler clears the active server session for the tab
+- **AND** calls `startDownload` with the provided HTML, URL, options with `_forceLocal: true`, and tab ID

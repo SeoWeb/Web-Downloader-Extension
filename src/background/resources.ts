@@ -93,6 +93,10 @@ export function getResources(html: string): {
   links: string[];
   text: string;
 } {
+  if (!html || typeof html !== 'string') {
+    return { css: [], js: [], documents: [], images: [], links: [], text: '' };
+  }
+
   const $ = cheerio.load(html);
 
   // Extract CSS files

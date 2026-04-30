@@ -431,6 +431,13 @@ export async function messageWorker(
       // local mode (IndexedDB path). The UI should have already shown
       // the re-scrape warning.
       try {
+        if (!data.html) {
+          return {
+            success: false,
+            error: "No HTML content available for local fallback",
+          };
+        }
+
         // Clear the active server session for this tab
         setActiveServerSession(data.tabId, null);
         // Re-run the download in local mode by calling startDownload

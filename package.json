@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build",
+    "build:test": "node scripts/build-test.mjs",
     "style": "prettier --check \"src/**/*.{ts,tsx}\"",
     "style:fix": "prettier --write \"src/**/*.{ts,tsx}\"",
     "test:e2e": "node tests/e2e/extension-installation.test.cjs",
