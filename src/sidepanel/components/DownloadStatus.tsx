@@ -131,6 +131,13 @@ export function DownloadStatus({
 
   if (!tabId) return null;
 
+  // Hide component when download is complete — must be checked before
+  // server-mode phase checks to prevent stale phases (e.g. 'uploading')
+  // from rendering on top of the completion state.
+  if (action === messageActions.DOWNLOAD_DONE) {
+    return null;
+  }
+
   // -----------------------------------------------------------------------
   // Download interrupted by service worker restart
   // -----------------------------------------------------------------------
@@ -370,11 +377,9 @@ export function DownloadStatus({
 
   // Show progress when download is in progress but not actively scraping
   // and not in a server-mode phase (uploading/assembling/ready handled above).
-  // Hide this component when download is complete (DOWNLOAD_DONE)
   if (
     !isScraping &&
     !isScrapingLinkedPages &&
-    action !== messageActions.DOWNLOAD_DONE &&
     !!downloadResponse
   ) {
     return (
@@ -383,11 +388,6 @@ export function DownloadStatus({
         <ScrapingControls tabId={tabId} isPaused={isPaused} setIsPaused={setIsPaused} setIsScraping={setIsScraping} />
       </div>
     );
-  }
-
-  // Hide component when download is complete
-  if (action === messageActions.DOWNLOAD_DONE) {
-    return null;
   }
 
   return null;

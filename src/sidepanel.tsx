@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import "./popup.css";
 import "./styles/rtl.css"; // RTL support styles
@@ -44,6 +44,7 @@ interface Options {
   downloadContentAsText: boolean;
   downloadDocuments: boolean;
   singleFile: boolean;
+  alwaysAskWhereToSave?: boolean;
 }
 
 function ErrorFallback({
@@ -75,6 +76,8 @@ export default function SidePanel() {
   const [tabUrl, setTabUrl] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([{ key: "status.waiting" }]);
   const [action, setAction] = useState<MessageAction | null>(null);
+  const actionRef = useRef<MessageAction | null>(null);
+  actionRef.current = action;
   const [links, setLinks] = useState<string[]>([]);
   const [isScraping, setIsScraping] = useState<boolean>(false);
   const [isScrapingLinkedPages, setIsScrapingLinkedPages] = useState<boolean>(false);
@@ -108,7 +111,7 @@ export default function SidePanel() {
   useActiveTabInfo({ setTabId, setTabUrl, setMessages });
 
   // Initialize useScrapingDownloader hook early so setDownloadResponse is available
-  const { downloadResponse, setDownloadResponse, setScrollAttempts } =
+  const { downloadResponse, lastHtml, setDownloadResponse, setScrollAttempts } =
     useScrapingDownloader({
       tabId,
       tabUrl,
@@ -198,6 +201,7 @@ export default function SidePanel() {
           // Download actually completed - file was saved
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
+          setServerModeState((prev) => prev ? { ...prev, phase: 'ready' } : prev);
           setMessages((prev) => [...prev, { key: "status.creating" }]);
           setMessages((prev) => [...prev, { key: "status.complete" }]);
           // Store download ID for "Show in folder" functionality
@@ -302,9 +306,15 @@ export default function SidePanel() {
       if (areaName === "local" && changes.downloadComplete) {
         const downloadComplete = changes.downloadComplete.newValue;
         if (downloadComplete && downloadComplete.tabId !== undefined && downloadComplete.tabId === tabId) {
+          // Guard: skip if already handled via DOWNLOAD_COMPLETE message
+          if (actionRef.current === messageActions.DOWNLOAD_DONE) {
+            chrome.storage.local.remove("downloadComplete");
+            return;
+          }
           if (downloadComplete.downloadId) cleanupBlobUrl(downloadComplete.downloadId);
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
+          setServerModeState((prev) => prev ? { ...prev, phase: 'ready' } : prev);
           setMessages((prev) => [...prev, { key: "status.creating" }]);
           setMessages((prev) => [...prev, { key: "status.complete" }]);
 
@@ -318,6 +328,7 @@ export default function SidePanel() {
 
           // Stop scraping state to show completion UI
           setIsScraping(false);
+          setIsScrapingLinkedPages(false);
 
           // Clear the downloadComplete flag
           chrome.storage.local.remove("downloadComplete");
@@ -423,8 +434,11 @@ export default function SidePanel() {
         setIsPaused={setIsPaused}
         serverModeState={IS_SERVER_MODE ? serverModeState : undefined}
         onRetryServer={() => {
-          // Re-trigger download with same options
+          // Re-trigger download with same options — reset all server
+          // session refs so a fresh session is created on retry.
           if (downloadOptions) {
+            setDownloadResponse(null);
+            setScrollAttempts(0);
             setIsScraping(true);
             setMessages((prev) => [...prev, { key: "status.scraping" }]);
             setServerModeState((prev) => ({ ...prev, phase: 'scraping', serverError: null }));
@@ -436,15 +450,19 @@ export default function SidePanel() {
             sendMessageToBackground(messageActions.SERVER_LOCAL_FALLBACK, {
               tabId,
               tabUrl,
+              html: lastHtml || downloadResponse?.html,
+              downloadOptions,
             });
           });
           setServerModeState(initialServerModeState);
         }}
-        onDownloadFromServer={() => {
+        onDownloadFromServer={async () => {
           if (serverModeState.serverDownloadUrl) {
+            const { loadFilterOptions } = await import("./common/storage/filterStorage");
+            const opts = await loadFilterOptions();
             chrome.downloads.download({
               url: serverModeState.serverDownloadUrl,
-              saveAs: true,
+              saveAs: opts.alwaysAskWhereToSave ?? true,
             });
           }
         }}
