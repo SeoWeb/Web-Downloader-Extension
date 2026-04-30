@@ -54,7 +54,8 @@
       "fullWebsite": "Изтегляне на целия уебсайт",
       "fullWebsiteDescription": "Най-добро за сложни уебсайтове (изтегля първото ниво на свързаните страници)",
       "serverMode": "Сървърен режим",
-      "insecureServerWarning": "Не се използва HTTPS"
+      "insecureServerWarning": "Не се използва HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Действия:",

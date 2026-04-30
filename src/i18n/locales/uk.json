@@ -54,7 +54,8 @@
       "fullWebsite": "Завантажити весь веб-сайт",
       "fullWebsiteDescription": "Найкраще для складних веб-сайтів (завантажує перший рівень пов'язаних сторінок)",
       "serverMode": "Режим сервера",
-      "insecureServerWarning": "Не використовує HTTPS"
+      "insecureServerWarning": "Не використовує HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Дії:",

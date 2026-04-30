@@ -58,6 +58,7 @@ export default function Filter({
     setDownloadLinksFullScraping,
     setLinkedPagesMaxCount,
     setLinkedPagesDelay,
+    setAlwaysAskWhereToSave,
   } = useFilterOptions();
 
   const downloadOptions = useDownloadOptions();
@@ -244,6 +245,14 @@ export default function Filter({
                 <File className="w-5 h-5 text-slate-400" />
               </div>
             </div>
+
+            <OptionItem
+              id="alwaysAskWhereToSave"
+              checked={options.alwaysAskWhereToSave ?? true}
+              onChange={(c: any) => setAlwaysAskWhereToSave(!!c)}
+              label={t('filter.alwaysAskWhereToSave')}
+              icon={<Settings className="w-4 h-4" />}
+            />
 
             <div className="border-t border-slate-100 my-2" />
 

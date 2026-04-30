@@ -54,7 +54,8 @@
       "fullWebsite": "I-download ang buong website",
       "fullWebsiteDescription": "Pinakamahusay para sa mga kumplikadong website (idina-download ang unang antas ng mga naka-link na pahina)",
       "serverMode": "Mode ng server",
-      "insecureServerWarning": "Hindi gumagamit ng HTTPS"
+      "insecureServerWarning": "Hindi gumagamit ng HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Mga Aksyon:",

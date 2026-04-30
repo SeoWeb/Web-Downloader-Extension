@@ -44,24 +44,6 @@ The system SHALL prevent concurrent downloads with a mode-aware guard. In server
 - **AND** clears the checkpoint from `chrome.storage.session`
 - **AND** per-tab Maps are empty (rebuilt from scratch after restart)
 
-### Requirement: getResources HTML Input Validation
-The `getResources` function SHALL validate its HTML input before passing it to `cheerio.load()`. When the input is not a valid string, the function SHALL return empty resource collections instead of throwing.
-
-#### Scenario: Non-string HTML input returns empty collections
-- **GIVEN** `getResources` is called with `undefined`, `null`, or a non-string value
-- **WHEN** the function executes
-- **THEN** it returns `{ css: [], js: [], documents: [], images: [], links: [], text: '' }` without calling `cheerio.load()`
-
-#### Scenario: Empty string returns empty collections
-- **GIVEN** `getResources` is called with an empty string
-- **WHEN** the function executes
-- **THEN** it returns `{ css: [], js: [], documents: [], images: [], links: [], text: '' }` without calling `cheerio.load()`
-
-#### Scenario: Valid HTML string is processed normally
-- **GIVEN** `getResources` is called with a valid HTML string
-- **WHEN** the function executes
-- **THEN** it parses the HTML with `cheerio.load()` and extracts resources as before
-
 ### Requirement: Download State Tracking
 The system SHALL track active downloads using per-tab state management. Each tab SHALL have its own abort controller, keepalive port, and scraper instance stored in Maps keyed by `tabId`.
 

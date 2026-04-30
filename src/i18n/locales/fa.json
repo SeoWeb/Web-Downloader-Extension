@@ -54,7 +54,8 @@
       "fullWebsite": "دانلود کامل وب‌سایت",
       "fullWebsiteDescription": "بهترین گزینه برای وب‌سایت‌های پیچیده (سطح اول صفحات لینک‌شده را دانلود می‌کند)",
       "serverMode": "حالت سرور",
-      "insecureServerWarning": "عدم استفاده از HTTPS"
+      "insecureServerWarning": "عدم استفاده از HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "اقدامات:",

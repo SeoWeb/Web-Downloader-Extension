@@ -54,7 +54,8 @@
       "fullWebsite": "Pakua tovuti kamili",
       "fullWebsiteDescription": "Bora kwa tovuti ngumu (inapakua kiwango cha kwanza cha kurasa zilizounganishwa)",
       "serverMode": "Hali ya seva",
-      "insecureServerWarning": "Haikutumii HTTPS"
+      "insecureServerWarning": "Haikutumii HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Vitendo:",

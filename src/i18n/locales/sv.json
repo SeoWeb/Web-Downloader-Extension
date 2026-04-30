@@ -54,7 +54,8 @@
       "fullWebsite": "Ladda ner hela webbplatsen",
       "fullWebsiteDescription": "Bäst för komplexa webbplatser (laddar ner första nivån av länkade sidor)",
       "serverMode": "Serverläge",
-      "insecureServerWarning": "Använder inte HTTPS"
+      "insecureServerWarning": "Använder inte HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Åtgärder:",

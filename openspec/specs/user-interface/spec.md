@@ -76,7 +76,7 @@ The system SHALL display download progress including server upload progress and 
 - **WHEN** the assembly completes
 - **THEN** the status area shows "Download ready!"
 - **AND** a "Download from server" button is displayed
-- **AND** clicking the button triggers `chrome.downloads.download` with the server URL
+- **AND** clicking the button triggers `chrome.downloads.download` with the server URL and the user's `saveAs` preference
 
 #### Scenario: Panel ignores messages from other tabs
 - **GIVEN** Tab A and Tab B both have active server-mode downloads
@@ -100,3 +100,67 @@ The system SHALL display download progress including server upload progress and 
 - **WHEN** Tab A's download fails and a `DOWNLOAD_FAILED` message is sent with Tab A's `tabId`
 - **THEN** only Tab A's side panel shows the error state
 - **AND** Tab B's side panel continues showing its own download progress
+
+## ADDED Requirements
+
+### Requirement: Server Retry Resets Session State
+When the user clicks "Retry" after a server-mode failure, the system SHALL reset all server session refs and create a fresh server session for the re-attempt.
+
+#### Scenario: Retry creates new server session
+- **GIVEN** a server-mode download has failed and the error UI is displayed
+- **WHEN** the user clicks the "Retry" button
+- **THEN** the system resets the server session ID ref, scroll index ref, session-created flag, and last-HTML ref
+- **AND** sets the scraping state to active
+- **AND** the scraping hook creates a new server session on the first scroll iteration
+- **AND** the new download proceeds with a fresh session
+
+#### Scenario: Retry does not reuse failed session
+- **GIVEN** a server-mode download failed with session ID "abc-123"
+- **WHEN** the user clicks "Retry"
+- **THEN** the system clears the stored session ID "abc-123"
+- **AND** creates a new session with a different ID
+- **AND** the old session remains on the server for its retention period
+
+### Requirement: Local Fallback Passes HTML and Options
+When the user clicks "Download locally" after a server-mode failure, the system SHALL pass the scraped HTML content and download options to the local pipeline via the `SERVER_LOCAL_FALLBACK` message.
+
+#### Scenario: Local fallback includes HTML content
+- **GIVEN** a server-mode download has failed and the error UI is displayed
+- **WHEN** the user clicks "Download locally"
+- **THEN** the `SERVER_LOCAL_FALLBACK` message includes `html` containing the last scraped HTML from the page
+- **AND** includes `downloadOptions` with all selected filter options
+- **AND** the background handler calls `startDownload` with the provided HTML and options
+- **AND** the local pipeline processes the download without crashing
+
+#### Scenario: Local fallback without HTML returns error
+- **GIVEN** a server-mode download has failed and no HTML is available (e.g., scraping never started)
+- **WHEN** the user clicks "Download locally"
+- **THEN** the `SERVER_LOCAL_FALLBACK` message handler returns a `{ success: false, error: "No HTML content available for local fallback" }` response
+- **AND** no crash occurs
+
+#### Scenario: Local fallback preserves download options
+- **GIVEN** the user selected "Download HTML", "Download Images", and "Single File" options
+- **WHEN** the user clicks "Download locally" after a server failure
+- **THEN** the local download runs with the same options (downloadHTML=true, downloadImages=true, singleFile=true, downloadAssets/downloadLinks/downloadDocuments/downloadContentAsText as originally set)
+- **AND** `_forceLocal` is set to `true` to bypass server mode
+
+### Requirement: Save As toggle in configuration UI
+The system SHALL display an "Always ask where to save file" toggle checkbox in the Configuration section of the Filter component. The toggle SHALL reflect and update the `alwaysAskWhereToSave` setting in real-time.
+
+#### Scenario: Toggle visible in configuration section
+- **GIVEN** the user opens the Configuration section
+- **WHEN** the Filter component renders
+- **THEN** an "Always ask where to save file" checkbox is visible
+- **AND** it is checked by default
+
+#### Scenario: Toggle changes setting
+- **GIVEN** the "Always ask where to save file" checkbox is checked
+- **WHEN** the user unchecks it
+- **THEN** `alwaysAskWhereToSave` is set to `false` in Chrome storage
+- **AND** the next download will proceed automatically without a dialog
+
+#### Scenario: Setting persists across sessions
+- **GIVEN** the user has unchecked the toggle
+- **WHEN** the side panel is reopened or the browser restarts
+- **THEN** the checkbox remains unchecked
+- **AND** downloads continue to auto-save

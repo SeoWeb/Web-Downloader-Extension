@@ -54,7 +54,8 @@
       "fullWebsite": "پوری ویب سائٹ ڈاؤن لوڈ کریں",
       "fullWebsiteDescription": "پیچیدہ ویب سائٹس کے لیے بہترین (منسلک صفحات کا پہلا لیول ڈاؤن لوڈ کرتا ہے)",
       "serverMode": "سرور موڈ",
-      "insecureServerWarning": "HTTPS استعمال نہیں ہو رہا"
+      "insecureServerWarning": "HTTPS استعمال نہیں ہو رہا",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "اقدامات:",

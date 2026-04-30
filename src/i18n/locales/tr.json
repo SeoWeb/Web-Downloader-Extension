@@ -54,7 +54,8 @@
       "fullWebsite": "Tam web sitesini indir",
       "fullWebsiteDescription": "Karmaşık web siteleri için en iyisi (bağlantılı sayfaların ilk seviyesini indirir)",
       "serverMode": "Sunucu modu",
-      "insecureServerWarning": "HTTPS kullanılmıyor"
+      "insecureServerWarning": "HTTPS kullanılmıyor",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "İşlemler:",

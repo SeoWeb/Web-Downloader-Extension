@@ -54,7 +54,8 @@
       "fullWebsite": "Λήψη πλήρους ιστοσελίδας",
       "fullWebsiteDescription": "Καλύτερο για πολύπλοκες ιστοσελίδες (κατεβάζει το πρώτο επίπεδο συνδεδεμένων σελίδων)",
       "serverMode": "Λειτουργία διακομιστή",
-      "insecureServerWarning": "Δεν χρησιμοποιείται HTTPS"
+      "insecureServerWarning": "Δεν χρησιμοποιείται HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Ενέργειες:",

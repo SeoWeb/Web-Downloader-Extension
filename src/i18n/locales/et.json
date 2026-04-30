@@ -54,7 +54,8 @@
       "fullWebsite": "Laadi alla kogu veebileht",
       "fullWebsiteDescription": "Parim keerukate veebilehtede jaoks (laadib alla lingitud lehtede esimese taseme)",
       "serverMode": "Serverirežiim",
-      "insecureServerWarning": "HTTPS ei ole kasutusel"
+      "insecureServerWarning": "HTTPS ei ole kasutusel",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Tegevused:",

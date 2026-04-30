@@ -54,7 +54,8 @@
       "fullWebsite": "전체 웹사이트 다운로드",
       "fullWebsiteDescription": "복잡한 웹사이트에 최적 (연결된 페이지의 첫 번째 레벨을 다운로드함)",
       "serverMode": "서버 모드",
-      "insecureServerWarning": "HTTPS를 사용하지 않음"
+      "insecureServerWarning": "HTTPS를 사용하지 않음",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "작업:",

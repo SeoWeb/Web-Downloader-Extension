@@ -54,7 +54,8 @@
       "fullWebsite": "Stáhnout celý web",
       "fullWebsiteDescription": "Nejlepší pro složité weby (stáhne první úroveň odkazovaných stránek)",
       "serverMode": "Režim serveru",
-      "insecureServerWarning": "Nepoužívá HTTPS"
+      "insecureServerWarning": "Nepoužívá HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Akce:",

@@ -54,7 +54,8 @@
       "fullWebsite": "Atsisiųsti visą svetainę",
       "fullWebsiteDescription": "Geriausiai tinka sudėtingoms svetainėms (atsisiunčia pirmąjį susietų puslapių lygį)",
       "serverMode": "Serverio režimas",
-      "insecureServerWarning": "Nenaudojamas HTTPS"
+      "insecureServerWarning": "Nenaudojamas HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Veiksmai:",

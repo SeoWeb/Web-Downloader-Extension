@@ -54,7 +54,8 @@
       "fullWebsite": "下载完整网站",
       "fullWebsiteDescription": "最适合复杂网站(下载链接页面的第一层级)",
       "serverMode": "服务器模式",
-      "insecureServerWarning": "未使用 HTTPS"
+      "insecureServerWarning": "未使用 HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "操作：",

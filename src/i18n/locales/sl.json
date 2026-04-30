@@ -54,7 +54,8 @@
       "fullWebsite": "Prenesi celotno spletno mesto",
       "fullWebsiteDescription": "Najbolje za zapletena spletna mesta (prenese prvo raven povezanih strani)",
       "serverMode": "Način strežnika",
-      "insecureServerWarning": "Ne uporablja HTTPS"
+      "insecureServerWarning": "Ne uporablja HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Dejanja:",

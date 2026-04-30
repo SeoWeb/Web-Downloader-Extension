@@ -628,7 +628,7 @@ async function executeDownload(
       await initiateDownload(blob, zipFilenameFinal, (msg) => {
           if (typeof msg === 'string') sendMessage(msg);
           else sendMessage(msg);
-      }, tabId);
+      }, tabId, downloadOptions.alwaysAskWhereToSave ?? true);
     }
     // If blob is undefined, multi-part download was already handled above
 
@@ -937,6 +937,7 @@ async function executeDownloadServerMode(
         });
       },
       tabId,
+      downloadOptions.alwaysAskWhereToSave ?? true,
     );
 
     // (15.3 + 15.4) Send the server download URL to the UI so it can display

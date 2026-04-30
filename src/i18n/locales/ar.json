@@ -54,7 +54,8 @@
       "fullWebsite": "تحميل الموقع بالكامل",
       "fullWebsiteDescription": "الأفضل للمواقع المعقدة (يقوم بتنزيل المستوى الأول من الصفحات المرتبطة)",
       "serverMode": "وضع الخادم",
-      "insecureServerWarning": "لا يستخدم HTTPS"
+      "insecureServerWarning": "لا يستخدم HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "الإجراءات:",

@@ -54,7 +54,8 @@
       "fullWebsite": "Download hele hjemmesiden",
       "fullWebsiteDescription": "Bedst til komplekse hjemmesider (downloader første niveau af linkede sider)",
       "serverMode": "Servertilstand",
-      "insecureServerWarning": "Bruger ikke HTTPS"
+      "insecureServerWarning": "Bruger ikke HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Handlinger:",

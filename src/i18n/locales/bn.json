@@ -54,7 +54,8 @@
       "fullWebsite": "संपूर्ण ওয়েবসাইট ডাউনলোড করুন",
       "fullWebsiteDescription": "জটিল ওয়েবসাইটের জন্য সেরা (লিঙ্ক করা পৃষ্ঠাগুলির প্রথম স্তর ডাউনলোড করে)",
       "serverMode": "সার্ভার মোড",
-      "insecureServerWarning": "HTTPS ব্যবহার করা হচ্ছে না"
+      "insecureServerWarning": "HTTPS ব্যবহার করা হচ্ছে না",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "অ্যাকশন:",

@@ -54,7 +54,8 @@
       "fullWebsite": "הורד את כל האתר",
       "fullWebsiteDescription": "הטוב ביותר לאתרים מורכבים (מוריד את הרמה הראשונה של דפים מקושרים)",
       "serverMode": "מצב שרת",
-      "insecureServerWarning": "לא משתמש ב-HTTPS"
+      "insecureServerWarning": "לא משתמש ב-HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "פעולות:",

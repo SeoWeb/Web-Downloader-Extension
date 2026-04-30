@@ -54,7 +54,8 @@
       "fullWebsite": "Télécharger le site web complet",
       "fullWebsiteDescription": "Idéal pour les sites web complexes (télécharge le premier niveau des pages liées)",
       "serverMode": "Mode serveur",
-      "insecureServerWarning": "Pas de HTTPS"
+      "insecureServerWarning": "Pas de HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Actions :",

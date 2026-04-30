@@ -54,7 +54,8 @@
       "fullWebsite": "Preuzmite ceo veb sajt",
       "fullWebsiteDescription": "Najbolje za složene veb sajtove (preuzima prvi nivo povezanih stranica)",
       "serverMode": "Режим сервера",
-      "insecureServerWarning": "Не користи HTTPS"
+      "insecureServerWarning": "Не користи HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Акције:",

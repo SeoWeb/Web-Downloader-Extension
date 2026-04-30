@@ -17,6 +17,8 @@ export interface FilterOptions {
   linkedPagesIncludeExternal?: boolean; // Default: false
   linkedPagesTimeout?: number; // Default: 30000ms (per page)
 
+  alwaysAskWhereToSave?: boolean; // Default: true
+
   // Internal flag: force local mode for this download even when VITE_SERVER_URL
   // is set. Used by SERVER_LOCAL_FALLBACK to rerun in local mode (task 13.2).
   _forceLocal?: boolean;
@@ -34,6 +36,7 @@ export const DEFAULT_FILTER_OPTIONS: FilterOptions = {
   downloadContentAsText: false,
   downloadDocuments: true,
   singleFile: false,
+  alwaysAskWhereToSave: true,
 };
 
 /**

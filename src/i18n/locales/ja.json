@@ -54,7 +54,8 @@
       "fullWebsite": "ウェブサイト全体をダウンロード",
       "fullWebsiteDescription": "複雑なウェブサイトに最適(リンクされたページの最初のレベルをダウンロードします)",
       "serverMode": "サーバーモード",
-      "insecureServerWarning": "HTTPSを使用していません"
+      "insecureServerWarning": "HTTPSを使用していません",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "アクション:",

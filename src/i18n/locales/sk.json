@@ -54,7 +54,8 @@
       "fullWebsite": "Stiahnuť celú webovú stránku",
       "fullWebsiteDescription": "Najlepšie pre zložité weby (stiahne prvú úroveň odkazovaných stránok)",
       "serverMode": "Režim servera",
-      "insecureServerWarning": "Nepoužíva HTTPS"
+      "insecureServerWarning": "Nepoužíva HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Akcie:",

@@ -54,7 +54,8 @@
       "fullWebsite": "पूरी वेबसाइट डाउनलोड करें",
       "fullWebsiteDescription": "जटिल वेबसाइटों के लिए सर्वश्रेष्ठ (लिंक किए गए पेजों का पहला स्तर डाउनलोड करता है)",
       "serverMode": "सर्वर मोड",
-      "insecureServerWarning": "HTTPS का उपयोग नहीं हो रहा"
+      "insecureServerWarning": "HTTPS का उपयोग नहीं हो रहा",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "क्रियाएं:",

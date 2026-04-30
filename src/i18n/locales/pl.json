@@ -54,7 +54,8 @@
       "fullWebsite": "Pobierz całą stronę internetową",
       "fullWebsiteDescription": "Najlepsze dla złożonych stron (pobiera pierwszy poziom połączonych stron)",
       "serverMode": "Tryb serwera",
-      "insecureServerWarning": "Nie używa HTTPS"
+      "insecureServerWarning": "Nie używa HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Akcje:",

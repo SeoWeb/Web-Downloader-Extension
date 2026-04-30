@@ -71,6 +71,8 @@ export function useFilterOptions() {
       setFilterOption("linkedPagesIncludeExternal", value),
     setLinkedPagesTimeout: (value: number) =>
       setFilterOption("linkedPagesTimeout", value),
+    setAlwaysAskWhereToSave: (value: boolean) =>
+      setFilterOption("alwaysAskWhereToSave", value),
   };
 }
 
@@ -103,6 +105,7 @@ export function useDownloadOptions() {
     linkedPagesDelay: options.linkedPagesDelay,
     linkedPagesIncludeExternal: options.linkedPagesIncludeExternal,
     linkedPagesTimeout: options.linkedPagesTimeout,
+    alwaysAskWhereToSave: options.alwaysAskWhereToSave,
   };
 }
 

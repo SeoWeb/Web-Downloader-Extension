@@ -54,7 +54,8 @@
       "fullWebsite": "Descarcă site-ul complet",
       "fullWebsiteDescription": "Cel mai bun pentru site-uri complexe (descarcă primul nivel de pagini conectate)",
       "serverMode": "Mod server",
-      "insecureServerWarning": "Fără HTTPS"
+      "insecureServerWarning": "Fără HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Acțiuni:",

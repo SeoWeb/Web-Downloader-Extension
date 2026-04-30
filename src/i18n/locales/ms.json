@@ -54,7 +54,8 @@
       "fullWebsite": "Muat turun laman web penuh",
       "fullWebsiteDescription": "Terbaik untuk laman web yang kompleks (memuat turun tahap pertama halaman yang dipautkan)",
       "serverMode": "Mod pelayan",
-      "insecureServerWarning": "Tidak menggunakan HTTPS"
+      "insecureServerWarning": "Tidak menggunakan HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Tindakan:",

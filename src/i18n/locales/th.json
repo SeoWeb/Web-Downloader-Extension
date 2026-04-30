@@ -54,7 +54,8 @@
       "fullWebsite": "ดาวน์โหลดเว็บไซต์เต็มรูปแบบ",
       "fullWebsiteDescription": "ดีที่สุดสำหรับเว็บไซต์ที่ซับซ้อน (ดาวน์โหลดระดับแรกของหน้าที่เชื่อมโยง)",
       "serverMode": "โหมดเซิร์ฟเวอร์",
-      "insecureServerWarning": "ไม่ได้ใช้ HTTPS"
+      "insecureServerWarning": "ไม่ได้ใช้ HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "การดำเนินการ:",

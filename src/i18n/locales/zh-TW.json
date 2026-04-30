@@ -54,7 +54,8 @@
       "fullWebsite": "下載完整網站",
       "fullWebsiteDescription": "最適合複雜網站(下載連結頁面的第一層級)",
       "serverMode": "伺服器模式",
-      "insecureServerWarning": "未使用 HTTPS"
+      "insecureServerWarning": "未使用 HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "操作：",

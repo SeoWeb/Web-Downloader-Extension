@@ -54,7 +54,8 @@
       "fullWebsite": "Lejupielādēt visu vietni",
       "fullWebsiteDescription": "Vislabāk piemērots sarežģītām vietnēm (lejupielādē saistīto lapu pirmo līmeni)",
       "serverMode": "Servera režīms",
-      "insecureServerWarning": "Netiek izmantots HTTPS"
+      "insecureServerWarning": "Netiek izmantots HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Darbības:",

@@ -193,6 +193,7 @@ export class ServerDownloadHandler {
     downloadUrl: string,
     filename: string,
     tabId?: number,
+    saveAs: boolean = true,
   ): Promise<number> {
     // Validate the download URL scheme
     this.warnIfHttpDownload(downloadUrl);
@@ -204,7 +205,7 @@ export class ServerDownloadHandler {
         {
           url: downloadUrl,
           filename,
-          saveAs: true,
+          saveAs,
         },
         (id) => {
           if (chrome.runtime.lastError) {
@@ -249,6 +250,7 @@ export class ServerDownloadHandler {
     isSingleFile: boolean,
     onStatusUpdate?: AssemblyStatusCallback,
     tabId?: number,
+    saveAs: boolean = true,
   ): Promise<ServerDownloadResult> {
     // Poll until assembly is complete
     const status = await this.pollAssemblyStatus(sessionId, onStatusUpdate);
@@ -269,6 +271,7 @@ export class ServerDownloadHandler {
       downloadUrl,
       filename,
       tabId,
+      saveAs,
     );
 
     return {
@@ -300,6 +303,7 @@ export class ServerDownloadHandler {
     onLocalFallback: LocalFallbackCallback,
     onStatusUpdate?: AssemblyStatusCallback,
     tabId?: number,
+    saveAs: boolean = true,
   ): Promise<ServerDownloadResult | null> {
     try {
       return await this.waitForDownload(
@@ -308,6 +312,7 @@ export class ServerDownloadHandler {
         isSingleFile,
         onStatusUpdate,
         tabId,
+        saveAs,
       );
     } catch (err) {
       // Categorize the error and offer local fallback

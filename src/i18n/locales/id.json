@@ -54,7 +54,8 @@
       "fullWebsite": "Unduh situs web lengkap",
       "fullWebsiteDescription": "Terbaik untuk situs web yang kompleks (mengunduh tingkat pertama halaman yang ditautkan)",
       "serverMode": "Mode server",
-      "insecureServerWarning": "Tidak menggunakan HTTPS"
+      "insecureServerWarning": "Tidak menggunakan HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Tindakan:",

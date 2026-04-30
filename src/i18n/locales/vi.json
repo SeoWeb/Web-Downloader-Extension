@@ -54,7 +54,8 @@
       "fullWebsite": "Tải xuống toàn bộ trang web",
       "fullWebsiteDescription": "Tốt nhất cho các trang web phức tạp (tải xuống cấp độ đầu tiên của các trang được liên kết)",
       "serverMode": "Chế độ máy chủ",
-      "insecureServerWarning": "Không sử dụng HTTPS"
+      "insecureServerWarning": "Không sử dụng HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Hành động:",

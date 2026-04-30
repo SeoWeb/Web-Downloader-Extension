@@ -55,7 +55,8 @@ export async function initiateDownload(
   blob: Blob,
   filename: string,
   sendMessage: (message: string | { key: string; options?: any }) => void,
-  tabId?: number
+  tabId?: number,
+  saveAs: boolean = true,
 ): Promise<void> {
   if (!blob || blob.size === 0) {
     const error = "No blob data available for download or blob is empty";
@@ -65,7 +66,7 @@ export async function initiateDownload(
 
   try {
     // Delegate download to the side panel where URL.createObjectURL is available
-    await downloadViaPanel(blob, filename, true, tabId);
+    await downloadViaPanel(blob, filename, saveAs, tabId);
     sendMessage({ key: "status.downloadStarted" });
   } catch (error) {
     if (error instanceof PanelUnavailableError) {

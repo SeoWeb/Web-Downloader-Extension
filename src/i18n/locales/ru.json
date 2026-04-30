@@ -54,7 +54,8 @@
       "fullWebsite": "Скачать весь веб-сайт",
       "fullWebsiteDescription": "Лучше всего подходит для сложных веб-сайтов (скачивает первый уровень связанных страниц)",
       "serverMode": "Режим сервера",
-      "insecureServerWarning": "Не использует HTTPS"
+      "insecureServerWarning": "Не использует HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Действия:",

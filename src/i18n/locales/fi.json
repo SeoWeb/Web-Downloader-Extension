@@ -54,7 +54,8 @@
       "fullWebsite": "Lataa koko verkkosivusto",
       "fullWebsiteDescription": "Paras monimutkaisille verkkosivustoille (lataa linkitettyjen sivujen ensimmäisen tason)",
       "serverMode": "Palvelintila",
-      "insecureServerWarning": "HTTPS ei käytössä"
+      "insecureServerWarning": "HTTPS ei käytössä",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Toiminnot:",

@@ -54,7 +54,8 @@
       "fullWebsite": "Volledige website downloaden",
       "fullWebsiteDescription": "Het beste voor complexe websites (downloadt het eerste niveau van gelinkte pagina's)",
       "serverMode": "Servermodus",
-      "insecureServerWarning": "Geen HTTPS"
+      "insecureServerWarning": "Geen HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Acties:",

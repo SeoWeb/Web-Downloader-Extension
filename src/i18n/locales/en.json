@@ -54,7 +54,8 @@
       "pageDelay": "Delay between pages",
       "includeExternal": "Include external links",
       "serverMode": "Server mode",
-      "insecureServerWarning": "Not using HTTPS"
+      "insecureServerWarning": "Not using HTTPS",
+      "alwaysAskWhereToSave": "Always ask where to save file"
     },
     "actions": {
       "title": "Actions:",
