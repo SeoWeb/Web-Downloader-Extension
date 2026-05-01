@@ -8,7 +8,7 @@ Server-side ZIP archive and single-file HTML assembly for the Website Downloader
 
 ### Requirement: ZIP Archive Creation
 
-The server SHALL create a ZIP archive containing the merged HTML and all uploaded resources when a session is finalized, with linked page filenames that match the link converter's output.
+The server SHALL create a ZIP archive containing the merged HTML and all uploaded resources when a session is finalized, with linked page filenames that match the link converter's output. The assembler SHALL build a content-type map from session resources and pass it to the HTML converter for content-type-aware fallback filename generation.
 
 #### Scenario: Standard ZIP assembly
 
@@ -30,6 +30,13 @@ The server SHALL create a ZIP archive containing the merged HTML and all uploade
 - **WHEN** the session includes text content uploaded via the content endpoint
 - **THEN** a `content.txt` file is included in the ZIP root
 - **AND** if no content text was uploaded, no `content.txt` is included
+
+#### Scenario: Content-type map built from resources
+
+- **WHEN** the assembler begins URL conversion for a session
+- **THEN** the assembler queries all resources for the session from the database
+- **AND** builds a content-type map from `{resource.original_url: resource.content_type}` for all resources where `content_type` is not `None`
+- **AND** passes this map to `convert_html()` and `convert_linked_page_html()`
 
 ### Requirement: ZIP Filename & Path Generation
 

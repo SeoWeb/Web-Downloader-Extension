@@ -12,6 +12,8 @@ The server SHALL convert image `src` attributes in the merged HTML from absolute
 
 Image filename generation SHALL include parent path segments when a URL has multiple path segments, matching the extension-side `generateImageFilename` behavior to prevent filename collisions.
 
+When the filename map lookup fails, the converter SHALL use the content-type map to determine the correct file extension before falling back to `.bin`.
+
 #### Scenario: Image mapped via filename map
 
 - **WHEN** an `<img>` element has a `src` that matches an entry in the uploaded filename map
@@ -31,7 +33,9 @@ Image filename generation SHALL include parent path segments when a URL has mult
 #### Scenario: Image URL not in filename map
 
 - **WHEN** an `<img>` element has a `src` that does not match any entry in the filename map
-- **THEN** the server generates a filename from the URL path, including parent segments for multi-segment paths
+- **THEN** the server resolves the URL and checks the content-type map
+- **AND** if the URL has a content-type entry, generates a filename using that extension
+- **AND** if no content-type entry exists, generates a filename with `.bin` extension
 - **AND** replaces the `src` with `./images/<generated_filename>`
 
 #### Scenario: Multi-segment URL generates collision-safe filename
@@ -53,6 +57,11 @@ Image filename generation SHALL include parent path segments when a URL has mult
 
 - **WHEN** an element has an inline `style` attribute containing `--image-url: url(https://example.com/photo.jpg)`
 - **THEN** the URL inside `url()` is converted to a local path using the filename map or generated filename
+
+#### Scenario: Extensionless CDN URL gets correct extension from content-type
+
+- **WHEN** an `<img src>` is `https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/MHW04?wid=400&hei=400&fmt=jpeg` and this URL is not in the filename map but has content-type `image/jpeg` in the content-type map
+- **THEN** the generated filename uses `.jpg` extension (e.g., `1_as-images.apple.com_is_MHW04.jpg`)
 
 ### Requirement: Script URL Conversion
 

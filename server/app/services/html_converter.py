@@ -289,6 +289,7 @@ def _convert_images(
     tab_url: str,
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
+    content_type_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Convert image URLs in HTML to relative local paths (mutates soup in-place).
 
@@ -302,23 +303,39 @@ def _convert_images(
     """
     # --- <img> elements ---
     for img in soup.find_all("img"):
-        _convert_img_src(img, tab_url, path, filename_map)
-        _convert_lazy_load_attrs(img, tab_url, path, filename_map)
-        _convert_srcset(img, "srcset", tab_url, path, filename_map)
+        _convert_img_src(img, tab_url, path, filename_map, content_type_map)
+        _convert_lazy_load_attrs(img, tab_url, path, filename_map, content_type_map)
+        _convert_srcset(img, "srcset", tab_url, path, filename_map, content_type_map)
 
     # --- <picture><source> elements ---
     for source in soup.find_all("source"):
         if source.get("srcset"):
-            _convert_srcset(source, "srcset", tab_url, path, filename_map)
+            _convert_srcset(source, "srcset", tab_url, path, filename_map, content_type_map)
         # Handle <source src="..."> (used in older browsers and video contexts)
         src = source.get("src")
         if src and isinstance(src, str) and not src.startswith("data:"):
             mapped = _lookup_filename_map(src, tab_url, filename_map)
             if mapped:
                 source["src"] = path + mapped
-            elif _has_extension(src.split("?")[0]):
-                filename = src.split("?")[0].split("/")[-1]
-                source["src"] = path + "images/" + filename
+            else:
+                clean = src.split("?")[0]
+                # Extract path component to check for extension (avoid matching
+                # dots in the hostname like "cdn.example.com")
+                try:
+                    if clean.startswith(("http://", "https://")):
+                        parsed = urlparse(clean)
+                        clean_path = parsed.path
+                    else:
+                        clean_path = clean
+                except Exception:
+                    clean_path = clean
+                if _has_extension(clean_path):
+                    filename = clean_path.split("/")[-1]
+                    source["src"] = path + "images/" + filename
+                else:
+                    ct = _lookup_content_type(src, tab_url, content_type_map)
+                    filename = generate_image_filename(clean, ct)
+                    source["src"] = path + "images/" + filename
 
 
 def _lookup_filename_map(
@@ -360,8 +377,45 @@ def _lookup_filename_map(
     return None
 
 
+def _lookup_content_type(
+    url: str, tab_url: str, content_type_map: Optional[dict[str, str]]
+) -> Optional[str]:
+    """Try to find a URL's content-type in the content-type map.
+
+    Uses the same multi-strategy lookup as _lookup_filename_map.
+    """
+    if not content_type_map:
+        return None
+
+    # 1. Exact match
+    ct = content_type_map.get(url)
+    if ct:
+        return ct
+
+    # 2. Without query params
+    clean = url.split("?")[0].split("#")[0]
+    ct = content_type_map.get(clean)
+    if ct:
+        return ct
+
+    # 3. Resolve to full URL and try matching
+    full_url = _resolve_url(url, tab_url)
+    if full_url != url:
+        ct = content_type_map.get(full_url)
+        if ct:
+            return ct
+        clean_full = full_url.split("?")[0].split("#")[0]
+        ct = content_type_map.get(clean_full)
+        if ct:
+            return ct
+
+    return None
+
+
 def _convert_img_src(
-    img: Tag, tab_url: str, path: str, filename_map: Optional[dict[str, str]]
+    img: Tag, tab_url: str, path: str,
+    filename_map: Optional[dict[str, str]],
+    content_type_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Convert an <img> element's src attribute to a local path."""
     src = img.get("src")
@@ -399,12 +453,16 @@ def _convert_img_src(
         except Exception:
             pass
 
-    filename = generate_image_filename(clean_src)
+    filename = generate_image_filename(
+        clean_src, _lookup_content_type(original_src, tab_url, content_type_map)
+    )
     img["src"] = path + "images/" + filename
 
 
 def _convert_lazy_load_attrs(
-    img: Tag, tab_url: str, path: str, filename_map: Optional[dict[str, str]]
+    img: Tag, tab_url: str, path: str,
+    filename_map: Optional[dict[str, str]],
+    content_type_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Convert lazy-load attributes (data-src, data-lazy-src, etc.) [5.2]."""
     for attr in LAZY_LOAD_ATTRS:
@@ -414,7 +472,7 @@ def _convert_lazy_load_attrs(
 
         # For data-srcset, use srcset parsing
         if attr == "data-srcset":
-            _convert_srcset_attr_value(img, attr, tab_url, path, filename_map)
+            _convert_srcset_attr_value(img, attr, tab_url, path, filename_map, content_type_map)
             continue
 
         original = value
@@ -423,22 +481,27 @@ def _convert_lazy_load_attrs(
             img[attr] = path + mapped
         else:
             clean = value.split("?")[0]
-            filename = generate_image_filename(clean)
+            ct = _lookup_content_type(original, tab_url, content_type_map)
+            filename = generate_image_filename(clean, ct)
             img[attr] = path + "images/" + filename
 
 
 def _convert_srcset(
-    element: Tag, attr: str, tab_url: str, path: str, filename_map: Optional[dict[str, str]]
+    element: Tag, attr: str, tab_url: str, path: str,
+    filename_map: Optional[dict[str, str]],
+    content_type_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Parse and convert a srcset attribute. [5.3]"""
     value = element.get(attr)
     if not value or not isinstance(value, str):
         return
-    _convert_srcset_attr_value(element, attr, tab_url, path, filename_map)
+    _convert_srcset_attr_value(element, attr, tab_url, path, filename_map, content_type_map)
 
 
 def _convert_srcset_attr_value(
-    element: Tag, attr: str, tab_url: str, path: str, filename_map: Optional[dict[str, str]]
+    element: Tag, attr: str, tab_url: str, path: str,
+    filename_map: Optional[dict[str, str]],
+    content_type_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Convert URLs within a srcset attribute value.
 
@@ -469,7 +532,8 @@ def _convert_srcset_attr_value(
             new_url = path + mapped
         else:
             clean = url.split("?")[0]
-            filename = generate_image_filename(clean)
+            ct = _lookup_content_type(url, tab_url, content_type_map)
+            filename = generate_image_filename(clean, ct)
             new_url = path + "images/" + filename
 
         if descriptor:
@@ -491,6 +555,7 @@ def _convert_background_images(
     tab_url: str,
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
+    content_type_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Convert url() references in inline styles and <style> tags (mutates soup in-place).
 
@@ -500,13 +565,13 @@ def _convert_background_images(
     # Process inline styles with background images
     for element in soup.find_all(attrs={"style": re.compile(r"url\(", re.IGNORECASE)}):
         style = element.get("style", "")
-        updated = _convert_bg_image_urls(style, tab_url, path, filename_map)
+        updated = _convert_bg_image_urls(style, tab_url, path, filename_map, content_type_map)
         element["style"] = updated
 
     # Process <style> tags
     for style_tag in soup.find_all("style"):
         css = style_tag.string or ""
-        updated = _convert_bg_image_urls(css, tab_url, path, filename_map)
+        updated = _convert_bg_image_urls(css, tab_url, path, filename_map, content_type_map)
         style_tag.string = updated
 
 
@@ -515,6 +580,7 @@ def _convert_bg_image_urls(
     tab_url: str,
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
+    content_type_map: Optional[dict[str, str]] = None,
 ) -> str:
     """Convert url() patterns in CSS content to relative local paths."""
     def _replace_bg_url(match: re.Match) -> str:
@@ -536,13 +602,16 @@ def _convert_bg_image_urls(
                     relative = path + "images/" + fix_filename(filename)
                     return match.group(0).replace(image_url, relative)
 
-            origin = _get_origin(tab_url)
-            base_url = origin + "/"
-            if image_url.startswith(base_url):
-                parsed = urlparse(image_url)
-                relative_path = parsed.path
-                filename = relative_path.split("/")[-1] if "/" in relative_path else relative_path
-                if filename:
+            parsed = urlparse(image_url)
+            clean_path = parsed.path
+            filename = clean_path.split("/")[-1] if "/" in clean_path else clean_path
+            if filename:
+                ct = _lookup_content_type(image_url, tab_url, content_type_map)
+                if ct:
+                    generated = generate_image_filename(clean_path, ct)
+                    relative = path + "images/" + generated
+                    return match.group(0).replace(image_url, relative)
+                if _has_extension(clean_path):
                     relative = path + "images/" + fix_filename(filename)
                     return match.group(0).replace(image_url, relative)
         except Exception:
@@ -820,6 +889,7 @@ def convert_html_for_linked_page(
     html_string: str,
     tab_url: str,
     filename_map: Optional[dict[str, str]] = None,
+    content_type_map: Optional[dict[str, str]] = None,
 ) -> str:
     """Convert HTML for a linked page stored in pages/ directory.
 
@@ -834,6 +904,7 @@ def convert_html_for_linked_page(
         tab_url,
         filename_map=filename_map,
         is_linked_page=True,
+        content_type_map=content_type_map,
     )
 
 
@@ -848,6 +919,7 @@ def _convert_css_file_impl(
     filename_map: Optional[dict[str, str]] = None,
     storage_root: Optional[str] = None,
     session_id: Optional[str] = None,
+    content_type_map: Optional[dict[str, str]] = None,
 ) -> str:
     """Rewrite url() references inside standalone CSS files.
 
@@ -949,9 +1021,9 @@ def _convert_css_file_impl(
             filename = fix_filename(filename)
             return full_match.replace(url, "../images/" + filename)
 
-        # Unknown extension — try image path as default for url() references
-        # in CSS (most url() references in CSS are images)
-        filename = generate_image_filename(clean_url)
+        # Unknown/missing extension — use content-type map if available
+        ct = _lookup_content_type(url, tab_url, content_type_map)
+        filename = generate_image_filename(clean_url, ct)
         return full_match.replace(url, "../images/" + filename)
 
     result = CSS_URL_PATTERN.sub(_replace_url, result)
@@ -1270,6 +1342,7 @@ def convert_html(
     is_linked_page: bool = False,
     path: Optional[str] = None,
     page_filename_map: Optional[dict[str, str]] = None,
+    content_type_map: Optional[dict[str, str]] = None,
 ) -> str:
     """Convert all resource URLs in HTML to relative local paths.
 
@@ -1284,6 +1357,9 @@ def convert_html(
         path: Override path prefix (default: "./" or "../" for linked pages).
         page_filename_map: Optional mapping of page URL → resolved filename
             for deduplicated linked page filenames.
+        content_type_map: Optional mapping of original URL → MIME type,
+            used to determine correct extensions for extensionless URLs when
+            the filename map lookup misses.
 
     Returns:
         The converted HTML string with local resource paths.
@@ -1300,10 +1376,10 @@ def convert_html(
     _convert_links(soup, tab_url, path, page_filename_map=page_filename_map)
 
     # 3. Convert images (including lazy-load and srcset)
-    _convert_images(soup, tab_url, path, filename_map)
+    _convert_images(soup, tab_url, path, filename_map, content_type_map)
 
     # 4. Convert background images (inline styles + <style> tags)
-    _convert_background_images(soup, tab_url, path, filename_map)
+    _convert_background_images(soup, tab_url, path, filename_map, content_type_map)
 
     # 5. Convert object elements
     _convert_object_elements(soup, tab_url, path)
@@ -1337,9 +1413,11 @@ class HtmlConverterService:
         is_linked_page: bool = False,
         path: Optional[str] = None,
         page_filename_map: Optional[dict[str, str]] = None,
+        content_type_map: Optional[dict[str, str]] = None,
     ) -> str:
         """Convert all resource URLs in HTML to relative local paths."""
-        return convert_html(html_string, tab_url, filename_map, is_linked_page, path, page_filename_map)
+        return convert_html(html_string, tab_url, filename_map, is_linked_page, path,
+                            page_filename_map, content_type_map)
 
     def convert_linked_page_html(
         self,
@@ -1347,10 +1425,12 @@ class HtmlConverterService:
         tab_url: str,
         filename_map: Optional[dict[str, str]] = None,
         page_filename_map: Optional[dict[str, str]] = None,
+        content_type_map: Optional[dict[str, str]] = None,
     ) -> str:
         """Convert HTML for a linked page (uses ../ prefix)."""
         return convert_html(html_string, tab_url, filename_map=filename_map,
-                            is_linked_page=True, page_filename_map=page_filename_map)
+                            is_linked_page=True, page_filename_map=page_filename_map,
+                            content_type_map=content_type_map)
 
     def convert_css_file(
         self,
@@ -1359,9 +1439,11 @@ class HtmlConverterService:
         filename_map: Optional[dict[str, str]] = None,
         storage_root: Optional[str] = None,
         session_id: Optional[str] = None,
+        content_type_map: Optional[dict[str, str]] = None,
     ) -> str:
         """Rewrite url() references in standalone CSS files."""
-        return _convert_css_file_impl(css_content, tab_url, filename_map, storage_root, session_id)
+        return _convert_css_file_impl(css_content, tab_url, filename_map, storage_root, session_id,
+                                       content_type_map)
 
     def convert_to_single_file(
         self,

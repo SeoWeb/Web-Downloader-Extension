@@ -19,6 +19,7 @@ from app.services.html_converter import (
     convert_html,
     convert_html_for_linked_page,
     _convert_css_file_impl as convert_css_file,
+    _lookup_content_type,
     fix_filename,
     generate_image_filename,
     generate_page_filename,
@@ -40,6 +41,14 @@ SAMPLE_FILENAME_MAP = {
     "https://example.com/js/app.js": "scripts/app.js",
     "https://example.com/docs/report.pdf": "documents/report.pdf",
     "https://example.com/fonts/roboto.woff2": "fonts/roboto.woff2",
+}
+
+SAMPLE_CONTENT_TYPE_MAP = {
+    "https://cdn.example.com/img/abc123": "image/jpeg",
+    "https://cdn.example.com/img/def456": "image/png",
+    "https://cdn.other.com/assets/hero": "image/webp",
+    "https://example.com/images/photo.jpg": "image/jpeg",
+    "https://cdn.example.com/img/noext": "image/gif",
 }
 
 
@@ -825,6 +834,184 @@ def test_single_parse_output_deterministic():
 
 
 # ---------------------------------------------------------------------------
+# Content-type map fallback tests (fix-bin-image-extensions)
+# ---------------------------------------------------------------------------
+
+
+def test_lookup_content_type_exact_match():
+    """_lookup_content_type finds exact URL match."""
+    assert _lookup_content_type(
+        "https://cdn.example.com/img/abc123", TAB_URL, SAMPLE_CONTENT_TYPE_MAP
+    ) == "image/jpeg"
+
+
+def test_lookup_content_type_clean_url():
+    """_lookup_content_type matches after stripping query params."""
+    assert _lookup_content_type(
+        "https://cdn.example.com/img/abc123?wid=400&fmt=jpeg", TAB_URL, SAMPLE_CONTENT_TYPE_MAP
+    ) == "image/jpeg"
+
+
+def test_lookup_content_type_resolved_url():
+    """_lookup_content_type resolves relative URLs before lookup."""
+    ct_map = {"https://example.com/img/abc": "image/png"}
+    # Relative URL resolved against tab_url
+    assert _lookup_content_type("/img/abc", TAB_URL, ct_map) == "image/png"
+
+
+def test_lookup_content_type_no_match():
+    """_lookup_content_type returns None when URL not found."""
+    assert _lookup_content_type(
+        "https://unknown.com/img/xyz", TAB_URL, SAMPLE_CONTENT_TYPE_MAP
+    ) is None
+
+
+def test_lookup_content_type_none_map():
+    """_lookup_content_type returns None when map is None."""
+    assert _lookup_content_type("https://cdn.example.com/img/abc123", TAB_URL, None) is None
+
+
+def test_img_src_extensionless_url_with_content_type():
+    """<img src> with extensionless URL uses content-type for correct extension."""
+    html = '<html><body><img src="https://cdn.example.com/img/abc123?wid=400&fmt=jpeg"></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={}, content_type_map=SAMPLE_CONTENT_TYPE_MAP)
+    srcs = _get_attr(result, "img", "src")
+    assert any(s.startswith("./images/") and s.endswith(".jpg") for s in srcs), (
+        f"Expected .jpg extension from content-type, got: {srcs}"
+    )
+    assert not any(s.endswith(".bin") for s in srcs), (
+        f"Should not have .bin extension when content-type available, got: {srcs}"
+    )
+
+
+def test_img_src_no_content_type_falls_back_to_bin():
+    """<img src> with extensionless URL and no content-type falls back to .bin."""
+    html = '<html><body><img src="https://unknown.com/img/xyz"></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={}, content_type_map=SAMPLE_CONTENT_TYPE_MAP)
+    srcs = _get_attr(result, "img", "src")
+    assert any(s.endswith(".bin") for s in srcs), (
+        f"Expected .bin fallback, got: {srcs}"
+    )
+
+
+def test_lazy_load_extensionless_url_with_content_type():
+    """Lazy-load data-src with extensionless URL uses content-type for extension."""
+    html = '<html><body><img data-src="https://cdn.example.com/img/abc123" src="placeholder.gif"></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={}, content_type_map=SAMPLE_CONTENT_TYPE_MAP)
+    data_srcs = _get_attr(result, "img", "data-src")
+    assert any(s.endswith(".jpg") for s in data_srcs), (
+        f"Expected .jpg from content-type in data-src, got: {data_srcs}"
+    )
+
+
+def test_srcset_extensionless_url_with_content_type():
+    """srcset URL with no extension uses content-type for correct extension."""
+    html = '<html><body><img srcset="https://cdn.example.com/img/abc123 2x"></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={}, content_type_map=SAMPLE_CONTENT_TYPE_MAP)
+    srcsets = _get_attr(result, "img", "srcset")
+    assert any(".jpg" in s for s in srcsets), (
+        f"Expected .jpg from content-type in srcset, got: {srcsets}"
+    )
+
+
+def test_source_src_extensionless_url_with_content_type():
+    """<source src> with extensionless URL uses content-type for extension."""
+    html = '<html><body><picture><source src="https://cdn.example.com/img/abc123" type="image/jpeg"></picture></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={}, content_type_map=SAMPLE_CONTENT_TYPE_MAP)
+    srcs = _get_attr(result, "source", "src")
+    assert any(s.endswith(".jpg") for s in srcs), (
+        f"Expected .jpg from content-type on <source src>, got: {srcs}"
+    )
+
+
+def test_inline_style_extensionless_url_with_content_type():
+    """CSS url() in inline style with extensionless URL uses content-type."""
+    html = '<html><body><div style="background-image: url(\'https://cdn.example.com/img/abc123\')"></div></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={}, content_type_map=SAMPLE_CONTENT_TYPE_MAP)
+    assert ".jpg" in result, (
+        f"Expected .jpg from content-type in inline style url(), got: {result}"
+    )
+
+
+def test_style_tag_extensionless_url_with_content_type():
+    """CSS url() in <style> tag with extensionless URL uses content-type."""
+    html = '<html><head><style>.bg { background: url(\'https://cdn.example.com/img/abc123\'); }</style></head><body></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={}, content_type_map=SAMPLE_CONTENT_TYPE_MAP)
+    assert ".jpg" in result, (
+        f"Expected .jpg from content-type in <style> tag url(), got: {result}"
+    )
+
+
+def test_external_css_url_extensionless_with_content_type():
+    """External CSS url() with extensionless URL uses content-type."""
+    html = '<html><body><div style="background: url(\'https://cdn.other.com/assets/hero\')"></div></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={}, content_type_map=SAMPLE_CONTENT_TYPE_MAP)
+    assert ".webp" in result, (
+        f"Expected .webp from content-type for external URL, got: {result}"
+    )
+
+
+def test_css_file_extensionless_url_with_content_type():
+    """Standalone CSS file url() with extensionless URL uses content-type."""
+    css = "body { background: url('https://cdn.example.com/img/abc123'); }"
+    result = convert_css_file(css, TAB_URL, filename_map={}, content_type_map=SAMPLE_CONTENT_TYPE_MAP)
+    assert ".jpg" in result, (
+        f"Expected .jpg from content-type in CSS file url(), got: {result}"
+    )
+
+
+def test_content_type_map_does_not_override_filename_map():
+    """Filename map takes priority over content-type map."""
+    html = '<html><body><img src="https://example.com/images/photo.jpg"></body></html>'
+    result = convert_html(
+        html, TAB_URL,
+        filename_map={"https://example.com/images/photo.jpg": "images/photo.jpg"},
+        content_type_map=SAMPLE_CONTENT_TYPE_MAP,
+    )
+    srcs = _get_attr(result, "img", "src")
+    assert "./images/photo.jpg" in srcs, (
+        f"Filename map should win, got: {srcs}"
+    )
+
+
+def test_linked_page_extensionless_url_with_content_type():
+    """Linked page content-type fallback uses ../ prefix."""
+    html = '<html><body><img src="https://cdn.example.com/img/abc123"></body></html>'
+    result = convert_html_for_linked_page(
+        html, TAB_URL, filename_map={}, content_type_map=SAMPLE_CONTENT_TYPE_MAP,
+    )
+    srcs = _get_attr(result, "img", "src")
+    assert any(s.startswith("../images/") and s.endswith(".jpg") for s in srcs), (
+        f"Expected ../images/...jpg for linked page, got: {srcs}"
+    )
+
+
+def test_all_fallback_paths_content_type_aware():
+    """All 6 fallback paths produce correct extension from content-type map."""
+    ct_map = {"https://cdn.example.com/img/x": "image/png"}
+    html = """<html>
+<head><style>.bg { background: url('https://cdn.example.com/img/x'); }</style></head>
+<body>
+    <img src="https://cdn.example.com/img/x">
+    <img data-src="https://cdn.example.com/img/x" src="placeholder.gif">
+    <img srcset="https://cdn.example.com/img/x 2x">
+    <picture><source src="https://cdn.example.com/img/x"></picture>
+    <div style="background: url('https://cdn.example.com/img/x')"></div>
+</body>
+</html>"""
+    result = convert_html(html, TAB_URL, filename_map={}, content_type_map=ct_map)
+
+    # Count .png occurrences across all converted paths
+    assert result.count(".png") >= 6, (
+        f"Expected .png in all 6 fallback paths, found {result.count('.png')} in:\n{result}"
+    )
+    # No .bin anywhere
+    assert ".bin" not in result, (
+        f"Should have no .bin when content-type available, got: {result}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -899,6 +1086,24 @@ def run_all():
         test_conversion_order_preserved,
         test_single_parse_linked_page_uses_dotdot_prefix,
         test_single_parse_output_deterministic,
+        # Content-type map fallback (fix-bin-image-extensions)
+        test_lookup_content_type_exact_match,
+        test_lookup_content_type_clean_url,
+        test_lookup_content_type_resolved_url,
+        test_lookup_content_type_no_match,
+        test_lookup_content_type_none_map,
+        test_img_src_extensionless_url_with_content_type,
+        test_img_src_no_content_type_falls_back_to_bin,
+        test_lazy_load_extensionless_url_with_content_type,
+        test_srcset_extensionless_url_with_content_type,
+        test_source_src_extensionless_url_with_content_type,
+        test_inline_style_extensionless_url_with_content_type,
+        test_style_tag_extensionless_url_with_content_type,
+        test_external_css_url_extensionless_with_content_type,
+        test_css_file_extensionless_url_with_content_type,
+        test_content_type_map_does_not_override_filename_map,
+        test_linked_page_extensionless_url_with_content_type,
+        test_all_fallback_paths_content_type_aware,
     ]
 
     passed = 0

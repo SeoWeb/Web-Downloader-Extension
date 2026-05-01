@@ -112,6 +112,15 @@ class ZipAssemblerService:
                 # ---- Phase 2: Converting URLs ----
                 await self._update_progress(db, session, "converting_urls", 0)
 
+                # Build content-type map from uploaded resources for
+                # extension-aware fallback when filename map misses.
+                all_resources = await self._get_all_resources(db, session_id)
+                content_type_map: dict[str, str] = {
+                    r.original_url: r.content_type
+                    for r in all_resources
+                    if r.content_type
+                }
+
                 # Build page_filename_map BEFORE converting main HTML so that
                 # convert_html() can rewrite intra-site links to linked pages.
                 linked_results: dict[str, MergeResult] = {
@@ -144,6 +153,7 @@ class ZipAssemblerService:
                     False,             # is_linked_page
                     None,              # path
                     page_filename_map, # page_filename_map (positional)
+                    content_type_map,  # content_type_map (positional)
                 )
                 await self._update_progress(db, session, "converting_urls", 100)
 
@@ -167,6 +177,7 @@ class ZipAssemblerService:
                                 converted = await asyncio.to_thread(
                                     html_converter_service.convert_linked_page_html,
                                     lp_result.html, tab_url, filename_map, page_filename_map,
+                                    content_type_map,
                                 )
                                 linked_page_htmls[page_hash] = converted
                                 if lp_result.page_url:
@@ -197,6 +208,7 @@ class ZipAssemblerService:
                         async with css_sem:
                             await self._convert_css_resource(
                                 resource, tab_url, filename_map, session_id,
+                                content_type_map,
                             )
                             css_completed += 1
                             pct = int(css_completed / max(total_css, 1) * 100)
@@ -225,6 +237,7 @@ class ZipAssemblerService:
                         session_id, db, session,
                         main_html, linked_page_htmls, linked_page_urls,
                         page_hash_to_filename, filename_map, content_text,
+                        all_resources,
                     )
 
                 if output_path is None:
@@ -277,6 +290,7 @@ class ZipAssemblerService:
         page_hash_to_filename: dict[str, str],
         filename_map: dict[str, str],
         content_text: Optional[str],
+        all_resources: list | None = None,
     ) -> Optional[str]:
         """Assemble a ZIP archive with the correct directory structure.
 
@@ -294,7 +308,7 @@ class ZipAssemblerService:
         zip_filename = generate_safe_filename(session.url, ".zip")
         zip_path = os.path.join(session_dir, zip_filename)
 
-        resources = await self._get_all_resources(db, session_id)
+        resources = all_resources if all_resources is not None else await self._get_all_resources(db, session_id)
         total_steps = len(resources) + len(linked_page_htmls) + 2  # +index.html +content.txt
         steps_done = 0
 
@@ -450,6 +464,7 @@ class ZipAssemblerService:
         tab_url: str,
         filename_map: dict[str, str],
         session_id: str,
+        content_type_map: Optional[dict[str, str]] = None,
     ) -> None:
         """Rewrite url() references in a CSS resource file on disk."""
         storage_path = resource.storage_path
@@ -464,6 +479,7 @@ class ZipAssemblerService:
                 html_converter_service.convert_css_file,
                 css_content, tab_url, filename_map,
                 self.storage_root, session_id,
+                content_type_map,
             )
 
             # Only rewrite if changed
