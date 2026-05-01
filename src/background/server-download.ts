@@ -7,7 +7,7 @@
  * Key behaviors:
  * - (11.1) Replaces panel-download flow when server mode is active
  * - (11.2) Uses chrome.downloads.download with server URL and custom filename
- * - (11.3) Polls session status every 2s after finalize until ready/failed
+ * - (11.3) Polls session status with adaptive intervals after finalize until ready/failed
  *          with a 5-minute timeout (AssemblyTimeoutError)
  * - (11.4) Offers local fallback when server fails or times out
  */
@@ -61,8 +61,15 @@ export class AssemblyFailedError extends Error {
 // Constants
 // ---------------------------------------------------------------------------
 
-const POLL_INTERVAL_MS = 2000; // 2 seconds
 const ASSEMBLY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+/** Adaptive polling interval: fast for quick assemblies, slower for long ones. */
+function getPollInterval(elapsedMs: number): number {
+  if (elapsedMs < 6000) return 1000;  // 1s for first 6s
+  if (elapsedMs < 30000) return 2000; // 2s for 6-30s
+  if (elapsedMs < 60000) return 3000; // 3s for 30-60s
+  return 5000;                         // 5s after 60s
+}
 
 // ---------------------------------------------------------------------------
 // ServerDownloadHandler
@@ -93,7 +100,7 @@ export class ServerDownloadHandler {
   /**
    * (11.3) Poll the server for assembly completion after finalization.
    *
-   * Polls `getSessionStatus` every 2 seconds until:
+   * Polls `getSessionStatus` with adaptive intervals (1s→2s→3s→5s) until:
    * - status === "ready" → returns the session status (with download URL)
    * - status === "failed" → throws an error with the server's error message
    * - timeout (5 minutes) → throws AssemblyTimeoutError
@@ -145,7 +152,7 @@ export class ServerDownloadHandler {
           }
 
           // Wait before next poll and continue
-          await sleep(POLL_INTERVAL_MS, signal);
+          await sleep(getPollInterval(elapsed), signal);
           continue;
         }
 
@@ -166,7 +173,7 @@ export class ServerDownloadHandler {
         }
 
         // Status is still "assembling" (or transitional) — wait and poll again
-        await sleep(POLL_INTERVAL_MS, signal);
+        await sleep(getPollInterval(elapsed), signal);
       }
     } finally {
       this.pollingAbortController = null;

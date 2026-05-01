@@ -5,19 +5,21 @@
  * message actions to the appropriate ServerClient methods,
  * handles errors consistently, and manages the active session ID.
  *
- * The serverClient singleton is mocked via jest.mock to isolate
+ * The serverClient singleton is mocked via vi.mock to isolate
  * message-routing logic from HTTP communication.
  */
 
 import { messageWorker } from "../../src/background/message";
 import { messageActions } from "../../src/common/message";
+import { serverClient } from "../../src/background/server-client";
+import { startDownload } from "../../src/background/jobs";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-jest.mock("../../src/background/server-client", () => {
-  const mocks: Record<string, jest.Mock> = {};
+vi.mock("../../src/background/server-client", () => {
+  const mocks: Record<string, vi.Mock> = {};
   for (const m of [
     "createSession",
     "uploadHtmlChunk",
@@ -29,7 +31,7 @@ jest.mock("../../src/background/server-client", () => {
     "checkHealth",
     "deleteSession",
   ]) {
-    mocks[m] = jest.fn();
+    mocks[m] = vi.fn();
   }
   return {
     __esModule: true,
@@ -49,23 +51,23 @@ jest.mock("../../src/background/server-client", () => {
   };
 });
 
-jest.mock("../../src/background/jobs", () => ({
-  scrollDownAndScrape: jest.fn().mockResolvedValue({ height: 1000, html: "<p>test</p>" }),
-  startDownload: jest.fn().mockResolvedValue(["file1.zip"]),
+vi.mock("../../src/background/jobs", () => ({
+  scrollDownAndScrape: vi.fn().mockResolvedValue({ height: 1000, html: "<p>test</p>" }),
+  startDownload: vi.fn().mockResolvedValue(["file1.zip"]),
 }));
 
-jest.mock("../../src/background/download", () => ({
-  downloadResourcesWithIncrementalAssembly: jest.fn().mockResolvedValue(undefined),
+vi.mock("../../src/background/download", () => ({
+  downloadResourcesWithIncrementalAssembly: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock("../../src/background/merge-html", () => ({
-  mergeHtmlIncremental: jest.fn().mockResolvedValue(undefined),
+vi.mock("../../src/background/merge-html", () => ({
+  mergeHtmlIncremental: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock("../../src/background/scraper-state", () => ({
-  pauseScraping: jest.fn(),
-  resumeScraping: jest.fn(),
-  stopScraping: jest.fn(),
+vi.mock("../../src/background/scraper-state", () => ({
+  pauseScraping: vi.fn(),
+  resumeScraping: vi.fn(),
+  stopScraping: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -73,13 +75,12 @@ jest.mock("../../src/background/scraper-state", () => ({
 // ---------------------------------------------------------------------------
 
 /** Get a mock function from the mocked serverClient module. */
-function mock(method: string): jest.Mock {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return (require("../../src/background/server-client") as any).serverClient[method] as jest.Mock;
+function mock(method: string): vi.Mock {
+  return (serverClient as any)[method] as vi.Mock;
 }
 
 /** No-op addMessage callback */
-const addMessage = jest.fn();
+const addMessage = vi.fn();
 
 /** Reset the active server session between tests. */
 async function resetActiveSession() {
@@ -93,7 +94,7 @@ async function resetActiveSession() {
 
 describe("messageWorker — server-mode message actions", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // -----------------------------------------------------------------------
@@ -350,8 +351,6 @@ describe("messageWorker — server-mode message actions", () => {
   // -----------------------------------------------------------------------
   describe("SERVER_LOCAL_FALLBACK", () => {
     it("clears active session and restarts download in local mode", async () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { startDownload } = require("../../src/background/jobs");
 
       const result = await messageWorker(
         messageActions.SERVER_LOCAL_FALLBACK,
@@ -421,14 +420,14 @@ describe("messageWorker — server-mode message actions", () => {
       mock("createSession").mockResolvedValue("sess-active");
       await messageWorker(
         messageActions.SERVER_CREATE_SESSION,
-        { url: "https://example.com", setActive: true },
+        { url: "https://example.com", setActive: true, tabId: 1 },
         addMessage,
       );
 
       // Now upload without specifying sessionId — should use active
       const result = await messageWorker(
         messageActions.SERVER_UPLOAD_HTML_CHUNK,
-        { html: "<p>chunk</p>", scrollIndex: 0 },
+        { html: "<p>chunk</p>", scrollIndex: 0, tabId: 1 },
         addMessage,
       );
 

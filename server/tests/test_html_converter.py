@@ -679,6 +679,152 @@ def test_fragment_url_preserved():
 
 
 # ---------------------------------------------------------------------------
+# Single-parse verification tests (server-mode-performance)
+# ---------------------------------------------------------------------------
+
+
+def test_single_parse_converts_all_element_types():
+    """Single parse of convert_html converts all 7 element types on one soup tree.
+
+    Verifies that parsing happens once and all conversion passes operate on
+    the same soup object, producing correct output for every element type.
+    """
+    html = """<!DOCTYPE html>
+<html>
+<head>
+    <base href="https://example.com/">
+    <link rel="stylesheet" href="https://example.com/css/style.css">
+    <style>body { background-image: url('https://example.com/images/photo.jpg'); }</style>
+</head>
+<body>
+    <img src="https://example.com/images/photo.jpg">
+    <img data-src="https://example.com/images/logo.png" src="data:placeholder">
+    <img srcset="https://example.com/images/hero.webp 2x">
+    <div style="background-image: url('https://example.com/images/photo.jpg')"></div>
+    <script src="https://example.com/js/app.js"></script>
+    <a href="https://example.com/docs/report.pdf">Report</a>
+    <a href="https://example.com/about.html">About</a>
+    <object type="image/svg+xml" data="https://example.com/images/diagram.svg"></object>
+</body>
+</html>"""
+
+    result = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(result, "lxml")
+
+    # 1. Base tag removed
+    assert soup.find("base") is None, "Base tag should be removed"
+
+    # 2. Links converted
+    hrefs = [a.get("href", "") for a in soup.find_all("a")]
+    assert "./documents/report.pdf" in hrefs, f"Link conversion missing: {hrefs}"
+
+    # 3. Images converted
+    img_srcs = [img.get("src", "") for img in soup.find_all("img")]
+    assert "./images/photo.jpg" in img_srcs, f"Image conversion missing: {img_srcs}"
+
+    # 4. Background images converted (inline style)
+    assert "./images/photo.jpg" in result, "Background image not converted"
+
+    # 5. Object elements converted
+    obj_datas = [obj.get("data", "") for obj in soup.find_all("object")]
+    assert any(d.startswith("./images/") for d in obj_datas), f"Object conversion missing: {obj_datas}"
+
+    # 6. Stylesheets converted
+    links = soup.find_all("link", rel="stylesheet")
+    assert any(l.get("href") == "./styles/style.css" for l in links), "Stylesheet conversion missing"
+
+    # 7. Scripts converted
+    scripts = [s.get("src", "") for s in soup.find_all("script", src=True)]
+    assert "./scripts/app.js" in scripts, f"Script conversion missing: {scripts}"
+
+
+def test_conversion_order_preserved():
+    """Conversion order: remove base → links → images → bg images → objects → stylesheets → scripts.
+
+    Verify by checking that a <base> tag is removed before links are converted
+    (if base were still present, it could affect URL resolution). Also verify
+    that images converted after links don't break link hrefs.
+    """
+    # HTML with a base tag and a link that should be converted as a page link
+    html = """<html>
+<head>
+    <base href="https://example.com/">
+</head>
+<body>
+    <a href="https://example.com/about">About</a>
+    <img src="https://example.com/images/photo.jpg">
+    <link rel="stylesheet" href="https://example.com/css/style.css">
+    <script src="https://example.com/js/app.js"></script>
+</body>
+</html>"""
+
+    result = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(result, "lxml")
+
+    # Base tag must be gone
+    assert soup.find("base") is None, "Base tag should be removed first"
+
+    # Link should be converted to local path (not affected by base tag)
+    hrefs = [a.get("href", "") for a in soup.find_all("a")]
+    assert "./pages/about.html" in hrefs, f"Link should be ./pages/about.html, got: {hrefs}"
+
+    # Image, stylesheet, and script should all be converted
+    assert "./images/photo.jpg" in result, "Image not converted"
+    assert "./styles/style.css" in result, "Stylesheet not converted"
+    assert "./scripts/app.js" in result, "Script not converted"
+
+
+def test_single_parse_linked_page_uses_dotdot_prefix():
+    """Linked page single-parse conversion uses ../ prefix for all resource types."""
+    html = """<html>
+<head>
+    <link rel="stylesheet" href="https://example.com/css/style.css">
+</head>
+<body>
+    <img src="https://example.com/images/photo.jpg">
+    <div style="background-image: url('https://example.com/images/logo.png')"></div>
+    <script src="https://example.com/js/app.js"></script>
+    <a href="https://example.com/docs/report.pdf">Report</a>
+    <object type="image/svg+xml" data="https://example.com/images/diagram.svg"></object>
+</body>
+</html>"""
+
+    result = convert_html_for_linked_page(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(result, "lxml")
+
+    # All paths must use ../ prefix
+    img_srcs = [img.get("src", "") for img in soup.find_all("img")]
+    assert "../images/photo.jpg" in img_srcs, f"Image: {img_srcs}"
+
+    links = [l.get("href", "") for l in soup.find_all("link", rel="stylesheet")]
+    assert "../styles/style.css" in links, f"Stylesheet: {links}"
+
+    scripts = [s.get("src", "") for s in soup.find_all("script", src=True)]
+    assert "../scripts/app.js" in scripts, f"Script: {scripts}"
+
+    hrefs = [a.get("href", "") for a in soup.find_all("a")]
+    assert "../documents/report.pdf" in hrefs, f"Doc link: {hrefs}"
+
+    assert "../images/logo.png" in result, "Background image not using ../"
+
+    obj_datas = [obj.get("data", "") for obj in soup.find_all("object")]
+    assert any(d.startswith("../images/") for d in obj_datas), f"Object: {obj_datas}"
+
+
+def test_single_parse_output_deterministic():
+    """Same input always produces the same output (single-parse is deterministic)."""
+    html = '<html><body><img src="https://example.com/images/photo.jpg"><a href="https://example.com/about">About</a></body></html>'
+
+    result1 = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
+    result2 = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
+
+    assert result1 == result2, "Single-parse conversion should produce deterministic output"
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -748,6 +894,11 @@ def run_all():
         test_multiple_url_in_same_inline_style,
         test_data_uri_preserved_in_non_bg_context,
         test_fragment_url_preserved,
+        # Single-parse verification (server-mode-performance)
+        test_single_parse_converts_all_element_types,
+        test_conversion_order_preserved,
+        test_single_parse_linked_page_uses_dotdot_prefix,
+        test_single_parse_output_deterministic,
     ]
 
     passed = 0

@@ -119,7 +119,7 @@ describe("UploadQueue", () => {
       expect(maxActive).toBeLessThanOrEqual(concurrency);
     });
 
-    it("defaults to max 5 concurrent uploads", async () => {
+    it("defaults to max 12 concurrent uploads", async () => {
       let activeCount = 0;
       let maxActive = 0;
 
@@ -131,13 +131,13 @@ describe("UploadQueue", () => {
         return { resource_id: "r1", local_path: "img.png", size: 100, deduplicated: false, api_version: "v1" };
       });
 
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 15; i++) {
         await queue.enqueue("s1", `img${i}`, createBlob(100), `url${i}`, "image/png");
       }
 
       await queue.waitForAll();
 
-      expect(maxActive).toBeLessThanOrEqual(5);
+      expect(maxActive).toBeLessThanOrEqual(12);
     });
   });
 
@@ -472,6 +472,70 @@ describe("UploadQueue", () => {
       const finalProgress = queue.getProgress();
       expect(finalProgress.completedCount).toBe(1);
       expect(finalProgress.bytesUploaded).toBe(100);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Promise-based waitForAll (spec: extension-server-client)
+  // -----------------------------------------------------------------------
+  describe("waitForAll promise-based notification", () => {
+    it("resolves immediately when queue is already empty", async () => {
+      const queue = createQueue({}, async () => ({
+        resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1",
+      }));
+
+      // Queue has never had any tasks — waitForAll should resolve immediately
+      const start = Date.now();
+      await queue.waitForAll();
+      const elapsed = Date.now() - start;
+
+      expect(elapsed).toBeLessThan(50); // Should be near-instant
+    });
+
+    it("resolves promptly when last upload completes (no 100ms polling delay)", async () => {
+      let uploadResolve: (() => void) | undefined;
+
+      const queue = createQueue({}, async () => {
+        // Hold the upload open until we explicitly resolve it
+        await new Promise<void>((resolve) => { uploadResolve = resolve; });
+        return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
+      });
+
+      await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
+
+      // Wait for the upload to actually start
+      await sleep(20);
+
+      // Start waiting for all uploads
+      const waitPromise = queue.waitForAll();
+      const start = Date.now();
+
+      // Complete the upload
+      uploadResolve!();
+      await waitPromise;
+
+      const elapsed = Date.now() - start;
+      // Should resolve within ~10ms, not the old 100ms polling delay
+      expect(elapsed).toBeLessThan(50);
+      expect(queue.getProgress().completedCount).toBe(1);
+    });
+
+    it("rejects on queue cancellation", async () => {
+      const queue = createQueue({}, async () => {
+        // Long-running upload
+        await sleep(5000);
+        return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
+      });
+
+      await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
+      await sleep(20);
+
+      const waitPromise = queue.waitForAll();
+
+      // Cancel the queue — waitForAll should reject
+      queue.cancel();
+
+      await expect(waitPromise).rejects.toThrow("UploadQueue was cancelled");
     });
   });
 

@@ -329,7 +329,7 @@ class TestZipAssembly:
         async def mock_get_resources(db, sid):
             return resource_list
 
-        async def mock_update_progress(db, session, phase, pct):
+        async def mock_update_progress(db, session, phase, pct, **kwargs):
             pass
 
         assembler._get_all_resources = mock_get_resources
@@ -496,7 +496,7 @@ class TestSingleFileAssembly:
             async def flush(self):
                 pass
 
-        async def mock_update_progress(db, session, phase, pct):
+        async def mock_update_progress(db, session, phase, pct, **kwargs):
             pass
 
         original = assembler._update_progress
@@ -519,6 +519,209 @@ class TestSingleFileAssembly:
             return html_path
         finally:
             assembler._update_progress = original
+
+
+# ---------------------------------------------------------------------------
+# Parallel CSS conversion tests (task 5.2)
+# ---------------------------------------------------------------------------
+
+
+class TestParallelCssConversion:
+    """Task 5.2: Verify parallel CSS conversion with semaphore."""
+
+    def test_all_css_files_converted(self, assembler, storage_root):
+        """All CSS files are converted when run in parallel."""
+        session_id = "test-parallel-css"
+        _setup_session(storage_root, session_id)
+
+        resources_dir = os.path.join(storage_root, session_id, "resources")
+        os.makedirs(os.path.join(resources_dir, "styles"), exist_ok=True)
+
+        css_files = []
+        for i in range(20):
+            css_path = os.path.join(resources_dir, "styles", f"style-{i}.css")
+            with open(css_path, "w") as f:
+                f.write(f"body {{ color: red; }} /* file {i} */")
+            css_files.append(css_path)
+
+        converted_files = []
+
+        async def mock_convert_css(resource, tab_url, filename_map, session_id):
+            converted_files.append(resource.local_path)
+
+        original = assembler._convert_css_resource
+        assembler._convert_css_resource = mock_convert_css
+
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    self._run_css_phase(assembler, session_id, css_files)
+                )
+            finally:
+                loop.close()
+
+            assert len(converted_files) == 20
+        finally:
+            assembler._convert_css_resource = original
+
+    def test_semaphore_limits_concurrency(self, assembler, storage_root):
+        """Semaphore prevents more than 10 concurrent CSS conversions."""
+        session_id = "test-css-concurrency"
+        _setup_session(storage_root, session_id)
+
+        resources_dir = os.path.join(storage_root, session_id, "resources")
+        os.makedirs(os.path.join(resources_dir, "styles"), exist_ok=True)
+
+        css_files = []
+        for i in range(20):
+            css_path = os.path.join(resources_dir, "styles", f"theme-{i}.css")
+            with open(css_path, "w") as f:
+                f.write(f".cls {{ }} /* {i} */")
+            css_files.append(css_path)
+
+        peak_concurrency = 0
+        current_concurrency = 0
+
+        async def mock_convert_css(resource, tab_url, filename_map, session_id):
+            nonlocal peak_concurrency, current_concurrency
+            current_concurrency += 1
+            peak_concurrency = max(peak_concurrency, current_concurrency)
+            await asyncio.sleep(0.01)
+            current_concurrency -= 1
+
+        original = assembler._convert_css_resource
+        assembler._convert_css_resource = mock_convert_css
+
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    self._run_css_phase(assembler, session_id, css_files)
+                )
+            finally:
+                loop.close()
+
+            assert peak_concurrency <= 10
+            assert peak_concurrency > 1
+        finally:
+            assembler._convert_css_resource = original
+
+    def test_progress_uses_batch_flushing(self, assembler, storage_root):
+        """CSS progress updates use batch flushing (every 10 or at end)."""
+        session_id = "test-css-batch-flush"
+        _setup_session(storage_root, session_id)
+
+        resources_dir = os.path.join(storage_root, session_id, "resources")
+        os.makedirs(os.path.join(resources_dir, "styles"), exist_ok=True)
+
+        css_files = []
+        for i in range(25):
+            css_path = os.path.join(resources_dir, "styles", f"batch-{i}.css")
+            with open(css_path, "w") as f:
+                f.write(f"div {{ }} /* {i} */")
+            css_files.append(css_path)
+
+        flush_calls = []
+
+        async def mock_convert_css(resource, tab_url, filename_map, session_id):
+            pass
+
+        original_convert = assembler._convert_css_resource
+        assembler._convert_css_resource = mock_convert_css
+
+        import types
+
+        mock_session = types.SimpleNamespace(
+            assembly_phase=None,
+            assembly_progress_pct=None,
+        )
+
+        class MockDB:
+            async def flush(self):
+                pass
+
+        original_update = assembler._update_progress
+
+        async def tracking_update_progress(db, session, phase, pct, **kwargs):
+            flush_calls.append({"phase": phase, "pct": pct, "flush": kwargs.get("flush", True)})
+
+        assembler._update_progress = tracking_update_progress
+
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    self._run_css_phase(
+                        assembler, session_id, css_files,
+                        db=MockDB(), session=mock_session,
+                    )
+                )
+            finally:
+                loop.close()
+
+            css_flushes = [c for c in flush_calls if c["phase"] == "converting_css" and c["flush"]]
+            # Should flush at 10, 20, 25 (end), and 100 (final)
+            assert len(css_flushes) >= 3
+        finally:
+            assembler._convert_css_resource = original_convert
+            assembler._update_progress = original_update
+
+    @staticmethod
+    async def _run_css_phase(assembler, session_id, css_files, db=None, session=None):
+        """Run the CSS conversion phase of assemble_session with mocked deps."""
+        import types
+
+        if db is None:
+            class MockDB:
+                async def flush(self):
+                    pass
+            db = MockDB()
+
+        if session is None:
+            session = types.SimpleNamespace(
+                assembly_phase=None,
+                assembly_progress_pct=None,
+            )
+
+        resource_records = [
+            _make_resource(
+                f"styles/{os.path.basename(p)}",
+                p,
+            )
+            for p in css_files
+        ]
+
+        original_get_prefix = assembler._get_resources_by_prefix
+
+        async def mock_get_by_prefix(db, sid, prefix):
+            return resource_records
+
+        assembler._get_resources_by_prefix = mock_get_by_prefix
+
+        try:
+            css_resources = resource_records
+            total_css = len(css_resources)
+            css_sem = asyncio.Semaphore(10)
+            css_completed = 0
+
+            async def _convert_css_one(resource):
+                nonlocal css_completed
+                async with css_sem:
+                    await assembler._convert_css_resource(
+                        resource, "https://example.com", {}, session_id,
+                    )
+                    css_completed += 1
+                    pct = int(css_completed / max(total_css, 1) * 100)
+                    should_flush = css_completed % 10 == 0 or css_completed == total_css
+                    await assembler._update_progress(
+                        db, session, "converting_css", pct,
+                        flush=should_flush,
+                    )
+
+            await asyncio.gather(*[_convert_css_one(r) for r in css_resources])
+        finally:
+            assembler._get_resources_by_prefix = original_get_prefix
 
 
 # ---------------------------------------------------------------------------
@@ -618,7 +821,7 @@ class TestAssemblyProgress:
         async def mock_get_resources(db, sid):
             return []
 
-        async def mock_update_progress(db, session, phase, pct):
+        async def mock_update_progress(db, session, phase, pct, **kwargs):
             recorded_phases.append((phase, pct))
 
         original_get_resources = assembler._get_all_resources
@@ -647,6 +850,168 @@ class TestAssemblyProgress:
         finally:
             assembler._get_all_resources = original_get_resources
             assembler._update_progress = original_update_progress
+
+    def test_assemble_zip_batches_flushes_every_10_resources(self, assembler, storage_root):
+        """_assemble_zip flushes progress every 10 resources, not every resource."""
+        session_id = "test-session-batch-flush"
+        _setup_session(storage_root, session_id)
+
+        main_html = "<!DOCTYPE html><html><body><p>Batch flush test</p></body></html>"
+
+        resources_dir = os.path.join(storage_root, session_id, "resources")
+
+        # Create 25 resources to trigger flushes at 10, 20, 25
+        resource_records = []
+        for i in range(25):
+            rpath = os.path.join(resources_dir, "images", f"img-{i}.jpg")
+            os.makedirs(os.path.dirname(rpath), exist_ok=True)
+            with open(rpath, "wb") as f:
+                f.write(b"\x00" * 10)
+            resource_records.append(
+                _make_resource(f"images/img-{i}.jpg", rpath)
+            )
+
+        import types
+        mock_session = types.SimpleNamespace(
+            id=session_id,
+            url="https://example.com/page",
+            status="assembling",
+            assembly_phase=None,
+            assembly_progress_pct=0,
+        )
+
+        class MockDB:
+            async def flush(self):
+                pass
+
+        flush_calls = []
+
+        async def tracking_update_progress(db, session, phase, pct, **kwargs):
+            flush_calls.append({
+                "phase": phase, "pct": pct,
+                "flush": kwargs.get("flush", True),
+            })
+
+        original_get_resources = assembler._get_all_resources
+        original_update_progress = assembler._update_progress
+        assembler._get_all_resources = lambda db, sid: self._async_return(resource_records)
+        assembler._update_progress = tracking_update_progress
+
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    assembler._assemble_zip(
+                        session_id, MockDB(), mock_session,
+                        main_html, {}, {}, {}, {}, None,
+                    )
+                )
+            finally:
+                loop.close()
+
+            zip_flush_calls = [
+                c for c in flush_calls if c["phase"] == "assembling_zip"
+            ]
+
+            # Intermediate calls (not every-10th, not final) should have flush=False
+            non_batch_calls = [
+                c for c in zip_flush_calls
+                if not c["flush"] and c["pct"] < 100
+            ]
+            # Every-10th and final-25th and pct=100 calls should have flush=True
+            batch_calls = [c for c in zip_flush_calls if c["flush"]]
+
+            # Should have flushed at 10th, 20th, 25th (last resource), and 100% (final)
+            assert len(batch_calls) >= 3, (
+                f"Expected >= 3 batch flushes, got {len(batch_calls)}: {batch_calls}"
+            )
+            # Should have non-flushed intermediate calls
+            assert len(non_batch_calls) > 0, (
+                f"Expected non-flushed intermediate calls, all calls flushed: {zip_flush_calls}"
+            )
+        finally:
+            assembler._get_all_resources = original_get_resources
+            assembler._update_progress = original_update_progress
+
+    def test_assemble_zip_batches_flushes_for_linked_pages(self, assembler, storage_root):
+        """_assemble_zip flushes progress every 10 linked pages."""
+        session_id = "test-session-lp-batch-flush"
+        _setup_session(storage_root, session_id, include_pages=False)
+
+        main_html = "<!DOCTYPE html><html><body><p>LP batch flush test</p></body></html>"
+
+        # Create 15 linked page HTML entries
+        linked_page_htmls = {
+            f"page{i}": f"<html><body><p>Page {i}</p></body></html>"
+            for i in range(15)
+        }
+        page_hash_to_filename = {
+            f"page{i}": f"page{i}.html" for i in range(15)
+        }
+
+        import types
+        mock_session = types.SimpleNamespace(
+            id=session_id,
+            url="https://example.com/page",
+            status="assembling",
+            assembly_phase=None,
+            assembly_progress_pct=0,
+        )
+
+        class MockDB:
+            async def flush(self):
+                pass
+
+        flush_calls = []
+
+        async def tracking_update_progress(db, session, phase, pct, **kwargs):
+            flush_calls.append({
+                "phase": phase, "pct": pct,
+                "flush": kwargs.get("flush", True),
+            })
+
+        original_get_resources = assembler._get_all_resources
+        original_update_progress = assembler._update_progress
+        assembler._get_all_resources = lambda db, sid: self._async_return([])
+        assembler._update_progress = tracking_update_progress
+
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    assembler._assemble_zip(
+                        session_id, MockDB(), mock_session,
+                        main_html, linked_page_htmls, {},
+                        page_hash_to_filename, {}, None,
+                    )
+                )
+            finally:
+                loop.close()
+
+            zip_flush_calls = [
+                c for c in flush_calls if c["phase"] == "assembling_zip"
+            ]
+
+            # Should have batch flushes at 10th and 15th (last) linked page + 100%
+            batch_calls = [c for c in zip_flush_calls if c["flush"]]
+            non_batch_calls = [
+                c for c in zip_flush_calls
+                if not c["flush"] and c["pct"] < 100
+            ]
+
+            assert len(batch_calls) >= 2, (
+                f"Expected >= 2 batch flushes for linked pages, got {len(batch_calls)}: {batch_calls}"
+            )
+            assert len(non_batch_calls) > 0, (
+                f"Expected non-flushed intermediate calls for linked pages: {zip_flush_calls}"
+            )
+        finally:
+            assembler._get_all_resources = original_get_resources
+            assembler._update_progress = original_update_progress
+
+    @staticmethod
+    async def _async_return(value):
+        return value
 
 
 class TestAssemblyCancellation:
@@ -794,7 +1159,7 @@ class TestAssemblyFailure:
         async def mock_get_resources(db, sid):
             return [bad_resource]
 
-        async def mock_update_progress(db, session, phase, pct):
+        async def mock_update_progress(db, session, phase, pct, **kwargs):
             pass
 
         original_get_resources = assembler._get_all_resources
@@ -870,7 +1235,7 @@ class TestAssemblyFailure:
         # Create a mock that raises inside the try block
         call_count = 0
 
-        async def mock_update_progress(db, session, phase, pct):
+        async def mock_update_progress(db, session, phase, pct, **kwargs):
             nonlocal call_count
             call_count += 1
             # Raise on the second call (after index.html is written)
@@ -1000,6 +1365,82 @@ def _make_resource(local_path: str, storage_path: str):
 # ---------------------------------------------------------------------------
 # Linked page filename tests (linked-page-scraping-parity task 5.2)
 # ---------------------------------------------------------------------------
+
+
+class TestParallelLinkedPageConversion:
+    """Task 6.2: Verify parallel linked page HTML conversion with semaphore."""
+
+    def test_all_linked_pages_converted(self, assembler, storage_root):
+        """All linked pages are converted when run in parallel."""
+        from app.services.html_merger import MergeResult
+        linked_results = {}
+        for i in range(15):
+            page_hash = f"page{i}"
+            linked_results[page_hash] = MergeResult(
+                success=True,
+                html=f"<html><body><p>Linked page {i}</p></body></html>",
+                page_url=f"https://example.com/page{i}",
+                reason=None,
+            )
+
+        converted_pages = {}
+        lp_completed = 0
+        lp_sem = asyncio.Semaphore(10)
+
+        async def _convert_one(page_hash, lp_result):
+            nonlocal lp_completed
+            if lp_result.success and lp_result.html:
+                async with lp_sem:
+                    converted_pages[page_hash] = f"converted-{page_hash}"
+            lp_completed += 1
+
+        async def _run():
+            await asyncio.gather(*[
+                _convert_one(ph, lr)
+                for ph, lr in linked_results.items()
+            ])
+
+        asyncio.run(_run())
+
+        assert len(converted_pages) == 15
+        assert lp_completed == 15
+
+    def test_linked_page_semaphore_limits_concurrency(self, assembler, storage_root):
+        """Semaphore prevents more than 10 concurrent linked page conversions."""
+        from app.services.html_merger import MergeResult
+
+        linked_results = {}
+        for i in range(20):
+            linked_results[f"page{i}"] = MergeResult(
+                success=True,
+                html=f"<html><body><p>Page {i}</p></body></html>",
+                page_url=f"https://example.com/page{i}",
+                reason=None,
+            )
+
+        peak_concurrency = 0
+        current_concurrency = 0
+        lp_sem = asyncio.Semaphore(10)
+
+        async def _convert_one(page_hash, lp_result):
+            nonlocal peak_concurrency, current_concurrency
+            if lp_result.success and lp_result.html:
+                async with lp_sem:
+                    current_concurrency += 1
+                    peak_concurrency = max(peak_concurrency, current_concurrency)
+                    await asyncio.sleep(0.01)
+                    current_concurrency -= 1
+
+        async def _run():
+            await asyncio.gather(*[
+                _convert_one(ph, lr)
+                for ph, lr in linked_results.items()
+            ])
+
+        asyncio.run(_run())
+
+        assert peak_concurrency <= 10
+        assert peak_concurrency > 1
 
 
 class TestLinkedPageFilenames:

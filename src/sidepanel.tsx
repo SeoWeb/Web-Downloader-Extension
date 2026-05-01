@@ -16,6 +16,7 @@ import { usePermissions } from "./common/hooks/usePermissions";
 import { GlobalPermissionRequest } from "./common/components/GlobalPermissionRequest";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { IS_SERVER_MODE } from "./common/server-mode";
+import { sendMessageToBackground } from "./client/message";
 import {
   ServerModeState,
   initialServerModeState,
@@ -274,7 +275,6 @@ export default function SidePanel() {
   useEffect(() => {
     (async () => {
       try {
-        const { sendMessageToBackground } = await import("./client/message");
         const result = await sendMessageToBackground(messageActions.CHECK_INTERRUPTED_DOWNLOAD, {});
         if (result && result.downloadInterrupted) {
           setInterruptData({
@@ -446,14 +446,12 @@ export default function SidePanel() {
         }}
         onLocalFallback={() => {
           // Send SERVER_LOCAL_FALLBACK message to background to re-run in local mode
-          import("./client/message").then(({ sendMessageToBackground }) => {
-            sendMessageToBackground(messageActions.SERVER_LOCAL_FALLBACK, {
+          sendMessageToBackground(messageActions.SERVER_LOCAL_FALLBACK, {
               tabId,
               tabUrl,
               html: lastHtml || downloadResponse?.html,
               downloadOptions,
             });
-          });
           setServerModeState(initialServerModeState);
         }}
         onDownloadFromServer={async () => {

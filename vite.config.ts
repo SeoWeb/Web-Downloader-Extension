@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import { resolve } from "path";
 import react from "@vitejs/plugin-react-swc";
@@ -89,6 +90,11 @@ export default defineConfig({
     copyLocaleFiles(),
     zipDistContents(),
   ],
+  test: {
+    globals: true,
+    setupFiles: ['./tests/setup.cjs'],
+    exclude: ['tests/e2e/**', 'node_modules/**'],
+  },
   resolve: {
     alias: {
       // Redirect linkedom's canvas module to our custom shim

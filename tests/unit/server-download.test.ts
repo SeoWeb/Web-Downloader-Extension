@@ -17,6 +17,7 @@ import {
 import {
   ServerClient,
   ServerUnavailableError,
+  AuthenticationError,
   AssemblyTimeoutError,
   SessionStatusResponse,
 } from "../../src/background/server-client";
@@ -49,23 +50,23 @@ function mockStatus(overrides: Partial<SessionStatusResponse> = {}): SessionStat
 /** Create a ServerDownloadHandler with a mock ServerClient. */
 function createHandler(): {
   handler: ServerDownloadHandler;
-  mockGetSessionStatus: jest.SpiedFunction<ServerClient["getSessionStatus"]>;
+  mockGetSessionStatus: vi.SpiedFunction<ServerClient["getSessionStatus"]>;
 } {
   const client = new ServerClient();
-  const mockGetSessionStatus = jest.spyOn(client, "getSessionStatus");
+  const mockGetSessionStatus = vi.spyOn(client, "getSessionStatus");
   const handler = new ServerDownloadHandler(client);
   return { handler, mockGetSessionStatus };
 }
 
 // Mock chrome.downloads.download
-let mockChromeDownloadsDownload: jest.Mock;
+let mockChromeDownloadsDownload: vi.Mock;
 let mockChromeRuntimeLastError: { message: string } | undefined;
 
 beforeEach(() => {
-  jest.useFakeTimers();
-  jest.setSystemTime(new Date(2025, 0, 1, 0, 0, 0));
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2025, 0, 1, 0, 0, 0));
 
-  mockChromeDownloadsDownload = jest.fn();
+  mockChromeDownloadsDownload = vi.fn();
   mockChromeRuntimeLastError = undefined;
 
   // Extend existing chrome mock with downloads API and runtime
@@ -77,12 +78,12 @@ beforeEach(() => {
     get lastError() {
       return mockChromeRuntimeLastError;
     },
-    connect: jest.fn().mockReturnValue({
+    connect: vi.fn().mockReturnValue({
       name: "keepalive",
-      onDisconnect: { addListener: jest.fn() },
-      onMessage: { addListener: jest.fn() },
-      postMessage: jest.fn(),
-      disconnect: jest.fn(),
+      onDisconnect: { addListener: vi.fn() },
+      onMessage: { addListener: vi.fn() },
+      postMessage: vi.fn(),
+      disconnect: vi.fn(),
     }),
   };
 
@@ -95,8 +96,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  jest.useRealTimers();
-  jest.restoreAllMocks();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 // ---------------------------------------------------------------------------
@@ -155,7 +156,7 @@ describe("ServerDownloadHandler", () => {
 
     it("logs warning for HTTP non-loopback download URLs", async () => {
       const { handler } = createHandler();
-      const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation();
 
       await handler.triggerServerDownload(
         "http://myserver.example.com/api/v1/sessions/test-123/download",
@@ -171,7 +172,7 @@ describe("ServerDownloadHandler", () => {
 
     it("does not warn for HTTPS URLs", async () => {
       const { handler } = createHandler();
-      const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation();
 
       await handler.triggerServerDownload(
         "https://myserver.example.com/api/v1/sessions/test-123/download",
@@ -185,7 +186,7 @@ describe("ServerDownloadHandler", () => {
 
     it("does not warn for localhost HTTP URLs", async () => {
       const { handler } = createHandler();
-      const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation();
 
       await handler.triggerServerDownload(
         "http://localhost:8000/api/v1/sessions/test-123/download",
@@ -199,7 +200,7 @@ describe("ServerDownloadHandler", () => {
   });
 
   // -----------------------------------------------------------------------
-  // 11.3 — Assembly polling (2s interval, 5min timeout)
+  // 11.3 — Assembly polling (adaptive interval, 5min timeout)
   // -----------------------------------------------------------------------
 
   describe("pollAssemblyStatus", () => {
@@ -222,7 +223,7 @@ describe("ServerDownloadHandler", () => {
       expect(mockGetSessionStatus).toHaveBeenCalledTimes(1);
     });
 
-    it("polls every 2 seconds until status is ready", async () => {
+    it("polls with adaptive intervals until status is ready", async () => {
       const { handler, mockGetSessionStatus } = createHandler();
 
       let callCount = 0;
@@ -243,10 +244,12 @@ describe("ServerDownloadHandler", () => {
         statusUpdates.push({ status, phase, pct });
       });
 
-      // Advance through the polling intervals
-      await jest.advanceTimersByTimeAsync(2000); // 1st poll
-      await jest.advanceTimersByTimeAsync(2000); // 2nd poll
-      await jest.advanceTimersByTimeAsync(2000); // 3rd poll
+      // Adaptive intervals: first poll at 1s (elapsed < 6s)
+      await vi.advanceTimersByTimeAsync(1000);
+      // Second poll at 1s (elapsed ~2s, still < 6s)
+      await vi.advanceTimersByTimeAsync(1000);
+      // Third poll at 1s (elapsed ~3s, still < 6s)
+      await vi.advanceTimersByTimeAsync(1000);
 
       const result = await promise;
 
@@ -271,11 +274,11 @@ describe("ServerDownloadHandler", () => {
     });
 
     it("throws AssemblyTimeoutError after 5 minutes", async () => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date(2025, 0, 1, 0, 0, 0));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2025, 0, 1, 0, 0, 0));
 
       const client = new ServerClient();
-      const mockStatusFn = jest.spyOn(client, 'getSessionStatus');
+      const mockStatusFn = vi.spyOn(client, 'getSessionStatus');
       mockStatusFn.mockResolvedValue(mockStatus({ status: "assembling" }));
       const handlerTimeout = new ServerDownloadHandler(client);
 
@@ -289,8 +292,8 @@ describe("ServerDownloadHandler", () => {
       // We do this in large steps: advance time, then advance timers
       // so both Date.now() and setTimeout are synchronized
       for (let i = 0; i < 16; i++) {
-        jest.setSystemTime(Date.now() + 20000); // 20 seconds per step
-        await jest.advanceTimersByTimeAsync(20000);
+        vi.setSystemTime(Date.now() + 20000); // 20 seconds per step
+        await vi.advanceTimersByTimeAsync(20000);
       }
 
       const error = await rejectionPromise;
@@ -317,9 +320,9 @@ describe("ServerDownloadHandler", () => {
       const promise = handler.pollAssemblyStatus("test-session-id");
 
       // Advance through the first failed poll
-      await jest.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(2000);
       // Advance through the second successful poll
-      await jest.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(2000);
 
       const result = await promise;
       expect(result.status).toBe("ready");
@@ -327,7 +330,7 @@ describe("ServerDownloadHandler", () => {
 
     it("can be cancelled via cancelPolling()", async () => {
       const client = new ServerClient();
-      const mockStatusFn = jest.spyOn(client, 'getSessionStatus');
+      const mockStatusFn = vi.spyOn(client, 'getSessionStatus');
       mockStatusFn.mockResolvedValue(mockStatus({ status: "assembling" }));
       const handlerCancel = new ServerDownloadHandler(client);
 
@@ -336,15 +339,15 @@ describe("ServerDownloadHandler", () => {
       const rejectionPromise = pollPromise.catch((err) => err);
 
       // Advance one poll cycle
-      jest.setSystemTime(Date.now() + 2000);
-      await jest.advanceTimersByTimeAsync(2000);
+      vi.setSystemTime(Date.now() + 2000);
+      await vi.advanceTimersByTimeAsync(2000);
 
       // Cancel
       handlerCancel.cancelPolling();
 
       // Advance timers to trigger the sleep which will detect abort
-      jest.setSystemTime(Date.now() + 2000);
-      await jest.advanceTimersByTimeAsync(2000);
+      vi.setSystemTime(Date.now() + 2000);
+      await vi.advanceTimersByTimeAsync(2000);
 
       const error = await rejectionPromise;
       expect(error).toBeDefined();
@@ -370,7 +373,7 @@ describe("ServerDownloadHandler", () => {
       });
 
       // Let one poll happen
-      await jest.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(2000);
 
       // Now resolve with ready
       mockGetSessionStatus.mockResolvedValue(
@@ -382,7 +385,7 @@ describe("ServerDownloadHandler", () => {
         }),
       );
 
-      await jest.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(2000);
 
       const result = await promise;
       expect(result.status).toBe("ready");
@@ -391,6 +394,46 @@ describe("ServerDownloadHandler", () => {
       const assemblingUpdate = updates.find((u) => u.phase === "converting");
       expect(assemblingUpdate).toBeDefined();
       expect(assemblingUpdate!.pct).toBe(75);
+    });
+
+    it("uses adaptive polling intervals (1s → 2s → 3s → 5s)", async () => {
+      const { handler, mockGetSessionStatus } = createHandler();
+
+      const pollTimes: number[] = [];
+
+      mockGetSessionStatus.mockImplementation(async () => {
+        pollTimes.push(Date.now());
+        return mockStatus({ status: "assembling" });
+      });
+
+      const pollPromise = handler.pollAssemblyStatus("test-session-id");
+      const resultPromise = pollPromise.catch(() => "polling");
+
+      // Advance 80 seconds in 1-second steps (GCD of all intervals)
+      // so timers at every tier fire cleanly without desynchronization.
+      for (let i = 0; i < 80; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+
+      expect(pollTimes.length).toBeGreaterThan(10);
+
+      // Verify every gap matches the expected interval for its tier.
+      // The gap between poll[i-1] and poll[i] was set by getPollInterval(elapsed)
+      // where elapsed = pollTimes[i-1] (since startTime = 0).
+      function expectedGap(elapsedMs: number): number {
+        if (elapsedMs < 6000) return 1000;
+        if (elapsedMs < 30000) return 2000;
+        if (elapsedMs < 60000) return 3000;
+        return 5000;
+      }
+
+      // Compute elapsed relative to the first poll (which equals startTime)
+      const startTime = pollTimes[0];
+      for (let i = 1; i < pollTimes.length; i++) {
+        const gap = pollTimes[i] - pollTimes[i - 1];
+        const elapsed = pollTimes[i - 1] - startTime;
+        expect(gap).toBe(expectedGap(elapsed));
+      }
     });
   });
 
@@ -483,7 +526,7 @@ describe("ServerDownloadHandler", () => {
         }),
       );
 
-      const fallbackCb = jest.fn();
+      const fallbackCb = vi.fn();
 
       const result = await handler.downloadWithFallback(
         "test-session-id",
@@ -505,7 +548,7 @@ describe("ServerDownloadHandler", () => {
         mockStatus({ status: "assembling" }),
       );
 
-      const fallbackCb = jest.fn().mockResolvedValue(true); // User chooses local
+      const fallbackCb = vi.fn().mockResolvedValue(true); // User chooses local
 
       const promise = handler.downloadWithFallback(
         "test-session-id",
@@ -515,7 +558,7 @@ describe("ServerDownloadHandler", () => {
       );
 
       // Advance past timeout
-      await jest.advanceTimersByTimeAsync(5 * 60 * 1000 + 2000);
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 2000);
 
       const result = await promise;
 
@@ -533,12 +576,11 @@ describe("ServerDownloadHandler", () => {
       // AuthenticationError is NOT caught by the polling loop and will
       // propagate immediately to downloadWithFallback, where it is
       // now explicitly categorized as auth_failed.
-      const { AuthenticationError } = require("../../src/background/server-client");
       mockGetSessionStatus.mockRejectedValue(
         new AuthenticationError("Auth failed after re-registration"),
       );
 
-      const fallbackCb = jest.fn().mockResolvedValue(true);
+      const fallbackCb = vi.fn().mockResolvedValue(true);
 
       const result = await handler.downloadWithFallback(
         "test-session-id",
@@ -564,7 +606,7 @@ describe("ServerDownloadHandler", () => {
         }),
       );
 
-      const fallbackCb = jest.fn().mockResolvedValue(true);
+      const fallbackCb = vi.fn().mockResolvedValue(true);
 
       const result = await handler.downloadWithFallback(
         "test-session-id",
@@ -590,7 +632,7 @@ describe("ServerDownloadHandler", () => {
         }),
       );
 
-      const fallbackCb = jest.fn().mockResolvedValue(false); // User declines
+      const fallbackCb = vi.fn().mockResolvedValue(false); // User declines
 
       await expect(
         handler.downloadWithFallback(
@@ -615,7 +657,7 @@ describe("ServerDownloadHandler", () => {
         }),
       );
 
-      const fallbackCb = jest.fn().mockResolvedValue(true);
+      const fallbackCb = vi.fn().mockResolvedValue(true);
 
       const result = await handler.downloadWithFallback(
         "test-session-id",
@@ -637,12 +679,12 @@ describe("ServerDownloadHandler", () => {
       // After timeout, the AssemblyTimeoutError will be thrown, but we need
       // to test ServerUnavailableError categorization in downloadWithFallback.
       // Instead, directly test by making pollAssemblyStatus throw ServerUnavailableError.
-      const pollSpy = jest.spyOn(handler, 'pollAssemblyStatus');
+      const pollSpy = vi.spyOn(handler, 'pollAssemblyStatus');
       pollSpy.mockRejectedValue(
         new ServerUnavailableError("Connection refused", undefined, 503),
       );
 
-      const fallbackCb = jest.fn().mockResolvedValue(true);
+      const fallbackCb = vi.fn().mockResolvedValue(true);
 
       const result = await handler.downloadWithFallback(
         "test-session-id",

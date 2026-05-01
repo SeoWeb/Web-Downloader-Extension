@@ -157,29 +157,56 @@ class ZipAssemblerService:
                 linked_page_urls: dict[str, str] = {}  # page_hash → page_url mapping
                 if linked_results:
                     total_linked = len(linked_results)
-                    for i, (page_hash, lp_result) in enumerate(linked_results.items()):
-                        if lp_result.success and lp_result.html:
-                            converted = await asyncio.to_thread(
-                                html_converter_service.convert_linked_page_html,
-                                lp_result.html, tab_url, filename_map, page_filename_map,
-                            )
-                            linked_page_htmls[page_hash] = converted
-                            # Store the page URL for filename generation
-                            if lp_result.page_url:
-                                linked_page_urls[page_hash] = lp_result.page_url
-                        pct = int((i + 1) / total_linked * 100)
-                        await self._update_progress(db, session, "converting_urls", pct)
+                    lp_sem = asyncio.Semaphore(10)
+                    lp_completed = 0
 
-                # ---- Phase 3: Converting CSS files ----
+                    async def _convert_linked_page_one(page_hash: str, lp_result):
+                        nonlocal lp_completed
+                        if lp_result.success and lp_result.html:
+                            async with lp_sem:
+                                converted = await asyncio.to_thread(
+                                    html_converter_service.convert_linked_page_html,
+                                    lp_result.html, tab_url, filename_map, page_filename_map,
+                                )
+                                linked_page_htmls[page_hash] = converted
+                                if lp_result.page_url:
+                                    linked_page_urls[page_hash] = lp_result.page_url
+                        lp_completed += 1
+                        pct = int(lp_completed / max(total_linked, 1) * 100)
+                        should_flush = lp_completed % 10 == 0 or lp_completed == total_linked
+                        await self._update_progress(
+                            db, session, "converting_urls", pct,
+                            flush=should_flush,
+                        )
+
+                    await asyncio.gather(*[
+                        _convert_linked_page_one(ph, lr)
+                        for ph, lr in linked_results.items()
+                    ])
+
+                # ---- Phase 3: Converting CSS files (parallel) ----
                 await self._update_progress(db, session, "converting_css", 0)
                 css_resources = await self._get_resources_by_prefix(db, session_id, "styles/")
                 total_css = len(css_resources)
-                for i, resource in enumerate(css_resources):
-                    await self._convert_css_resource(
-                        resource, tab_url, filename_map, session_id,
-                    )
-                    pct = int((i + 1) / max(total_css, 1) * 100)
-                    await self._update_progress(db, session, "converting_css", pct)
+                if css_resources:
+                    css_sem = asyncio.Semaphore(10)
+                    css_completed = 0
+
+                    async def _convert_css_one(resource):
+                        nonlocal css_completed
+                        async with css_sem:
+                            await self._convert_css_resource(
+                                resource, tab_url, filename_map, session_id,
+                            )
+                            css_completed += 1
+                            pct = int(css_completed / max(total_css, 1) * 100)
+                            should_flush = css_completed % 10 == 0 or css_completed == total_css
+                            await self._update_progress(
+                                db, session, "converting_css", pct,
+                                flush=should_flush,
+                            )
+
+                    await asyncio.gather(*[_convert_css_one(r) for r in css_resources])
                 await self._update_progress(db, session, "converting_css", 100)
 
                 # ---- Phase 4: Assembling output ----
@@ -293,7 +320,8 @@ class ZipAssemblerService:
                     )
 
                 # 3. Write resources at their designated paths (6.2)
-                for resource in resources:
+                batch_size = 10
+                for i, resource in enumerate(resources):
                     local_path = resource.local_path
                     if not local_path:
                         # Skip resources without a local path
@@ -327,11 +355,12 @@ class ZipAssemblerService:
                     await self._update_progress(
                         db, session, "assembling_zip",
                         int(steps_done / max(total_steps, 1) * 100),
+                        flush=(i + 1) % batch_size == 0 or (i + 1) == len(resources),
                     )
 
                 # 4. Write linked pages in pages/ directory (6.2)
                 # Use pre-computed filenames (with collision dedup) from assemble_session()
-                for page_hash, page_html in linked_page_htmls.items():
+                for j, (page_hash, page_html) in enumerate(linked_page_htmls.items()):
                     filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
                     page_filename = sanitize_zip_path(f"pages/{filename}")
                     if page_filename:
@@ -340,6 +369,7 @@ class ZipAssemblerService:
                     await self._update_progress(
                         db, session, "assembling_zip",
                         int(steps_done / max(total_steps, 1) * 100),
+                        flush=(j + 1) % batch_size == 0 or (j + 1) == len(linked_page_htmls),
                     )
 
             await self._update_progress(db, session, "assembling_zip", 100)
@@ -486,11 +516,17 @@ class ZipAssemblerService:
         return list(result.scalars().all())
 
     @staticmethod
-    async def _update_progress(db, session, phase: str, pct: int) -> None:
-        """Update assembly progress in the database."""
+    async def _update_progress(db, session, phase: str, pct: int, *, flush: bool = True) -> None:
+        """Update assembly progress in the database.
+
+        When flush=False, only update in-memory session fields without
+        calling db.flush(). Caller is responsible for flushing later
+        (e.g. at batch boundaries).
+        """
         session.assembly_phase = phase
         session.assembly_progress_pct = max(0, min(100, pct))
-        await db.flush()
+        if flush:
+            await db.flush()
 
     @staticmethod
     async def _mark_failed(db, session, reason: str) -> None:

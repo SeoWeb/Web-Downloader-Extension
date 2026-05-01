@@ -78,7 +78,7 @@ describe("ServerStorageAdapter", () => {
 
       // Spy on the internal UploadQueue's enqueue method
       const queue = adapter.getUploadQueue();
-      const enqueueSpy = jest.spyOn(queue, "enqueue").mockResolvedValue("task-1");
+      const enqueueSpy = vi.spyOn(queue, "enqueue").mockResolvedValue("task-1");
 
       const blob = new Blob(["test content"], { type: "text/plain" });
       await adapter.addFile("styles/main.css", blob, "text/css");
@@ -101,7 +101,7 @@ describe("ServerStorageAdapter", () => {
       adapter.setSessionId("sess-1");
 
       const queue = adapter.getUploadQueue();
-      const enqueueSpy = jest.spyOn(queue, "enqueue").mockResolvedValue("task-2");
+      const enqueueSpy = vi.spyOn(queue, "enqueue").mockResolvedValue("task-2");
 
       await adapter.addFile("index.html", "<html></html>", "text/html");
 
@@ -121,7 +121,7 @@ describe("ServerStorageAdapter", () => {
       adapter.setSessionId("sess-1");
 
       const queue = adapter.getUploadQueue();
-      const enqueueSpy = jest.spyOn(queue, "enqueue").mockResolvedValue("task-3");
+      const enqueueSpy = vi.spyOn(queue, "enqueue").mockResolvedValue("task-3");
 
       const buffer = new Uint8Array([1, 2, 3, 4]).buffer;
       await adapter.addFile("data.bin", buffer, "application/octet-stream");
@@ -139,7 +139,7 @@ describe("ServerStorageAdapter", () => {
       adapter.setSessionId("sess-1");
 
       const queue = adapter.getUploadQueue();
-      const enqueueSpy = jest.spyOn(queue, "enqueue").mockResolvedValue("task-4");
+      const enqueueSpy = vi.spyOn(queue, "enqueue").mockResolvedValue("task-4");
 
       const originalBlob = new Blob(["binary data"], { type: "image/png" });
       await adapter.addFile("images/photo.png", originalBlob, "image/png");
@@ -156,7 +156,7 @@ describe("ServerStorageAdapter", () => {
       adapter.setSessionId("sess-1");
 
       const queue = adapter.getUploadQueue();
-      const enqueueSpy = jest.spyOn(queue, "enqueue").mockResolvedValue("task-5");
+      const enqueueSpy = vi.spyOn(queue, "enqueue").mockResolvedValue("task-5");
 
       await adapter.addFile("data.bin", new Blob(["data"]));
 
@@ -186,7 +186,7 @@ describe("ServerStorageAdapter", () => {
 
       // Mock the queue so addFile doesn't fail
       const queue = adapter.getUploadQueue();
-      jest.spyOn(queue, "enqueue").mockResolvedValue("task-1");
+      vi.spyOn(queue, "enqueue").mockResolvedValue("task-1");
 
       await adapter.addFile("images/test.png", new Blob(["data"]), "image/png");
 
@@ -205,7 +205,7 @@ describe("ServerStorageAdapter", () => {
       const adapter = new ServerStorageAdapter(client);
 
       const queue = adapter.getUploadQueue();
-      const spy = jest.spyOn(queue, "getResourceCount").mockReturnValue(5);
+      const spy = vi.spyOn(queue, "getResourceCount").mockReturnValue(5);
 
       expect(adapter.getResourceCount()).toBe(5);
       expect(spy).toHaveBeenCalledTimes(1);
@@ -243,7 +243,7 @@ describe("ServerStorageAdapter", () => {
       adapter.setSessionId("sess-1");
 
       const queue = adapter.getUploadQueue();
-      jest.spyOn(queue, "enqueue").mockResolvedValue("task-1");
+      vi.spyOn(queue, "enqueue").mockResolvedValue("task-1");
 
       await adapter.addFile("styles/main.css", "body {}", "text/css");
 
@@ -258,13 +258,13 @@ describe("ServerStorageAdapter", () => {
   describe("clear", () => {
     it("calls UploadQueue.cancel() to abort in-progress uploads", async () => {
       const client = createMockServerClient({
-        deleteSession: jest.fn().mockResolvedValue(undefined),
+        deleteSession: vi.fn().mockResolvedValue(undefined),
       });
       const adapter = new ServerStorageAdapter(client);
       adapter.setSessionId("sess-1");
 
       const queue = adapter.getUploadQueue();
-      const cancelSpy = jest.spyOn(queue, "cancel");
+      const cancelSpy = vi.spyOn(queue, "cancel");
 
       await adapter.clear();
 
@@ -273,7 +273,7 @@ describe("ServerStorageAdapter", () => {
     });
 
     it("calls ServerClient.deleteSession() to clean up server data", async () => {
-      const deleteMock = jest.fn().mockResolvedValue(undefined);
+      const deleteMock = vi.fn().mockResolvedValue(undefined);
       const client = createMockServerClient({
         deleteSession: deleteMock,
       });
@@ -287,7 +287,7 @@ describe("ServerStorageAdapter", () => {
     });
 
     it("performs BOTH cancel and delete (S5: atomic abort+delete)", async () => {
-      const deleteMock = jest.fn().mockResolvedValue(undefined);
+      const deleteMock = vi.fn().mockResolvedValue(undefined);
       const client = createMockServerClient({
         deleteSession: deleteMock,
       });
@@ -295,7 +295,7 @@ describe("ServerStorageAdapter", () => {
       adapter.setSessionId("sess-1");
 
       const queue = adapter.getUploadQueue();
-      const cancelSpy = jest.spyOn(queue, "cancel");
+      const cancelSpy = vi.spyOn(queue, "cancel");
 
       await adapter.clear();
 
@@ -309,7 +309,7 @@ describe("ServerStorageAdapter", () => {
 
     it("clears sessionId after successful deletion", async () => {
       const client = createMockServerClient({
-        deleteSession: jest.fn().mockResolvedValue(undefined),
+        deleteSession: vi.fn().mockResolvedValue(undefined),
       });
       const adapter = new ServerStorageAdapter(client);
       adapter.setSessionId("sess-1");
@@ -322,7 +322,7 @@ describe("ServerStorageAdapter", () => {
     });
 
     it("does not call deleteSession when sessionId is null", async () => {
-      const deleteMock = jest.fn().mockResolvedValue(undefined);
+      const deleteMock = vi.fn().mockResolvedValue(undefined);
       const client = createMockServerClient({
         deleteSession: deleteMock,
       });
@@ -336,7 +336,7 @@ describe("ServerStorageAdapter", () => {
 
     it("still clears sessionId when deleteSession throws (best-effort)", async () => {
       const client = createMockServerClient({
-        deleteSession: jest.fn().mockRejectedValue(new Error("Network error")),
+        deleteSession: vi.fn().mockRejectedValue(new Error("Network error")),
       });
       const adapter = new ServerStorageAdapter(client);
       adapter.setSessionId("sess-1");
@@ -349,7 +349,7 @@ describe("ServerStorageAdapter", () => {
     });
 
     it("still calls deleteSession even if cancel has no uploads", async () => {
-      const deleteMock = jest.fn().mockResolvedValue(undefined);
+      const deleteMock = vi.fn().mockResolvedValue(undefined);
       const client = createMockServerClient({
         deleteSession: deleteMock,
       });
@@ -374,7 +374,7 @@ describe("ServerStorageAdapter", () => {
       (adapter as ServerStorageAdapter).setSessionId("sess-1");
 
       const queue = (adapter as ServerStorageAdapter).getUploadQueue();
-      jest.spyOn(queue, "enqueue").mockResolvedValue("task-1");
+      vi.spyOn(queue, "enqueue").mockResolvedValue("task-1");
 
       // These are the same callsites file handlers use:
       // storage.addFile(path, content, mimeType?)
@@ -406,7 +406,7 @@ describe("ServerStorageAdapter", () => {
 
     it("clear resolves without error (same as IndexedDBAdapter.clear)", async () => {
       const client = createMockServerClient({
-        deleteSession: jest.fn().mockResolvedValue(undefined),
+        deleteSession: vi.fn().mockResolvedValue(undefined),
       });
       const adapter: IStorageAdapter = new ServerStorageAdapter(client);
       (adapter as ServerStorageAdapter).setSessionId("sess-1");

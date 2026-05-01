@@ -37,6 +37,7 @@ import { getServerDownloadHandler, AssemblyFailedError } from "./server-download
 
 // Configuration
 const USE_INDEXEDDB = true; // Feature flag for IndexedDB mode
+const EMPTY_MAP: Map<string, string> = new Map();
 
 // Server mode is determined at build time by VITE_SERVER_URL.
 // When set, ServerStorageAdapter is used and server-side assembly replaces local ZIP generation.
@@ -757,29 +758,43 @@ async function executeDownloadServerMode(
     // Extract resources from the HTML
     const data = getResources(html);
 
-    // (12.5) Process images — download from origin and upload to server
-    // via ServerStorageAdapter (which enqueues in UploadQueue).
-    let imageFilenameMap = new Map<string, string>();
-    if (downloadOptions.downloadImages) {
-      imageFilenameMap = await processImages(data.images, storage, tabUrl, sendMessage);
+    // Start all three asset categories concurrently. Use a single
+    // Promise.allSettled so a failure in one category doesn't cancel the
+    // others (the finally block's uploadQueue.cancel() only runs after all
+    // three settle).
+    const imagesPromise = downloadOptions.downloadImages
+      ? processImages(data.images, storage, tabUrl, sendMessage)
+      : Promise.resolve(EMPTY_MAP);
+
+    const assetsPromise = downloadOptions.downloadAssets
+      ? processAssets(data, storage, tabUrl, sendMessage)
+      : Promise.resolve();
+
+    const docsPromise = downloadOptions.downloadDocuments
+      ? processDocuments(data.documents, storage, tabUrl, sendMessage)
+      : Promise.resolve();
+
+    const [imagesResult, assetsResult, docsResult] = await Promise.allSettled([
+      imagesPromise, assetsPromise, docsPromise,
+    ]);
+
+    // Propagate any non-images errors after all categories have settled.
+    if (assetsResult.status === "rejected") {
+      console.warn("[ServerMode] Asset processing failed:", assetsResult.reason);
+    }
+    if (docsResult.status === "rejected") {
+      console.warn("[ServerMode] Document processing failed:", docsResult.reason);
     }
 
-    // (12.6) Upload filename map after processImages completes for the main page.
-    // The server needs the map before it can convert HTML URLs during assembly.
-    // We await the 200 ACK before proceeding to finalization.
+    // Images are required — the filename map must be uploaded before finalization.
+    if (imagesResult.status === "rejected") {
+      throw imagesResult.reason;
+    }
+    const imageFilenameMap = imagesResult.value;
+
+    // Upload filename map (needed for HTML conversion during assembly).
     if (imageFilenameMap.size > 0) {
-      const mapObj = Object.fromEntries(imageFilenameMap);
-      await serverClient.uploadFilenameMap(sessionId, mapObj);
-    }
-
-    // (12.5) Process CSS/JS assets — uploaded to server via ServerStorageAdapter.
-    if (downloadOptions.downloadAssets) {
-      await processAssets(data, storage, tabUrl, sendMessage);
-    }
-
-    // (12.5) Process documents — uploaded to server via ServerStorageAdapter.
-    if (downloadOptions.downloadDocuments) {
-      await processDocuments(data.documents, storage, tabUrl, sendMessage);
+      await serverClient.uploadFilenameMap(sessionId, Object.fromEntries(imageFilenameMap));
     }
 
     // (12.5 + 12.10 + 12.11) Process linked pages with server-mode support.

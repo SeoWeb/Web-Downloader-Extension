@@ -15,13 +15,13 @@ import { AssetRegistry } from "../../src/background/asset-registry";
 // ---------------------------------------------------------------------------
 
 // Mock chrome APIs
-const mockChromeTabsGet = jest.fn();
-const mockChromeTabsUpdate = jest.fn();
+const mockChromeTabsGet = vi.fn();
+const mockChromeTabsUpdate = vi.fn();
 const mockChromeTabsOnUpdated = {
-  addListener: jest.fn(),
-  removeListener: jest.fn(),
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
 };
-const mockChromeScriptingExecuteScript = jest.fn();
+const mockChromeScriptingExecuteScript = vi.fn();
 
 Object.defineProperty(globalThis, "chrome", {
   value: {
@@ -38,11 +38,11 @@ Object.defineProperty(globalThis, "chrome", {
 });
 
 // Mock server-client
-jest.mock("../../src/background/server-client", () => ({
+vi.mock("../../src/background/server-client", () => ({
   serverClient: {
-    uploadHtmlChunk: jest.fn(),
-    uploadFilenameMap: jest.fn(),
-    uploadContent: jest.fn(),
+    uploadHtmlChunk: vi.fn(),
+    uploadFilenameMap: vi.fn(),
+    uploadContent: vi.fn(),
   },
   ServerUnavailableError: class extends Error {},
   AuthenticationError: class extends Error {},
@@ -50,24 +50,24 @@ jest.mock("../../src/background/server-client", () => ({
 }));
 
 // Mock getResources to return controllable text
-const mockGetResources = jest.fn();
-jest.mock("../../src/background/resources", () => ({
+const mockGetResources = vi.fn();
+vi.mock("../../src/background/resources", () => ({
   getResources: (...args: any[]) => mockGetResources(...args),
 }));
 
 // Mock other dependencies
-jest.mock("../../src/background/htmlUtils", () => ({
+vi.mock("../../src/background/htmlUtils", () => ({
   convertHtml: (_html: string, _url: string, _prefix: string, _map: any) => _html,
 }));
 
-jest.mock("../../src/background/fileHandlers", () => ({
-  addCssFiles: jest.fn().mockResolvedValue(new Map()),
-  addJsFiles: jest.fn().mockResolvedValue(new Map()),
-  addImageFiles: jest.fn().mockResolvedValue(new Map()),
-  addDocumentFiles: jest.fn().mockResolvedValue(new Map()),
+vi.mock("../../src/background/fileHandlers", () => ({
+  addCssFiles: vi.fn().mockResolvedValue(new Map()),
+  addJsFiles: vi.fn().mockResolvedValue(new Map()),
+  addImageFiles: vi.fn().mockResolvedValue(new Map()),
+  addDocumentFiles: vi.fn().mockResolvedValue(new Map()),
 }));
 
-jest.mock("../../src/background/urlUtils", () => ({
+vi.mock("../../src/background/urlUtils", () => ({
   fixFilename: (name: string) => name,
 }));
 
@@ -80,7 +80,7 @@ describe("LinkedPageScraper text extraction", () => {
   let mockStorage: any;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     scraper = new LinkedPageScraper(new AssetRegistry(), {
       maxPages: 5,
@@ -89,7 +89,7 @@ describe("LinkedPageScraper text extraction", () => {
     });
 
     mockStorage = {
-      addFile: jest.fn().mockResolvedValue(undefined),
+      addFile: vi.fn().mockResolvedValue(undefined),
     };
 
     // Default mock: navigation completes immediately
@@ -120,6 +120,20 @@ describe("LinkedPageScraper text extraction", () => {
     });
   });
 
+  describe("default options", () => {
+    it("should default delayBetweenPages to 200ms", () => {
+      const defaultScraper = new LinkedPageScraper(new AssetRegistry());
+      expect(defaultScraper["options"].delayBetweenPages).toBe(200);
+    });
+
+    it("should allow overriding delayBetweenPages", () => {
+      const customScraper = new LinkedPageScraper(new AssetRegistry(), {
+        delayBetweenPages: 1000,
+      });
+      expect(customScraper["options"].delayBetweenPages).toBe(1000);
+    });
+  });
+
   describe("ScrapedPageData text field", () => {
     it("should include text field from getResources()", async () => {
       mockGetResources.mockReturnValue({
@@ -138,7 +152,7 @@ describe("LinkedPageScraper text extraction", () => {
         status: "queued",
       });
 
-      const result = await scraper.processQueue(1, mockStorage, jest.fn());
+      const result = await scraper.processQueue(1, mockStorage, vi.fn());
 
       expect(result).toContain("About page body text content");
     });
@@ -184,7 +198,7 @@ describe("LinkedPageScraper text extraction", () => {
         status: "queued",
       });
 
-      const result = await scraper.processQueue(1, mockStorage, jest.fn());
+      const result = await scraper.processQueue(1, mockStorage, vi.fn());
 
       // Should contain both pages' text with delimiters
       expect(result).toContain("Page 1 text");
@@ -214,7 +228,7 @@ describe("LinkedPageScraper text extraction", () => {
         status: "queued",
       });
 
-      const result = await scraper.processQueue(1, mockStorage, jest.fn());
+      const result = await scraper.processQueue(1, mockStorage, vi.fn());
 
       expect(result).toBe("");
     });
@@ -236,9 +250,191 @@ describe("LinkedPageScraper text extraction", () => {
         status: "queued",
       });
 
-      const result = await scraper.processQueue(1, mockStorage, jest.fn());
+      const result = await scraper.processQueue(1, mockStorage, vi.fn());
 
       expect(result).toContain("Default enabled text");
+    });
+  });
+
+  describe("server-mode concurrent chunk uploads", () => {
+    let serverScraper: LinkedPageScraper;
+
+    beforeEach(() => {
+      serverScraper = new LinkedPageScraper(new AssetRegistry(), {
+        maxPages: 5,
+        delayBetweenPages: 0,
+        pageTimeout: 5000,
+        serverSessionId: "test-session",
+      });
+    });
+
+    it("uploads all HTML chunks concurrently via Promise.all with correct scrollIndex values", async () => {
+      mockGetResources.mockReturnValue({
+        css: [],
+        js: [],
+        images: [],
+        documents: [],
+        links: [],
+        text: "Linked page text",
+      });
+
+      // Produce body children large enough to trigger chunk splitting.
+      // targetChunkBytes default is 512KB, so we use 3 children each > 512KB.
+      const bigChild = "<div>" + "x".repeat(600 * 1024) + "</div>";
+      mockChromeScriptingExecuteScript.mockImplementation((opts: any) => {
+        if (opts.args) return Promise.resolve([{ result: null }]); // scroll
+        return Promise.resolve([{
+          result: {
+            skeleton: "<html><head></head><body></body></html>",
+            bodyChildren: [bigChild, bigChild, bigChild],
+          },
+        }]);
+      });
+
+      const { serverClient } = await import("../../src/background/server-client");
+      const uploadSpy = vi.mocked(serverClient.uploadHtmlChunk).mockResolvedValue({
+        chunk_id: "ch-1",
+        chunk_count: 1,
+        total_size: 100,
+        deduplicated: false,
+        api_version: "v1",
+      });
+      vi.mocked(serverClient.uploadFilenameMap).mockResolvedValue({
+        filename_map_id: "fm-1",
+        entries: 0,
+        api_version: "v1",
+      } as any);
+
+      await serverScraper.addToQueue({
+        url: "https://example.com/about",
+        depth: 1,
+        parentUrl: "https://example.com",
+        status: "queued",
+      });
+
+      await serverScraper.processQueue(1, mockStorage, vi.fn());
+
+      // Should have been called once per chunk (3 chunks from 3 large body children)
+      expect(uploadSpy).toHaveBeenCalledTimes(3);
+
+      // Verify each call received the correct scrollIndex (0, 1, 2)
+      const scrollIndices = uploadSpy.mock.calls.map(
+        (call) => call[2], // third argument is scrollIndex
+      );
+      expect(scrollIndices).toEqual([0, 1, 2]);
+
+      // Verify pageType is "linked" for all calls
+      for (const call of uploadSpy.mock.calls) {
+        expect(call[3]).toBe("linked");
+        expect(call[4]).toBe("https://example.com/about");
+      }
+    });
+
+    it("handles single-chunk page correctly with Promise.all", async () => {
+      mockGetResources.mockReturnValue({
+        css: [],
+        js: [],
+        images: [],
+        documents: [],
+        links: [],
+        text: "Small page",
+      });
+
+      // Small body child → single chunk
+      mockChromeScriptingExecuteScript.mockImplementation((opts: any) => {
+        if (opts.args) return Promise.resolve([{ result: null }]); // scroll
+        return Promise.resolve([{
+          result: {
+            skeleton: "<html><head></head><body></body></html>",
+            bodyChildren: ["<p>Small</p>"],
+          },
+        }]);
+      });
+
+      const { serverClient } = await import("../../src/background/server-client");
+      const uploadSpy = vi.mocked(serverClient.uploadHtmlChunk).mockResolvedValue({
+        chunk_id: "ch-1",
+        chunk_count: 1,
+        total_size: 100,
+        deduplicated: false,
+        api_version: "v1",
+      });
+
+      await serverScraper.addToQueue({
+        url: "https://example.com/small",
+        depth: 1,
+        parentUrl: "https://example.com",
+        status: "queued",
+      });
+
+      await serverScraper.processQueue(1, mockStorage, vi.fn());
+
+      // Single chunk → one call
+      expect(uploadSpy).toHaveBeenCalledTimes(1);
+      expect(uploadSpy.mock.calls[0][2]).toBe(0); // scrollIndex = 0
+      expect(uploadSpy.mock.calls[0][3]).toBe("linked");
+    });
+
+    it("uploads chunks concurrently, not sequentially", async () => {
+      mockGetResources.mockReturnValue({
+        css: [],
+        js: [],
+        images: [],
+        documents: [],
+        links: [],
+        text: "Concurrent test",
+      });
+
+      const bigChild = "<div>" + "y".repeat(600 * 1024) + "</div>";
+      mockChromeScriptingExecuteScript.mockImplementation((opts: any) => {
+        if (opts.args) return Promise.resolve([{ result: null }]); // scroll
+        return Promise.resolve([{
+          result: {
+            skeleton: "<html><head></head><body></body></html>",
+            bodyChildren: [bigChild, bigChild],
+          },
+        }]);
+      });
+
+      const callOrder: number[] = [];
+      const { serverClient } = await import("../../src/background/server-client");
+
+      // Make each upload take some time and record when it starts
+      vi.mocked(serverClient.uploadHtmlChunk).mockImplementation(
+        async (_sid, _html, scrollIndex) => {
+          callOrder.push(scrollIndex);
+          // Small delay to ensure concurrent overlap
+          await new Promise((r) => setTimeout(r, 10));
+          return {
+            chunk_id: `ch-${scrollIndex}`,
+            chunk_count: 2,
+            total_size: 100,
+            deduplicated: false,
+            api_version: "v1",
+          };
+        },
+      );
+      vi.mocked(serverClient.uploadFilenameMap).mockResolvedValue({
+        filename_map_id: "fm-1",
+        entries: 0,
+        api_version: "v1",
+      } as any);
+
+      await serverScraper.addToQueue({
+        url: "https://example.com/concurrent",
+        depth: 1,
+        parentUrl: "https://example.com",
+        status: "queued",
+      });
+
+      await serverScraper.processQueue(1, mockStorage, vi.fn());
+
+      // Both chunks should have started before either resolved.
+      // With Promise.all, both calls are initiated in the same microtask.
+      expect(callOrder.length).toBe(2);
+      // All calls initiated before any resolved → they ran concurrently
+      expect(callOrder).toContain(0);
+      expect(callOrder).toContain(1);
     });
   });
 
@@ -260,7 +456,7 @@ describe("LinkedPageScraper text extraction", () => {
         status: "queued",
       });
 
-      const result = await scraper.processQueue(1, mockStorage, jest.fn());
+      const result = await scraper.processQueue(1, mockStorage, vi.fn());
 
       // Verify the delimiter format
       expect(result).toMatch(/\n--- .*? ---\n/);

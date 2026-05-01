@@ -284,13 +284,13 @@ def _has_extension(path: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def convert_images(
-    html_string: str,
+def _convert_images(
+    soup: BeautifulSoup,
     tab_url: str,
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
-) -> str:
-    """Convert image URLs in HTML to relative local paths.
+) -> None:
+    """Convert image URLs in HTML to relative local paths (mutates soup in-place).
 
     Port of convertImagesToRelative from image-converter.ts, with added
     support for:
@@ -300,8 +300,6 @@ def convert_images(
     The filename_map maps original URLs → local filenames (e.g.
     "https://example.com/img/photo.jpg" → "images/photo.jpg").
     """
-    soup = BeautifulSoup(html_string, "lxml")
-
     # --- <img> elements ---
     for img in soup.find_all("img"):
         _convert_img_src(img, tab_url, path, filename_map)
@@ -321,8 +319,6 @@ def convert_images(
             elif _has_extension(src.split("?")[0]):
                 filename = src.split("?")[0].split("/")[-1]
                 source["src"] = path + "images/" + filename
-
-    return str(soup)
 
 
 def _lookup_filename_map(
@@ -490,19 +486,17 @@ def _convert_srcset_attr_value(
 # ---------------------------------------------------------------------------
 
 
-def convert_background_images(
-    html_string: str,
+def _convert_background_images(
+    soup: BeautifulSoup,
     tab_url: str,
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
-) -> str:
-    """Convert url() references in inline styles and <style> tags.
+) -> None:
+    """Convert url() references in inline styles and <style> tags (mutates soup in-place).
 
     Port of convertBackgroundImagesToRelative from background-image-converter.ts.
     Matches any CSS property containing url(), not just background-image.
     """
-    soup = BeautifulSoup(html_string, "lxml")
-
     # Process inline styles with background images
     for element in soup.find_all(attrs={"style": re.compile(r"url\(", re.IGNORECASE)}):
         style = element.get("style", "")
@@ -514,8 +508,6 @@ def convert_background_images(
         css = style_tag.string or ""
         updated = _convert_bg_image_urls(css, tab_url, path, filename_map)
         style_tag.string = updated
-
-    return str(soup)
 
 
 def _convert_bg_image_urls(
@@ -566,19 +558,17 @@ def _convert_bg_image_urls(
 # ---------------------------------------------------------------------------
 
 
-def convert_scripts(
-    html_string: str,
+def _convert_scripts(
+    soup: BeautifulSoup,
     tab_url: str,
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
-) -> str:
-    """Convert <script src> URLs to relative local paths.
+) -> None:
+    """Convert <script src> URLs to relative local paths (mutates soup in-place).
 
     Port of convertScriptsToRelative from script-converter.ts, with added
     filename_map support for correct resource name lookup.
     """
-    soup = BeautifulSoup(html_string, "lxml")
-
     for script in soup.find_all("script", src=True):
         src = script.get("src")
         if not src or not isinstance(src, str):
@@ -614,27 +604,23 @@ def convert_scripts(
             script["src"] = path + "scripts/" + filename
         # else: leave as-is (no extension → can't determine filename)
 
-    return str(soup)
-
 
 # ---------------------------------------------------------------------------
 # Stylesheet URL conversion (5.6)
 # ---------------------------------------------------------------------------
 
 
-def convert_stylesheets(
-    html_string: str,
+def _convert_stylesheets(
+    soup: BeautifulSoup,
     tab_url: str,
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
-) -> str:
-    """Convert <link rel="stylesheet" href> URLs to relative local paths.
+) -> None:
+    """Convert <link rel="stylesheet" href> URLs to relative local paths (mutates soup in-place).
 
     Port of convertStylesToRelative from style-converter.ts, with added
     filename_map support for correct resource name lookup.
     """
-    soup = BeautifulSoup(html_string, "lxml")
-
     for link in soup.find_all("link", rel="stylesheet"):
         href = link.get("href")
         if not href or not isinstance(href, str):
@@ -669,21 +655,19 @@ def convert_stylesheets(
             filename = resolved.split("/")[-1]
             link["href"] = path + "styles/" + filename
 
-    return str(soup)
-
 
 # ---------------------------------------------------------------------------
 # Link URL conversion (5.7)
 # ---------------------------------------------------------------------------
 
 
-def convert_links(
-    html_string: str,
+def _convert_links(
+    soup: BeautifulSoup,
     tab_url: str,
     path: str = "./",
     page_filename_map: Optional[dict[str, str]] = None,
-) -> str:
-    """Convert <a href> URLs to local file paths.
+) -> None:
+    """Convert <a href> URLs to local file paths (mutates soup in-place).
 
     Port of convertLinksToRelative from link-converter.ts.
 
@@ -699,7 +683,6 @@ def convert_links(
             to determine the target filename, ensuring consistency with the
             ZIP assembler's deduplicated filenames.
     """
-    soup = BeautifulSoup(html_string, "lxml")
     tab_origin = _get_origin(tab_url)
 
     for link in soup.find_all("a", href=True):
@@ -776,25 +759,21 @@ def convert_links(
             else:
                 link["href"] = path + "pages/" + last_part + ".html"
 
-    return str(soup)
-
 
 # ---------------------------------------------------------------------------
 # Object element conversion (5.8)
 # ---------------------------------------------------------------------------
 
 
-def convert_object_elements(
-    html_string: str,
+def _convert_object_elements(
+    soup: BeautifulSoup,
     tab_url: str,
     path: str = "./",
-) -> str:
-    """Convert <object type="image/*" data> URLs to local paths.
+) -> None:
+    """Convert <object type="image/*" data> URLs to local paths (mutates soup in-place).
 
     Port of convertObjectElementsToRelative from object-converter.ts.
     """
-    soup = BeautifulSoup(html_string, "lxml")
-
     for obj in soup.find_all("object"):
         obj_type = obj.get("type", "")
         if not isinstance(obj_type, str) or not obj_type.startswith("image/"):
@@ -824,7 +803,12 @@ def convert_object_elements(
             filename = data.split("/")[-1]
             obj["data"] = path + "images/" + filename
 
-    return str(soup)
+
+def _remove_base_tag(soup: BeautifulSoup) -> None:
+    """Remove <base> tag from the document (prevents browser from using original base URL)."""
+    base_tag = soup.find("base")
+    if base_tag:
+        base_tag.decompose()
 
 
 # ---------------------------------------------------------------------------
@@ -1290,6 +1274,7 @@ def convert_html(
     """Convert all resource URLs in HTML to relative local paths.
 
     This is the main entry point, port of convertHtml from html-converter.ts.
+    Parses HTML once and applies all conversions on the same soup tree.
 
     Args:
         html_string: The merged HTML content.
@@ -1306,32 +1291,30 @@ def convert_html(
     if path is None:
         path = "../" if is_linked_page else "./"
 
-    # 1. Convert links first (they may reference pages)
-    html = convert_links(html_string, tab_url, path, page_filename_map=page_filename_map)
+    soup = BeautifulSoup(html_string, "lxml")
 
-    # 2. Remove <base> tag (prevents browser from using original base URL)
-    soup = BeautifulSoup(html, "lxml")
-    base_tag = soup.find("base")
-    if base_tag:
-        base_tag.decompose()
-        html = str(soup)
+    # 1. Remove <base> tag first
+    _remove_base_tag(soup)
+
+    # 2. Convert links (they may reference pages)
+    _convert_links(soup, tab_url, path, page_filename_map=page_filename_map)
 
     # 3. Convert images (including lazy-load and srcset)
-    html = convert_images(html, tab_url, path, filename_map)
+    _convert_images(soup, tab_url, path, filename_map)
 
     # 4. Convert background images (inline styles + <style> tags)
-    html = convert_background_images(html, tab_url, path, filename_map)
+    _convert_background_images(soup, tab_url, path, filename_map)
 
     # 5. Convert object elements
-    html = convert_object_elements(html, tab_url, path)
+    _convert_object_elements(soup, tab_url, path)
 
     # 6. Convert stylesheets
-    html = convert_stylesheets(html, tab_url, path, filename_map)
+    _convert_stylesheets(soup, tab_url, path, filename_map)
 
     # 7. Convert scripts
-    html = convert_scripts(html, tab_url, path, filename_map)
+    _convert_scripts(soup, tab_url, path, filename_map)
 
-    return html
+    return str(soup)
 
 
 # ---------------------------------------------------------------------------

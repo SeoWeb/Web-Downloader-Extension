@@ -79,7 +79,7 @@ export interface ScrapedPageData {
 
 export interface LinkedPageScraperOptions {
   maxPages?: number; // Default: 50, Max: 200
-  delayBetweenPages?: number; // Default: 500ms
+  delayBetweenPages?: number; // Default: 200ms
   includeExternal?: boolean; // Default: false
   pageTimeout?: number; // Default: 30000ms
   /** (12.10) Server session ID — when set, linked page HTML chunks are uploaded
@@ -109,7 +109,7 @@ export class LinkedPageScraper {
     this.assetRegistry = assetRegistry;
     this.options = {
       maxPages: options.maxPages ?? 50,
-      delayBetweenPages: options.delayBetweenPages ?? 500,
+      delayBetweenPages: options.delayBetweenPages ?? 200,
       includeExternal: options.includeExternal ?? false,
       pageTimeout: options.pageTimeout ?? 30000,
       serverSessionId: options.serverSessionId,
@@ -285,20 +285,21 @@ export class LinkedPageScraper {
 
         if (this.options.serverSessionId) {
           // (12.10) Server mode: upload HTML chunks with pageType "linked"
-          // and pageUrl metadata. Each chunk is uploaded individually to
-          // avoid holding the entire page DOM in extension memory.
-          // Use per-page scroll index (ci) instead of the global counter so
-          // each page's first chunk has scrollIndex=0, matching the server's
-          // skeleton initialization logic and disk-based chunk loading.
-          for (let ci = 0; ci < scrapedData.htmlChunks.length; ci++) {
-            await serverClient.uploadHtmlChunk(
-              this.options.serverSessionId,
-              scrapedData.htmlChunks[ci],
-              ci,
-              "linked",
-              scrapedData.finalUrl,
-            );
-          }
+          // and pageUrl metadata. All chunks for a page are uploaded
+          // concurrently to reduce latency while preserving per-chunk
+          // scroll indices for correct server-side reassembly.
+          const sessionId = this.options.serverSessionId;
+          await Promise.all(
+            scrapedData.htmlChunks.map((chunk, ci) =>
+              serverClient.uploadHtmlChunk(
+                sessionId,
+                chunk,
+                ci,
+                "linked",
+                scrapedData.finalUrl,
+              ),
+            ),
+          );
 
           // (12.11) Upload incremental filename map after this linked page's
           // assets are downloaded. The delta map contains only the new entries
@@ -354,7 +355,7 @@ export class LinkedPageScraper {
       // Add delay between pages to avoid rate limiting
       if (i < this.queue.length - 1 && this.options.delayBetweenPages > 0) {
         // We can split delay into smaller chunks to check for pause/stop during delay?
-        // Or just await delay. For 500ms it doesn't matter much.
+        // Or just await delay. For 200ms it doesn't matter much.
         await this.delay(this.options.delayBetweenPages);
       }
     }

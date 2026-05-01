@@ -27,14 +27,16 @@ import {
   initialServerModeState,
   ServerModeState,
 } from "../../src/sidepanel/server-mode-state";
-import { setForceLocalMode, shouldUseServerMode } from "../../src/background/download-core";
+import { setForceLocalMode, shouldUseServerMode, clearForceLocalMode } from "../../src/background/download-core";
+import { serverClient } from "../../src/background/server-client";
+import { startDownload } from "../../src/background/jobs";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-jest.mock("../../src/background/server-client", () => {
-  const mocks: Record<string, jest.Mock> = {};
+vi.mock("../../src/background/server-client", () => {
+  const mocks: Record<string, vi.Mock> = {};
   for (const m of [
     "createSession",
     "uploadHtmlChunk",
@@ -46,7 +48,7 @@ jest.mock("../../src/background/server-client", () => {
     "checkHealth",
     "deleteSession",
   ]) {
-    mocks[m] = jest.fn();
+    mocks[m] = vi.fn();
   }
   return {
     __esModule: true,
@@ -74,23 +76,23 @@ jest.mock("../../src/background/server-client", () => {
   };
 });
 
-jest.mock("../../src/background/jobs", () => ({
-  scrollDownAndScrape: jest.fn().mockResolvedValue({ height: 1000, html: "<p>test</p>" }),
-  startDownload: jest.fn().mockResolvedValue(["file1.zip"]),
+vi.mock("../../src/background/jobs", () => ({
+  scrollDownAndScrape: vi.fn().mockResolvedValue({ height: 1000, html: "<p>test</p>" }),
+  startDownload: vi.fn().mockResolvedValue(["file1.zip"]),
 }));
 
-jest.mock("../../src/background/download", () => ({
-  downloadResourcesWithIncrementalAssembly: jest.fn().mockResolvedValue(undefined),
+vi.mock("../../src/background/download", () => ({
+  downloadResourcesWithIncrementalAssembly: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock("../../src/background/merge-html", () => ({
-  mergeHtmlIncremental: jest.fn().mockResolvedValue(undefined),
+vi.mock("../../src/background/merge-html", () => ({
+  mergeHtmlIncremental: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock("../../src/background/scraper-state", () => ({
-  pauseScraping: jest.fn(),
-  resumeScraping: jest.fn(),
-  stopScraping: jest.fn(),
+vi.mock("../../src/background/scraper-state", () => ({
+  pauseScraping: vi.fn(),
+  resumeScraping: vi.fn(),
+  stopScraping: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -98,15 +100,14 @@ jest.mock("../../src/background/scraper-state", () => ({
 // ---------------------------------------------------------------------------
 
 /** Get a mock function from the mocked serverClient module. */
-function mock(method: string): jest.Mock {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return (require("../../src/background/server-client") as any).serverClient[method] as jest.Mock;
+function mock(method: string): vi.Mock {
+  return (serverClient as any)[method] as vi.Mock;
 }
 
 /** Reset the active server session between tests. */
-async function resetActiveSession() {
+async function resetActiveSession(tabId: number = 1) {
   const { setActiveServerSession } = await import("../../src/background/message");
-  setActiveServerSession(null);
+  setActiveServerSession(tabId, null);
 }
 
 /** Apply a sequence of messages and return the final state. */
@@ -126,9 +127,9 @@ function applyMessages(
 
 describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset forceLocalMode between tests
-    setForceLocalMode(false);
+    clearForceLocalMode(1);
   });
 
   // =======================================================================
@@ -145,13 +146,13 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
       // When forceLocalMode is true, shouldUseServerMode() returns false
       // even though IS_SERVER_MODE is true. This simulates the absence
       // of VITE_SERVER_URL for routing purposes.
-      setForceLocalMode(true);
-      expect(shouldUseServerMode()).toBe(false);
+      setForceLocalMode(1, true);
+      expect(shouldUseServerMode(1)).toBe(false);
     });
 
     it("setForceLocalMode(false) restores server-mode routing", () => {
-      setForceLocalMode(true);
-      setForceLocalMode(false);
+      setForceLocalMode(1, true);
+      setForceLocalMode(1, false);
       // After resetting, shouldUseServerMode() returns IS_SERVER_MODE again
       expect(IS_SERVER_MODE).toBe(true);
     });
@@ -159,11 +160,11 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
     it("downloadResources resets forceLocalMode at the start of each download", () => {
       // download-core.ts line 90: forceLocalMode = false at the start
       // This ensures a stale forceLocalMode doesn't persist across downloads
-      setForceLocalMode(true);
-      expect(shouldUseServerMode()).toBe(false);
+      setForceLocalMode(1, true);
+      expect(shouldUseServerMode(1)).toBe(false);
       // Simulate the reset that downloadResources does at the start
-      setForceLocalMode(false);
-      expect(shouldUseServerMode()).toBe(true);
+      clearForceLocalMode(1);
+      expect(shouldUseServerMode(1)).toBe(true);
     });
 
     it("_forceLocal download option sets forceLocalMode for the current download", () => {
@@ -172,10 +173,10 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
       //   if (downloadOptions?._forceLocal) { forceLocalMode = true; }
       // This allows the SERVER_LOCAL_FALLBACK handler to trigger local mode
       // by passing { _forceLocal: true } in the download options.
-      setForceLocalMode(true);
-      expect(shouldUseServerMode()).toBe(false);
-      setForceLocalMode(false);
-      expect(shouldUseServerMode()).toBe(true);
+      setForceLocalMode(1, true);
+      expect(shouldUseServerMode(1)).toBe(false);
+      clearForceLocalMode(1);
+      expect(shouldUseServerMode(1)).toBe(true);
     });
   });
 
@@ -184,16 +185,16 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
   // =======================================================================
   describe("16.2: absence of VITE_SERVER_URL routes through IndexedDB/JSZip", () => {
     it("shouldUseServerMode returns false when forceLocalMode is true", () => {
-      // shouldUseServerMode() = IS_SERVER_MODE && !forceLocalMode
+      // shouldUseServerMode() = IS_SERVER_MODE && !!tabId && !forceLocalMode
       // With IS_SERVER_MODE=true and forceLocalMode=true, result is false
-      setForceLocalMode(true);
+      setForceLocalMode(1, true);
       // This is the key logic: even with IS_SERVER_MODE=true, forceLocalMode
       // overrides it to route through the local path
       expect(IS_SERVER_MODE && !true).toBe(false);
     });
 
     it("shouldUseServerMode returns true when forceLocalMode is false and IS_SERVER_MODE is true", () => {
-      setForceLocalMode(false);
+      clearForceLocalMode(1);
       expect(IS_SERVER_MODE && !false).toBe(true);
     });
 
@@ -205,8 +206,8 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
 
       await messageWorker(
         messageActions.SERVER_CREATE_SESSION,
-        { url: "https://example.com", setActive: true },
-        jest.fn(),
+        { url: "https://example.com", setActive: true, tabId: 1 },
+        vi.fn(),
       );
 
       expect(mock("createSession")).toHaveBeenCalledWith(
@@ -216,9 +217,6 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
     });
 
     it("SERVER_LOCAL_FALLBACK passes _forceLocal:true to startDownload (bypasses server)", async () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { startDownload } = require("../../src/background/jobs");
-
       await messageWorker(
         messageActions.SERVER_LOCAL_FALLBACK,
         {
@@ -227,7 +225,7 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
           downloadOptions: { singleFile: false },
           tabId: 42,
         },
-        jest.fn(),
+        vi.fn(),
       );
 
       // The _forceLocal flag tells download-core.ts to use the local
@@ -248,8 +246,6 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
       mock("createSession").mockResolvedValue("sess-should-not-be-created");
 
       // Trigger fallback which uses _forceLocal
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { startDownload } = require("../../src/background/jobs");
       await messageWorker(
         messageActions.SERVER_LOCAL_FALLBACK,
         {
@@ -258,7 +254,7 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
           downloadOptions: { downloadHTML: true },
           tabId: 1,
         },
-        jest.fn(),
+        vi.fn(),
       );
 
       // createSession should NOT have been called for the local-fallback path
@@ -400,8 +396,6 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
 
       // Also verify that the SERVER_LOCAL_FALLBACK handler can be invoked
       // after this registration failure, allowing the user to download locally
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { startDownload } = require("../../src/background/jobs");
       await messageWorker(
         messageActions.SERVER_LOCAL_FALLBACK,
         {
@@ -410,7 +404,7 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
           downloadOptions: { downloadHTML: true },
           tabId: 1,
         },
-        jest.fn(),
+        vi.fn(),
       );
 
       expect(startDownload).toHaveBeenCalledWith(
@@ -432,8 +426,8 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
       mock("createSession").mockResolvedValue("sess-to-clear");
       await messageWorker(
         messageActions.SERVER_CREATE_SESSION,
-        { url: "https://example.com", setActive: true },
-        jest.fn(),
+        { url: "https://example.com", setActive: true, tabId: 1 },
+        vi.fn(),
       );
 
       // Now trigger fallback
@@ -445,7 +439,7 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
           downloadOptions: {},
           tabId: 1,
         },
-        jest.fn(),
+        vi.fn(),
       );
 
       // After fallback, active session should be null
@@ -453,8 +447,8 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
       mock("uploadHtmlChunk").mockResolvedValue({ received: true });
       const result = await messageWorker(
         messageActions.SERVER_UPLOAD_HTML_CHUNK,
-        { html: "<p>test</p>", scrollIndex: 0 },
-        jest.fn(),
+        { html: "<p>test</p>", scrollIndex: 0, tabId: 1 },
+        vi.fn(),
       );
 
       // No active session → should return error
@@ -462,9 +456,6 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
     });
 
     it("SERVER_LOCAL_FALLBACK calls startDownload with _forceLocal:true", async () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { startDownload } = require("../../src/background/jobs");
-
       const downloadOptions = { downloadHTML: true, downloadImages: true };
       await messageWorker(
         messageActions.SERVER_LOCAL_FALLBACK,
@@ -474,7 +465,7 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
           downloadOptions,
           tabId: 99,
         },
-        jest.fn(),
+        vi.fn(),
       );
 
       expect(startDownload).toHaveBeenCalledWith(
@@ -490,9 +481,6 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
     });
 
     it("SERVER_LOCAL_FALLBACK preserves original download options", async () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { startDownload } = require("../../src/background/jobs");
-
       const downloadOptions = {
         downloadHTML: true,
         downloadImages: false,
@@ -511,10 +499,10 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
           downloadOptions,
           tabId: 5,
         },
-        jest.fn(),
+        vi.fn(),
       );
 
-      const calledOptions = (startDownload as jest.Mock).mock.calls[0][2];
+      const calledOptions = (startDownload as vi.Mock).mock.calls[0][2];
       expect(calledOptions._forceLocal).toBe(true);
       expect(calledOptions.downloadHTML).toBe(true);
       expect(calledOptions.singleFile).toBe(true);
@@ -522,9 +510,7 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
     });
 
     it("SERVER_LOCAL_FALLBACK returns error when startDownload fails", async () => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { startDownload } = require("../../src/background/jobs");
-      (startDownload as jest.Mock).mockRejectedValueOnce(new Error("Local download failed"));
+      (startDownload as vi.Mock).mockRejectedValueOnce(new Error("Local download failed"));
 
       const result = await messageWorker(
         messageActions.SERVER_LOCAL_FALLBACK,
@@ -534,7 +520,7 @@ describe("Local-mode backward compatibility (tasks 16.1–16.4)", () => {
           downloadOptions: {},
           tabId: 1,
         },
-        jest.fn(),
+        vi.fn(),
       );
 
       expect(result).toEqual({ success: false, error: "Local download failed" });

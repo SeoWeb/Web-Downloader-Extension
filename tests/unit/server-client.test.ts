@@ -46,11 +46,11 @@ function mockResponse(
 // ---------------------------------------------------------------------------
 
 describe("ServerClient", () => {
-  let fetchSpy: jest.SpiedFunction<typeof globalThis.fetch>;
+  let fetchSpy: vi.SpiedFunction<typeof globalThis.fetch>;
 
   beforeEach(() => {
-    fetchSpy = jest.spyOn(globalThis, "fetch");
-    jest.clearAllMocks();
+    fetchSpy = vi.spyOn(globalThis, "fetch");
+    vi.clearAllMocks();
     // Clear chrome.storage mock state between tests to prevent key leakage
     const store = globalThis.chrome?.storage?.local?._store as Record<string, string> | undefined;
     if (store) {

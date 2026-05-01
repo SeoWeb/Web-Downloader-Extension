@@ -4,7 +4,7 @@
  * Tasks 9.1–9.5 of the server-side-microservice migration.
  *
  * Key features:
- * - Max 5 concurrent uploads (task 9.1)
+ * - Max 12 concurrent uploads (task 9.1, optimized from 5)
  * - Per-task and aggregate upload progress tracking (task 9.2)
  * - Retry logic with 429/413 handling (task 9.3)
  * - Queue cancellation via AbortController (task 9.4)
@@ -70,7 +70,7 @@ export type SessionFullCallback = (sessionId: string) => void;
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_MAX_CONCURRENCY = 5;
+const DEFAULT_MAX_CONCURRENCY = 12;
 const MAX_RETRIES = 3;
 const BACKOFF_BASE_MS = 1000; // 1s, 2s, 4s
 const MAX_BACKOFF_MS = 8000;
@@ -116,6 +116,12 @@ export class UploadQueue {
 
   /** Whether the processing loop is currently scheduled/running. */
   private processing = false;
+
+  /** Resolvers for waitForAll() promises, resolved when queue empties. */
+  private doneWaiters: Array<{
+    resolve: () => void;
+    reject: (err: Error) => void;
+  }> = [];
 
   // -----------------------------------------------------------------------
   // Callbacks
@@ -216,6 +222,13 @@ export class UploadQueue {
     this.parentAbortController.abort();
     this.parentAbortController = new AbortController();
 
+    // Reject any waitForAll() waiters
+    const cancelError = new Error("UploadQueue was cancelled");
+    for (const { reject } of this.doneWaiters) {
+      reject(cancelError);
+    }
+    this.doneWaiters.length = 0;
+
     this.notifyProgress();
   }
 
@@ -266,14 +279,14 @@ export class UploadQueue {
    * Rejects if the queue is cancelled.
    */
   async waitForAll(): Promise<void> {
-    // Poll until done — the queue is event-driven internally,
-    // but a simple poll loop avoids complex promise wiring.
-    while (!this.isDone() && !this.cancelled) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
+    if (this.isDone()) return;
     if (this.cancelled) {
       throw new Error("UploadQueue was cancelled");
     }
+
+    return new Promise<void>((resolve, reject) => {
+      this.doneWaiters.push({ resolve, reject });
+    });
   }
 
   // -----------------------------------------------------------------------
@@ -541,6 +554,14 @@ export class UploadQueue {
 
   private notifyProgress(): void {
     this.onProgress?.(this.getProgress());
+
+    // Resolve waitForAll() waiters when the queue empties
+    if (this.isDone() && this.doneWaiters.length > 0) {
+      const waiters = this.doneWaiters.splice(0);
+      for (const { resolve } of waiters) {
+        resolve();
+      }
+    }
   }
 
   private sleep(ms: number): Promise<void> {
