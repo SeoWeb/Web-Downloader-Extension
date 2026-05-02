@@ -105,10 +105,15 @@ async def upload_html_chunk(
 
     # Check cumulative session size limit — use aggregate queries to
     # avoid locking the session row (prevents deadlocks with concurrent
-    # resource uploads).
-    from sqlalchemy import func as sa_func
+    # resource uploads). Sum both resources and html_chunks.
+    from sqlalchemy import text
     current_total_result = await db.execute(
-        select(sa_func.coalesce(sa_func.sum(Resource.size), 0)).where(Resource.session_id == session_id)
+        text(
+            "SELECT "
+            "(SELECT COALESCE(SUM(size), 0) FROM resources WHERE session_id = :sid) "
+            "+ (SELECT COALESCE(SUM(size), 0) FROM html_chunks WHERE session_id = :sid)"
+        ),
+        {"sid": session_id},
     )
     current_total = current_total_result.scalar() or 0
     max_session_bytes = settings.max_session_size_mb * 1024 * 1024
@@ -146,13 +151,18 @@ async def upload_html_chunk(
     if existing_chunk:
         # Compute counts via aggregate (session counters are not updated
         # per-upload to avoid deadlocks)
-        from sqlalchemy import func as sa_func_cnt
+        from sqlalchemy import func as sa_func_cnt, text as sa_text_cnt
         chunk_count_result = await db.execute(
             select(sa_func_cnt.count(HtmlChunk.id)).where(HtmlChunk.session_id == session_id)
         )
         chunk_count = chunk_count_result.scalar() or 0
         total_size_result = await db.execute(
-            select(sa_func_cnt.coalesce(sa_func_cnt.sum(Resource.size), 0)).where(Resource.session_id == session_id)
+            sa_text_cnt(
+                "SELECT "
+                "(SELECT COALESCE(SUM(size), 0) FROM resources WHERE session_id = :sid) "
+                "+ (SELECT COALESCE(SUM(size), 0) FROM html_chunks WHERE session_id = :sid)"
+            ),
+            {"sid": session_id},
         )
         total_size = total_size_result.scalar() or 0
         return HtmlChunkResponse(
@@ -183,6 +193,7 @@ async def upload_html_chunk(
         scroll_index=body.scrollIndex,
         content_hash=content_hash,
         storage_path=storage_path,
+        size=chunk_size,
     )
     db.add(chunk)
     await db.flush()
@@ -215,13 +226,18 @@ async def upload_html_chunk(
 
     # Compute counts via aggregate (session counters are not updated
     # per-upload to avoid deadlocks)
-    from sqlalchemy import func as sa_func_resp
+    from sqlalchemy import func as sa_func_resp, text as sa_text_resp
     chunk_count_result = await db.execute(
         select(sa_func_resp.count(HtmlChunk.id)).where(HtmlChunk.session_id == session_id)
     )
     chunk_count = chunk_count_result.scalar() or 0
     total_size_result = await db.execute(
-        select(sa_func_resp.coalesce(sa_func_resp.sum(Resource.size), 0)).where(Resource.session_id == session_id)
+        sa_text_resp(
+            "SELECT "
+            "(SELECT COALESCE(SUM(size), 0) FROM resources WHERE session_id = :sid) "
+            "+ (SELECT COALESCE(SUM(size), 0) FROM html_chunks WHERE session_id = :sid)"
+        ),
+        {"sid": session_id},
     )
     total_size = total_size_result.scalar() or 0
 

@@ -90,6 +90,13 @@ class HtmlChunk(Base):
         nullable=False,
         comment="Path to the chunk file on the server filesystem",
     )
+    size: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+        default=0,
+        server_default="0",
+        comment="HTML chunk size in bytes (UTF-8 encoded length)",
+    )
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,

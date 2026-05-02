@@ -129,9 +129,15 @@ async def upload_resource(
 
     # Check session size limit — use aggregate query to avoid locking
     # the session row (prevents deadlocks with concurrent uploads).
-    from sqlalchemy import func as sa_func
+    # Sum both resources and html_chunks.
+    from sqlalchemy import text as sa_text
     current_total_result = await db.execute(
-        select(sa_func.coalesce(sa_func.sum(Resource.size), 0)).where(Resource.session_id == session_id)
+        sa_text(
+            "SELECT "
+            "(SELECT COALESCE(SUM(size), 0) FROM resources WHERE session_id = :sid) "
+            "+ (SELECT COALESCE(SUM(size), 0) FROM html_chunks WHERE session_id = :sid)"
+        ),
+        {"sid": session_id},
     )
     current_total = current_total_result.scalar() or 0
     max_session_bytes = settings.max_session_size_mb * 1024 * 1024

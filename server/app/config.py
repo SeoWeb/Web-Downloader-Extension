@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     storage_root: str = "./storage"
 
     # Session limits
-    max_session_size_mb: int = 500
+    max_session_size_mb: int = 1000
     max_html_chunk_size_pct: int = 25  # percentage of max_session_size_mb
     default_retention_days: int = 7
     max_retention_days: int = 30
