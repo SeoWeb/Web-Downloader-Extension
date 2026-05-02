@@ -141,14 +141,22 @@ The server SHALL recover gracefully from restarts by detecting stale sessions.
 
 ### Requirement: Cleanup Cron Job
 
-The server SHALL run a periodic cleanup job that removes expired sessions.
+The server SHALL run a cleanup job on startup and at a configurable interval (default 1 hour). The cleanup job removes expired sessions, marks stale assemblies as failed, AND monitors disk usage to trigger aggressive cleanup when storage capacity is under pressure.
 
-#### Scenario: Cleanup runs periodically
+#### Scenario: Normal hourly cleanup
 
-- **WHEN** the server is running
-- **THEN** a cleanup job runs every hour
-- **AND** removes all sessions with `expires_at` in the past
-- **AND** marks stale assembling sessions as failed (per "Periodic cleanup marks stale assemblies as failed" scenario)
+- **WHEN** the cleanup interval elapses and disk usage is below the aggressive threshold
+- **THEN** expired sessions are removed, stale assemblies are marked as failed, and disk usage is logged
+
+#### Scenario: Aggressive cleanup under disk pressure
+
+- **WHEN** disk usage exceeds the configured threshold (default 80%)
+- **THEN** the cleanup service removes the oldest expired sessions first, then removes sessions approaching expiry (within 10% of retention period), and logs the bytes freed
+
+#### Scenario: Disk usage logged after every cleanup run
+
+- **WHEN** any cleanup run completes
+- **THEN** the current disk usage percentage and total bytes freed are logged at INFO level
 
 #### Scenario: Cleanup on startup
 

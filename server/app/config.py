@@ -27,6 +27,20 @@ class Settings(BaseSettings):
     # Regex pattern for chrome-extension:// origins (always enabled)
     cors_extension_origin_regex: str = r"chrome-extension://.*"
 
+    # Request filtering
+    filtered_paths: list[str] = [
+        "/owa/",
+        "/wp-admin/",
+        "/.env",
+        "/phpmyadmin/",
+        "/admin/",
+        "/xmlrpc.php",
+    ]
+
+    # Resource guards
+    disk_cleanup_threshold_pct: int = 80
+    docker_mem_limit: str = "1g"
+
     # Cleanup
     cleanup_interval_hours: int = 1
     orphaned_api_key_age_days: int = 30

@@ -64,6 +64,34 @@ async def async_session_factory():
             await session.close()
 
 
+def log_pool_status() -> None:
+    """Log current connection pool metrics for diagnostics.
+
+    Reports pool_size, checked_out, and overflow at DEBUG level.
+    Logs at WARNING when checked_out exceeds 80% of total capacity.
+    """
+    pool = engine.sync_engine.pool
+    size = pool.size()
+    checked_out = pool.checkedout()
+    overflow = pool.overflow()
+    max_overflow = pool._max_overflow
+    total_capacity = size + max_overflow
+
+    logger.debug(
+        "Connection pool: size=%d, checked_out=%d, overflow=%d",
+        size,
+        checked_out,
+        overflow,
+    )
+
+    if total_capacity > 0 and checked_out >= total_capacity * 0.8:
+        logger.warning(
+            "Connection pool near exhaustion: checked_out=%d/%d (80%% threshold)",
+            checked_out,
+            total_capacity,
+        )
+
+
 async def init_db() -> None:
     """Run Alembic migrations to ensure database schema is up to date.
 

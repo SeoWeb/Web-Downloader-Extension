@@ -5,6 +5,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.middleware.request_filter import RequestFilterMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +68,12 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-API-Key", "X-Content-Gzipped"],
 )
+
+# Security headers — strip Server header, add hardening headers
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Request filtering — reject known bot-scan paths before any other processing
+app.add_middleware(RequestFilterMiddleware)
 
 # API routers
 from app.api.routes import auth, download, health, html, resources, sessions

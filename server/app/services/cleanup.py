@@ -24,6 +24,8 @@ import os
 import shutil
 from datetime import datetime, timedelta, timezone
 
+import psutil
+
 from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,7 +60,35 @@ class CleanupService:
         self.cleanup_interval_hours = (
             cleanup_interval_hours or settings.cleanup_interval_hours
         )
+        self.disk_cleanup_threshold_pct = settings.disk_cleanup_threshold_pct
         self._background_task: asyncio.Task | None = None
+        self._pool_monitor_task: asyncio.Task | None = None
+
+    # ------------------------------------------------------------------
+    # Disk usage helpers
+    # ------------------------------------------------------------------
+
+    def _get_disk_usage_pct(self) -> float:
+        """Return disk usage percentage for the storage_root mount point."""
+        usage = psutil.disk_usage(self.storage_root)
+        return usage.percent
+
+    def _get_disk_free_bytes(self) -> int:
+        """Return free bytes on the storage_root mount point."""
+        usage = psutil.disk_usage(self.storage_root)
+        return usage.free
+
+    def _dir_size(self, path: str) -> int:
+        """Return total bytes used by a directory tree."""
+        total = 0
+        for dirpath, _dirnames, filenames in os.walk(path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                try:
+                    total += os.path.getsize(fp)
+                except OSError:
+                    pass
+        return total
 
     # ------------------------------------------------------------------
     # Top-level cleanup orchestration
@@ -109,8 +139,12 @@ class CleanupService:
         Unlike startup cleanup, this does NOT blanket-fail all assembling
         sessions. Instead, only assemblies that have been stale for longer
         than the timeout AND have no registered task are marked as failed.
+
+        After normal cleanup, checks disk usage and triggers aggressive
+        cleanup when usage exceeds the configured threshold.
         """
         logger.info("Running periodic cleanup...")
+        disk_before = self._get_disk_usage_pct()
         result: dict = {}
 
         # Step 1a: Mark stale scraping/uploading sessions as failed
@@ -132,7 +166,23 @@ class CleanupService:
 
         await db.flush()
 
-        logger.info("Periodic cleanup complete: %s", result)
+        # Step 5: Aggressive cleanup if disk usage exceeds threshold
+        disk_after_normal = self._get_disk_usage_pct()
+        if disk_after_normal > self.disk_cleanup_threshold_pct:
+            logger.warning(
+                "Disk usage %.1f%% exceeds threshold %d%%, starting aggressive cleanup",
+                disk_after_normal,
+                self.disk_cleanup_threshold_pct,
+            )
+            result["aggressive_sessions_removed"] = await self._aggressive_cleanup(db)
+
+        disk_after = self._get_disk_usage_pct()
+        logger.info(
+            "Periodic cleanup complete: %s (disk: %.1f%% → %.1f%%)",
+            result,
+            disk_before,
+            disk_after,
+        )
         return result
 
     # ------------------------------------------------------------------
@@ -363,6 +413,95 @@ class CleanupService:
         return total_count
 
     # ------------------------------------------------------------------
+    # Aggressive cleanup (disk-pressure triggered)
+    # ------------------------------------------------------------------
+
+    async def _aggressive_cleanup(self, db: AsyncSession) -> int:
+        """Remove sessions approaching expiry when disk usage exceeds threshold.
+
+        First removes all fully expired sessions (oldest first), then
+        progressively removes sessions within 10% of their retention
+        period until disk usage drops below the threshold.
+
+        Returns:
+            Number of sessions removed.
+        """
+        total_freed = 0
+        total_removed = 0
+
+        # Pass 1: Remove all fully expired sessions (oldest first)
+        now = datetime.now(timezone.utc)
+        stmt = (
+            select(Session)
+            .where(Session.expires_at <= now)
+            .order_by(Session.expires_at.asc())
+        )
+        result = await db.execute(stmt)
+        expired = result.scalars().all()
+
+        for session in expired:
+            session_dir = os.path.join(self.storage_root, session.id)
+            freed = self._dir_size(session_dir) if os.path.exists(session_dir) else 0
+            if os.path.exists(session_dir):
+                shutil.rmtree(session_dir, ignore_errors=True)
+            # Delete resource records
+            await db.execute(
+                delete(Resource).where(Resource.session_id == session.id)
+            )
+            await db.delete(session)
+            total_freed += freed
+            total_removed += 1
+
+        await db.flush()
+
+        if self._get_disk_usage_pct() < self.disk_cleanup_threshold_pct:
+            logger.info(
+                "Aggressive cleanup pass 1 freed %d bytes (%d sessions), disk now %.1f%%",
+                total_freed,
+                total_removed,
+                self._get_disk_usage_pct(),
+            )
+            return total_removed
+
+        # Pass 2: Remove sessions within 10% of expiry
+        retention_seconds = settings.default_retention_days * 86400
+        margin = retention_seconds * 0.10
+        near_expiry_cutoff = now + timedelta(seconds=margin)
+
+        stmt = (
+            select(Session)
+            .where(Session.expires_at <= near_expiry_cutoff)
+            .order_by(Session.expires_at.asc())
+        )
+        result = await db.execute(stmt)
+        near_expiry = result.scalars().all()
+
+        for session in near_expiry:
+            if self._get_disk_usage_pct() < self.disk_cleanup_threshold_pct:
+                break
+
+            session_dir = os.path.join(self.storage_root, session.id)
+            freed = self._dir_size(session_dir) if os.path.exists(session_dir) else 0
+            if os.path.exists(session_dir):
+                shutil.rmtree(session_dir, ignore_errors=True)
+            await db.execute(
+                delete(Resource).where(Resource.session_id == session.id)
+            )
+            await db.delete(session)
+            total_freed += freed
+            total_removed += 1
+
+        await db.flush()
+
+        logger.info(
+            "Aggressive cleanup freed %d bytes (%d sessions), disk now %.1f%%",
+            total_freed,
+            total_removed,
+            self._get_disk_usage_pct(),
+        )
+        return total_removed
+
+    # ------------------------------------------------------------------
     # Step 3: Orphaned API key cleanup (7.9)
     # ------------------------------------------------------------------
 
@@ -463,6 +602,9 @@ class CleanupService:
         self._background_task = asyncio.create_task(
             self._periodic_cleanup_loop()
         )
+        self._pool_monitor_task = asyncio.create_task(
+            self._pool_monitor_loop()
+        )
         logger.info(
             "Periodic cleanup task started (interval: %d hour(s))",
             self.cleanup_interval_hours,
@@ -470,16 +612,19 @@ class CleanupService:
 
     async def stop_periodic_cleanup(self) -> None:
         """Stop the periodic cleanup background task."""
-        if self._background_task is None:
-            return
-
-        self._background_task.cancel()
-        try:
-            await self._background_task
-        except asyncio.CancelledError:
-            pass
+        for task, name in [
+            (self._background_task, "cleanup"),
+            (self._pool_monitor_task, "pool monitor"),
+        ]:
+            if task is not None:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
         self._background_task = None
-        logger.info("Periodic cleanup task stopped")
+        self._pool_monitor_task = None
+        logger.info("Periodic cleanup tasks stopped")
 
     async def _periodic_cleanup_loop(self) -> None:
         """Run periodic cleanup at the configured interval."""
@@ -503,6 +648,21 @@ class CleanupService:
                         raise
             except Exception:
                 logger.exception("Error during periodic cleanup")
+
+    async def _pool_monitor_loop(self) -> None:
+        """Log connection pool status every 5 minutes."""
+        while True:
+            try:
+                await asyncio.sleep(300)
+            except asyncio.CancelledError:
+                break
+
+            try:
+                from app.db.database import log_pool_status
+
+                log_pool_status()
+            except Exception:
+                logger.debug("Could not log pool status", exc_info=True)
 
 
 # Module-level singleton
