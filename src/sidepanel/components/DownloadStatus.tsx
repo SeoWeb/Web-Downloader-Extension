@@ -29,6 +29,8 @@ export interface InterruptData {
   phase: string;
   tabUrl: string;
   timestamp: number;
+  serverSessionId?: string;
+  resourceUrls?: Array<{ url: string; path: string; contentType: string }>;
 }
 
 interface DownloadStatusProps {
@@ -163,7 +165,7 @@ export function DownloadStatus({
                 className="btn-primary w-full flex items-center justify-center gap-2 cursor-pointer"
               >
                 <RefreshCw className="w-4 h-4" />
-                {t('status.restartDownload')}
+                {interruptData?.serverSessionId ? t('status.resumeDownload') : t('status.restartDownload')}
               </button>
             )}
             {onDismissInterrupt && (

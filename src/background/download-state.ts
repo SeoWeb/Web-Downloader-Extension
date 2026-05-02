@@ -45,7 +45,14 @@ export const setKeepalivePort = (port: chrome.runtime.Port | null, tabId: number
  *  Safe to call multiple times — reuses existing port. */
 export function createKeepalivePort(tabId: number): void {
   if (!keepalivePorts.has(tabId)) {
-    keepalivePorts.set(tabId, chrome.runtime.connect({ name: "download-keepalive" }));
+    const port = chrome.runtime.connect({ name: "download-keepalive" });
+    // Respond to pings from the service worker to create bidirectional I/O
+    port.onMessage.addListener((msg) => {
+      if (msg.type === "keepalive-ping") {
+        port.postMessage({ type: "keepalive-pong" });
+      }
+    });
+    keepalivePorts.set(tabId, port);
     console.log("[Keepalive] Port created for tab", tabId);
   }
 }

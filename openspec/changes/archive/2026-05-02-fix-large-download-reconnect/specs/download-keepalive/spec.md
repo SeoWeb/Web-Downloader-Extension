@@ -1,10 +1,4 @@
-# Download Keepalive Specification
-
-## Purpose
-
-Manages the Chrome extension service worker keepalive port during active downloads, preventing the service worker from being killed mid-download.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Keepalive port established at download start
 The system SHALL create a `chrome.runtime.connect({ name: "download-keepalive" })` port in the background service worker immediately after the `setDownloadInProgress(true)` guard in `downloadResources()`, before any scraping or resource processing begins. The port SHALL listen for `keepalive-ping` messages from the service worker and respond with `keepalive-pong` messages to create bidirectional I/O.
@@ -38,12 +32,7 @@ The system SHALL disconnect the keepalive port in the `finally` block of `downlo
 - **WHEN** the user presses Stop and `abortActiveDownload()` is called
 - **THEN** the keepalive port is disconnected and the download-in-progress flag is cleared
 
-### Requirement: Keepalive port tracks download lifecycle
-The keepalive port created at download start SHALL replace the existing `trackDownload()` port creation in `server-download.ts`. The `trackDownload()` function SHALL NOT create a new port if one already exists from download start.
-
-#### Scenario: trackDownload does not duplicate port
-- **WHEN** `trackDownload()` is called during server download trigger
-- **THEN** it reuses the existing keepalive port instead of creating a second one
+## ADDED Requirements
 
 ### Requirement: Service worker keepalive port listener
 The service worker (`background.js`) SHALL register a `chrome.runtime.onConnect` listener for ports named `"download-keepalive"`. When a port connects, the listener SHALL start a 25-second interval that sends `{ type: "keepalive-ping" }` messages. The interval SHALL be cleared on `port.onDisconnect`.

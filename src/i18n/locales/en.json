@@ -79,6 +79,7 @@
       "failed": "Download failed",
       "downloadInterruptedTitle": "Download Interrupted",
       "downloadInterruptedMessage": "The download was interrupted during {{phase}} because the extension service was restarted.",
+      "resumeDownload": "Resume Download",
       "restartDownload": "Restart Download",
       "dismissInterrupt": "Dismiss",
       "interruptedPhase": {
@@ -187,6 +188,8 @@
       "serverError": "Server error: {{error}}",
       "serverUnavailable": "Server unavailable",
       "assemblyTimeout": "Assembly timed out",
+      "reconnectingServer": "Reconnecting to server...",
+      "resumingUploads": "Resuming {{count}} resource uploads...",
       "assemblyFailed": "Assembly failed",
       "authFailed": "Authentication failed",
       "retryServer": "Retry",

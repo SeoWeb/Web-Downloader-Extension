@@ -1,23 +1,4 @@
-# Download Recovery Specification
-
-## Purpose
-
-Handles detection and recovery of downloads that were interrupted by service worker kills, enabling the user to restart interrupted downloads.
-
-## Requirements
-
-### Requirement: Interrupted download detected on service worker startup
-The system SHALL check for an interrupt checkpoint in `chrome.storage.session` during `performStartupCleanup()`. If a checkpoint exists, the system SHALL send a `DOWNLOAD_INTERRUPTED` message to the sidepanel with the checkpoint data (phase, tabUrl, serverSessionId, timestamp).
-
-#### Scenario: Service worker restarts with active checkpoint
-- **WHEN** the service worker starts up and finds a checkpoint with `downloadInterrupted: true` in `chrome.storage.session`
-- **THEN** a `DOWNLOAD_INTERRUPTED` message is sent to the sidepanel with `{ phase, tabUrl, serverSessionId, timestamp }`
-- **AND** the checkpoint is cleared from `chrome.storage.session`
-- **AND** `isDownloadInProgress` is reset to `false`
-
-#### Scenario: Service worker starts with no checkpoint
-- **WHEN** the service worker starts up and no checkpoint exists in `chrome.storage.session`
-- **THEN** normal startup cleanup proceeds (existing behavior)
+## MODIFIED Requirements
 
 ### Requirement: Sidepanel shows interrupted state
 The sidepanel SHALL handle the `DOWNLOAD_INTERRUPTED` message by transitioning to an "interrupted" UI state that shows: (1) which phase was interrupted, (2) a "Resume download" button (when a server session exists) or "Restart download" button (when no server session), and (3) a brief explanation that the download was interrupted.
@@ -51,6 +32,8 @@ The sidepanel SHALL query the background service worker for any interrupted down
 #### Scenario: Panel opened after service worker restart
 - **WHEN** the sidepanel is opened and the background has an uncleared interrupt checkpoint
 - **THEN** the sidepanel shows the interrupted state immediately
+
+## ADDED Requirements
 
 ### Requirement: Guaranteed scrape-complete on error
 The system SHALL track whether `scrapeComplete()` has been sent during `executeDownloadServerMode()`. If an error occurs before `scrapeComplete()` was sent, the system SHALL attempt a best-effort `scrapeComplete()` call in the catch block before re-throwing the error.

@@ -8,6 +8,12 @@
 
 const STORAGE_KEY = "downloadCheckpoint";
 
+export interface ResourceUrlEntry {
+  url: string;
+  path: string;
+  contentType: string;
+}
+
 export interface DownloadCheckpoint {
   downloadInterrupted: boolean;
   serverSessionId?: string;
@@ -15,6 +21,7 @@ export interface DownloadCheckpoint {
   tabUrl?: string;
   phase: string;
   timestamp: number;
+  resourceUrls?: ResourceUrlEntry[];
 }
 
 /** Persist a checkpoint to session storage. */
@@ -42,6 +49,16 @@ export async function updateCheckpointPhase(phase: string): Promise<void> {
 export async function readCheckpoint(): Promise<DownloadCheckpoint | null> {
   const result = await chrome.storage.session.get(STORAGE_KEY);
   return (result[STORAGE_KEY] as DownloadCheckpoint) ?? null;
+}
+
+/** Update the resourceUrls field of an existing checkpoint. No-op if none exists. */
+export async function updateCheckpointResourceUrls(resourceUrls: ResourceUrlEntry[]): Promise<void> {
+  const existing = await readCheckpoint();
+  if (existing) {
+    existing.resourceUrls = resourceUrls;
+    await chrome.storage.session.set({ [STORAGE_KEY]: existing });
+    console.log(`[Checkpoint] Resource URLs updated: ${resourceUrls.length} entries`);
+  }
 }
 
 /** Clear the checkpoint from session storage. */

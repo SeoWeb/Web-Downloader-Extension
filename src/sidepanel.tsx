@@ -249,6 +249,8 @@ export default function SidePanel() {
             phase: data.phase || "scraping",
             tabUrl: data.tabUrl || "",
             timestamp: data.timestamp || Date.now(),
+            serverSessionId: data.serverSessionId,
+            resourceUrls: data.resourceUrls,
           });
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
@@ -281,6 +283,8 @@ export default function SidePanel() {
             phase: result.phase || "scraping",
             tabUrl: result.tabUrl || "",
             timestamp: result.timestamp || Date.now(),
+            serverSessionId: result.serverSessionId,
+            resourceUrls: result.resourceUrls,
           });
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
@@ -465,9 +469,37 @@ export default function SidePanel() {
           }
         }}
         interruptData={interruptData}
-        onRestartDownload={() => {
+        onRestartDownload={async () => {
           setInterruptData(null);
-          if (downloadOptions) {
+          // If server mode and we have a server session ID, attempt resume
+          if (IS_SERVER_MODE && interruptData?.serverSessionId) {
+            setIsScraping(true);
+            setMessages((prev) => [...prev, { key: "status.reconnectingServer" }]);
+            setServerModeState((prev) => ({ ...prev, phase: 'uploading', serverError: null }));
+            try {
+              const result = await sendMessageToBackground(messageActions.RESUME_SERVER_DOWNLOAD, {
+                serverSessionId: interruptData.serverSessionId,
+                tabUrl: interruptData.tabUrl,
+                phase: interruptData.phase,
+                resourceUrls: interruptData.resourceUrls,
+              });
+              if (result?.fallback) {
+                // Resume failed — fall through to full restart
+                throw new Error(result.error || "Resume failed");
+              }
+              // Resume succeeded — update state
+              setIsScraping(false);
+              setAction(messageActions.DOWNLOAD_DONE);
+            } catch {
+              // Resume failed — fall back to full restart
+              if (downloadOptions) {
+                setIsScraping(true);
+                setDownloadOptions(downloadOptions);
+                setMessages((prev) => [...prev, { key: "status.scraping" }]);
+                setServerModeState((prev) => ({ ...prev, phase: 'scraping', serverError: null }));
+              }
+            }
+          } else if (downloadOptions) {
             setIsScraping(true);
             setDownloadOptions(downloadOptions);
             setMessages((prev) => [...prev, { key: "status.scraping" }]);
@@ -479,6 +511,8 @@ export default function SidePanel() {
         onDismissInterrupt={() => {
           setInterruptData(null);
           setMessages([{ key: "status.connected" }]);
+          // Clear the checkpoint so re-opening the panel doesn't show stale state
+          sendMessageToBackground(messageActions.DISMISS_INTERRUPTED_DOWNLOAD, {});
         }}
       />
       <DownloadComplete

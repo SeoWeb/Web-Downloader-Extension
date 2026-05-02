@@ -7,6 +7,7 @@ import { mergeHtmlIncremental } from "./merge-html";
 import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
 import { abortActiveDownload } from "./download-state";
 import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
+import { resumeServerDownload } from "./download-core";
 import { serverClient } from "./server-client";
 
 interface ServerSessionState {
@@ -233,12 +234,54 @@ export async function messageWorker(
       return true;
 
     case messageActions.CHECK_INTERRUPTED_DOWNLOAD: {
-      const checkpoint = await readCheckpoint();
+      // Don't clear the checkpoint here — RESUME_SERVER_DOWNLOAD needs it.
+      // The sidepanel reads checkpoint data to populate interruptData, but the
+      // actual checkpoint must persist so resume can access resourceUrls etc.
+      return await readCheckpoint();
+    }
+
+    case messageActions.DISMISS_INTERRUPTED_DOWNLOAD: {
+      // User dismissed the interrupt UI without resuming — clear the checkpoint
+      // so re-opening the panel doesn't show stale interrupt state.
+      await clearCheckpoint();
+      return { success: true };
+    }
+
+    case messageActions.RESUME_SERVER_DOWNLOAD: {
+      // Prefer checkpoint from storage; fall back to data sent by the sidepanel.
+      let checkpoint = await readCheckpoint();
       if (checkpoint) {
-        // Clear so it's only shown once
         await clearCheckpoint();
+      } else if (data?.serverSessionId) {
+        checkpoint = {
+          downloadInterrupted: true,
+          serverSessionId: data.serverSessionId,
+          tabUrl: data.tabUrl,
+          tabId: data.tabId,
+          phase: data.phase || "scraping",
+          timestamp: data.timestamp || Date.now(),
+          resourceUrls: data.resourceUrls,
+        };
       }
-      return checkpoint;
+
+      if (checkpoint) {
+        try {
+          await resumeServerDownload(checkpoint, (message) => {
+            addMessage({
+              action: messageActions.PANEL_MESSAGE,
+              data: { message },
+            });
+          });
+          return { success: true };
+        } catch (err) {
+          return {
+            success: false,
+            fallback: true,
+            error: err instanceof Error ? err.message : "Resume failed",
+          };
+        }
+      }
+      return { success: false, fallback: true, error: "No checkpoint found" };
     }
 
     case messageActions.SCRAPER_PAUSE:

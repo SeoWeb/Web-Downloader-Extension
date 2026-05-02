@@ -174,6 +174,30 @@ const API_KEY_STORAGE_KEY = "server_api_key";
 const EXTENSION_INSTANCE_ID_KEY = "server_extension_instance_id";
 const MAX_REGISTRATION_ATTEMPTS = 3;
 
+const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes per resource upload
+const CONTROL_CALL_TIMEOUT_MS = 60 * 1000; // 60 seconds for API calls
+
+/**
+ * Combine an optional user-provided AbortSignal with a timeout.
+ * Uses AbortSignal.any() when available (Chrome 116+), falls back to
+ * manual AbortController + setTimeout for Chrome 110-115.
+ */
+function withTimeout(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  if (signal) {
+    if (typeof AbortSignal.any === "function") {
+      return AbortSignal.any([signal, timeoutSignal]);
+    }
+    // Fallback for Chrome <116
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    signal.addEventListener("abort", onAbort, { once: true });
+    timeoutSignal.addEventListener("abort", onAbort, { once: true });
+    return controller.signal;
+  }
+  return timeoutSignal;
+}
+
 export class ServerClient {
   private readonly serverUrl: string;
   private apiKey: string | null = null;
@@ -349,7 +373,7 @@ export class ServerClient {
         `/api/v1/sessions/${sessionId}/resources`,
         formData,
         extraHeaders,
-        signal,
+        withTimeout(signal, UPLOAD_TIMEOUT_MS),
         onUploadProgress,
       );
 
@@ -370,10 +394,8 @@ export class ServerClient {
       method: "POST",
       headers: extraHeaders,
       body: formData,
+      signal: withTimeout(signal, UPLOAD_TIMEOUT_MS),
     };
-    if (signal) {
-      init.signal = signal;
-    }
 
     const res = await this.authenticatedFetch(
       `/api/v1/sessions/${sessionId}/resources`,
@@ -642,7 +664,10 @@ export class ServerClient {
     }
 
     const url = `${this.serverUrl}${path}`;
-    let res = await fetch(url, { ...init, headers });
+    // Apply control-plane timeout when caller hasn't provided a signal
+    // (uploadResource already sets its own 5-minute timeout)
+    const effectiveSignal = init.signal ?? AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS);
+    let res = await fetch(url, { ...init, headers, signal: effectiveSignal });
 
     // On 401, attempt re-registration and retry once
     if (res.status === 401) {
@@ -659,7 +684,14 @@ export class ServerClient {
         retryHeaders.set("Content-Type", "application/json");
       }
 
-      res = await fetch(url, { ...init, headers: retryHeaders });
+      // Use a fresh timeout signal for the retry so re-registration latency
+      // doesn't eat into the retry's timeout budget. For upload calls (which
+      // pass their own signal wrapped via withTimeout), create a new timeout
+      // so the full budget is available for the retry.
+      const retrySignal = init.signal
+        ? withTimeout(undefined, UPLOAD_TIMEOUT_MS)
+        : AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS);
+      res = await fetch(url, { ...init, headers: retryHeaders, signal: retrySignal });
 
       // If the retry also returns 401, it's a permanent auth failure
       if (res.status === 401) {

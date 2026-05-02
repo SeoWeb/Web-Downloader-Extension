@@ -9,7 +9,7 @@ import { cleanupAfterDownload } from "./cleanupHandlers";
 import { finalizeIncrementalMerge } from "./merge-html";
 import { FilterOptions } from "../types/filterTypes";
 import { downloadId, setTabDownloadActive, setTabDownloadComplete, isAnyDownloadInProgress, isTabDownloadInProgress, setDownloadAbortController, getDownloadAbortController, createKeepalivePort, disconnectKeepalivePort } from "./download-state";
-import { writeCheckpoint, updateCheckpointPhase, clearCheckpoint } from "./download-checkpoint";
+import { writeCheckpoint, updateCheckpointPhase, updateCheckpointResourceUrls, clearCheckpoint } from "./download-checkpoint";
 import { initiateDownload, performInitialCleanup } from "./download-utils";
 import { isPanelAlive, downloadViaPanelAndWait, PanelUnavailableError } from "./panel-download";
 import { 
@@ -31,6 +31,7 @@ import { SplitZipGenerator } from "./zip-stream-splitter";
 import { IStorageAdapter, JSZipAdapter, IndexedDBAdapter } from "./storage/storage-adapter";
 import { ServerStorageAdapter } from "./storage/server-storage-adapter";
 import { serverClient, ServerUnavailableError, AuthenticationError, AssemblyTimeoutError } from "./server-client";
+import { UploadQueue } from "./upload-queue";
 import { SessionManager } from "./storage/session-manager";
 import { FileStore } from "./storage/file-store";
 import { getServerDownloadHandler, AssemblyFailedError } from "./server-download";
@@ -65,6 +66,7 @@ export function clearForceLocalMode(tabId: number): void {
 
 import { setCurrentScraper } from "./scraper-state";
 import { setActiveServerSession, getActiveServerSessionId, hasStreamedHtmlChunks } from "./message";
+import { loadFilterOptions } from "../common/storage/filterStorage";
 
 // ... (other imports remain, but we need to remove the local exports below)
 
@@ -142,7 +144,7 @@ export async function downloadResources(
   createKeepalivePort(tabId!);
 
   // Write interrupt checkpoint so we can detect/recover if the SW is killed.
-  writeCheckpoint({
+  await writeCheckpoint({
     phase: "scraping",
     serverSessionId: shouldUseServerMode(tabId) ? getActiveServerSessionId(tabId!) ?? undefined : undefined,
     tabId,
@@ -737,6 +739,7 @@ async function executeDownloadServerMode(
 
   // Track total resources for scrape-complete signal
   let totalResourceCount = 0;
+  let scrapeCompleteSent = false;
 
   try {
     // (12.3) Upload main page HTML as chunk to the server.
@@ -897,26 +900,59 @@ async function executeDownloadServerMode(
     // provide accurate progress in the UI.
     totalResourceCount = uploadQueue.getResourceCount();
 
+    // Persist discovered resource URLs in checkpoint for resume support.
+    const queueProgress = uploadQueue.getProgress();
+    if (queueProgress.totalCount > 0) {
+      // Collect resource URLs from the upload queue's pending + active tasks
+      const resourceUrls = uploadQueue.getResourceUrls();
+      if (resourceUrls.length > 0) {
+        await updateCheckpointResourceUrls(resourceUrls);
+      }
+    }
+
     sendMessage({ key: "status.sendingScrapeComplete" });
     await serverClient.scrapeComplete(sessionId, totalResourceCount);
+    scrapeCompleteSent = true;
     sendMessage({ key: "status.scrapeComplete" });
     updateCheckpointPhase("uploading");
 
     // Wait for all resource uploads to complete before finalizing.
     // Finalization requires all resources to be on the server.
     sendMessage({ key: "status.waitingForUploads" });
+
+    // Heartbeat: send progress every 15s so the UI can detect a dead worker.
+    const heartbeatInterval = setInterval(() => {
+      const progress = uploadQueue.getProgress();
+      sendMessage({
+        key: "status.uploadProgress",
+        options: {
+          completed: progress.completedCount,
+          total: progress.totalCount,
+          bytesUploaded: progress.bytesUploaded,
+          totalBytes: progress.totalBytes,
+        },
+      });
+    }, 15000);
+
     try {
       const queueProgress = uploadQueue.getProgress();
       console.log(
         `[ServerMode] Waiting for uploads: ${queueProgress.completedCount}/${queueProgress.totalCount} completed, ` +
         `${queueProgress.failedCount} failed, ${uploadQueue.getResourceCount()} total resources`,
       );
-      await uploadQueue.waitForAll();
+      const remainingResources = queueProgress.totalCount - queueProgress.completedCount;
+      const uploadTimeoutMs = Math.min(
+        remainingResources * 30 * 1000, // 30s per remaining resource
+        30 * 60 * 1000,                  // cap at 30 minutes
+      );
+      await uploadQueue.waitForAll(uploadTimeoutMs);
       console.log("[ServerMode] All uploads completed");
     } catch (err) {
       // Queue may be cancelled — continue anyway, finalization
       // will proceed and the server will assemble whatever it has.
       console.warn("[ServerMode] Upload queue error:", err);
+    } finally {
+      clearInterval(heartbeatInterval);
     }
 
     // (12.8) Replace ZIP generation with server finalization + polling.
@@ -977,6 +1013,19 @@ async function executeDownloadServerMode(
     sendMessage({ key: "status.complete", options: serverCompleteOptions });
 
   } catch (error) {
+    // Best-effort: ensure scrapeComplete is sent so the server transitions
+    // out of SCRAPING status. If the SW is killed, this won't run, but the
+    // server's 30-minute stale-session cleanup is the backstop.
+    if (!scrapeCompleteSent) {
+      try {
+        const count = uploadQueue.getResourceCount();
+        await serverClient.scrapeComplete(sessionId, count);
+        console.log("[ServerMode] Best-effort scrapeComplete sent with", count, "resources");
+      } catch {
+        // Best effort — don't mask the original error
+      }
+    }
+
     // (12.9) Categorize server-mode errors and offer local fallback.
     const errorMessage = error instanceof Error ? error.message : "Unknown server error";
     const errorName = error instanceof Error ? error.name : "Unknown";
@@ -1026,6 +1075,223 @@ async function executeDownloadServerMode(
       storage.getUploadQueue().cancel();
     } catch {
       // Ignore cleanup errors
+    }
+  }
+}
+
+/**
+ * Resume a server download after service worker restart.
+ *
+ * Uses the checkpoint's serverSessionId to query the server for session status
+ * and reconnect: re-upload resources (server deduplicates by URL hash),
+ * call scrapeComplete/finalize (both idempotent), and poll for assembly.
+ *
+ * Falls back to throwing if the session is not recoverable (FAILED, expired, missing).
+ */
+export async function resumeServerDownload(
+  checkpoint: {
+    serverSessionId?: string;
+    tabUrl?: string;
+    tabId?: number;
+    phase?: string;
+    resourceUrls?: Array<{ url: string; path: string; contentType: string }>;
+  },
+  sendMessage: (message: string | { key: string; options?: any }) => void,
+): Promise<void> {
+  const { serverSessionId, tabUrl, tabId, resourceUrls } = checkpoint;
+
+  if (!serverSessionId) {
+    throw new Error("No server session ID in checkpoint");
+  }
+
+  // Create keepalive port and per-tab abort controller so the user
+  // can press Stop to cancel a resumed download.
+  if (tabId) {
+    createKeepalivePort(tabId);
+    const abortCtrl = new AbortController();
+    setDownloadAbortController(abortCtrl, tabId);
+  }
+
+  let scrapeCompleteSent = false;
+  const filterOptions = await loadFilterOptions();
+  const saveAs = filterOptions.alwaysAskWhereToSave ?? true;
+
+  try {
+  sendMessage({ key: "status.reconnectingServer" });
+
+  // Query server for current session status
+  const status = await serverClient.getSessionStatus(serverSessionId);
+  console.log(`[Resume] Server session ${serverSessionId} status: ${status.status}`);
+
+  // If already ready, just download
+  if (status.status === "ready" && status.download_url) {
+    scrapeCompleteSent = true; // session already past SCRAPING
+    sendMessage({
+      key: "status.serverDownloadReady",
+      options: { downloadUrl: status.download_url },
+    });
+    sendMessage({ key: "status.complete", options: { downloadUrl: status.download_url } });
+    return;
+  }
+
+  // If assembling, just poll for completion
+  if (status.status === "assembling") {
+    scrapeCompleteSent = true; // session already past SCRAPING
+    sendMessage({ key: "status.assemblingServer" });
+    const handler = getServerDownloadHandler();
+    const downloadResult = await handler.downloadWithFallback(
+      serverSessionId,
+      tabUrl ?? "",
+      false,
+      async () => false,
+      (_status, phase, progressPct) => {
+        sendMessage({ key: "status.assemblyProgress", options: { status: "assembling", phase, progressPct } });
+      },
+      tabId,
+      saveAs,
+    );
+    if (downloadResult?.downloadUrl) {
+      sendMessage({ key: "status.complete", options: { downloadUrl: downloadResult.downloadUrl } });
+    }
+    return;
+  }
+
+  // If failed or not found, can't resume
+  if (status.status === "failed" || status.status === "expired") {
+    throw new Error(`Server session is ${status.status} and cannot be resumed`);
+  }
+
+  // Session is in SCRAPING or UPLOADING — resume uploads
+  if (!resourceUrls || resourceUrls.length === 0) {
+    throw new Error("No resource URLs in checkpoint — full restart required");
+  }
+
+  // Send scrape-complete FIRST when resuming from SCRAPING status
+  // so the server transitions out of SCRAPING and knows the expected resource
+  // count before uploads begin. For UPLOADING status this is idempotent.
+  // If this fails, the outer catch block will attempt a best-effort retry.
+  sendMessage({ key: "status.sendingScrapeComplete" });
+  await serverClient.scrapeComplete(serverSessionId, resourceUrls.length);
+  scrapeCompleteSent = true;
+
+  sendMessage({ key: "status.resumingUploads", options: { count: resourceUrls.length } });
+
+  // Create a fresh upload queue
+  const uploadQueue = new UploadQueue(serverClient);
+  uploadQueue.onProgress = (progress) => {
+    sendMessage({
+      key: "status.uploadProgress",
+      options: {
+        completed: progress.completedCount,
+        total: progress.totalCount,
+        bytesUploaded: progress.bytesUploaded,
+        totalBytes: progress.totalBytes,
+      },
+    });
+  };
+
+  // Wire up the per-tab abort controller so pressing Stop cancels uploads
+  const resumeAbort = tabId ? getDownloadAbortController(tabId) : null;
+  if (resumeAbort) {
+    if (resumeAbort.signal.aborted) {
+      uploadQueue.cancel();
+      throw new DOMException("Download was cancelled", "AbortError");
+    }
+    resumeAbort.signal.addEventListener("abort", () => uploadQueue.cancel(), { once: true });
+  }
+
+  // Re-fetch each resource directly by URL and enqueue for upload.
+  // Uses direct fetch() instead of the content script because the
+  // content script may not be available after a service worker restart.
+  for (const entry of resourceUrls) {
+    try {
+      const response = await fetch(entry.url, { signal: AbortSignal.timeout(60_000) });
+      if (!response.ok) continue;
+      const blob = await response.blob();
+      await uploadQueue.enqueue(
+        serverSessionId,
+        entry.path,
+        blob,
+        entry.url,
+        entry.contentType,
+      );
+    } catch {
+      // Skip resources that can no longer be fetched
+      console.warn(`[Resume] Failed to fetch resource: ${entry.url}`);
+    }
+  }
+
+  // Heartbeat during uploads
+  let heartbeatInterval: ReturnType<typeof setInterval> | undefined;
+  try {
+    heartbeatInterval = setInterval(() => {
+      const progress = uploadQueue.getProgress();
+      sendMessage({
+        key: "status.uploadProgress",
+        options: {
+          completed: progress.completedCount,
+          total: progress.totalCount,
+          bytesUploaded: progress.bytesUploaded,
+          totalBytes: progress.totalBytes,
+        },
+      });
+    }, 15000);
+
+    // Wait for uploads with a timeout
+    const remaining = uploadQueue.getProgress().totalCount;
+    const timeoutMs = Math.min(remaining * 30 * 1000, 30 * 60 * 1000);
+    await uploadQueue.waitForAll(timeoutMs);
+  } finally {
+    if (heartbeatInterval !== undefined) clearInterval(heartbeatInterval);
+  }
+
+  // Finalize (idempotent)
+  sendMessage({ key: "status.finalizingServer" });
+  try {
+    await serverClient.finalizeSession(serverSessionId);
+  } catch {
+    // May already be assembling — proceed to poll
+  }
+
+  // Poll for assembly completion
+  sendMessage({ key: "status.assemblingServer" });
+  const handler = getServerDownloadHandler();
+  const downloadResult = await handler.downloadWithFallback(
+    serverSessionId,
+    tabUrl ?? "",
+    false,
+    async () => false,
+    (_status, phase, progressPct) => {
+      sendMessage({ key: "status.assemblyProgress", options: { status: "assembling", phase, progressPct } });
+    },
+    tabId,
+    saveAs,
+  );
+
+  if (downloadResult?.downloadUrl) {
+    sendMessage({
+      key: "status.serverDownloadReady",
+      options: { downloadUrl: downloadResult.downloadUrl },
+    });
+    sendMessage({ key: "status.complete", options: { downloadUrl: downloadResult.downloadUrl } });
+  }
+  } catch (error) {
+    // Best-effort scrapeComplete so the server transitions out of SCRAPING.
+    // Mirrors the catch-block guard in executeDownloadServerMode().
+    if (!scrapeCompleteSent) {
+      try {
+        const count = checkpoint.resourceUrls?.length ?? 0;
+        await serverClient.scrapeComplete(serverSessionId!, count);
+        console.log("[Resume] Best-effort scrapeComplete sent with", count, "resources");
+      } catch {
+        // Best effort — don't mask the original error
+      }
+    }
+    throw error;
+  } finally {
+    if (tabId) {
+      disconnectKeepalivePort(tabId);
+      setDownloadAbortController(null, tabId);
     }
   }
 }

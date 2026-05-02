@@ -1,10 +1,4 @@
-# Scrape Checkpoint Specification
-
-## Purpose
-
-Manages interrupt checkpoints during active downloads, enabling detection of interrupted downloads after service worker restarts.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Checkpoint written at download start
 The system SHALL persist an interrupt checkpoint to `chrome.storage.session` immediately after the keepalive port is established in `downloadResources()`. The checkpoint SHALL contain: `downloadInterrupted: true`, `serverSessionId` (if server mode), `tabId`, `tabUrl`, `timestamp`, `phase` (initially "scraping"), and `resourceUrls` (an array of `{ url, path, contentType }` objects populated after resource extraction).

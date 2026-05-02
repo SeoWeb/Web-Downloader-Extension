@@ -187,6 +187,7 @@ export class UploadQueue {
 
     this.pending.push(task);
     this.totalBytes += blob.size;
+    this.resourceUrlMap.set(id, { url: originalUrl, path, contentType });
 
     // Start processing if not already running
     this.scheduleProcessing();
@@ -242,6 +243,18 @@ export class UploadQueue {
   }
 
   /**
+   * Get all resource URL entries for completed or in-progress tasks,
+   * excluding permanently failed tasks. Used for checkpoint persistence so
+   * resume can re-upload resources that the server may not have received
+   * (the server deduplicates by URL hash, so re-uploading is harmless).
+   */
+  private readonly resourceUrlMap: Map<string, { url: string; path: string; contentType: string }> = new Map();
+
+  getResourceUrls(): Array<{ url: string; path: string; contentType: string }> {
+    return Array.from(this.resourceUrlMap.values());
+  }
+
+  /**
    * (9.2) Get current aggregate upload progress.
    */
   getProgress(): QueueProgress {
@@ -276,16 +289,38 @@ export class UploadQueue {
   /**
    * Wait for all currently enqueued tasks to complete.
    * Resolves when the queue is empty and all tasks are finished.
-   * Rejects if the queue is cancelled.
+   * Rejects if the queue is cancelled, or if timeoutMs elapses.
    */
-  async waitForAll(): Promise<void> {
+  async waitForAll(timeoutMs?: number): Promise<void> {
     if (this.isDone()) return;
     if (this.cancelled) {
       throw new Error("UploadQueue was cancelled");
     }
 
     return new Promise<void>((resolve, reject) => {
-      this.doneWaiters.push({ resolve, reject });
+      const waiter: { resolve: () => void; reject: (err: Error) => void } = {
+        resolve,
+        reject,
+      };
+      this.doneWaiters.push(waiter);
+
+      if (timeoutMs && timeoutMs > 0) {
+        const timer = setTimeout(() => {
+          const idx = this.doneWaiters.indexOf(waiter);
+          if (idx >= 0) this.doneWaiters.splice(idx, 1);
+          const p = this.getProgress();
+          reject(new Error(
+            `UploadQueue.waitForAll timed out after ${timeoutMs / 1000}s. ` +
+            `Completed: ${p.completedCount}/${p.totalCount}`,
+          ));
+        }, timeoutMs);
+
+        const originalResolve = waiter.resolve;
+        waiter.resolve = () => {
+          clearTimeout(timer);
+          originalResolve();
+        };
+      }
     });
   }
 
@@ -509,6 +544,7 @@ export class UploadQueue {
     task.blob = null; // release memory even on failure
     this.failedCount++;
     this.active.delete(task.id);
+    this.resourceUrlMap.delete(task.id); // exclude from checkpoint
     this.notifyProgress();
 
     console.error(
