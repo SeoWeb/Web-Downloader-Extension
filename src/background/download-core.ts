@@ -64,7 +64,7 @@ export function clearForceLocalMode(tabId: number): void {
   forceLocalModes.delete(tabId);
 }
 
-import { setCurrentScraper } from "./scraper-state";
+import { setCurrentScraper, stopScraping } from "./scraper-state";
 import { setActiveServerSession, getActiveServerSessionId, hasStreamedHtmlChunks } from "./message";
 import { loadFilterOptions } from "../common/storage/filterStorage";
 
@@ -737,6 +737,19 @@ async function executeDownloadServerMode(
     });
   };
 
+  // When the 500MB session limit is hit, stop scraping and proceed to
+  // finalize with whatever was successfully uploaded.
+  uploadQueue.onSessionFull = (_sessionId: string) => {
+    console.warn(
+      `[ServerMode] Session size limit reached for ${_sessionId}. ` +
+      `Stopping scraper and proceeding to finalize with partial data.`,
+    );
+    if (tabId) {
+      stopScraping(tabId);
+    }
+    sendMessage({ key: "status.sessionSizeLimitReached" });
+  };
+
   // Track total resources for scrape-complete signal
   let totalResourceCount = 0;
   let scrapeCompleteSent = false;
@@ -953,6 +966,16 @@ async function executeDownloadServerMode(
       console.warn("[ServerMode] Upload queue error:", err);
     } finally {
       clearInterval(heartbeatInterval);
+    }
+
+    // If the session size limit was reached, log and notify the user
+    // that we're finalizing with partial data.
+    if (uploadQueue.isSessionFull()) {
+      console.log(
+        "[ServerMode] Session size limit was reached. Proceeding to finalize " +
+        "with partial data. Some resources were skipped.",
+      );
+      sendMessage({ key: "status.finalizingPartial" });
     }
 
     // (12.8) Replace ZIP generation with server finalization + polling.

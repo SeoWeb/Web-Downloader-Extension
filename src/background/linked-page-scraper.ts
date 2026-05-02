@@ -14,7 +14,7 @@ import { getResources } from "./resources";
 import { convertHtml } from "./htmlUtils";
 import { addCssFiles, addJsFiles, addImageFiles, addDocumentFiles } from "./fileHandlers";
 import { fixFilename } from "./urlUtils";
-import { serverClient } from "./server-client";
+import { serverClient, HttpError } from "./server-client";
 
 /**
  * Generate a short hash suffix from a URL for filename collision avoidance.
@@ -347,6 +347,15 @@ export class LinkedPageScraper {
           accumulatedText += `\n--- ${scrapedData.finalUrl} ---\n${scrapedData.text}`;
         }
       } catch (error) {
+        // If this is a 413 session-full error, stop the scraper loop
+        // immediately — further pages would also exceed the limit.
+        const isSessionFull = error instanceof HttpError && error.statusCode === 413;
+        if (isSessionFull) {
+          job.status = "failed";
+          this.failCount++;
+          this.isStopped = true;
+          break;
+        }
         job.status = "failed";
         this.failCount++;
         sendMessage(`Failed to scrape: ${job.url}`);

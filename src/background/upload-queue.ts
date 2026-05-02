@@ -111,6 +111,10 @@ export class UploadQueue {
   /** Whether the queue has been cancelled. */
   private cancelled = false;
 
+  /** Whether a 413 session-full error has been detected. Once true,
+   *  subsequent pending uploads are fast-failed without hitting the server. */
+  private sessionFullDetected = false;
+
   /** Task ID counter. */
   private taskIdCounter = 0;
 
@@ -168,6 +172,10 @@ export class UploadQueue {
   ): Promise<string> {
     if (this.cancelled) {
       throw new Error("UploadQueue has been cancelled");
+    }
+
+    if (this.sessionFullDetected) {
+      throw new Error("Session size limit reached");
     }
 
     const id = this.generateTaskId();
@@ -274,6 +282,12 @@ export class UploadQueue {
   /** Check if the queue has been cancelled. */
   isCancelled(): boolean {
     return this.cancelled;
+  }
+
+  /** Check if a 413 session-full error has been detected.
+   *  When true, the caller should stop scraping and proceed to finalize. */
+  isSessionFull(): boolean {
+    return this.sessionFullDetected;
   }
 
   /** Check if all enqueued tasks have completed (or failed).
@@ -461,18 +475,29 @@ export class UploadQueue {
       return;
     }
 
-    // (9.3) 413 Session Full → fatal, non-retryable.
-    // Immediately trigger the server-failure handling path (task 12.9)
-    // rather than silently failing the individual resource.
+    // (9.3) 413 Session Full → stop scraping, fast-fail pending, finalize with partial data.
     if (is413Error(err)) {
       task.status = "failed";
       task.blob = null;
       this.failedCount++;
       this.active.delete(task.id);
-      this.notifyProgress();
 
-      // Trigger server-failure handling path (task 12.9)
-      this.onSessionFull?.(task.sessionId);
+      // Only drain pending and fire callback on the first 413 — subsequent
+      // 413s from concurrent uploads just mark their own task as failed.
+      if (!this.sessionFullDetected) {
+        this.sessionFullDetected = true;
+
+        // Fast-fail all remaining pending tasks — they would 413 anyway.
+        while (this.pending.length > 0) {
+          const pendingTask = this.pending.shift()!;
+          pendingTask.status = "failed";
+          pendingTask.blob = null;
+          this.failedCount++;
+        }
+
+        this.notifyProgress();
+        this.onSessionFull?.(task.sessionId);
+      }
       return;
     }
 
