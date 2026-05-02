@@ -813,6 +813,17 @@ async function executeDownloadServerMode(
       await serverClient.uploadFilenameMap(sessionId, Object.fromEntries(imageFilenameMap));
     }
 
+    // (Progressive checkpoint) Save resource URLs discovered so far from the
+    // main page (images, assets, documents). Linked page processing below
+    // may discover additional resources, but if the SW is killed during
+    // linked-page scraping, this checkpoint ensures the server session is
+    // recoverable. The final save after linked pages overwrites with a superset.
+    const mainPageResourceUrls = uploadQueue.getResourceUrls();
+    if (mainPageResourceUrls.length > 0) {
+      await updateCheckpointResourceUrls(mainPageResourceUrls);
+      console.log(`[Checkpoint] Main page resource URLs saved: ${mainPageResourceUrls.length} entries`);
+    }
+
     // (12.5 + 12.10 + 12.11) Process linked pages with server-mode support.
     if (downloadOptions.downloadLinks) {
       if (downloadOptions.downloadLinksFullScraping && tabId) {
@@ -1111,6 +1122,45 @@ async function executeDownloadServerMode(
  *
  * Falls back to throwing if the session is not recoverable (FAILED, expired, missing).
  */
+/** Finalize a server session and poll for assembly completion. */
+async function finalizeAndPollAssembly(
+  client: typeof serverClient,
+  sessionId: string,
+  tabUrl: string,
+  tabId: number | undefined,
+  saveAs: boolean,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
+): Promise<void> {
+  sendMessage({ key: "status.finalizingServer" });
+  try {
+    await client.finalizeSession(sessionId);
+  } catch {
+    // May already be assembling — proceed to poll
+  }
+
+  sendMessage({ key: "status.assemblingServer" });
+  const handler = getServerDownloadHandler();
+  const downloadResult = await handler.downloadWithFallback(
+    sessionId,
+    tabUrl,
+    false,
+    async () => false,
+    (_status, phase, progressPct) => {
+      sendMessage({ key: "status.assemblyProgress", options: { status: "assembling", phase, progressPct } });
+    },
+    tabId,
+    saveAs,
+  );
+
+  if (downloadResult?.downloadUrl) {
+    sendMessage({
+      key: "status.serverDownloadReady",
+      options: { downloadUrl: downloadResult.downloadUrl },
+    });
+    sendMessage({ key: "status.complete", options: { downloadUrl: downloadResult.downloadUrl } });
+  }
+}
+
 export async function resumeServerDownload(
   checkpoint: {
     serverSessionId?: string;
@@ -1186,7 +1236,29 @@ export async function resumeServerDownload(
 
   // Session is in SCRAPING or UPLOADING — resume uploads
   if (!resourceUrls || resourceUrls.length === 0) {
-    throw new Error("No resource URLs in checkpoint — full restart required");
+    // Check if the server already has resources from the interrupted session.
+    // This happens when the SW was killed before the progressive checkpoint
+    // save (after main-page resource processing) — all resources were uploaded
+    // but scrapeComplete was never sent.
+    const serverReceived = status.resources_received ?? 0;
+    if (serverReceived > 0) {
+      console.log(
+        `[Resume] No checkpoint resource URLs, but server has ${serverReceived} resources. ` +
+        `Sending scrapeComplete and proceeding to finalization.`,
+      );
+      sendMessage({ key: "status.sendingScrapeComplete" });
+      await serverClient.scrapeComplete(serverSessionId, serverReceived);
+      scrapeCompleteSent = true;
+
+      // Skip re-upload — the server already has everything. Proceed to finalize.
+      await finalizeAndPollAssembly(serverClient, serverSessionId, tabUrl ?? "", tabId, saveAs, sendMessage);
+      return; // Done — skip the normal upload path below
+    }
+
+    throw new Error(
+      `No resource URLs in checkpoint and server has no resources ` +
+      `(session=${serverSessionId}, received=${serverReceived}) — full restart required`,
+    );
   }
 
   // Send scrape-complete FIRST when resuming from SCRAPING status
@@ -1269,35 +1341,7 @@ export async function resumeServerDownload(
   }
 
   // Finalize (idempotent)
-  sendMessage({ key: "status.finalizingServer" });
-  try {
-    await serverClient.finalizeSession(serverSessionId);
-  } catch {
-    // May already be assembling — proceed to poll
-  }
-
-  // Poll for assembly completion
-  sendMessage({ key: "status.assemblingServer" });
-  const handler = getServerDownloadHandler();
-  const downloadResult = await handler.downloadWithFallback(
-    serverSessionId,
-    tabUrl ?? "",
-    false,
-    async () => false,
-    (_status, phase, progressPct) => {
-      sendMessage({ key: "status.assemblyProgress", options: { status: "assembling", phase, progressPct } });
-    },
-    tabId,
-    saveAs,
-  );
-
-  if (downloadResult?.downloadUrl) {
-    sendMessage({
-      key: "status.serverDownloadReady",
-      options: { downloadUrl: downloadResult.downloadUrl },
-    });
-    sendMessage({ key: "status.complete", options: { downloadUrl: downloadResult.downloadUrl } });
-  }
+  await finalizeAndPollAssembly(serverClient, serverSessionId, tabUrl ?? "", tabId, saveAs, sendMessage);
   } catch (error) {
     // Best-effort scrapeComplete so the server transitions out of SCRAPING.
     // Mirrors the catch-block guard in executeDownloadServerMode().
