@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 
 from app.config import settings
 from app.services.html_merger import html_merger_service, MergeResult
-from app.services.html_converter import html_converter_service, generate_page_filename
+from app.services.html_converter import html_converter_service, generate_page_filename, MIME_TO_IMAGE_EXTENSION
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +131,20 @@ class ZipAssemblerService:
                     if r.content_type
                 }
 
+                # Build filename-ext map from local_path values as a safety net.
+                # When the content_type_map lookup misses (e.g., filename map fails for
+                # a CSS background image), this map lets the converter find the correct
+                # extension from the file that already exists on disk with the right name.
+                filename_ext_map: dict[str, str] = {}
+                for r in all_resources:
+                    if (r.local_path and r.local_path.startswith("images/")
+                            and r.content_type):
+                        base = os.path.splitext(os.path.basename(r.local_path))[0]
+                        clean_mime = r.content_type.split(";")[0].strip().lower()
+                        ext = MIME_TO_IMAGE_EXTENSION.get(clean_mime)
+                        if ext:
+                            filename_ext_map[base] = ext
+
                 # Build page_filename_map BEFORE converting main HTML so that
                 # convert_html() can rewrite intra-site links to linked pages.
                 linked_results: dict[str, MergeResult] = {
@@ -164,6 +178,7 @@ class ZipAssemblerService:
                     None,              # path
                     page_filename_map, # page_filename_map (positional)
                     content_type_map,  # content_type_map (positional)
+                    filename_ext_map,  # filename_ext_map (positional)
                 )
                 await self._update_progress(db, session, "converting_urls", 100)
 

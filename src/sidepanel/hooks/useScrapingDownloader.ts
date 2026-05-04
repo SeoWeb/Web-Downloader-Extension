@@ -16,6 +16,7 @@ export interface DownloadOptions {
   downloadAssets: boolean;
   downloadContentAsText: boolean;
   downloadDocuments: boolean;
+  downloadLinksFullScraping?: boolean;
   singleFile: boolean;
 }
 
@@ -56,6 +57,8 @@ export function useScrapingDownloader({
   // iteration to see if the page grows before declaring "at bottom"
   const settleCountRef = useRef<number>(0);
   const stoppedByUserRef = useRef<boolean>(false);
+  const isScrapingRef = useRef(isScraping);
+  isScrapingRef.current = isScraping;
 
   // (13.3) In server mode, track the server session ID and scroll index
   // for streaming HTML chunks during scrolling instead of accumulating
@@ -91,7 +94,9 @@ export function useScrapingDownloader({
 
   const stopScraping = useCallback(async () => {
     await sendMessageToBackground(messageActions.SCRAPER_STOP, { tabId });
-    stoppedByUserRef.current = true;
+    if (isScrapingRef.current) {
+      stoppedByUserRef.current = true;
+    }
     setIsScraping(false);
   }, [tabId, setIsScraping]);
 
@@ -227,6 +232,24 @@ export function useScrapingDownloader({
     } else if (downloadOptions) {
       if (stoppedByUserRef.current) {
         stoppedByUserRef.current = false;
+
+        const htmlForStopDownload = IS_SERVER_MODE && serverSessionIdRef.current
+          ? lastHtmlRef.current
+          : downloadResponse?.html;
+
+        if (htmlForStopDownload) {
+          const stopOptions = { ...downloadOptions, downloadLinks: false, downloadLinksFullScraping: false };
+          handleStartDownload(tabId, htmlForStopDownload, tabUrl, stopOptions, (msg) =>
+            setMessages((prev) => [...prev, msg]),
+          ).then(() => {
+            if (IS_SERVER_MODE && serverSessionIdRef.current) {
+              setServerStreamingDone(true);
+            }
+          }).catch(() => {
+            setMessages((prev) => [...prev, { key: "status.failed" }]);
+            setDownloadResponse(null);
+          });
+        }
         return;
       }
 

@@ -5,7 +5,7 @@ import { FileStore } from './file-store';
  * Adapter that can write to either JSZip (legacy) or IndexedDB (new)
  */
 export interface IStorageAdapter {
-  addFile(path: string, content: Blob | string | ArrayBuffer, mimeType?: string): Promise<void>;
+  addFile(path: string, content: Blob | string | ArrayBuffer, mimeType?: string, originalUrl?: string): Promise<void>;
   getFile(path: string): Promise<Blob | null>;
   getAllFiles(): Promise<Array<{ path: string; size: number }>>;
   clear(): Promise<void>;
@@ -17,7 +17,7 @@ export interface IStorageAdapter {
 export class JSZipAdapter implements IStorageAdapter {
   constructor(public zip: JSZip) {}
 
-  async addFile(path: string, content: Blob | string | ArrayBuffer): Promise<void> {
+  async addFile(path: string, content: Blob | string | ArrayBuffer, _mimeType?: string, _originalUrl?: string): Promise<void> {
     this.zip.file(path, content as any);
   }
 
@@ -48,7 +48,7 @@ export class JSZipAdapter implements IStorageAdapter {
 export class IndexedDBAdapter implements IStorageAdapter {
   constructor(private downloadId: string) {}
 
-  async addFile(path: string, content: Blob | string | ArrayBuffer, mimeType?: string): Promise<void> {
+  async addFile(path: string, content: Blob | string | ArrayBuffer, mimeType?: string, _originalUrl?: string): Promise<void> {
     await FileStore.storeFile(this.downloadId, path, content, mimeType);
   }
 

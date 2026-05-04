@@ -192,7 +192,7 @@ The Stop button in the DownloadStatus component SHALL delegate to an `onStopScra
 - **AND** the `SCRAPER_STOP` message is sent to the background
 - **AND** the internal stop flag is set in the scraping hook
 - **AND** `setIsScraping(false)` is called
-- **AND** the `useEffect` in the hook checks the stop flag and does NOT start the download
+- **AND** the `useEffect` in the hook checks the stop flag and starts the download with linked-page processing disabled
 
 #### Scenario: Stop button works during linked page scraping (unchanged behavior)
 - **GIVEN** the extension is scraping linked pages

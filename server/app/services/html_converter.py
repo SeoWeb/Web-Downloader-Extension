@@ -290,6 +290,7 @@ def _convert_images(
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
     content_type_map: Optional[dict[str, str]] = None,
+    filename_ext_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Convert image URLs in HTML to relative local paths (mutates soup in-place).
 
@@ -303,14 +304,14 @@ def _convert_images(
     """
     # --- <img> elements ---
     for img in soup.find_all("img"):
-        _convert_img_src(img, tab_url, path, filename_map, content_type_map)
-        _convert_lazy_load_attrs(img, tab_url, path, filename_map, content_type_map)
-        _convert_srcset(img, "srcset", tab_url, path, filename_map, content_type_map)
+        _convert_img_src(img, tab_url, path, filename_map, content_type_map, filename_ext_map)
+        _convert_lazy_load_attrs(img, tab_url, path, filename_map, content_type_map, filename_ext_map)
+        _convert_srcset(img, "srcset", tab_url, path, filename_map, content_type_map, filename_ext_map)
 
     # --- <picture><source> elements ---
     for source in soup.find_all("source"):
         if source.get("srcset"):
-            _convert_srcset(source, "srcset", tab_url, path, filename_map, content_type_map)
+            _convert_srcset(source, "srcset", tab_url, path, filename_map, content_type_map, filename_ext_map)
         # Handle <source src="..."> (used in older browsers and video contexts)
         src = source.get("src")
         if src and isinstance(src, str) and not src.startswith("data:"):
@@ -335,6 +336,7 @@ def _convert_images(
                 else:
                     ct = _lookup_content_type(src, tab_url, content_type_map)
                     filename = generate_image_filename(clean, ct)
+                    filename = _maybe_fix_bin_extension(filename, filename_ext_map)
                     source["src"] = path + "images/" + filename
 
 
@@ -416,6 +418,7 @@ def _convert_img_src(
     img: Tag, tab_url: str, path: str,
     filename_map: Optional[dict[str, str]],
     content_type_map: Optional[dict[str, str]] = None,
+    filename_ext_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Convert an <img> element's src attribute to a local path."""
     src = img.get("src")
@@ -456,6 +459,7 @@ def _convert_img_src(
     filename = generate_image_filename(
         clean_src, _lookup_content_type(original_src, tab_url, content_type_map)
     )
+    filename = _maybe_fix_bin_extension(filename, filename_ext_map)
     img["src"] = path + "images/" + filename
 
 
@@ -463,6 +467,7 @@ def _convert_lazy_load_attrs(
     img: Tag, tab_url: str, path: str,
     filename_map: Optional[dict[str, str]],
     content_type_map: Optional[dict[str, str]] = None,
+    filename_ext_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Convert lazy-load attributes (data-src, data-lazy-src, etc.) [5.2]."""
     for attr in LAZY_LOAD_ATTRS:
@@ -472,7 +477,7 @@ def _convert_lazy_load_attrs(
 
         # For data-srcset, use srcset parsing
         if attr == "data-srcset":
-            _convert_srcset_attr_value(img, attr, tab_url, path, filename_map, content_type_map)
+            _convert_srcset_attr_value(img, attr, tab_url, path, filename_map, content_type_map, filename_ext_map)
             continue
 
         original = value
@@ -483,6 +488,7 @@ def _convert_lazy_load_attrs(
             clean = value.split("?")[0]
             ct = _lookup_content_type(original, tab_url, content_type_map)
             filename = generate_image_filename(clean, ct)
+            filename = _maybe_fix_bin_extension(filename, filename_ext_map)
             img[attr] = path + "images/" + filename
 
 
@@ -1335,6 +1341,19 @@ def _extension_to_mime(ext: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _maybe_fix_bin_extension(filename: str, filename_ext_map: Optional[dict[str, str]]) -> str:
+    """If filename ends with .bin, look up its base name in filename_ext_map
+    to find the correct extension from resources already stored on disk.
+    """
+    if not filename.endswith(".bin") or not filename_ext_map:
+        return filename
+    base = filename[:-4]  # remove ".bin"
+    ext = filename_ext_map.get(base)
+    if ext:
+        return f"{base}.{ext}"
+    return filename
+
+
 def convert_html(
     html_string: str,
     tab_url: str,
@@ -1343,6 +1362,7 @@ def convert_html(
     path: Optional[str] = None,
     page_filename_map: Optional[dict[str, str]] = None,
     content_type_map: Optional[dict[str, str]] = None,
+    filename_ext_map: Optional[dict[str, str]] = None,
 ) -> str:
     """Convert all resource URLs in HTML to relative local paths.
 
@@ -1360,6 +1380,9 @@ def convert_html(
         content_type_map: Optional mapping of original URL → MIME type,
             used to determine correct extensions for extensionless URLs when
             the filename map lookup misses.
+        filename_ext_map: Optional mapping of basename-without-extension →
+            image extension, derived from resources' local_path values.
+            Used as a safety net when a .bin extension would otherwise be generated.
 
     Returns:
         The converted HTML string with local resource paths.
@@ -1376,10 +1399,10 @@ def convert_html(
     _convert_links(soup, tab_url, path, page_filename_map=page_filename_map)
 
     # 3. Convert images (including lazy-load and srcset)
-    _convert_images(soup, tab_url, path, filename_map, content_type_map)
+    _convert_images(soup, tab_url, path, filename_map, content_type_map, filename_ext_map)
 
     # 4. Convert background images (inline styles + <style> tags)
-    _convert_background_images(soup, tab_url, path, filename_map, content_type_map)
+    _convert_background_images(soup, tab_url, path, filename_map, content_type_map, filename_ext_map)
 
     # 5. Convert object elements
     _convert_object_elements(soup, tab_url, path)

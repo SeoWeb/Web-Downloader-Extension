@@ -1,4 +1,4 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Stop Support for Main Page Scrolling Phase
 The system SHALL allow the user to stop the main page scrolling process. When the stop is user-initiated during first-page scrolling, the system SHALL proceed to the download phase for main-page assets only and SHALL skip linked-page processing.

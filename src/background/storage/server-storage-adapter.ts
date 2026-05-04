@@ -73,6 +73,7 @@ export class ServerStorageAdapter implements IStorageAdapter {
     path: string,
     content: Blob | string | ArrayBuffer,
     mimeType?: string,
+    originalUrl?: string,
   ): Promise<void> {
     if (!this.sessionId) {
       throw new Error(
@@ -96,15 +97,9 @@ export class ServerStorageAdapter implements IStorageAdapter {
     // Convert content to Blob for upload
     const blob = this.toBlob(content, contentType);
 
-    // Derive originalUrl from the path — the server uses this for
-    // URL conversion during HTML assembly. For server mode the
-    // original URL is embedded in the path by the file handlers
-    // (e.g. "images/photo.jpg" from filename map). We use the path
-    // as a fallback; the actual original URL is tracked by the
-    // download-core.ts caller and passed separately via
-    // ServerClient.uploadResource when needed. For the adapter's
-    // purposes, the path serves as the resource identifier.
-    const originalUrl = path;
+    // Use the provided originalUrl (the actual web URL) when available,
+    // falling back to the local path for backward compatibility.
+    const effectiveOriginalUrl = originalUrl || path;
 
     console.log(
       `[ServerStorageAdapter] addFile: path=${path} size=${blob.size} type=${contentType}`,
@@ -114,7 +109,7 @@ export class ServerStorageAdapter implements IStorageAdapter {
       this.sessionId,
       path,
       blob,
-      originalUrl,
+      effectiveOriginalUrl,
       contentType,
     );
   }

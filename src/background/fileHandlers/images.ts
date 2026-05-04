@@ -111,6 +111,7 @@ export async function addImageFiles(
               `images/${filename}`,
               blob,
               contentType || undefined,
+              originalSrc,
             );
             // Store both the original src and the full URL mapping to local filename
             filenameMap.set(originalSrc, `images/${filename}`);
