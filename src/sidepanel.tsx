@@ -367,6 +367,8 @@ export default function SidePanel() {
 
   // Memoize onClickStartDownload
   const onClickStartDownload = useCallback(async (options: Options) => {
+    setAction(null);
+    setInterruptData(null);
     setIsScraping(true);
     setDownloadOptions(options);
     setMessages((prev) => [...prev, { key: "status.scraping" }]);
