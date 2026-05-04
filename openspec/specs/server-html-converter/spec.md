@@ -230,46 +230,40 @@ The server SHALL handle HTML conversion for linked pages uploaded during a full-
 - **AND** the page's filename is generated deterministically from its URL using the same algorithm as `convert_links()`
 
 #### Scenario: Linked page uses main page's filename map
-
-- **WHEN** converting a linked page's HTML
-- **THEN** the server uses the session's global filename map (including incremental updates from linked page scraping)
-- **AND** resources already downloaded for the main page are correctly referenced
-
-#### Scenario: Linked page discovers new images
-
-- **WHEN** a linked page contains images not present in the main page's filename map
-- **THEN** the extension uploads the new images as resources
-- **AND** sends an incremental filename map update via `POST /api/v1/sessions/{id}/filename-map`
-- **AND** the server uses the updated map when converting the linked page's HTML
-
-### Requirement: Single-Parse HTML Conversion
-
-The HTML converter SHALL parse the input HTML exactly once with BeautifulSoup and apply all element-type conversions on the same parsed soup tree, instead of parsing the HTML independently for each conversion pass. This eliminates 6 redundant parses per page.
-
-#### Scenario: HTML parsed once for all conversions
-- **GIVEN** `convert_html` is called with an HTML string
-- **WHEN** the conversion executes
-- **THEN** BeautifulSoup parses the HTML exactly once
-- **AND** all 7 conversion passes (remove base, links, images, background images, objects, stylesheets, scripts) operate on the same soup object
-- **AND** the output is produced by serializing the soup once with `str(soup)`
-
-#### Scenario: Conversion order preserved
-- **GIVEN** single-parse conversion is active
-- **WHEN** the conversion passes execute
-- **THEN** the order is: remove base tag → convert links → convert images → convert background images → convert objects → convert stylesheets → convert scripts
-- **AND** this order matches the previous sequential parse implementation
-
-#### Scenario: Output identical to multi-parse implementation
-- **GIVEN** the same HTML input and filename map
-- **WHEN** comparing single-parse output to the previous multi-parse output
-- **THEN** the converted HTML is identical in content and structure
-
-### Requirement: Single-Parse Linked Page Conversion
-
-The linked page HTML converter SHALL use the same single-parse approach, parsing once and applying all conversions on the shared soup tree with the `../` path prefix for linked pages.
-
-#### Scenario: Linked page parsed once
 - **GIVEN** `convert_linked_page_html` is called
 - **WHEN** the conversion executes
 - **THEN** the HTML is parsed exactly once
 - **AND** all conversion passes use the `../` path prefix appropriate for the `pages/` directory
+
+### Requirement: Filename extension map fallback for bin extensions
+
+When the filename map lookup fails and `generate_image_filename()` produces a filename ending with `.bin`, the converter SHALL attempt to look up the filename's base (without the `.bin` extension) in the `filename_ext_map`. If a match is found, the converter SHALL use the matched extension instead of `.bin`.
+
+#### Scenario: Bin filename corrected via filename_ext_map
+
+- **WHEN** an `<img src>` URL is not in the filename map and not in the content-type map, producing the filename `1_as-images.apple.com_is_store-card-13-iphone-nav-202509.bin`
+- **AND** the `filename_ext_map` contains `"1_as-images.apple.com_is_store-card-13-iphone-nav-202509"` → `"png"`
+- **THEN** the converter uses `1_as-images.apple.com_is_store-card-13-iphone-nav-202509.png` as the filename
+
+#### Scenario: No match in filename_ext_map preserves bin
+
+- **WHEN** `generate_image_filename()` produces a `.bin` filename
+- **AND** the filename base is not found in the `filename_ext_map`
+- **THEN** the `.bin` extension is used (unchanged behavior)
+
+### Requirement: Filename extension map threaded through all image fallback paths
+
+The `filename_ext_map` SHALL be used in ALL image URL conversion fallback paths where `generate_image_filename()` is called: `<img src>`, lazy-load attributes (`data-src`, `data-lazy-src`, etc.), `srcset` entries, `<source src>`, and CSS `url()` references in inline styles and `<style>` tags.
+
+#### Scenario: Lazy-load attribute fallback corrects bin
+
+- **WHEN** a `data-src` attribute produces a `.bin` filename via the fallback path
+- **AND** the `filename_ext_map` contains a matching base name entry
+- **THEN** the correct extension from the map is used instead of `.bin`
+
+#### Scenario: CSS url() fallback corrects bin
+
+- **WHEN** a CSS `url()` reference produces a `.bin` filename via the fallback path
+- **AND** the `filename_ext_map` contains a matching base name entry
+- **THEN** the correct extension from the map is used instead of `.bin`
+

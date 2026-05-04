@@ -121,6 +121,7 @@ describe("addImageFiles — MIME sniffing integration", () => {
       expect.stringMatching(/images\/.*\.png/),
       expect.any(Blob),
       "image/png",
+      "https://cdn.example.com/icon",
     );
   });
 
@@ -145,6 +146,7 @@ describe("addImageFiles — MIME sniffing integration", () => {
       expect.stringMatching(/images\/.*\.bin/),
       expect.any(Blob),
       undefined,
+      "https://cdn.example.com/unknown",
     );
   });
 
@@ -168,6 +170,7 @@ describe("addImageFiles — MIME sniffing integration", () => {
       expect.stringMatching(/images\/.*\.webp/),
       expect.any(Blob),
       "image/webp",
+      "https://cdn.example.com/photo",
     );
   });
 
@@ -192,6 +195,7 @@ describe("addImageFiles — MIME sniffing integration", () => {
       expect.stringMatching(/images\/.*\.jpg/),
       expect.any(Blob),
       "image/jpeg",
+      "https://cdn.example.com/data",
     );
   });
 });

@@ -202,7 +202,7 @@ class ZipAssemblerService:
                                 converted = await asyncio.to_thread(
                                     html_converter_service.convert_linked_page_html,
                                     lp_result.html, tab_url, filename_map, page_filename_map,
-                                    content_type_map,
+                                    content_type_map, filename_ext_map,
                                 )
                                 linked_page_htmls[page_hash] = converted
                                 if lp_result.page_url:
@@ -234,7 +234,7 @@ class ZipAssemblerService:
                         async with css_sem:
                             await self._convert_css_resource(
                                 resource, tab_url, filename_map, session_id,
-                                content_type_map,
+                                content_type_map, filename_ext_map,
                             )
                             css_completed += 1
                             pct = int(css_completed / max(total_css, 1) * 100)
@@ -492,6 +492,7 @@ class ZipAssemblerService:
         filename_map: dict[str, str],
         session_id: str,
         content_type_map: Optional[dict[str, str]] = None,
+        filename_ext_map: Optional[dict[str, str]] = None,
     ) -> None:
         """Rewrite url() references in a CSS resource file on disk."""
         storage_path = resource.storage_path
@@ -506,7 +507,7 @@ class ZipAssemblerService:
                 html_converter_service.convert_css_file,
                 css_content, tab_url, filename_map,
                 self.storage_root, session_id,
-                content_type_map,
+                content_type_map, filename_ext_map,
             )
 
             # Only rewrite if changed

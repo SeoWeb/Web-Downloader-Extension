@@ -496,18 +496,20 @@ def _convert_srcset(
     element: Tag, attr: str, tab_url: str, path: str,
     filename_map: Optional[dict[str, str]],
     content_type_map: Optional[dict[str, str]] = None,
+    filename_ext_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Parse and convert a srcset attribute. [5.3]"""
     value = element.get(attr)
     if not value or not isinstance(value, str):
         return
-    _convert_srcset_attr_value(element, attr, tab_url, path, filename_map, content_type_map)
+    _convert_srcset_attr_value(element, attr, tab_url, path, filename_map, content_type_map, filename_ext_map)
 
 
 def _convert_srcset_attr_value(
     element: Tag, attr: str, tab_url: str, path: str,
     filename_map: Optional[dict[str, str]],
     content_type_map: Optional[dict[str, str]] = None,
+    filename_ext_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Convert URLs within a srcset attribute value.
 
@@ -540,6 +542,7 @@ def _convert_srcset_attr_value(
             clean = url.split("?")[0]
             ct = _lookup_content_type(url, tab_url, content_type_map)
             filename = generate_image_filename(clean, ct)
+            filename = _maybe_fix_bin_extension(filename, filename_ext_map)
             new_url = path + "images/" + filename
 
         if descriptor:
@@ -562,6 +565,7 @@ def _convert_background_images(
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
     content_type_map: Optional[dict[str, str]] = None,
+    filename_ext_map: Optional[dict[str, str]] = None,
 ) -> None:
     """Convert url() references in inline styles and <style> tags (mutates soup in-place).
 
@@ -571,13 +575,13 @@ def _convert_background_images(
     # Process inline styles with background images
     for element in soup.find_all(attrs={"style": re.compile(r"url\(", re.IGNORECASE)}):
         style = element.get("style", "")
-        updated = _convert_bg_image_urls(style, tab_url, path, filename_map, content_type_map)
+        updated = _convert_bg_image_urls(style, tab_url, path, filename_map, content_type_map, filename_ext_map)
         element["style"] = updated
 
     # Process <style> tags
     for style_tag in soup.find_all("style"):
         css = style_tag.string or ""
-        updated = _convert_bg_image_urls(css, tab_url, path, filename_map, content_type_map)
+        updated = _convert_bg_image_urls(css, tab_url, path, filename_map, content_type_map, filename_ext_map)
         style_tag.string = updated
 
 
@@ -587,6 +591,7 @@ def _convert_bg_image_urls(
     path: str = "./",
     filename_map: Optional[dict[str, str]] = None,
     content_type_map: Optional[dict[str, str]] = None,
+    filename_ext_map: Optional[dict[str, str]] = None,
 ) -> str:
     """Convert url() patterns in CSS content to relative local paths."""
     def _replace_bg_url(match: re.Match) -> str:
@@ -615,6 +620,7 @@ def _convert_bg_image_urls(
                 ct = _lookup_content_type(image_url, tab_url, content_type_map)
                 if ct:
                     generated = generate_image_filename(clean_path, ct)
+                    generated = _maybe_fix_bin_extension(generated, filename_ext_map)
                     relative = path + "images/" + generated
                     return match.group(0).replace(image_url, relative)
                 if _has_extension(clean_path):
@@ -926,6 +932,7 @@ def _convert_css_file_impl(
     storage_root: Optional[str] = None,
     session_id: Optional[str] = None,
     content_type_map: Optional[dict[str, str]] = None,
+    filename_ext_map: Optional[dict[str, str]] = None,
 ) -> str:
     """Rewrite url() references inside standalone CSS files.
 
@@ -1030,6 +1037,7 @@ def _convert_css_file_impl(
         # Unknown/missing extension — use content-type map if available
         ct = _lookup_content_type(url, tab_url, content_type_map)
         filename = generate_image_filename(clean_url, ct)
+        filename = _maybe_fix_bin_extension(filename, filename_ext_map)
         return full_match.replace(url, "../images/" + filename)
 
     result = CSS_URL_PATTERN.sub(_replace_url, result)
@@ -1437,10 +1445,11 @@ class HtmlConverterService:
         path: Optional[str] = None,
         page_filename_map: Optional[dict[str, str]] = None,
         content_type_map: Optional[dict[str, str]] = None,
+        filename_ext_map: Optional[dict[str, str]] = None,
     ) -> str:
         """Convert all resource URLs in HTML to relative local paths."""
         return convert_html(html_string, tab_url, filename_map, is_linked_page, path,
-                            page_filename_map, content_type_map)
+                            page_filename_map, content_type_map, filename_ext_map)
 
     def convert_linked_page_html(
         self,
@@ -1449,11 +1458,13 @@ class HtmlConverterService:
         filename_map: Optional[dict[str, str]] = None,
         page_filename_map: Optional[dict[str, str]] = None,
         content_type_map: Optional[dict[str, str]] = None,
+        filename_ext_map: Optional[dict[str, str]] = None,
     ) -> str:
         """Convert HTML for a linked page (uses ../ prefix)."""
         return convert_html(html_string, tab_url, filename_map=filename_map,
                             is_linked_page=True, page_filename_map=page_filename_map,
-                            content_type_map=content_type_map)
+                            content_type_map=content_type_map,
+                            filename_ext_map=filename_ext_map)
 
     def convert_css_file(
         self,
@@ -1463,10 +1474,11 @@ class HtmlConverterService:
         storage_root: Optional[str] = None,
         session_id: Optional[str] = None,
         content_type_map: Optional[dict[str, str]] = None,
+        filename_ext_map: Optional[dict[str, str]] = None,
     ) -> str:
         """Rewrite url() references in standalone CSS files."""
         return _convert_css_file_impl(css_content, tab_url, filename_map, storage_root, session_id,
-                                       content_type_map)
+                                       content_type_map, filename_ext_map)
 
     def convert_to_single_file(
         self,
