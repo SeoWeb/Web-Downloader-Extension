@@ -134,6 +134,29 @@ def fix_filename(filename: str) -> str:
     return f"{clean_name}.bin"
 
 
+def _get_query_hash(url_src: str) -> str:
+    """Extract a short deterministic DJB2 hash from the query string of a URL.
+
+    Port of getQueryHash from urlUtils.ts. Returns an 8-char zero-padded hex
+    string, or empty string if there is no query string.
+    """
+    try:
+        if url_src.startswith("//"):
+            url_src = "https:" + url_src
+        parsed = urlparse(url_src)
+        query = parsed.query
+        # Prepend '?' to match TypeScript's url.search which includes it
+        search = "?" + query if query else ""
+        if not search or len(search) <= 1:
+            return ""
+        h = 5381
+        for ch in search:
+            h = ((h << 5) + h + ord(ch)) & 0xFFFFFFFF
+        return f"{h & 0xFFFFFFFF:08x}"
+    except Exception:
+        return ""
+
+
 def _sanitize_name(name: str) -> str:
     """Sanitize a filename stem: remove unsafe chars, collapse dashes."""
     return (
@@ -187,7 +210,7 @@ def generate_page_filename(url: str) -> str:
     return fix_filename(last_segment)
 
 
-def generate_image_filename(url_src: str, content_type: Optional[str] = None) -> str:
+def generate_image_filename(url_src: str, content_type: Optional[str] = None, original_url: Optional[str] = None) -> str:
     """Generate a consistent image filename from a URL.
 
     Port of generateImageFilename from urlUtils.ts.
@@ -234,7 +257,10 @@ def generate_image_filename(url_src: str, content_type: Optional[str] = None) ->
         if ext:
             extension = ext
 
-    return f"{sanitized}.{extension}"
+    # Append query hash to match extension-side filename generation
+    query_hash = _get_query_hash(original_url or url_src)
+
+    return f"{sanitized}_{query_hash}.{extension}" if query_hash else f"{sanitized}.{extension}"
 
 
 def _resolve_url(url: str, tab_url: str) -> str:
@@ -335,7 +361,7 @@ def _convert_images(
                     source["src"] = path + "images/" + filename
                 else:
                     ct = _lookup_content_type(src, tab_url, content_type_map)
-                    filename = generate_image_filename(clean, ct)
+                    filename = generate_image_filename(clean, ct, original_url=src)
                     filename = _maybe_fix_bin_extension(filename, filename_ext_map)
                     source["src"] = path + "images/" + filename
 
@@ -457,7 +483,8 @@ def _convert_img_src(
             pass
 
     filename = generate_image_filename(
-        clean_src, _lookup_content_type(original_src, tab_url, content_type_map)
+        clean_src, _lookup_content_type(original_src, tab_url, content_type_map),
+        original_url=original_src,
     )
     filename = _maybe_fix_bin_extension(filename, filename_ext_map)
     img["src"] = path + "images/" + filename
@@ -487,7 +514,7 @@ def _convert_lazy_load_attrs(
         else:
             clean = value.split("?")[0]
             ct = _lookup_content_type(original, tab_url, content_type_map)
-            filename = generate_image_filename(clean, ct)
+            filename = generate_image_filename(clean, ct, original_url=original)
             filename = _maybe_fix_bin_extension(filename, filename_ext_map)
             img[attr] = path + "images/" + filename
 
@@ -541,7 +568,7 @@ def _convert_srcset_attr_value(
         else:
             clean = url.split("?")[0]
             ct = _lookup_content_type(url, tab_url, content_type_map)
-            filename = generate_image_filename(clean, ct)
+            filename = generate_image_filename(clean, ct, original_url=url)
             filename = _maybe_fix_bin_extension(filename, filename_ext_map)
             new_url = path + "images/" + filename
 
@@ -610,7 +637,9 @@ def _convert_bg_image_urls(
                 # Already relative — extract filename
                 filename = image_url.split("/")[-1] if "/" in image_url else image_url
                 if filename:
-                    relative = path + "images/" + fix_filename(filename)
+                    generated = generate_image_filename(filename, None, original_url=image_url)
+                    generated = _maybe_fix_bin_extension(generated, filename_ext_map)
+                    relative = path + "images/" + generated
                     return match.group(0).replace(image_url, relative)
 
             parsed = urlparse(image_url)
@@ -619,13 +648,18 @@ def _convert_bg_image_urls(
             if filename:
                 ct = _lookup_content_type(image_url, tab_url, content_type_map)
                 if ct:
-                    generated = generate_image_filename(clean_path, ct)
+                    generated = generate_image_filename(clean_path, ct, original_url=image_url)
                     generated = _maybe_fix_bin_extension(generated, filename_ext_map)
                     relative = path + "images/" + generated
                     return match.group(0).replace(image_url, relative)
                 if _has_extension(clean_path):
                     relative = path + "images/" + fix_filename(filename)
                     return match.group(0).replace(image_url, relative)
+                # No extension and no content-type — generate with query hash
+                generated = generate_image_filename(clean_path, None, original_url=image_url)
+                generated = _maybe_fix_bin_extension(generated, filename_ext_map)
+                relative = path + "images/" + generated
+                return match.group(0).replace(image_url, relative)
         except Exception:
             pass
 
@@ -1036,7 +1070,7 @@ def _convert_css_file_impl(
 
         # Unknown/missing extension — use content-type map if available
         ct = _lookup_content_type(url, tab_url, content_type_map)
-        filename = generate_image_filename(clean_url, ct)
+        filename = generate_image_filename(clean_url, ct, original_url=url)
         filename = _maybe_fix_bin_extension(filename, filename_ext_map)
         return full_match.replace(url, "../images/" + filename)
 
