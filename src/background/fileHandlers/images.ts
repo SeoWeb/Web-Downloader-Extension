@@ -1,5 +1,6 @@
 import { IStorageAdapter } from "../storage/storage-adapter";
 import { generateImageFilename } from "../urlUtils";
+import { sniffImageMimeType } from "../sniffImageMime";
 import { requestQueue } from "../../utils/RequestQueue";
 import { RequestPriority, ResourceType } from "../../types/queue";
 
@@ -30,11 +31,9 @@ export async function addImageFiles(
     // TODO: Log download tracking
   }
 
-
-
   // Enqueue all image files
   const requestPromises: Promise<string>[] = [];
-  
+
   for (let i = 0; i < count; i++) {
     const image = images[i];
 
@@ -51,12 +50,12 @@ export async function addImageFiles(
 
     // Resolve URL like Single File mode does - use origin for relative paths
     // This fixes issues where paths like 'catalog/view/...' get wrongly appended to page path
-    const tabOrigin = new URL(tabUrl).origin + '/';
+    const tabOrigin = new URL(tabUrl).origin + "/";
     let fullImageUrl: string;
-    if (image.startsWith('http')) {
+    if (image.startsWith("http")) {
       fullImageUrl = image;
-    } else if (image.startsWith('//')) {
-      fullImageUrl = 'https:' + image;
+    } else if (image.startsWith("//")) {
+      fullImageUrl = "https:" + image;
     } else {
       // All relative paths (both '/path' and 'path') use origin as base
       fullImageUrl = new URL(image, tabOrigin).href;
@@ -71,23 +70,36 @@ export async function addImageFiles(
         url: fullImageUrl,
         resourceType: ResourceType.IMAGE,
         priority: RequestPriority.LOW, // Images are low priority
-        domain: '', // Will be auto-extracted
+        domain: "", // Will be auto-extracted
         dependencies: [], // No dependencies for images
         retryCount: 0,
         estimatedSize: 0, // Unknown size
         fetchOptions: {
           headers: {
-            'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            Accept: "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
           },
         },
         onComplete: async (result) => {
           completedCount++;
-          sendMessage({ key: "status.imagesProgress", options: { completed: completedCount, total: count } });
+          sendMessage({
+            key: "status.imagesProgress",
+            options: { completed: completedCount, total: count },
+          });
           try {
             const blob = await result.response.blob();
 
             // Get Content-Type to determine proper extension for extension-less URLs
-            const contentType = result.response.headers.get('Content-Type') || '';
+            let contentType = result.response.headers.get("Content-Type") || "";
+
+            // When Content-Type is missing or unhelpful, sniff the blob bytes
+            if (
+              contentType === "" ||
+              contentType === "application/octet-stream"
+            ) {
+              const sniffed = await sniffImageMimeType(blob);
+              if (sniffed) contentType = sniffed;
+            }
+
             const filename = generateImageFilename(fullImageUrl, contentType);
             if (!filename) {
               failCount++;
@@ -95,7 +107,11 @@ export async function addImageFiles(
               return;
             }
 
-            await storage.addFile(`images/${filename}`, blob);
+            await storage.addFile(
+              `images/${filename}`,
+              blob,
+              contentType || undefined,
+            );
             // Store both the original src and the full URL mapping to local filename
             filenameMap.set(originalSrc, `images/${filename}`);
             filenameMap.set(fullImageUrl, `images/${filename}`);
@@ -118,15 +134,18 @@ export async function addImageFiles(
 
   // Wait for all image files to be processed
   await Promise.allSettled(requestPromises);
-  
-
 
   // Failures handled inside the promise block
 
   if (failCount > 0 || skippedCount > 0) {
-    sendMessage(
-      { key: "status.imagesSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
-    );
+    sendMessage({
+      key: "status.imagesSummary",
+      options: {
+        succeeded: successCount,
+        failed: failCount,
+        skipped: skippedCount,
+      },
+    });
   }
 
   return filenameMap;
