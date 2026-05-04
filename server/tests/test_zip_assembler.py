@@ -668,8 +668,17 @@ class TestParallelCssConversion:
             assembler._update_progress = original_update
 
     @staticmethod
-    async def _run_css_phase(assembler, session_id, css_files, db=None, session=None):
-        """Run the CSS conversion phase of assemble_session with mocked deps."""
+    async def _run_css_phase(assembler, session_id, css_files, db=None, session=None, lock=None):
+        """Run the CSS conversion phase of assemble_session with mocked deps.
+
+        Mirrors the production pattern in ``assemble_session`` (Phase 3):
+        fans out ``_convert_css_one`` via ``asyncio.gather`` bounded by a
+        ``Semaphore(10)``, and serializes flushes through the provided
+        ``asyncio.Lock`` (created on demand if not supplied).  Keeping the
+        lock wiring identical to production ensures this helper exercises
+        the same code path that caused the "Session is already flushing"
+        regression.
+        """
         import types
 
         if db is None:
@@ -683,6 +692,9 @@ class TestParallelCssConversion:
                 assembly_phase=None,
                 assembly_progress_pct=None,
             )
+
+        if lock is None:
+            lock = asyncio.Lock()
 
         resource_records = [
             _make_resource(
@@ -717,11 +729,262 @@ class TestParallelCssConversion:
                     await assembler._update_progress(
                         db, session, "converting_css", pct,
                         flush=should_flush,
+                        lock=lock,
                     )
 
             await asyncio.gather(*[_convert_css_one(r) for r in css_resources])
         finally:
             assembler._get_resources_by_prefix = original_get_prefix
+
+
+# ---------------------------------------------------------------------------
+# Concurrent flush serialization (regression: "Session is already flushing")
+# ---------------------------------------------------------------------------
+
+
+class _FlushReentrancyError(AssertionError):
+    """Raised by the reentrancy-detecting mock DB when flush() is re-entered."""
+
+
+class _ReentrancyDetectingMockDB:
+    """Mock AsyncSession whose flush() mimics SQLAlchemy's single-caller rule.
+
+    Real ``AsyncSession.flush()`` raises ``InvalidRequestError("Session is
+    already flushing")`` if invoked while another flush is still in
+    progress.  This mock reproduces that contract: on entry it sets a
+    flag, yields to the event loop (giving other coroutines a chance to
+    race in), then clears the flag.  Any re-entrant call raises
+    ``_FlushReentrancyError`` so the test fails loudly.
+    """
+
+    def __init__(self):
+        self._flushing = False
+        self.flush_count = 0
+        self.peak_waiters = 0
+        self._waiters = 0
+
+    async def flush(self):
+        self._waiters += 1
+        self.peak_waiters = max(self.peak_waiters, self._waiters)
+        try:
+            if self._flushing:
+                raise _FlushReentrancyError(
+                    "flush() re-entered while another flush was in progress"
+                )
+            self._flushing = True
+            try:
+                # Yield twice to maximize the chance that other waiting
+                # coroutines observe _flushing == True if the caller does
+                # not serialize them.
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+                self.flush_count += 1
+            finally:
+                self._flushing = False
+        finally:
+            self._waiters -= 1
+
+
+class TestConcurrentFlushSerialization:
+    """Regression tests for the "Session is already flushing" crash.
+
+    The parallel CSS (Phase 3) and linked-page (Phase 2b) conversion
+    loops in ``assemble_session`` share a single ``AsyncSession`` across
+    up to 10 concurrent tasks.  Without explicit serialization, multiple
+    coroutines could enter ``db.flush()`` at the same time, which
+    SQLAlchemy rejects with ``InvalidRequestError: Session is already
+    flushing``.  The fix threads an ``asyncio.Lock`` through
+    ``_update_progress`` so flushes are serialized while in-memory
+    progress updates remain lock-free.
+    """
+
+    def test_update_progress_serializes_concurrent_flushes(self, assembler):
+        """_update_progress with a shared lock never allows concurrent flushes."""
+        import types
+
+        mock_session = types.SimpleNamespace(
+            assembly_phase=None,
+            assembly_progress_pct=None,
+        )
+        db = _ReentrancyDetectingMockDB()
+        lock = asyncio.Lock()
+
+        async def _hammer():
+            # Fan out 20 concurrent progress updates that all flush.
+            await asyncio.gather(*[
+                assembler._update_progress(
+                    db, mock_session, "converting_css", i * 5,
+                    flush=True, lock=lock,
+                )
+                for i in range(20)
+            ])
+
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(_hammer())
+        finally:
+            loop.close()
+
+        assert db.flush_count == 20
+        # With a lock, at most one coroutine can be inside flush() at a time.
+        # Waiters pile up outside the lock, so peak_waiters can exceed 1 —
+        # what matters is that the re-entrancy guard never fired.
+
+    def test_update_progress_without_lock_detects_reentrancy(self, assembler):
+        """Sanity-check: without a lock, the mock's reentrancy guard fires.
+
+        Documents the regression this test suite protects against: if the
+        lock is ever removed or not passed in by a caller, concurrent
+        flushes would throw ``InvalidRequestError`` in production.  The
+        reentrancy-detecting mock reproduces that behavior.
+        """
+        import types
+
+        mock_session = types.SimpleNamespace(
+            assembly_phase=None,
+            assembly_progress_pct=None,
+        )
+        db = _ReentrancyDetectingMockDB()
+
+        async def _hammer():
+            await asyncio.gather(*[
+                assembler._update_progress(
+                    db, mock_session, "converting_css", i * 5,
+                    flush=True, lock=None,
+                )
+                for i in range(20)
+            ])
+
+        loop = asyncio.new_event_loop()
+        try:
+            with pytest.raises(_FlushReentrancyError):
+                loop.run_until_complete(_hammer())
+        finally:
+            loop.close()
+
+    def test_parallel_css_phase_serializes_flushes(self, assembler, storage_root):
+        """Phase 3 (CSS) conversion never enters flush() concurrently."""
+        session_id = "test-css-flush-serialized"
+        _setup_session(storage_root, session_id)
+
+        resources_dir = os.path.join(storage_root, session_id, "resources")
+        os.makedirs(os.path.join(resources_dir, "styles"), exist_ok=True)
+
+        css_files = []
+        for i in range(25):
+            css_path = os.path.join(resources_dir, "styles", f"flush-{i}.css")
+            with open(css_path, "w") as f:
+                f.write(f"p {{ }} /* {i} */")
+            css_files.append(css_path)
+
+        async def mock_convert_css(resource, tab_url, filename_map, session_id):
+            # Yield to the loop so other coroutines have a chance to race
+            # into the flush path before this one completes.
+            await asyncio.sleep(0)
+
+        original = assembler._convert_css_resource
+        assembler._convert_css_resource = mock_convert_css
+
+        import types
+        mock_session = types.SimpleNamespace(
+            assembly_phase=None,
+            assembly_progress_pct=None,
+        )
+        db = _ReentrancyDetectingMockDB()
+        shared_lock = asyncio.Lock()
+
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    TestParallelCssConversion._run_css_phase(
+                        assembler, session_id, css_files,
+                        db=db, session=mock_session, lock=shared_lock,
+                    )
+                )
+            finally:
+                loop.close()
+
+            # 25 resources → flushes at 10, 20, 25 (batch boundaries).
+            assert db.flush_count >= 3
+        finally:
+            assembler._convert_css_resource = original
+
+    def test_parallel_linked_page_phase_serializes_flushes(self, assembler, storage_root):
+        """Phase 2b (linked pages) conversion never enters flush() concurrently."""
+        session_id = "test-linked-flush-serialized"
+        _setup_session(storage_root, session_id)
+
+        # Build 25 mock MergeResult-like objects.
+        import types
+        linked_results = {}
+        for i in range(25):
+            page_hash = f"page{i:03d}"
+            linked_results[page_hash] = types.SimpleNamespace(
+                success=True,
+                html=f"<html><body>page {i}</body></html>",
+                page_url=f"https://example.com/p/{i}",
+            )
+
+        import app.services.zip_assembler as za_module
+
+        original_convert = za_module.html_converter_service.convert_linked_page_html
+
+        def mock_convert_sync(html, tab_url, filename_map, page_filename_map, content_type_map):
+            return html + "<!-- converted -->"
+
+        za_module.html_converter_service.convert_linked_page_html = mock_convert_sync
+
+        mock_session = types.SimpleNamespace(
+            assembly_phase=None,
+            assembly_progress_pct=None,
+        )
+        db = _ReentrancyDetectingMockDB()
+        shared_lock = asyncio.Lock()
+        linked_page_htmls: dict[str, str] = {}
+        linked_page_urls: dict[str, str] = {}
+
+        async def _run():
+            total_linked = len(linked_results)
+            lp_sem = asyncio.Semaphore(10)
+            lp_completed = 0
+
+            async def _convert_linked_page_one(page_hash, lp_result):
+                nonlocal lp_completed
+                async with lp_sem:
+                    if lp_result.success and lp_result.html:
+                        converted = await asyncio.to_thread(
+                            za_module.html_converter_service.convert_linked_page_html,
+                            lp_result.html, "https://example.com", {}, {}, {},
+                        )
+                        linked_page_htmls[page_hash] = converted
+                        if lp_result.page_url:
+                            linked_page_urls[page_hash] = lp_result.page_url
+                    lp_completed += 1
+                    pct = int(lp_completed / max(total_linked, 1) * 100)
+                    should_flush = lp_completed % 10 == 0 or lp_completed == total_linked
+                    await assembler._update_progress(
+                        db, mock_session, "converting_urls", pct,
+                        flush=should_flush,
+                        lock=shared_lock,
+                    )
+
+            await asyncio.gather(*[
+                _convert_linked_page_one(ph, lr)
+                for ph, lr in linked_results.items()
+            ])
+
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(_run())
+            finally:
+                loop.close()
+
+            assert db.flush_count >= 3
+            assert len(linked_page_htmls) == 25
+        finally:
+            za_module.html_converter_service.convert_linked_page_html = original_convert
 
 
 # ---------------------------------------------------------------------------

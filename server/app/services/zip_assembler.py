@@ -75,6 +75,16 @@ class ZipAssemblerService:
 
         try:
             async with db_session_factory() as db:
+                # SQLAlchemy AsyncSession is not safe for concurrent use.
+                # The parallel CSS and linked-page conversion phases below use
+                # asyncio.gather + Semaphore(10), so multiple coroutines could
+                # otherwise enter db.flush() at the same time, producing
+                # `InvalidRequestError: Session is already flushing`.  A single
+                # lock serializes flushes across this one session without
+                # removing the conversion parallelism (the actual CPU-bound
+                # work runs via asyncio.to_thread and is not affected).
+                db_flush_lock = asyncio.Lock()
+
                 session = await self._get_session(db, session_id)
                 if session is None:
                     logger.error("Assembly: session %s not found", session_id)
@@ -172,8 +182,8 @@ class ZipAssemblerService:
 
                     async def _convert_linked_page_one(page_hash: str, lp_result):
                         nonlocal lp_completed
-                        if lp_result.success and lp_result.html:
-                            async with lp_sem:
+                        async with lp_sem:
+                            if lp_result.success and lp_result.html:
                                 converted = await asyncio.to_thread(
                                     html_converter_service.convert_linked_page_html,
                                     lp_result.html, tab_url, filename_map, page_filename_map,
@@ -182,13 +192,14 @@ class ZipAssemblerService:
                                 linked_page_htmls[page_hash] = converted
                                 if lp_result.page_url:
                                     linked_page_urls[page_hash] = lp_result.page_url
-                        lp_completed += 1
-                        pct = int(lp_completed / max(total_linked, 1) * 100)
-                        should_flush = lp_completed % 10 == 0 or lp_completed == total_linked
-                        await self._update_progress(
-                            db, session, "converting_urls", pct,
-                            flush=should_flush,
-                        )
+                            lp_completed += 1
+                            pct = int(lp_completed / max(total_linked, 1) * 100)
+                            should_flush = lp_completed % 10 == 0 or lp_completed == total_linked
+                            await self._update_progress(
+                                db, session, "converting_urls", pct,
+                                flush=should_flush,
+                                lock=db_flush_lock,
+                            )
 
                     await asyncio.gather(*[
                         _convert_linked_page_one(ph, lr)
@@ -216,6 +227,7 @@ class ZipAssemblerService:
                             await self._update_progress(
                                 db, session, "converting_css", pct,
                                 flush=should_flush,
+                                lock=db_flush_lock,
                             )
 
                     await asyncio.gather(*[_convert_css_one(r) for r in css_resources])
@@ -532,17 +544,32 @@ class ZipAssemblerService:
         return list(result.scalars().all())
 
     @staticmethod
-    async def _update_progress(db, session, phase: str, pct: int, *, flush: bool = True) -> None:
+    async def _update_progress(
+        db, session, phase: str, pct: int, *,
+        flush: bool = True,
+        lock: Optional[asyncio.Lock] = None,
+    ) -> None:
         """Update assembly progress in the database.
 
         When flush=False, only update in-memory session fields without
         calling db.flush(). Caller is responsible for flushing later
         (e.g. at batch boundaries).
+
+        When ``lock`` is provided and ``flush`` is True, the flush call is
+        serialized through the lock.  This is required when the caller
+        fans out work via ``asyncio.gather`` (SQLAlchemy's AsyncSession is
+        not safe for concurrent use).  In-memory field assignment remains
+        outside the lock because last-writer-wins is already the expected
+        semantics for progress updates.
         """
         session.assembly_phase = phase
         session.assembly_progress_pct = max(0, min(100, pct))
         if flush:
-            await db.flush()
+            if lock is not None:
+                async with lock:
+                    await db.flush()
+            else:
+                await db.flush()
 
     @staticmethod
     async def _mark_failed(db, session, reason: str) -> None:
