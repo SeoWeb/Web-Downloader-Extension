@@ -373,7 +373,7 @@ export default function Filter({
                           </div>
 
                           {/* Include External Links */}
-                          {/* <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2">
                             <Checkbox
                               id="linkedPagesIncludeExternal"
                               checked={options.linkedPagesIncludeExternal || false}
@@ -382,7 +382,7 @@ export default function Filter({
                             <label htmlFor="linkedPagesIncludeExternal" className="text-xs text-blue-900 cursor-pointer">
                               {t('filter.includeExternal')}
                             </label>
-                          </div> */}
+                          </div>
                         </div>
                       )}
                     </div>

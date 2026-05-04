@@ -112,7 +112,7 @@ export default function SidePanel() {
   useActiveTabInfo({ setTabId, setTabUrl, setMessages });
 
   // Initialize useScrapingDownloader hook early so setDownloadResponse is available
-  const { downloadResponse, lastHtml, setDownloadResponse, setScrollAttempts } =
+  const { downloadResponse, lastHtml, setDownloadResponse, setScrollAttempts, stopScraping } =
     useScrapingDownloader({
       tabId,
       tabUrl,
@@ -436,7 +436,7 @@ export default function SidePanel() {
         isPaused={isPaused}
         action={action}
         downloadResponse={downloadResponse}
-        setIsScraping={setIsScraping}
+        onStopScraping={stopScraping}
         setIsPaused={setIsPaused}
         serverModeState={IS_SERVER_MODE ? serverModeState : undefined}
         onRetryServer={() => {

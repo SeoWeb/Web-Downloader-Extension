@@ -55,6 +55,7 @@ export function useScrapingDownloader({
   // Settle mechanism: when we first reach the bottom, wait one more
   // iteration to see if the page grows before declaring "at bottom"
   const settleCountRef = useRef<number>(0);
+  const stoppedByUserRef = useRef<boolean>(false);
 
   // (13.3) In server mode, track the server session ID and scroll index
   // for streaming HTML chunks during scrolling instead of accumulating
@@ -87,6 +88,12 @@ export function useScrapingDownloader({
     },
     [tabId, tabUrl, downloadOptions, setMessages],
   );
+
+  const stopScraping = useCallback(async () => {
+    await sendMessageToBackground(messageActions.SCRAPER_STOP, { tabId });
+    stoppedByUserRef.current = true;
+    setIsScraping(false);
+  }, [tabId, setIsScraping]);
 
   const scrape = useCallback(async () => {
   if (!tabId) {
@@ -215,8 +222,14 @@ export function useScrapingDownloader({
 
   useEffect(() => {
     if (isScraping) {
+      stoppedByUserRef.current = false;
       scrape();
     } else if (downloadOptions) {
+      if (stoppedByUserRef.current) {
+        stoppedByUserRef.current = false;
+        return;
+      }
+
       // (13.3) In server mode, HTML chunks have already been streamed to
       // the server during scrolling. We pass the LAST scroll response's HTML
       // to startDownload so that download-core.ts can extract resource URLs
@@ -258,6 +271,7 @@ export function useScrapingDownloader({
     downloadResponse,
     lastHtml: lastHtmlRef.current,
     scrollAttempts,
+    stopScraping,
     setDownloadResponse: (value: React.SetStateAction<ScrollingResponse | null>) => {
       setDownloadResponse(value);
       // (13.3) Reset server streaming state when downloadResponse is cleared

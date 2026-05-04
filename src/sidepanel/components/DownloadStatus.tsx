@@ -40,7 +40,7 @@ interface DownloadStatusProps {
   isPaused: boolean;
   action: MessageAction | null;
   downloadResponse: ScrollingResponse | null;
-  setIsScraping: (value: boolean) => void;
+  onStopScraping?: () => void;
   setIsPaused: (value: boolean) => void;
   /** (15.1–15.7) Server-mode state; only passed when IS_SERVER_MODE is true. */
   serverModeState?: ServerModeState;
@@ -66,12 +66,12 @@ function ScrapingControls({
   tabId,
   isPaused,
   setIsPaused,
-  setIsScraping,
+  onStop,
 }: {
   tabId: number;
   isPaused: boolean;
   setIsPaused: (value: boolean) => void;
-  setIsScraping: (value: boolean) => void;
+  onStop?: () => void;
 }) {
   const { t } = useTranslation();
 
@@ -85,9 +85,8 @@ function ScrapingControls({
     await sendMessage("background", { action: messageActions.SCRAPER_RESUME, data: { tabId } });
   };
 
-  const handleStop = async () => {
-    await sendMessage("background", { action: messageActions.SCRAPER_STOP, data: { tabId } });
-    setIsScraping(false);
+  const handleStop = () => {
+    onStop?.();
   };
 
   return (
@@ -119,7 +118,7 @@ export function DownloadStatus({
   isPaused,
   action,
   downloadResponse,
-  setIsScraping,
+  onStopScraping,
   setIsPaused,
   serverModeState,
   onRetryServer,
@@ -319,7 +318,7 @@ export function DownloadStatus({
           )}
 
           {/* Stop button */}
-          <ScrapingControls tabId={tabId} isPaused={isPaused} setIsPaused={setIsPaused} setIsScraping={setIsScraping} />
+          <ScrapingControls tabId={tabId} isPaused={isPaused} setIsPaused={setIsPaused} onStop={onStopScraping} />
         </div>
       </div>
     );
@@ -358,7 +357,7 @@ export function DownloadStatus({
           )}
 
           {/* Stop button */}
-          <ScrapingControls tabId={tabId} isPaused={isPaused} setIsPaused={setIsPaused} setIsScraping={setIsScraping} />
+          <ScrapingControls tabId={tabId} isPaused={isPaused} setIsPaused={setIsPaused} onStop={onStopScraping} />
         </div>
       </div>
     );
@@ -372,7 +371,7 @@ export function DownloadStatus({
     return (
       <div className="pt-8">
         <h3 className="pb-2 font-bold">{t('status.scraping')}</h3>
-        <ScrapingControls tabId={tabId} isPaused={isPaused} setIsPaused={setIsPaused} setIsScraping={setIsScraping} />
+        <ScrapingControls tabId={tabId} isPaused={isPaused} setIsPaused={setIsPaused} onStop={onStopScraping} />
       </div>
     );
   }
@@ -387,7 +386,7 @@ export function DownloadStatus({
     return (
       <div className="pt-8">
         <h3 className="pb-2 font-bold">{t('status.downloadingWebsiteContent')}</h3>
-        <ScrapingControls tabId={tabId} isPaused={isPaused} setIsPaused={setIsPaused} setIsScraping={setIsScraping} />
+        <ScrapingControls tabId={tabId} isPaused={isPaused} setIsPaused={setIsPaused} onStop={onStopScraping} />
       </div>
     );
   }

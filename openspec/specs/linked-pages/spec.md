@@ -3,12 +3,10 @@
 ## Purpose
 
 Multi-page crawling and scraping for the Website Downloader extension. Covers how linked pages are discovered, queued, scraped, and their assets deduplicated across the main page and all linked pages.
-
 ## Requirements
-
 ### Requirement: Linked Page Queue Management
 
-The system SHALL maintain a queue of linked pages to scrape, with configurable limits.
+The system SHALL maintain a queue of linked pages to scrape, with configurable limits and internal-page priority.
 
 #### Scenario: Adding a same-origin link to queue
 
@@ -24,18 +22,35 @@ The system SHALL maintain a queue of linked pages to scrape, with configurable l
 - WHEN the URL is added to the queue
 - THEN the URL is rejected and not enqueued
 
-#### Scenario: Accepting external links when enabled
+#### Scenario: External links queued after internal links
 
 - GIVEN the includeExternal option is true
 - AND a URL with a different hostname than the parent page
 - WHEN the URL is added to the queue
-- THEN the URL is enqueued
+- THEN the URL is enqueued in the external sub-queue
+- AND the external link is processed only after all internal links are completed
 
-#### Scenario: Queue size limit
+#### Scenario: Queue size limit with internal priority
 
 - GIVEN the queue has reached the maximum page limit
 - WHEN a new URL is added to the queue
 - THEN the URL is rejected
+- AND if the URL is internal while external links occupy queue slots, the operation MAY still reject if capacity is full (internal links added earlier in DOM order fill first; late-discovered internal links compete with existing entries on equal footing)
+
+#### Scenario: External links fill remaining capacity
+
+- GIVEN the includeExternal option is true
+- AND internal links occupy fewer than maxPages queue slots
+- WHEN an external link is added to the queue
+- THEN the external link is enqueued in the external sub-queue
+- AND the combined internal + external count does not exceed maxPages
+
+#### Scenario: External link rejected when capacity is full
+
+- GIVEN the includeExternal option is true
+- AND the combined internal + external queue count has reached maxPages
+- WHEN an external link is added to the queue
+- THEN the external link is rejected
 
 #### Scenario: Duplicate URL rejection
 
@@ -249,3 +264,20 @@ The system SHALL generate safe HTML filenames for scraped linked pages that are 
 - WHEN filenames are generated for both pages
 - THEN the second page's filename includes a short hash suffix to disambiguate (e.g., `team-a1b2.html`)
 - AND the same collision-avoidance logic is applied in both the extension and the server assembler
+
+### Requirement: Internal-first progress reporting
+
+The system SHALL report the current scraping phase (internal or external) in progress messages.
+
+#### Scenario: Internal phase progress
+
+- GIVEN the scraper is processing internal pages
+- WHEN a progress message is sent
+- THEN the message includes a phase indicator of "internal"
+
+#### Scenario: External phase progress
+
+- GIVEN the scraper has completed all internal pages and is processing external pages
+- WHEN a progress message is sent
+- THEN the message includes a phase indicator of "external"
+

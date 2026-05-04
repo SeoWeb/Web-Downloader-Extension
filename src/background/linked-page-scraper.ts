@@ -89,7 +89,12 @@ export interface LinkedPageScraperOptions {
 }
 
 export class LinkedPageScraper {
-  private queue: LinkedPageJob[] = [];
+  private internalQueue: LinkedPageJob[] = [];
+  private externalQueue: LinkedPageJob[] = [];
+
+  private get combinedQueue(): LinkedPageJob[] {
+    return [...this.internalQueue, ...this.externalQueue];
+  }
   private assetRegistry: AssetRegistry;
   private originalTabUrl: string = "";
   private options: Required<Omit<LinkedPageScraperOptions, 'serverSessionId'>> & { serverSessionId?: string };
@@ -154,15 +159,16 @@ export class LinkedPageScraper {
    * Add a URL to the scraping queue
    */
   async addToQueue(job: LinkedPageJob): Promise<void> {
+    const isExternal = this.isExternalLink(job.url, job.parentUrl);
+
     // Check for external links if option is disabled
-    if (!this.options.includeExternal) {
-      if (this.isExternalLink(job.url, job.parentUrl)) {
-        return;
-      }
+    if (isExternal && !this.options.includeExternal) {
+      return;
     }
 
     // Check if we've reached the max page limit
-    if (this.queue.length >= this.options.maxPages) {
+    const combinedLength = this.internalQueue.length + this.externalQueue.length;
+    if (combinedLength >= this.options.maxPages) {
       return;
     }
 
@@ -171,12 +177,16 @@ export class LinkedPageScraper {
       return;
     }
 
-    // Check if URL is already in queue
-    if (this.queue.some((j) => j.url === job.url)) {
+    // Check if URL is already in either queue
+    if (this.internalQueue.some((j) => j.url === job.url) || this.externalQueue.some((j) => j.url === job.url)) {
       return;
     }
 
-    this.queue.push(job);
+    if (isExternal) {
+      this.externalQueue.push(job);
+    } else {
+      this.internalQueue.push(job);
+    }
   }
 
   /**
@@ -226,7 +236,9 @@ export class LinkedPageScraper {
     storage: IStorageAdapter,
     sendMessage: (message: string | { key: string; options?: any }) => void,
   ): Promise<string> {
-    if (this.queue.length === 0) {
+    const totalInternal = this.internalQueue.length;
+    const totalExternal = this.externalQueue.length;
+    if (totalInternal === 0 && totalExternal === 0) {
       return "";
     }
 
@@ -252,7 +264,8 @@ export class LinkedPageScraper {
 
     // Using storage adapter directly
 
-    for (let i = 0; i < this.queue.length; i++) {
+    // Phase 1: Process internal pages first
+    for (let i = 0; i < this.internalQueue.length; i++) {
       // Check stop flag
       if (this.isStopped) {
         sendMessage("Scraping stopped by user");
@@ -266,11 +279,11 @@ export class LinkedPageScraper {
         if (this.isStopped) break; // Check again after resume
       }
 
-      const job = this.queue[i];
+      const job = this.internalQueue[i];
 
       sendMessage({
         key: "status.linkedPageProgress",
-        options: { current: i + 1, total: this.queue.length, isPaused: this.isPaused },
+        options: { current: i + 1, total: totalInternal, isPaused: this.isPaused, phase: "internal" },
       });
 
       try {
@@ -362,10 +375,108 @@ export class LinkedPageScraper {
       }
 
       // Add delay between pages to avoid rate limiting
-      if (i < this.queue.length - 1 && this.options.delayBetweenPages > 0) {
-        // We can split delay into smaller chunks to check for pause/stop during delay?
-        // Or just await delay. For 200ms it doesn't matter much.
+      if (i < this.internalQueue.length - 1 && this.options.delayBetweenPages > 0) {
         await this.delay(this.options.delayBetweenPages);
+      }
+    }
+
+    // Phase 2: Process external pages (only if not stopped)
+    if (!this.isStopped) {
+      for (let i = 0; i < this.externalQueue.length; i++) {
+        // Check stop flag
+        if (this.isStopped) {
+          sendMessage("Scraping stopped by user");
+          break;
+        }
+
+        // Check pause flag
+        if (this.isPaused) {
+          sendMessage({ key: "status.scraperPaused" });
+          await this.resumePromise;
+          if (this.isStopped) break;
+        }
+
+        const job = this.externalQueue[i];
+
+        sendMessage({
+          key: "status.linkedPageProgress",
+          options: { current: i + 1, total: totalExternal, isPaused: this.isPaused, phase: "external" },
+        });
+
+        try {
+          job.status = "processing";
+
+          const scrapedData = await this.scrapeLinkedPage(
+            tabId,
+            job.url,
+            storage,
+            sendMessage,
+          );
+
+          if (this.options.serverSessionId) {
+            const sessionId = this.options.serverSessionId;
+            await Promise.all(
+              scrapedData.htmlChunks.map((chunk, ci) =>
+                serverClient.uploadHtmlChunk(
+                  sessionId,
+                  chunk,
+                  ci,
+                  "linked",
+                  scrapedData.finalUrl,
+                ),
+              ),
+            );
+
+            const deltaMap: Record<string, string> = {};
+            for (const [key, value] of scrapedData.localImageMap ?? []) {
+              if (!globalImageFilenameMap.has(key)) {
+                deltaMap[key] = value;
+              }
+            }
+            if (Object.keys(deltaMap).length > 0) {
+              await serverClient.uploadFilenameMap(this.options.serverSessionId, deltaMap);
+            }
+          } else {
+            const baseFilename = this.generateFilename(scrapedData.finalUrl);
+            let filename = baseFilename;
+            if (usedFilenames.has(filename)) {
+              const nameBase = baseFilename.replace(/\.html$/i, "");
+              const hashSuffix = shortHash(scrapedData.finalUrl);
+              filename = `${nameBase}-${hashSuffix}.html`;
+            }
+            usedFilenames.add(filename);
+            pageFilenameMap.set(scrapedData.finalUrl, filename);
+
+            localModePages.push({
+              finalUrl: scrapedData.finalUrl,
+              filename,
+              rawHtml: scrapedData.html,
+              combinedImageMap: scrapedData.combinedImageMap,
+            });
+          }
+
+          job.status = "completed";
+          this.successCount++;
+
+          if (this.extractText && scrapedData.text) {
+            accumulatedText += `\n--- ${scrapedData.finalUrl} ---\n${scrapedData.text}`;
+          }
+        } catch (error) {
+          const isSessionFull = error instanceof HttpError && error.statusCode === 413;
+          if (isSessionFull) {
+            job.status = "failed";
+            this.failCount++;
+            this.isStopped = true;
+            break;
+          }
+          job.status = "failed";
+          this.failCount++;
+          sendMessage(`Failed to scrape: ${job.url}`);
+        }
+
+        if (i < this.externalQueue.length - 1 && this.options.delayBetweenPages > 0) {
+          await this.delay(this.options.delayBetweenPages);
+        }
       }
     }
 
@@ -853,11 +964,12 @@ export class LinkedPageScraper {
    * Get scraping statistics
    */
   getStats() {
+    const combined = this.combinedQueue;
     return {
-      total: this.queue.length,
+      total: combined.length,
       succeeded: this.successCount,
       failed: this.failCount,
-      pending: this.queue.filter((j) => j.status === "queued").length,
+      pending: combined.filter((j) => j.status === "queued").length,
     };
   }
 }
