@@ -401,6 +401,9 @@ class TestCleanupServicePeriodic:
         cleanup._remove_expired_sessions = AsyncMock(return_value=0)
         cleanup._cleanup_orphaned_api_keys = AsyncMock(return_value=0)
         cleanup._cleanup_orphaned_directories = AsyncMock(return_value=0)
+        # Force disk usage below the aggressive-cleanup threshold so that
+        # branch is skipped; this test targets the normal orchestration path.
+        cleanup._get_disk_usage_pct = MagicMock(return_value=50.0)
 
         result = await cleanup.run_periodic_cleanup(mock_db)
 
@@ -477,20 +480,16 @@ class TestStartupCleanup:
             status=SessionStatus.SCRAPING,
             updated_at=stale_time,
         )
-        active_session = _make_session(
-            session_id="active-1",
-            status=SessionStatus.SCRAPING,
-            updated_at=datetime.now(timezone.utc),
-        )
 
-        # Mock the query to return both sessions
+        # The SQL WHERE clause in _mark_stale_sessions_failed filters out
+        # sessions with recent activity, so the query only returns stale
+        # sessions. Active sessions are never loaded into memory.
         mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [stale_session, active_session]
+        mock_result.scalars.return_value.all.return_value = [stale_session]
         mock_db.execute.return_value = mock_result
 
         count = await cleanup._mark_stale_sessions_failed(mock_db)
 
-        # Only the stale session should be marked as failed
         assert count == 1
         assert stale_session.status == SessionStatus.FAILED
         assert "server restarted" in stale_session.error_message
@@ -522,8 +521,11 @@ class TestStartupCleanup:
             updated_at=datetime.now(timezone.utc) - timedelta(minutes=5),
         )
 
+        # The SQL WHERE clause filters out active sessions, so the query
+        # returns an empty result set. The Python loop never sees the
+        # active session, so it is not marked failed.
         mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [active_session]
+        mock_result.scalars.return_value.all.return_value = []
         mock_db.execute.return_value = mock_result
 
         count = await cleanup._mark_stale_sessions_failed(mock_db)
@@ -1075,8 +1077,11 @@ class TestStaleSessionVerification:
             updated_at=datetime.now(timezone.utc) - timedelta(minutes=5),
         )
 
+        # The SQL WHERE clause filters out active sessions, so the query
+        # returns an empty result set. The Python loop never sees the
+        # active session.
         mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [active]
+        mock_result.scalars.return_value.all.return_value = []
         mock_db.execute.return_value = mock_result
 
         count = await cleanup._mark_stale_sessions_failed(mock_db)

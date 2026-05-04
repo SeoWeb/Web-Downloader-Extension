@@ -17,6 +17,9 @@ from app.services.html_merger import (
     HtmlMergerService,
     ComplexityResult,
     MergeResult,
+    COMPLEXITY_ELEMENT_THRESHOLD,
+    COMPLEXITY_NESTING_THRESHOLD,
+    COMPLEXITY_TABLE_ROW_THRESHOLD,
 )
 
 
@@ -535,6 +538,197 @@ def test_dom_merge_full_body_subset():
 
     print("  PASS: test_dom_merge_full_body_subset")
 
+
+# ---------------------------------------------------------------------------
+# Test 14: _analyze_job_complexity — early-exit on element threshold
+# ---------------------------------------------------------------------------
+
+def test_analyze_job_complexity_early_exit_on_element_threshold():
+    """_analyze_job_complexity must short-circuit as soon as the running element
+    total crosses COMPLEXITY_ELEMENT_THRESHOLD during per-chunk counting.
+
+    Spec scenario (new): 'Early-exit on element threshold'
+    - WHEN the running element count total exceeds 100,000 during per-chunk counting
+    - THEN the server immediately returns is_complex=True without processing
+      remaining chunks.
+
+    Verification: after skeleton (~50K) + chunk 1 (~60K) the total crosses
+    100K, so chunk 2 must NOT be counted.  The reported element_count must be
+    well below skeleton + chunk1 + chunk2 combined (~170K).
+    """
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-early-exit"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    # Skeleton: ~50K flat <p> elements  (lxml adds html/head/body → ~50003 total)
+    HALF = COMPLEXITY_ELEMENT_THRESHOLD // 2
+    skeleton_html = "<html><body>" + "<p>x</p>" * HALF + "</body></html>"
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+
+    # Chunk 1: ~60K elements — skeleton + chunk1 ≈ 110K > 100K threshold
+    chunk1_html = "<html><body>" + "<p>y</p>" * (HALF + 10_000) + "</body></html>"
+    chunk1_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk1_path, "w") as f:
+        f.write(chunk1_html)
+    service.register_chunk(
+        job,
+        service.compute_content_hash(chunk1_html),
+        scroll_index=1,
+        storage_path=chunk1_path,
+        size=len(chunk1_html),
+    )
+
+    # Chunk 2: another ~60K — should never be reached
+    chunk2_html = "<html><body>" + "<p>z</p>" * (HALF + 10_000) + "</body></html>"
+    chunk2_path = os.path.join(chunk_dir, "2.html")
+    with open(chunk2_path, "w") as f:
+        f.write(chunk2_html)
+    service.register_chunk(
+        job,
+        service.compute_content_hash(chunk2_html),
+        scroll_index=2,
+        storage_path=chunk2_path,
+        size=len(chunk2_html),
+    )
+
+    result = service._analyze_job_complexity(job, skeleton_html)
+
+    assert result.is_complex, "Should be complex due to combined element count"
+    assert "Too many elements" in (result.reason or ""), (
+        f"Reason should mention elements: {result.reason}"
+    )
+    # Early-exit leaves chunk 2 uncounted.  If chunk 2 had been counted the
+    # total would be ~170K; we allow a generous upper bound of 130K to confirm
+    # the function actually exited after chunk 1.
+    assert result.element_count < 130_000, (
+        f"Early-exit expected after ~{COMPLEXITY_ELEMENT_THRESHOLD} elements, "
+        f"got {result.element_count} — chunk 2 may have been counted"
+    )
+
+    print("  PASS: test_analyze_job_complexity_early_exit_on_element_threshold")
+
+
+# ---------------------------------------------------------------------------
+# Test 15: _analyze_job_complexity — per-document nesting detection
+# ---------------------------------------------------------------------------
+
+def test_analyze_job_complexity_per_document_nesting():
+    """_analyze_job_complexity must detect deep nesting in an individual chunk.
+
+    Spec scenario (updated): 'Deeply nested structure detected'
+    - WHEN ANY individual document (skeleton OR any chunk) contains elements
+      with more than 50 levels of nesting
+    - THEN is_complex=True
+
+    The old combined-HTML approach flattened inter-document nesting (lxml
+    re-roots concatenated HTML), so a deeply nested chunk could escape
+    detection.  Per-document analysis must catch it.
+    """
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-per-doc-nesting"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    # Skeleton: shallow — not complex on its own
+    skeleton_html = "<html><head></head><body><div><p>shallow</p></div></body></html>"
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+
+    # Chunk: nesting depth = COMPLEXITY_NESTING_THRESHOLD + 10 → complex alone
+    depth = COMPLEXITY_NESTING_THRESHOLD + 10
+    chunk_html = (
+        "<html><body>"
+        + "<div>" * depth
+        + "deep"
+        + "</div>" * depth
+        + "</body></html>"
+    )
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    service.register_chunk(
+        job,
+        service.compute_content_hash(chunk_html),
+        scroll_index=1,
+        storage_path=chunk_path,
+        size=len(chunk_html),
+    )
+
+    result = service._analyze_job_complexity(job, skeleton_html)
+
+    assert result.is_complex, (
+        "Job should be complex when any chunk is deeply nested"
+    )
+    assert result.max_nesting > COMPLEXITY_NESTING_THRESHOLD, (
+        f"max_nesting {result.max_nesting} should exceed {COMPLEXITY_NESTING_THRESHOLD}"
+    )
+    assert "nest" in (result.reason or "").lower(), (
+        f"Reason should mention nesting: {result.reason}"
+    )
+
+    print("  PASS: test_analyze_job_complexity_per_document_nesting")
+
+
+# ---------------------------------------------------------------------------
+# Test 16: _analyze_job_complexity — per-document large-table detection
+# ---------------------------------------------------------------------------
+
+def test_analyze_job_complexity_per_document_large_table():
+    """_analyze_job_complexity must detect a large table in an individual chunk.
+
+    Spec scenario (updated): 'Large table detected'
+    - WHEN ANY individual document contains a table with more than 5,000 rows
+    - THEN is_complex=True
+    """
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-per-doc-table"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    # Skeleton: normal — not complex
+    skeleton_html = "<html><head></head><body><p>normal content</p></body></html>"
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+
+    # Chunk: table with COMPLEXITY_TABLE_ROW_THRESHOLD + 1000 rows → complex alone
+    rows = "".join(
+        f"<tr><td>Row {i}</td></tr>"
+        for i in range(COMPLEXITY_TABLE_ROW_THRESHOLD + 1000)
+    )
+    chunk_html = f"<html><body><table>{rows}</table></body></html>"
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    service.register_chunk(
+        job,
+        service.compute_content_hash(chunk_html),
+        scroll_index=1,
+        storage_path=chunk_path,
+        size=len(chunk_html),
+    )
+
+    result = service._analyze_job_complexity(job, skeleton_html)
+
+    assert result.is_complex, (
+        "Job should be complex when any chunk contains a large table"
+    )
+    assert result.large_table_count > 0, (
+        "large_table_count should be > 0"
+    )
+    assert "table" in (result.reason or "").lower(), (
+        f"Reason should mention table: {result.reason}"
+    )
+
+    print("  PASS: test_analyze_job_complexity_per_document_large_table")
+
 def main():
     print("HTML Merge Service Verification (task 4.9)")
     print("=" * 50)
@@ -553,6 +747,9 @@ def main():
         test_safe_merge_deduplication,
         test_dom_merge_superset_identical_chunks,
         test_dom_merge_full_body_subset,
+        test_analyze_job_complexity_early_exit_on_element_threshold,
+        test_analyze_job_complexity_per_document_nesting,
+        test_analyze_job_complexity_per_document_large_table,
     ]
 
     passed = 0

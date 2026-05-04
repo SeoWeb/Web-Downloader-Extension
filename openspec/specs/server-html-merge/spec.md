@@ -82,7 +82,7 @@ The server SHALL produce a complete merged HTML document when the session is fin
 
 ### Requirement: HTML Complexity Analysis
 
-The server SHALL analyze HTML complexity to detect potential exponential growth scenarios before merging.
+The server SHALL analyze HTML complexity using per-document analysis to detect potential exponential growth scenarios before merging.
 
 #### Scenario: Excessive element count detected
 
@@ -91,13 +91,23 @@ The server SHALL analyze HTML complexity to detect potential exponential growth 
 
 #### Scenario: Deeply nested structure detected
 
-- **WHEN** the HTML contains elements with more than 50 levels of nesting
+- **WHEN** ANY individual document (skeleton or any chunk file) contains elements with more than 50 levels of nesting
 - **THEN** the server uses the safe merge strategy
 
-#### Scenario: Large table structures detected
+#### Scenario: Large table detected
 
-- **WHEN** the HTML contains tables with more than 5,000 rows
+- **WHEN** ANY individual document (skeleton or any chunk file) contains a table with more than 5,000 rows
 - **THEN** the server uses the safe merge strategy
+
+#### Scenario: Excessive nested tables
+
+- **WHEN** ANY individual document (skeleton or any chunk file) contains more than 10 nested tables
+- **THEN** the server uses the safe merge strategy
+
+#### Scenario: Early-exit on element threshold
+
+- **WHEN** the running element count total exceeds 100,000 during per-chunk counting
+- **THEN** the server immediately returns `is_complex=True` without processing remaining chunks
 
 ### Requirement: DOM Merge Superset Detection
 

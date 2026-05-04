@@ -1,7 +1,7 @@
 """HTML Merge Service: skeleton-and-chunks merge logic.
 
 Ports the client-side merge-html.ts + HtmlAssembler.ts to Python,
-using lxml + BeautifulSoup4 for HTML parsing and manipulation.
+using lxml for HTML parsing and manipulation.
 
 Server-side merge flow:
 1. First HTML chunk for a page initializes the skeleton (document structure
@@ -25,7 +25,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from bs4 import BeautifulSoup, Tag
 from lxml import etree
 
 from app.config import settings
@@ -582,17 +581,22 @@ class HtmlMergerService:
     def _analyze_job_complexity(
         self, job: AssemblyJob, skeleton_html: str
     ) -> ComplexityResult:
-        """Analyze complexity of skeleton + all chunks combined.
+        """Analyze complexity of skeleton + all chunks using per-document analysis.
 
-        Checks both the skeleton and chunk content for complexity issues,
-        matching the client-side behavior that analyzes both html1 and html2.
+        Element counts are summed across documents with early-exit if the
+        combined total exceeds COMPLEXITY_ELEMENT_THRESHOLD.  Nesting depth
+        and table checks run on each document independently; the maximum is
+        taken across all documents.
+
+        This eliminates the combined_html string concatenation that previously
+        forced a single giant BeautifulSoup parse of all chunk HTML at once.
+        Per-document nesting analysis is also semantically more correct: lxml
+        re-roots concatenated HTML, artificially flattening inter-document
+        nesting depth.
         """
-        # Start with skeleton analysis
         combined_elements = 0
-        max_nesting = 0
-        large_table_count = 0
-        combined_html = skeleton_html
 
+        # Count skeleton elements with early-exit
         try:
             skel_tree = etree.HTML(skeleton_html)
             if skel_tree is not None:
@@ -600,37 +604,62 @@ class HtmlMergerService:
         except Exception:
             pass
 
-        # Analyze each chunk file
-        for chunk_path in job.chunks:
-            try:
-                with open(chunk_path, "r", encoding="utf-8") as f:
-                    chunk_html = f.read()
-                try:
-                    chunk_tree = etree.HTML(chunk_html)
-                    if chunk_tree is not None:
-                        combined_elements += len(list(chunk_tree.iter()))
-                except Exception:
-                    pass
-                # Also accumulate for a combined analysis
-                combined_html += chunk_html
-            except OSError:
-                continue
-
-        # Run full analysis on the combined HTML for nesting/tables
-        combined_result = self.analyze_html_complexity(combined_html)
-
-        # Override element count with the sum from individual parses
-        # (more accurate since combined parse may deduplicate)
         if combined_elements > COMPLEXITY_ELEMENT_THRESHOLD:
             return ComplexityResult(
                 is_complex=True,
                 element_count=combined_elements,
-                max_nesting=combined_result.max_nesting,
-                large_table_count=combined_result.large_table_count,
+                max_nesting=0,
+                large_table_count=0,
                 reason=f"Too many elements (skeleton+chunks): {combined_elements}",
             )
 
-        return combined_result
+        # Count chunk elements with early-exit, storing HTML for per-document
+        # nesting/table analysis below (avoids a second disk read pass).
+        chunk_htmls: list[str] = []
+        for chunk_path in job.chunks:
+            try:
+                with open(chunk_path, "r", encoding="utf-8") as f:
+                    chunk_html = f.read()
+            except OSError:
+                continue
+            try:
+                chunk_tree = etree.HTML(chunk_html)
+                if chunk_tree is not None:
+                    combined_elements += len(list(chunk_tree.iter()))
+            except Exception:
+                pass
+            if combined_elements > COMPLEXITY_ELEMENT_THRESHOLD:
+                return ComplexityResult(
+                    is_complex=True,
+                    element_count=combined_elements,
+                    max_nesting=0,
+                    large_table_count=0,
+                    reason=f"Too many elements (skeleton+chunks): {combined_elements}",
+                )
+            chunk_htmls.append(chunk_html)
+
+        # Per-document nesting / table analysis: skeleton first, then each chunk.
+        # Track maximums across all documents.
+        max_nesting = 0
+        max_large_table_count = 0
+        is_complex = False
+        reason = None
+
+        for doc_html in [skeleton_html] + chunk_htmls:
+            doc_result = self.analyze_html_complexity(doc_html)
+            max_nesting = max(max_nesting, doc_result.max_nesting)
+            max_large_table_count = max(max_large_table_count, doc_result.large_table_count)
+            if doc_result.is_complex and not is_complex:
+                is_complex = True
+                reason = doc_result.reason
+
+        return ComplexityResult(
+            is_complex=is_complex,
+            element_count=combined_elements,
+            max_nesting=max_nesting,
+            large_table_count=max_large_table_count,
+            reason=reason,
+        )
 
     def analyze_html_complexity(self, html_content: str) -> ComplexityResult:
         """Analyze HTML complexity to detect potential exponential growth.
@@ -653,16 +682,25 @@ class HtmlMergerService:
                 reason="Failed to parse HTML",
             )
 
-        # Count total elements
-        all_elements = list(tree.iter())
-        element_count = len(all_elements)
-
-        # Calculate max nesting depth
+        # Count total elements and calculate max nesting depth in a single O(N)
+        # top-down pass.  Parents are always visited before their children by
+        # tree.iter(), so depth_map[parent] is always populated when we process
+        # a child.  This replaces the former O(N × D) approach that called
+        # elem.iterancestors() (O(D)) for every one of N elements.
+        #
+        # NOTE: we key by the lxml element object directly (not id()) to avoid
+        # id re-use bugs — lxml proxy objects can share memory addresses after
+        # earlier proxies are garbage-collected.
+        depth_map: dict = {}  # lxml element → nesting depth
+        element_count = 0
         max_nesting = 0
-        for elem in all_elements:
-            depth = len(list(elem.iterancestors()))
-            if depth > max_nesting:
-                max_nesting = depth
+        for elem in tree.iter():
+            element_count += 1
+            parent = elem.getparent()
+            d = (depth_map.get(parent, -1) + 1) if parent is not None else 0
+            depth_map[elem] = d
+            if d > max_nesting:
+                max_nesting = d
 
         # Count large tables (> 5K rows)
         large_table_count = 0
@@ -930,14 +968,22 @@ class HtmlMergerService:
 
     @staticmethod
     def _extract_body_content(html_content: str) -> Optional[str]:
-        """Extract the innerHTML of <body> from an HTML string."""
-        try:
-            soup = BeautifulSoup(html_content, "lxml")
-            body = soup.find("body")
-            if body:
-                return body.decode_contents()
-        except Exception:
-            pass
+        """Extract the innerHTML of <body> from an HTML string.
+
+        Uses a fast string-split approach: O(N) time, O(1) extra memory
+        (the returned slice references the input string — no parse tree is
+        allocated).  Falls back to regex, and finally to lxml for bare HTML
+        fragments that have no <body> tag (lxml wraps any fragment in
+        html/body when it parses, so the body element is always present).
+        """
+        # Fast path: string-split
+        lower = html_content.lower()
+        start_tag = lower.find("<body")
+        if start_tag != -1:
+            tag_close = html_content.find(">", start_tag)
+            end_tag = lower.rfind("</body>")
+            if tag_close != -1 and end_tag > tag_close:
+                return html_content[tag_close + 1 : end_tag]
 
         # Fallback: regex extraction
         match = re.search(
@@ -946,6 +992,24 @@ class HtmlMergerService:
         if match:
             return match.group(1)
 
+        # Final fallback: lxml for bare HTML fragments with no <body> tag.
+        # lxml wraps bare fragments in a full html/body structure, so the body
+        # element is always present after parsing.  This fallback is only
+        # reached for fragment inputs (which are small by nature), so the
+        # parse overhead is acceptable.
+        try:
+            tree = etree.HTML(html_content)
+            if tree is not None:
+                body = tree.find(".//body")
+                if body is not None:
+                    body_inner = (body.text or "") + "".join(
+                        etree.tostring(c, encoding="unicode") for c in body
+                    )
+                    if body_inner:
+                        return body_inner
+        except Exception:
+            pass
+
         return None
 
     @staticmethod
@@ -953,13 +1017,22 @@ class HtmlMergerService:
         """Create a simple HTML wrapper for merged content.
 
         Port of createSimpleHtmlWrapper from merge-html.ts.
+        Uses lxml instead of BeautifulSoup to reduce memory overhead
+        (~5–10× vs ~50–100× the template string size).
         """
         try:
-            soup = BeautifulSoup(template_html, "lxml")
-            title_tag = soup.find("title")
-            title = title_tag.get_text() if title_tag else "Merged Content"
-            head_tag = soup.find("head")
-            head_content = head_tag.decode_contents() if head_tag else ""
+            tree = etree.HTML(template_html)
+            title_el = tree.find(".//title") if tree is not None else None
+            title = (
+                "".join(title_el.itertext()) if title_el is not None else None
+            ) or "Merged Content"
+            head_el = tree.find(".//head") if tree is not None else None
+            if head_el is not None:
+                head_content = (head_el.text or "") + "".join(
+                    etree.tostring(c, encoding="unicode") for c in head_el
+                )
+            else:
+                head_content = ""
         except Exception:
             title = "Merged Content"
             head_content = ""
