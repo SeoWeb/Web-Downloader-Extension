@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package search;
+
+service SearchService {
+  rpc IndexPage(IndexPageRequest) returns (StatusResponse);
+  rpc RemovePage(RemovePageRequest) returns (StatusResponse);
+  rpc Search(SearchRequest) returns (SearchResponse);
+}
+
+message IndexPageRequest {
+  string page_id = 1;
+  string user_id = 2;
+  string url = 3;
+  string title = 4;
+  string body_text = 5;
+  string tags = 6;
+}
+
+message RemovePageRequest {
+  string page_id = 1;
+  string user_id = 2;
+}
+
+message SearchRequest {
+  string user_id = 1;
+  string query = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+  string collection_id = 5;
+}
+
+message SearchResult {
+  string page_id = 1;
+  string url = 2;
+  string title = 3;
+  string snippet = 4;
+  double score = 5;
+  string archived_at = 6;
+}
+
+message SearchResponse {
+  repeated SearchResult results = 1;
+  int32 total = 2;
+}
+
+message StatusResponse {
+  bool success = 1;
+  string message = 2;
+}

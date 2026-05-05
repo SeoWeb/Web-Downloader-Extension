@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package library;
+
+service LibraryService {
+  rpc CreateCollection(CreateCollectionRequest) returns (CollectionResponse);
+  rpc GetCollection(GetCollectionRequest) returns (CollectionResponse);
+  rpc ListCollections(ListCollectionsRequest) returns (ListCollectionsResponse);
+  rpc UpdateCollection(UpdateCollectionRequest) returns (CollectionResponse);
+  rpc DeleteCollection(DeleteCollectionRequest) returns (StatusResponse);
+  rpc AddPageToCollection(PageCollectionRequest) returns (StatusResponse);
+  rpc RemovePageFromCollection(PageCollectionRequest) returns (StatusResponse);
+}
+
+message CreateCollectionRequest {
+  string user_id = 1;
+  string name = 2;
+  string description = 3;
+  string parent_id = 4;
+  string color = 5;
+}
+
+message GetCollectionRequest {
+  string collection_id = 1;
+  string user_id = 2;
+}
+
+message ListCollectionsRequest {
+  string user_id = 1;
+  string parent_id = 2;
+}
+
+message UpdateCollectionRequest {
+  string collection_id = 1;
+  string user_id = 2;
+  string name = 3;
+  string description = 4;
+  string color = 5;
+}
+
+message DeleteCollectionRequest {
+  string collection_id = 1;
+  string user_id = 2;
+}
+
+message PageCollectionRequest {
+  string user_id = 1;
+  string page_id = 2;
+  string collection_id = 3;
+}
+
+message CollectionResponse {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  string description = 4;
+  string parent_id = 5;
+  string color = 6;
+  int32 page_count = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message ListCollectionsResponse {
+  repeated CollectionResponse collections = 1;
+}
+
+message StatusResponse {
+  bool success = 1;
+  string message = 2;
+}
