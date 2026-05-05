@@ -14,6 +14,8 @@ Image filename generation SHALL include parent path segments when a URL has mult
 
 When the filename map lookup fails, the converter SHALL use the content-type map to determine the correct file extension before falling back to `.bin`.
 
+Image filename generation SHALL include a DJB2 query hash suffix when the original URL contains query parameters, matching the extension's `generateImageFilename()` behavior.
+
 #### Scenario: Image mapped via filename map
 
 - **WHEN** an `<img>` element has a `src` that matches an entry in the uploaded filename map
@@ -61,7 +63,13 @@ When the filename map lookup fails, the converter SHALL use the content-type map
 #### Scenario: Extensionless CDN URL gets correct extension from content-type
 
 - **WHEN** an `<img src>` is `https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/MHW04?wid=400&hei=400&fmt=jpeg` and this URL is not in the filename map but has content-type `image/jpeg` in the content-type map
-- **THEN** the generated filename uses `.jpg` extension (e.g., `1_as-images.apple.com_is_MHW04.jpg`)
+- **THEN** the generated filename uses `.jpg` extension (e.g., `1_as-images.apple.com_is_MHW04_<hash>.jpg`)
+
+#### Scenario: Fallback filename for extensionless URL with query params includes query hash
+
+- **WHEN** `generate_image_filename()` is called in a fallback path with an `original_url` that has query parameters (e.g., `https://cdn.example.com/api/image/123?width=200`)
+- **THEN** the generated filename includes the DJB2 query hash suffix matching what the extension would produce
+- **AND** the base name matches entries in the `filename_ext_map` so `_maybe_fix_bin_extension()` can find the correct extension
 
 ### Requirement: Script URL Conversion
 
@@ -250,6 +258,13 @@ When the filename map lookup fails and `generate_image_filename()` produces a fi
 - **WHEN** `generate_image_filename()` produces a `.bin` filename
 - **AND** the filename base is not found in the `filename_ext_map`
 - **THEN** the `.bin` extension is used (unchanged behavior)
+
+#### Scenario: Query-hashed base name found in filename_ext_map
+
+- **WHEN** the extension downloaded an image from `https://cdn.example.com/api/image/123?width=200` and stored it as `images/api_image_123_a1b2c3d4.jpg`
+- **AND** the `filename_ext_map` contains `"api_image_123_a1b2c3d4"` → `"jpg"`
+- **AND** the server fallback generates `api_image_123_a1b2c3d4.bin` (with query hash)
+- **THEN** `_maybe_fix_bin_extension()` finds the match and replaces `.bin` with `.jpg`
 
 ### Requirement: Filename extension map threaded through all image fallback paths
 

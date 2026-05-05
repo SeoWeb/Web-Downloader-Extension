@@ -79,6 +79,13 @@ The server SHALL store uploaded resource files and assembled ZIPs on the local f
 - **AND** the HTML chunk records in the database are marked as merged (or deleted) so they are not re-processed
 - **AND** the merged HTML content is retained as the session's final HTML (stored separately under `<storage_root>/<session_id>/output/`)
 
+#### Scenario: Session deletion removes files
+
+- **WHEN** a session is deleted via the API `DELETE /sessions/{id}` endpoint
+- **THEN** the session's storage directory is removed from disk via `asyncio.to_thread`
+- **AND** the session record is deleted via a bulk DELETE statement
+- **AND** no explicit per-resource DELETE queries are issued (CASCADE handles resource records)
+
 ### Requirement: Session Auto-Expiry
 
 The server SHALL automatically expire sessions after a configurable retention period.
@@ -86,9 +93,10 @@ The server SHALL automatically expire sessions after a configurable retention pe
 #### Scenario: Session expires after retention period
 
 - **WHEN** a session's `expires_at` timestamp is reached
-- **THEN** the server marks the session as `expired`
+- **THEN** the server marks the session as `expired` via a bulk UPDATE statement
+- **AND** deletes the session record via a bulk DELETE statement (CASCADE automatically removes associated resource and html_chunk records)
 - **AND** deletes all associated resource files and ZIP from disk
-- **AND** deletes the session and resource records from the database
+- **AND** no explicit per-resource DELETE queries are issued
 
 #### Scenario: Default retention period
 
@@ -147,11 +155,15 @@ The server SHALL run a cleanup job on startup and at a configurable interval (de
 
 - **WHEN** the cleanup interval elapses and disk usage is below the aggressive threshold
 - **THEN** expired sessions are removed, stale assemblies are marked as failed, and disk usage is logged
+- **AND** expired-session removal commits per batch of 100 sessions for crash durability
+- **AND** file-system operations (directory deletion, directory listing, path existence checks) are executed via `asyncio.to_thread` to avoid blocking the async event loop
 
 #### Scenario: Aggressive cleanup under disk pressure
 
 - **WHEN** disk usage exceeds the configured threshold (default 80%)
 - **THEN** the cleanup service removes the oldest expired sessions first, then removes sessions approaching expiry (within 10% of retention period), and logs the bytes freed
+- **AND** session deletion relies on ON DELETE CASCADE for associated resource and html_chunk records
+- **AND** directory-size calculation and directory deletion are executed via `asyncio.to_thread`
 
 #### Scenario: Disk usage logged after every cleanup run
 
@@ -165,6 +177,7 @@ The server SHALL run a cleanup job on startup and at a configurable interval (de
 - **AND** stale session recovery (see Server Restart Recovery) runs before expiry cleanup
 - **AND** ALL sessions in `assembling` status are marked as failed (background tasks are lost on restart)
 - **AND** an orphan scan is performed: any session directory under `<storage_root>/` whose UUID does not correspond to a session record in the database is deleted from disk, covering cases where a crash occurred between DB record deletion and disk file deletion
+- **AND** file-system operations in the orphan scan are executed via `asyncio.to_thread`
 
 ### Requirement: Session Size Limits
 
