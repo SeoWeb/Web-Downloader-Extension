@@ -151,6 +151,26 @@ class Session(Base):
         nullable=True,
         comment="Error description if session failed",
     )
+    pagepocket_user_id: Mapped[str | None] = mapped_column(
+        String(36),
+        nullable=True,
+        comment="PagePocket cloud user ID for cloud archive push",
+    )
+    cloud_status: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+        comment="Cloud push status: pending, success, failed",
+    )
+    cloud_page_id: Mapped[str | None] = mapped_column(
+        String(36),
+        nullable=True,
+        comment="Cloud archive page ID after successful push",
+    )
+    cloud_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="gRPC error details from failed cloud push",
+    )
 
     def __repr__(self) -> str:
         return f"<Session id={self.id} status={self.status} url={self.url[:80]}>"

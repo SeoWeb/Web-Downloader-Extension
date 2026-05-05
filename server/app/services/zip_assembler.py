@@ -282,6 +282,50 @@ class ZipAssemblerService:
                     session_id, output_path,
                 )
 
+                # Cloud archive push (after local finalization succeeds)
+                from app.services.archive_client import push_to_archive, is_configured
+                if is_configured() and session.pagepocket_user_id:
+                    session.cloud_status = "pending"
+                    session.cloud_error = None
+                    await db.flush()
+                    try:
+                        with open(output_path, "rb") as f:
+                            html_bytes = f.read()
+
+                        # Extract title from HTML
+                        title = self._extract_title(html_bytes)
+
+                        # Build assets list from session resources
+                        assets = await self._build_cloud_assets(
+                            session_id, db,
+                        )
+
+                        result = await asyncio.to_thread(
+                            push_to_archive,
+                            user_id=session.pagepocket_user_id,
+                            session_id=session_id,
+                            url=session.url,
+                            title=title,
+                            html_content=html_bytes,
+                            assets=assets,
+                        )
+                        if result.page_id:
+                            session.cloud_status = "success"
+                            session.cloud_page_id = result.page_id
+                            session.cloud_error = None
+                        else:
+                            session.cloud_status = "failed"
+                            session.cloud_error = result.error
+                        await db.flush()
+                    except Exception as cloud_exc:
+                        logger.exception(
+                            "Cloud push failed for session %s: %s",
+                            session_id, cloud_exc,
+                        )
+                        session.cloud_status = "failed"
+                        session.cloud_error = str(cloud_exc)
+                        await db.flush()
+
         except asyncio.CancelledError:
             logger.info("Assembly cancelled for session %s", session_id)
             # Clean up partial output
@@ -607,6 +651,51 @@ class ZipAssemblerService:
                     os.remove(session_obj.zip_path)
         except Exception:
             logger.exception("Failed to clean up after cancellation for session %s", session_id)
+
+    # ------------------------------------------------------------------
+    # Cloud push helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _extract_title(html_bytes: bytes) -> str:
+        """Extract <title> text from HTML bytes."""
+        import re
+        m = re.search(rb"<title[^>]*>(.*?)</title>", html_bytes, re.IGNORECASE | re.DOTALL)
+        if m:
+            try:
+                return m.group(1).decode("utf-8", errors="replace").strip()[:500]
+            except Exception:
+                pass
+        return ""
+
+    @staticmethod
+    async def _build_cloud_assets(session_id: str, db) -> list[tuple[str, str, bytes]]:
+        """Build (filename, content_type, data) tuples from session resources."""
+        from app.models.resource import Resource
+        from sqlalchemy import select
+
+        stmt = select(Resource).where(Resource.session_id == session_id)
+        result = await db.execute(stmt)
+        resources = list(result.scalars().all())
+
+        assets: list[tuple[str, str, bytes]] = []
+        storage_root = settings.storage_root
+        for r in resources:
+            if not r.local_path or not r.storage_path:
+                continue
+            full_path = r.storage_path
+            if not os.path.isfile(full_path):
+                continue
+            try:
+                with open(full_path, "rb") as f:
+                    data = f.read()
+                assets.append((r.local_path, r.content_type or "application/octet-stream", data))
+            except OSError:
+                logger.warning(
+                    "Skipping cloud asset (read error): session=%s path=%s",
+                    session_id, r.local_path,
+                )
+        return assets
 
     # ------------------------------------------------------------------
     # File helpers

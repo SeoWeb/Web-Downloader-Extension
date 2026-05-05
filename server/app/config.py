@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     # API
     api_version: str = "v1"
 
+    # Cloud archive (PagePocket)
+    archive_service_addr: str = ""
+    archive_ca_cert: str = ""
+    archive_client_key: str = ""
+    archive_client_cert: str = ""
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

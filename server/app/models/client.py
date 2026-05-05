@@ -58,6 +58,11 @@ class Client(Base):
         nullable=True,
         comment="Optional human-readable client name",
     )
+    pagepocket_user_id: Mapped[str | None] = mapped_column(
+        String(36),
+        nullable=True,
+        comment="PagePocket cloud user ID for cloud archive push",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,

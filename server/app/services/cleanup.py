@@ -26,7 +26,7 @@ from datetime import datetime, timedelta, timezone
 
 import psutil
 
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -89,6 +89,17 @@ class CleanupService:
                 except OSError:
                     pass
         return total
+
+    async def _remove_dir_async(self, path: str) -> None:
+        """Remove a directory tree without blocking the async event loop."""
+        def _remove() -> None:
+            if os.path.exists(path):
+                shutil.rmtree(path, ignore_errors=True)
+        await asyncio.to_thread(_remove)
+
+    async def _dir_size_async(self, path: str) -> int:
+        """Return total bytes used by a directory tree (non-blocking)."""
+        return await asyncio.to_thread(self._dir_size, path)
 
     # ------------------------------------------------------------------
     # Top-level cleanup orchestration
@@ -279,9 +290,9 @@ class CleanupService:
         count = 0
         for session in sessions:
             # Clean up partial output file
-            if session.zip_path and os.path.exists(session.zip_path):
+            if session.zip_path and await asyncio.to_thread(os.path.exists, session.zip_path):
                 try:
-                    os.remove(session.zip_path)
+                    await asyncio.to_thread(os.remove, session.zip_path)
                 except OSError:
                     logger.warning(
                         "Failed to remove partial output: %s", session.zip_path
@@ -332,9 +343,9 @@ class CleanupService:
                 continue
 
             # Clean up partial output file
-            if session.zip_path and os.path.exists(session.zip_path):
+            if session.zip_path and await asyncio.to_thread(os.path.exists, session.zip_path):
                 try:
-                    os.remove(session.zip_path)
+                    await asyncio.to_thread(os.remove, session.zip_path)
                 except OSError:
                     logger.warning(
                         "Failed to remove partial output: %s", session.zip_path
@@ -360,13 +371,11 @@ class CleanupService:
     async def _remove_expired_sessions(self, db: AsyncSession) -> int:
         """Remove all expired sessions and their files.
 
-        A session is expired if its ``expires_at`` timestamp is in the past.
-        Per spec, the session is first marked as ``expired`` before deletion,
-        so any polling client can observe the terminal status before the
-        record is removed.
-
-        Processes sessions in batches of 100 to avoid loading all expired
-        sessions into memory at once (e.g., after a long server downtime).
+        Two-pass approach:
+          1. Bulk UPDATE to mark expired sessions as EXPIRED (so polling
+             clients observe the terminal status).
+          2. Batched bulk DELETE with per-batch commit for crash durability.
+             CASCADE handles resource and html_chunk rows automatically.
 
         Returns:
             Number of sessions removed.
@@ -375,38 +384,41 @@ class CleanupService:
         batch_size = 100
         total_count = 0
 
-        while True:
-            stmt = select(Session).where(Session.expires_at <= now).limit(batch_size)
-            result = await db.execute(stmt)
-            sessions = result.scalars().all()
+        # Pass 1: Mark all expired sessions as EXPIRED (bulk UPDATE)
+        await db.execute(
+            update(Session)
+            .where(
+                Session.expires_at <= now,
+                Session.status != SessionStatus.EXPIRED,
+            )
+            .values(status=SessionStatus.EXPIRED)
+        )
+        await db.flush()
 
-            if not sessions:
+        # Pass 2: Delete expired sessions in batches with per-batch commit
+        while True:
+            stmt = (
+                select(Session.id)
+                .where(Session.status == SessionStatus.EXPIRED)
+                .limit(batch_size)
+            )
+            result = await db.execute(stmt)
+            batch_ids = [row[0] for row in result.all()]
+
+            if not batch_ids:
                 break
 
-            for session in sessions:
-                # Mark as expired first (spec: two-step process)
-                if session.status != SessionStatus.EXPIRED:
-                    session.status = SessionStatus.EXPIRED
-                    await db.flush()
+            # Delete files for this batch (non-blocking)
+            for session_id in batch_ids:
+                session_dir = os.path.join(self.storage_root, session_id)
+                await self._remove_dir_async(session_dir)
 
-                # Delete resource records (cascade should handle this, but explicit is safer)
-                resource_stmt = select(Resource).where(
-                    Resource.session_id == session.id
-                )
-                resource_result = await db.execute(resource_stmt)
-                for resource in resource_result.scalars().all():
-                    await db.delete(resource)
-
-                # Delete session files from disk
-                session_dir = os.path.join(self.storage_root, session.id)
-                if os.path.exists(session_dir):
-                    shutil.rmtree(session_dir, ignore_errors=True)
-
-                # Delete session record
-                await db.delete(session)
-                total_count += 1
-
-            await db.flush()
+            # Bulk DELETE sessions — CASCADE removes resources + html_chunks
+            await db.execute(
+                delete(Session).where(Session.id.in_(batch_ids))
+            )
+            await db.commit()
+            total_count += len(batch_ids)
 
         if total_count > 0:
             logger.info("Removed %d expired sessions", total_count)
@@ -439,20 +451,21 @@ class CleanupService:
         result = await db.execute(stmt)
         expired = result.scalars().all()
 
-        for session in expired:
-            session_dir = os.path.join(self.storage_root, session.id)
-            freed = self._dir_size(session_dir) if os.path.exists(session_dir) else 0
-            if os.path.exists(session_dir):
-                shutil.rmtree(session_dir, ignore_errors=True)
-            # Delete resource records
-            await db.execute(
-                delete(Resource).where(Resource.session_id == session.id)
-            )
-            await db.delete(session)
-            total_freed += freed
-            total_removed += 1
+        if expired:
+            session_ids = []
+            for session in expired:
+                session_dir = os.path.join(self.storage_root, session.id)
+                freed = await self._dir_size_async(session_dir) if await asyncio.to_thread(os.path.exists, session_dir) else 0
+                await self._remove_dir_async(session_dir)
+                session_ids.append(session.id)
+                total_freed += freed
 
-        await db.flush()
+            # Bulk DELETE sessions — CASCADE handles resources + html_chunks
+            await db.execute(
+                delete(Session).where(Session.id.in_(session_ids))
+            )
+            await db.flush()
+            total_removed += len(expired)
 
         if self._get_disk_usage_pct() < self.disk_cleanup_threshold_pct:
             logger.info(
@@ -481,13 +494,12 @@ class CleanupService:
                 break
 
             session_dir = os.path.join(self.storage_root, session.id)
-            freed = self._dir_size(session_dir) if os.path.exists(session_dir) else 0
-            if os.path.exists(session_dir):
-                shutil.rmtree(session_dir, ignore_errors=True)
+            freed = await self._dir_size_async(session_dir) if await asyncio.to_thread(os.path.exists, session_dir) else 0
+            await self._remove_dir_async(session_dir)
             await db.execute(
-                delete(Resource).where(Resource.session_id == session.id)
+                delete(Session).where(Session.id == session.id)
             )
-            await db.delete(session)
+            await db.commit()
             total_freed += freed
             total_removed += 1
 
@@ -564,13 +576,15 @@ class CleanupService:
         Returns:
             Number of orphaned directories removed.
         """
-        if not os.path.exists(self.storage_root):
+        if not await asyncio.to_thread(os.path.exists, self.storage_root):
             return 0
 
+        entries = await asyncio.to_thread(os.listdir, self.storage_root)
         count = 0
-        for entry in os.listdir(self.storage_root):
+        for entry in entries:
             entry_path = os.path.join(self.storage_root, entry)
-            if not os.path.isdir(entry_path):
+            is_dir = await asyncio.to_thread(os.path.isdir, entry_path)
+            if not is_dir:
                 continue
 
             # Check if the directory name looks like a UUID
@@ -581,7 +595,7 @@ class CleanupService:
             stmt = select(Session.id).where(Session.id == entry)
             result = await db.execute(stmt)
             if result.scalar_one_or_none() is None:
-                shutil.rmtree(entry_path, ignore_errors=True)
+                await self._remove_dir_async(entry_path)
                 logger.info("Removed orphaned session directory: %s", entry)
                 count += 1
 

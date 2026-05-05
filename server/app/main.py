@@ -15,6 +15,15 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
     logger.info("Server starting up...")
+
+    # Validate cloud archive config
+    from app.services.archive_client import validate_config
+    config_errors = validate_config()
+    if config_errors:
+        for err in config_errors:
+            logger.error("Config error: %s", err)
+        raise RuntimeError("Archive service config invalid: " + "; ".join(config_errors))
+
     # Import models so Alembic/Auto-generate can discover them
     import app.models  # noqa: F401
 

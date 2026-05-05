@@ -1,5 +1,6 @@
 """Session routes: CRUD, status, scrape-complete, content upload, and finalize."""
 
+import asyncio
 import logging
 import os
 import shutil
@@ -7,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_client, require_session_owner
@@ -89,6 +90,9 @@ class SessionStatusResponse(BaseModel):
     output_type: str | None = None
     output_size: int | None = None
     error_message: str | None = None
+    cloud_status: str | None = None
+    cloud_page_id: str | None = None
+    cloud_error: str | None = None
     api_version: str = "v1"
 
 
@@ -201,6 +205,7 @@ async def create_session(
             "retentionDays": retention_days,
         },
         expires_at=now + timedelta(days=retention_days),
+        pagepocket_user_id=client.pagepocket_user_id,
     )
     db.add(session)
     await db.flush()
@@ -296,6 +301,16 @@ async def get_session_status(
         select(func.coalesce(func.sum(Resource.size), 0)).where(Resource.session_id == session_id)
     )).scalar() or 0
 
+    from app.services.archive_client import is_configured as cloud_is_configured
+
+    cloud_status_val = None
+    cloud_page_id_val = None
+    cloud_error_val = None
+    if cloud_is_configured() and session.pagepocket_user_id:
+        cloud_status_val = session.cloud_status
+        cloud_page_id_val = session.cloud_page_id
+        cloud_error_val = session.cloud_error
+
     return SessionStatusResponse(
         id=session.id,
         status=status_value,
@@ -310,6 +325,9 @@ async def get_session_status(
         output_type=output_type,
         output_size=output_size,
         error_message=session.error_message,
+        cloud_status=cloud_status_val,
+        cloud_page_id=cloud_page_id_val,
+        cloud_error=cloud_error_val,
     )
 
 
@@ -331,19 +349,14 @@ async def delete_session(
     if session.status == SessionStatus.ASSEMBLING:
         await assembly_task_manager.cancel(session_id)
 
-    # Delete resource files from disk
+    # Delete session files from disk (non-blocking)
     session_dir = os.path.join(settings.storage_root, session.id)
-    if os.path.exists(session_dir):
-        shutil.rmtree(session_dir, ignore_errors=True)
+    await asyncio.to_thread(
+        lambda: shutil.rmtree(session_dir, ignore_errors=True) if os.path.exists(session_dir) else None
+    )
 
-    # Delete DB records (resources cascade on session delete)
-    # Delete resources first, then session
-    resource_stmt = select(Resource).where(Resource.session_id == session_id)
-    result = await db.execute(resource_stmt)
-    for resource in result.scalars().all():
-        await db.delete(resource)
-
-    await db.delete(session)
+    # Delete session record — CASCADE removes resources and html_chunks
+    await db.execute(delete(Session).where(Session.id == session_id))
     await db.flush()
 
     logger.info("Deleted session: id=%s", session_id)
