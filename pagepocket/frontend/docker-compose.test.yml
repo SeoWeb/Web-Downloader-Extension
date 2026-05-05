@@ -1,0 +1,35 @@
+# Test stack for Playwright e2e — boots the gateway + DB so CI can run specs against them.
+# Usage: docker compose -f docker-compose.test.yml up -d --wait
+# Then: pnpm exec playwright test
+
+version: "3.8"
+
+services:
+  gateway:
+    image: pagepocket-gateway:latest
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://pp:pp@db:5432/pp_test
+      JWT_SECRET: test-secret-for-e2e
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/healthz || exit 1"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pp
+      POSTGRES_PASSWORD: pp
+      POSTGRES_DB: pp_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pp -d pp_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 10

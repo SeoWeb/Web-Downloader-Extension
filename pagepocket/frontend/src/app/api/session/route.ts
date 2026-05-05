@@ -1,0 +1,48 @@
+import { NextRequest, NextResponse } from "next/server";
+import {
+  setAuthCookies,
+  clearAuthCookies,
+} from "@/lib/auth/cookies";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: res.status });
+  }
+
+  const data = await res.json();
+  const response = NextResponse.json({ ok: true });
+
+  setAuthCookies(response.cookies, {
+    access: data.access_token,
+    refresh: data.refresh_token,
+    expiresAt: data.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
+  });
+
+  return response;
+}
+
+export async function DELETE(request: NextRequest) {
+  const accessToken = (await request.cookies).get("pp_access")?.value;
+
+  if (accessToken) {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }).catch(() => {});
+  }
+
+  const response = NextResponse.json({ ok: true });
+  clearAuthCookies(response.cookies);
+  return response;
+}
