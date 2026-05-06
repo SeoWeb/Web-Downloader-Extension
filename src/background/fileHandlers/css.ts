@@ -102,11 +102,20 @@ export async function addCssFiles(
 
             // Upload raw CSS so the server can rewrite url() references during finalization.
             const cssBlob = new Blob([cssContent], { type: "text/css" });
-            const filename = new URL(fullCssUrl).pathname.split("/").pop();
+            let filename = new URL(fullCssUrl).pathname.split("/").pop();
             if (!filename) {
               failCount++;
               resolve(css);
               return;
+            }
+
+            // Strip "undefined" prefix from broken JS-generated URLs
+            if (filename.startsWith('undefined')) {
+              filename = filename.slice('undefined'.length) || filename;
+            }
+            // Add .css extension for extensionless filenames
+            if (!filename.includes('.')) {
+              filename = filename + '.css';
             }
 
             await storage.addFile(`styles/${fixFilename(filename)}`, cssBlob, "text/css");

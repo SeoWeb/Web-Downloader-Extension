@@ -23,6 +23,7 @@ from app.services.html_converter import (
     fix_filename,
     generate_image_filename,
     generate_page_filename,
+    inline_css_into_html,
 )
 
 
@@ -1012,6 +1013,160 @@ def test_all_fallback_paths_content_type_aware():
 
 
 # ---------------------------------------------------------------------------
+# CSS inlining for file:// protocol (inline-css-file-protocol-fix)
+# ---------------------------------------------------------------------------
+
+
+def _make_css_file(storage_root, session_id, relative_path, content):
+    """Helper: write a CSS file to the test storage tree and return full path."""
+    import os
+    file_dir = os.path.join(storage_root, session_id, "resources", os.path.dirname(relative_path))
+    os.makedirs(file_dir, exist_ok=True)
+    file_path = os.path.join(storage_root, session_id, "resources", relative_path)
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return file_path
+
+
+def test_inline_css_replaces_link_with_style():
+    """<link rel="stylesheet"> replaced with inline <style> tag."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        _make_css_file(tmp, sid, "styles/main.css", "body { color: red; }")
+
+        html = '<html><head><link rel="stylesheet" href="./styles/main.css"></head><body></body></html>'
+        result = inline_css_into_html(html, tmp, sid, path="./")
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        assert soup.find("link", rel="stylesheet") is None, "Link tag should be removed"
+        style = soup.find("style")
+        assert style is not None, "Style tag should exist"
+        assert "body { color: red; }" in (style.string or ""), f"CSS content missing, got: {style.string}"
+
+
+def test_inline_css_adjusts_url_paths_for_root():
+    """url(../images/) adjusted to url(./images/) when inlining into root page."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        css_with_urls = "body { background: url(../images/bg.jpg); }"
+        _make_css_file(tmp, sid, "styles/theme.css", css_with_urls)
+
+        html = '<html><head><link rel="stylesheet" href="./styles/theme.css"></head><body></body></html>'
+        result = inline_css_into_html(html, tmp, sid, path="./")
+
+        assert "./images/bg.jpg" in result, f"Expected ./images/ path, got: {result}"
+        assert "../images/bg.jpg" not in result, f"../images/ should be rewritten, got: {result}"
+
+
+def test_inline_css_preserves_url_paths_for_linked_page():
+    """url(../images/) preserved when inlining into linked page (../ prefix)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        css_with_urls = "body { background: url(../images/bg.jpg); }"
+        _make_css_file(tmp, sid, "styles/theme.css", css_with_urls)
+
+        html = '<html><head><link rel="stylesheet" href="../styles/theme.css"></head><body></body></html>'
+        result = inline_css_into_html(html, tmp, sid, path="../")
+
+        assert "../images/bg.jpg" in result, f"../images/ should be preserved for linked page, got: {result}"
+
+
+def test_inline_css_missing_file_keeps_link():
+    """Missing CSS file leaves <link> tag unchanged."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        # No CSS file created
+        html = '<html><head><link rel="stylesheet" href="./styles/missing.css"></head><body></body></html>'
+        result = inline_css_into_html(html, tmp, sid, path="./")
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        link = soup.find("link", rel="stylesheet")
+        assert link is not None, "Link tag should be preserved when CSS file missing"
+
+
+def test_inline_css_multiple_stylesheets():
+    """Multiple <link> tags all replaced with inline <style> tags."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        _make_css_file(tmp, sid, "styles/a.css", ".a { color: blue; }")
+        _make_css_file(tmp, sid, "styles/b.css", ".b { color: green; }")
+
+        html = '<html><head><link rel="stylesheet" href="./styles/a.css"><link rel="stylesheet" href="./styles/b.css"></head><body></body></html>'
+        result = inline_css_into_html(html, tmp, sid, path="./")
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        styles = soup.find_all("style")
+        assert len(styles) == 2, f"Expected 2 style tags, got {len(styles)}"
+        combined = " ".join(s.string or "" for s in styles)
+        assert "color: blue" in combined, f"Missing first CSS, got: {combined}"
+        assert "color: green" in combined, f"Missing second CSS, got: {combined}"
+
+
+# ---------------------------------------------------------------------------
+# Extensionless stylesheet/script fallbacks (inline-css-file-protocol-fix)
+# ---------------------------------------------------------------------------
+
+
+def test_extensionless_stylesheet_gets_css_extension():
+    """Stylesheet URL with no extension gets .css fallback."""
+    html = '<html><head><link rel="stylesheet" href="/styles/main"></head><body></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={})
+    hrefs = _get_attr(result, "link", "href")
+    assert any(h.endswith(".css") for h in hrefs), f"Expected .css extension, got: {hrefs}"
+    assert any("styles/" in h for h in hrefs), f"Expected styles/ prefix, got: {hrefs}"
+
+
+def test_extensionless_script_gets_js_extension():
+    """Script URL with no extension gets .js fallback."""
+    html = '<html><body><script src="/scripts/client"></script></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={})
+    srcs = _get_attr(result, "script", "src")
+    assert any(s.endswith(".js") for s in srcs), f"Expected .js extension, got: {srcs}"
+    assert any("scripts/" in s for s in srcs), f"Expected scripts/ prefix, got: {srcs}"
+
+
+def test_stylesheet_undefined_prefix_stripped():
+    """Stylesheet filename starting with 'undefined' has prefix stripped."""
+    html = '<html><head><link rel="stylesheet" href="https://example.com/css/undefinedhome.desktop.css"></head><body></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={})
+    hrefs = _get_attr(result, "link", "href")
+    assert any("undefined" not in h for h in hrefs), f"Expected 'undefined' stripped, got: {hrefs}"
+    assert any("home.desktop.css" in h for h in hrefs), f"Expected home.desktop.css, got: {hrefs}"
+
+
+def test_script_undefined_prefix_stripped():
+    """Script filename starting with 'undefined' has prefix stripped."""
+    html = '<html><body><script src="https://example.com/js/undefinedbrowser-perf.8417c6bba72228fa2e29.js"></script></body></html>'
+    result = convert_html(html, TAB_URL, filename_map={})
+    srcs = _get_attr(result, "script", "src")
+    assert any("undefined" not in s for s in srcs), f"Expected 'undefined' stripped, got: {srcs}"
+    assert any("browser-perf.8417c6bba72228fa2e29.js" in s for s in srcs), f"Expected browser-perf filename, got: {srcs}"
+
+
+def test_extensionless_stylesheet_linked_page():
+    """Extensionless stylesheet on linked page uses ../ prefix with .css fallback."""
+    html = '<html><head><link rel="stylesheet" href="/styles/main"></head><body></body></html>'
+    result = convert_html_for_linked_page(html, TAB_URL, filename_map={})
+    hrefs = _get_attr(result, "link", "href")
+    assert any(h.startswith("../styles/") and h.endswith(".css") for h in hrefs), (
+        f"Expected ../styles/...css for linked page, got: {hrefs}"
+    )
+
+
+def test_extensionless_script_linked_page():
+    """Extensionless script on linked page uses ../ prefix with .js fallback."""
+    html = '<html><body><script src="/scripts/client"></script></body></html>'
+    result = convert_html_for_linked_page(html, TAB_URL, filename_map={})
+    srcs = _get_attr(result, "script", "src")
+    assert any(s.startswith("../scripts/") and s.endswith(".js") for s in srcs), (
+        f"Expected ../scripts/...js for linked page, got: {srcs}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -1104,6 +1259,19 @@ def run_all():
         test_content_type_map_does_not_override_filename_map,
         test_linked_page_extensionless_url_with_content_type,
         test_all_fallback_paths_content_type_aware,
+        # CSS inlining (inline-css-file-protocol-fix)
+        test_inline_css_replaces_link_with_style,
+        test_inline_css_adjusts_url_paths_for_root,
+        test_inline_css_preserves_url_paths_for_linked_page,
+        test_inline_css_missing_file_keeps_link,
+        test_inline_css_multiple_stylesheets,
+        # Extensionless/undefined fallbacks (inline-css-file-protocol-fix)
+        test_extensionless_stylesheet_gets_css_extension,
+        test_extensionless_script_gets_js_extension,
+        test_stylesheet_undefined_prefix_stripped,
+        test_script_undefined_prefix_stripped,
+        test_extensionless_stylesheet_linked_page,
+        test_extensionless_script_linked_page,
     ]
 
     passed = 0

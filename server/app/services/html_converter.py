@@ -716,8 +716,17 @@ def _convert_scripts(
 
         if _has_extension(resolved):
             filename = resolved.split("/")[-1]
+            # Strip "undefined" prefix from broken JS-generated URLs
+            if filename.startswith("undefined"):
+                filename = filename[len("undefined"):] or filename
             script["src"] = path + "scripts/" + filename
-        # else: leave as-is (no extension → can't determine filename)
+        else:
+            # Extensionless URL — generate fallback filename with .js extension
+            segment = resolved.split("/")[-1] if "/" in resolved else resolved
+            if segment:
+                if segment.startswith("undefined"):
+                    segment = segment[len("undefined"):] or segment
+                script["src"] = path + "scripts/" + fix_filename(segment) + ".js"
 
 
 # ---------------------------------------------------------------------------
@@ -768,7 +777,17 @@ def _convert_stylesheets(
 
         if _has_extension(resolved):
             filename = resolved.split("/")[-1]
+            # Strip "undefined" prefix from broken JS-generated URLs
+            if filename.startswith("undefined"):
+                filename = filename[len("undefined"):] or filename
             link["href"] = path + "styles/" + filename
+        else:
+            # Extensionless URL — generate fallback filename with .css extension
+            segment = resolved.split("/")[-1] if "/" in resolved else resolved
+            if segment:
+                if segment.startswith("undefined"):
+                    segment = segment[len("undefined"):] or segment
+                link["href"] = path + "styles/" + fix_filename(segment) + ".css"
 
 
 # ---------------------------------------------------------------------------
@@ -1459,6 +1478,69 @@ def convert_html(
 
 
 # ---------------------------------------------------------------------------
+# CSS inlining for file:// protocol compatibility
+# ---------------------------------------------------------------------------
+
+
+def inline_css_into_html(
+    html_string: str,
+    storage_root: str,
+    session_id: str,
+    filename_map: Optional[dict[str, str]] = None,
+    path: str = "./",
+) -> str:
+    """Replace <link rel="stylesheet"> with inline <style> tags for file:// compatibility.
+
+    Reads CSS files from disk and embeds their content directly in the HTML,
+    adjusting url() paths to be relative to the HTML file's location.
+
+    Args:
+        html_string: HTML with converted local paths (./styles/..., ../images/... etc).
+        storage_root: Root directory for session storage.
+        session_id: Session identifier.
+        filename_map: Mapping of original URLs → local filenames (optional).
+        path: Path prefix used in the HTML ("./" for root, "../" for linked pages).
+
+    Returns:
+        Modified HTML with stylesheets inlined as <style> tags.
+    """
+    soup = BeautifulSoup(html_string, "lxml")
+
+    # When CSS is inlined from styles/ into root index.html, url() references
+    # that were ../images/ need to become ./images/. For linked pages in pages/,
+    # the path stays ../images/.
+    if path == "./":
+        css_path_adjustment = (r"\.\.\/", "./")
+    else:
+        css_path_adjustment = None  # linked pages keep ../ paths
+
+    for link in soup.find_all("link", rel="stylesheet"):
+        href = link.get("href", "")
+        if not href or not isinstance(href, str):
+            continue
+
+        # Read the CSS file from disk
+        css_content = _read_text_resource(href, storage_root, session_id)
+        if css_content is None:
+            logger.warning("CSS file not found for inlining, keeping <link>: %s", href)
+            continue
+
+        # Adjust url() paths: ../images/ → ./images/ when inlining into root
+        if css_path_adjustment:
+            css_content = re.sub(
+                r"(url\(\s*['\"]?)\.\.\/",
+                rf"\1{css_path_adjustment[1]}",
+                css_content,
+            )
+
+        style_tag = soup.new_tag("style")
+        style_tag.string = css_content
+        link.replace_with(style_tag)
+
+    return str(soup)
+
+
+# ---------------------------------------------------------------------------
 # HtmlConverterService facade
 # ---------------------------------------------------------------------------
 
@@ -1541,6 +1623,17 @@ class HtmlConverterService:
             html_string, tab_url, storage_root, session_id,
             output_path, filename_map,
         )
+
+    def inline_css_into_html(
+        self,
+        html_string: str,
+        storage_root: str,
+        session_id: str,
+        filename_map: Optional[dict[str, str]] = None,
+        path: str = "./",
+    ) -> str:
+        """Replace <link rel="stylesheet"> with inline <style> tags."""
+        return inline_css_into_html(html_string, storage_root, session_id, filename_map, path)
 
 
 # ---------------------------------------------------------------------------

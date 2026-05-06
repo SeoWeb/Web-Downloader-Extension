@@ -248,6 +248,21 @@ class ZipAssemblerService:
                     await asyncio.gather(*[_convert_css_one(r) for r in css_resources])
                 await self._update_progress(db, session, "converting_css", 100)
 
+                # ---- Phase 3b: Inline CSS into HTML for file:// compatibility ----
+                if not is_single_file:
+                    await self._update_progress(db, session, "inlining_css", 0)
+                    main_html = await asyncio.to_thread(
+                        html_converter_service.inline_css_into_html,
+                        main_html, self.storage_root, session_id, filename_map, "./",
+                    )
+                    # Also inline CSS into linked pages (using ../ path prefix)
+                    for page_hash, page_html in linked_page_htmls.items():
+                        linked_page_htmls[page_hash] = await asyncio.to_thread(
+                            html_converter_service.inline_css_into_html,
+                            page_html, self.storage_root, session_id, filename_map, "../",
+                        )
+                    await self._update_progress(db, session, "inlining_css", 100)
+
                 # ---- Phase 4: Assembling output ----
                 await self._update_progress(db, session, "assembling_zip", 0)
 

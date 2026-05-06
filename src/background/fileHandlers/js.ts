@@ -72,11 +72,20 @@ export async function addJsFiles(
           sendMessage({ key: "status.jsProgress", options: { completed: completedCount, total: count } });
           try {
             const blob = await result.response.blob();
-            const filename = new URL(fullJsUrl, baseUrl).pathname.split("/").pop();
+            let filename = new URL(fullJsUrl, baseUrl).pathname.split("/").pop();
             if (!filename) {
               failCount++;
               resolve(js);
               return;
+            }
+
+            // Strip "undefined" prefix from broken JS-generated URLs
+            if (filename.startsWith('undefined')) {
+              filename = filename.slice('undefined'.length) || filename;
+            }
+            // Add .js extension for extensionless filenames
+            if (!filename.includes('.')) {
+              filename = filename + '.js';
             }
 
             await storage.addFile(`scripts/${fixFilename(filename)}`, blob, "application/javascript");
