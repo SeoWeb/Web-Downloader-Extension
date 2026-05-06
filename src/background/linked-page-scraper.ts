@@ -1,34 +1,19 @@
 /**
  * Linked Page Scraper
- * 
+ *
  * Manages sequential scraping of linked pages by navigating the active tab to each URL,
  * capturing the full DOM after JavaScript execution, and downloading all assets.
- * 
+ *
  * Key architectural decision: Uses sequential same-tab navigation instead of hidden tabs
  * to ensure reliable rendering, proper lazy loading, and consistent asset capture.
  */
 
-import { IStorageAdapter } from "./storage/storage-adapter";
+import { IStorageAdapter } from "./storage/server-storage-adapter";
 import { AssetRegistry } from "./asset-registry";
 import { getResources } from "./resources";
-import { convertHtml } from "./htmlUtils";
 import { addCssFiles, addJsFiles, addImageFiles, addDocumentFiles } from "./fileHandlers";
 import { fixFilename } from "./urlUtils";
 import { serverClient, HttpError } from "./server-client";
-
-/**
- * Generate a short hash suffix from a URL for filename collision avoidance.
- * Returns a 4-character alphanumeric string derived from the URL.
- * Matches the algorithm exported from link-converter.ts but inlined here
- * to avoid transitive linkedom dependency in test environments.
- */
-function shortHash(url: string): string {
-  let hash = 0;
-  for (let i = 0; i < url.length; i++) {
-    hash = ((hash << 5) - hash + url.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash).toString(36).slice(0, 4).padEnd(4, "0");
-}
 
 // Global image filename map shared across main page and all linked pages
 let globalImageFilenameMap = new Map<string, string>();
@@ -53,19 +38,16 @@ export interface ScrapedPageData {
   /**
    * Chunked representation of the HTML body content for server-mode streaming.
    * Each chunk is a self-contained serialization of a group of top-level body children,
-   * wrapped in the page skeleton. In local mode this is always a single-element array
-   * containing the full HTML. In server mode the caller uploads each chunk separately
+   * wrapped in the page skeleton. The caller uploads each chunk separately
    * via uploadHtmlChunk(pageType: 'linked') to avoid holding the entire page DOM in
-   * extension memory at once. (C3 fix: defines the linked page DOM chunking mechanism.)
+   * extension memory at once.
    */
   htmlChunks: string[];
   url: string;
   finalUrl: string; // After redirects
-  /** (12.11) Image filename map for this page's newly downloaded images.
-   * Used to build incremental filename map uploads in server mode. */
+  /** Image filename map for this page's newly downloaded images.
+   * Used to build incremental filename map uploads. */
   localImageMap: Map<string, string>;
-  /** Combined image filename map (global + local) for link conversion in local mode. */
-  combinedImageMap: Map<string, string>;
   /** Body text extracted from the page via getResources().text.
    * Used to accumulate content text across all linked pages. */
   text: string;
@@ -82,9 +64,8 @@ export interface LinkedPageScraperOptions {
   delayBetweenPages?: number; // Default: 200ms
   includeExternal?: boolean; // Default: false
   pageTimeout?: number; // Default: 30000ms
-  /** (12.10) Server session ID — when set, linked page HTML chunks are uploaded
-   * to the server with pageType: "linked" and pageUrl metadata instead of
-   * being stored locally. Also triggers incremental filename map uploads (12.11). */
+  /** Server session ID — linked page HTML chunks are uploaded
+   * to the server with pageType: "linked" and pageUrl metadata. */
   serverSessionId?: string;
 }
 
@@ -196,7 +177,7 @@ export class LinkedPageScraper {
     try {
       const urlObj = new URL(url);
       const baseObj = new URL(baseUrl);
-      
+
       // Compare hostnames (case insensitive)
       return urlObj.hostname.toLowerCase() !== baseObj.hostname.toLowerCase();
     } catch (e) {
@@ -220,7 +201,7 @@ export class LinkedPageScraper {
         ".css", ".js", ".json", ".xml", ".txt", ".csv",
         ".stl", ".obj", ".3mf", ".fbx", ".dae", ".step", ".stp", ".iges", ".igs", ".dxf", ".dwg", ".gcode"
       ];
-      
+
       return excludedExtensions.some(ext => pathname.endsWith(ext));
     } catch (e) {
       return false;
@@ -250,19 +231,6 @@ export class LinkedPageScraper {
     } catch {
       // Ignore
     }
-
-    // Track used filenames for collision avoidance in local mode.
-    // When two linked pages share the same base filename (e.g. /about/team
-    // and /contact/team both → team.html), the second gets a short hash
-    // suffix (e.g. team-a1b2.html), matching the server assembler logic.
-    const usedFilenames = new Set<string>();
-    // Maps finalUrl → collision-resolved filename (e.g. "https://example.com/contact/team" → "team-a1b2.html")
-    const pageFilenameMap = new Map<string, string>();
-    // Collect raw (un-link-converted) HTML + metadata for local mode so we
-    // can convert all links with the full collision map after scraping completes.
-    const localModePages: Array<{ finalUrl: string; filename: string; rawHtml: string; combinedImageMap: Map<string, string> }> = [];
-
-    // Using storage adapter directly
 
     // Phase 1: Process internal pages first
     for (let i = 0; i < this.internalQueue.length; i++) {
@@ -296,60 +264,33 @@ export class LinkedPageScraper {
           sendMessage,
         );
 
-        if (this.options.serverSessionId) {
-          // (12.10) Server mode: upload HTML chunks with pageType "linked"
-          // and pageUrl metadata. All chunks for a page are uploaded
-          // concurrently to reduce latency while preserving per-chunk
-          // scroll indices for correct server-side reassembly.
-          const sessionId = this.options.serverSessionId;
-          await Promise.all(
-            scrapedData.htmlChunks.map((chunk, ci) =>
-              serverClient.uploadHtmlChunk(
-                sessionId,
-                chunk,
-                ci,
-                "linked",
-                scrapedData.finalUrl,
-              ),
+        // Upload HTML chunks with pageType "linked" and pageUrl metadata.
+        // All chunks for a page are uploaded concurrently to reduce latency
+        // while preserving per-chunk scroll indices for correct server-side reassembly.
+        const sessionId = this.options.serverSessionId!;
+        await Promise.all(
+          scrapedData.htmlChunks.map((chunk, ci) =>
+            serverClient.uploadHtmlChunk(
+              sessionId,
+              chunk,
+              ci,
+              "linked",
+              scrapedData.finalUrl,
             ),
-          );
+          ),
+        );
 
-          // (12.11) Upload incremental filename map after this linked page's
-          // assets are downloaded. The delta map contains only the new entries
-          // discovered for this linked page, ensuring the server always holds
-          // an up-to-date mapping for URL conversion.
-          const deltaMap: Record<string, string> = {};
-          for (const [key, value] of scrapedData.localImageMap ?? []) {
-            // Only include entries not already in the global map
-            if (!globalImageFilenameMap.has(key)) {
-              deltaMap[key] = value;
-            }
+        // Upload incremental filename map after this linked page's
+        // assets are downloaded. The delta map contains only the new entries
+        // discovered for this linked page.
+        const deltaMap: Record<string, string> = {};
+        for (const [key, value] of scrapedData.localImageMap ?? []) {
+          if (!globalImageFilenameMap.has(key)) {
+            deltaMap[key] = value;
           }
-          if (Object.keys(deltaMap).length > 0) {
-            await serverClient.uploadFilenameMap(this.options.serverSessionId, deltaMap);
-          }
-        } else {
-          // Local mode: determine filename with collision handling.
-          // Defer link conversion until all pages are scraped so that
-          // cross-page links use the correct collision-resolved filenames.
-          const baseFilename = this.generateFilename(scrapedData.finalUrl);
-          let filename = baseFilename;
-          if (usedFilenames.has(filename)) {
-            // Collision — append short hash suffix (matches server assembler logic)
-            const nameBase = baseFilename.replace(/\.html$/i, "");
-            const hashSuffix = shortHash(scrapedData.finalUrl);
-            filename = `${nameBase}-${hashSuffix}.html`;
-          }
-          usedFilenames.add(filename);
-          pageFilenameMap.set(scrapedData.finalUrl, filename);
-
-          // Store raw HTML for deferred link conversion
-          localModePages.push({
-            finalUrl: scrapedData.finalUrl,
-            filename,
-            rawHtml: scrapedData.html, // raw (un-link-converted) HTML
-            combinedImageMap: scrapedData.combinedImageMap,
-          });
+        }
+        if (Object.keys(deltaMap).length > 0) {
+          await serverClient.uploadFilenameMap(sessionId, deltaMap);
         }
 
         job.status = "completed";
@@ -413,46 +354,27 @@ export class LinkedPageScraper {
             sendMessage,
           );
 
-          if (this.options.serverSessionId) {
-            const sessionId = this.options.serverSessionId;
-            await Promise.all(
-              scrapedData.htmlChunks.map((chunk, ci) =>
-                serverClient.uploadHtmlChunk(
-                  sessionId,
-                  chunk,
-                  ci,
-                  "linked",
-                  scrapedData.finalUrl,
-                ),
+          const sessionId = this.options.serverSessionId!;
+          await Promise.all(
+            scrapedData.htmlChunks.map((chunk, ci) =>
+              serverClient.uploadHtmlChunk(
+                sessionId,
+                chunk,
+                ci,
+                "linked",
+                scrapedData.finalUrl,
               ),
-            );
+            ),
+          );
 
-            const deltaMap: Record<string, string> = {};
-            for (const [key, value] of scrapedData.localImageMap ?? []) {
-              if (!globalImageFilenameMap.has(key)) {
-                deltaMap[key] = value;
-              }
+          const deltaMap: Record<string, string> = {};
+          for (const [key, value] of scrapedData.localImageMap ?? []) {
+            if (!globalImageFilenameMap.has(key)) {
+              deltaMap[key] = value;
             }
-            if (Object.keys(deltaMap).length > 0) {
-              await serverClient.uploadFilenameMap(this.options.serverSessionId, deltaMap);
-            }
-          } else {
-            const baseFilename = this.generateFilename(scrapedData.finalUrl);
-            let filename = baseFilename;
-            if (usedFilenames.has(filename)) {
-              const nameBase = baseFilename.replace(/\.html$/i, "");
-              const hashSuffix = shortHash(scrapedData.finalUrl);
-              filename = `${nameBase}-${hashSuffix}.html`;
-            }
-            usedFilenames.add(filename);
-            pageFilenameMap.set(scrapedData.finalUrl, filename);
-
-            localModePages.push({
-              finalUrl: scrapedData.finalUrl,
-              filename,
-              rawHtml: scrapedData.html,
-              combinedImageMap: scrapedData.combinedImageMap,
-            });
+          }
+          if (Object.keys(deltaMap).length > 0) {
+            await serverClient.uploadFilenameMap(sessionId, deltaMap);
           }
 
           job.status = "completed";
@@ -483,17 +405,6 @@ export class LinkedPageScraper {
     // Restore original page
     await this.restoreOriginalPage(tabId);
 
-    // Local mode: now that all pages are scraped and the full pageFilenameMap
-    // is built, convert links and save each page to storage. This ensures
-    // cross-page links use collision-resolved filenames (e.g. a link from
-    // page A to page B will use "team-a1b2.html" if B had a collision).
-    for (const page of localModePages) {
-      const convertedHtml = convertHtml(
-        page.rawHtml, page.finalUrl, "../", page.combinedImageMap, pageFilenameMap,
-      );
-      await storage.addFile(`pages/${page.filename}`, convertedHtml, "text/html");
-    }
-
     // Send completion message
     sendMessage({
       key: "status.linkedPagesComplete",
@@ -518,9 +429,8 @@ export class LinkedPageScraper {
     // Execute scroll script for lazy-loaded content
     await this.scrollPageForLazyLoading(tabId);
 
-    // Capture the DOM. For server mode we capture in chunks to avoid holding
-    // the entire page outerHTML as a single large string in extension memory.
-    // For local mode we use the full single-string capture as before.
+    // Capture the DOM in chunks to avoid holding the entire page outerHTML
+    // as a single large string in extension memory.
     const htmlChunks = await this.capturePageDOMChunks(tabId);
     const html = htmlChunks.join('');
 
@@ -528,47 +438,17 @@ export class LinkedPageScraper {
     const resources = getResources(html);
     const pageText = resources.text;
 
-    // (12.11) Download assets (checking registry first to avoid duplicates).
+    // Download assets (checking registry first to avoid duplicates).
     // Returns the image filename map for this page's newly downloaded images.
     const localImageMap = await this.downloadAssets(resources, storage, finalUrl, sendMessage);
 
-    // Build a combined filename map: global (main page + previous linked pages) + local (this page)
-    const combinedImageMap = new Map<string, string>(globalImageFilenameMap);
-    for (const [key, value] of localImageMap) {
-      combinedImageMap.set(key, value);
-    }
-
-    if (this.options.serverSessionId) {
-      // (12.10) Server mode: return raw HTML chunks (unconverted) — the
-      // server handles URL conversion. The caller uploads each chunk
-      // separately with pageType: "linked" and pageUrl.
-      return {
-        html,
-        htmlChunks,
-        url,
-        finalUrl,
-        localImageMap,
-        combinedImageMap,
-        text: pageText,
-        assets: {
-          images: resources.images,
-          css: resources.css,
-          js: resources.js,
-          documents: resources.documents,
-        },
-      };
-    }
-
-    // Local mode: return raw (un-link-converted) HTML. Link conversion is
-    // deferred to processQueue() so that all pages' cross-page links can
-    // be resolved with the full collision-aware pageFilenameMap.
+    // Return raw HTML chunks (unconverted) — the server handles URL conversion.
     return {
       html,
-      htmlChunks: [html],
+      htmlChunks,
       url,
       finalUrl,
       localImageMap,
-      combinedImageMap,
       text: pageText,
       assets: {
         images: resources.images,
@@ -654,7 +534,7 @@ export class LinkedPageScraper {
    * of children, so each chunk is a valid, parseable HTML fragment.
    *
    * This avoids holding a single monolithic `outerHTML` string in the extension's
-   * JS heap, which can spike memory for large linked pages. (C3 fix.)
+   * JS heap, which can spike memory for large linked pages.
    *
    * Falls back to a single-chunk capture if scripting fails or the body is empty.
    *
@@ -672,8 +552,6 @@ export class LinkedPageScraper {
       chrome.scripting.executeScript({
         target: { tabId },
         func: () => {
-          // Serialise each top-level body child individually so the caller can
-          // batch them into target-sized chunks without parsing the full HTML.
           const skeleton = document.documentElement.outerHTML
             .replace(/<body[^>]*>[\s\S]*<\/body>/i, '<body></body>');
           const children: string[] = [];
@@ -804,10 +682,6 @@ export class LinkedPageScraper {
           }
 
           // --- Single adaptive pass with settle delay ---
-          // The adaptive while-loop above continues scrolling until the page
-          // height is stable for 3 consecutive checks at the bottom, so a
-          // second pass from the top is no longer needed. The settle delay
-          // gives IntersectionObserver callbacks time to fire.
           const settleDelay = Math.min(800, remaining());
           if (settleDelay > 0) {
             await new Promise((resolve) => setTimeout(resolve, settleDelay));
@@ -928,28 +802,6 @@ export class LinkedPageScraper {
       await chrome.tabs.update(tabId, { url: this.originalTabUrl });
     } catch {
       // Non-critical error, continue anyway
-    }
-  }
-
-  /**
-   * Generate a safe filename from a URL
-   */
-  private generateFilename(url: string): string {
-    try {
-      const urlObj = new URL(url);
-      let filename = urlObj.pathname.split("/").pop() || "page";
-
-      // Remove query params and fragments
-      filename = filename.split("?")[0].split("#")[0];
-
-      // Ensure .html extension
-      if (!filename.endsWith(".html")) {
-        filename = `${filename}.html`;
-      }
-
-      return fixFilename(filename);
-    } catch {
-      return "page.html";
     }
   }
 

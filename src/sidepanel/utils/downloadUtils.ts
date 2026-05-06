@@ -1,13 +1,7 @@
-import { mergeHtml } from "../../background/merge-html";
-
-export function mergeDownloadResponse(prev: any, response: any) {
-  let html = "";
-
-  if (!!prev?.html?.length && prev.height !== response.height) {
-    html = mergeHtml(prev.html, response.html);
-  } else {
-    html = response.html;
-  }
+export function mergeDownloadResponse(_prev: any, response: any) {
+  // In server-only mode, response.html contains the latest full page state.
+  // The server handles final HTML assembly during download finalization.
+  const html = response.html || "";
 
   return {
     html,

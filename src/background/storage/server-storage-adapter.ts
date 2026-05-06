@@ -12,9 +12,18 @@
  * - clear() aborts uploads AND deletes session atomically (task 10.5)
  */
 
-import { IStorageAdapter } from "./storage-adapter";
 import { ServerClient } from "../server-client";
 import { UploadQueue } from "../upload-queue";
+
+/**
+ * Adapter that can write to either JSZip (legacy) or IndexedDB (new)
+ */
+export interface IStorageAdapter {
+  addFile(path: string, content: Blob | string | ArrayBuffer, mimeType?: string, originalUrl?: string): Promise<void>;
+  getFile(path: string): Promise<Blob | null>;
+  getAllFiles(): Promise<Array<{ path: string; size: number }>>;
+  clear(): Promise<void>;
+}
 
 // ---------------------------------------------------------------------------
 // ServerStorageAdapter
@@ -174,8 +183,8 @@ export class ServerStorageAdapter implements IStorageAdapter {
    * UploadQueue (queued + in-progress + completed). Used by the
    * UI for "X/Y resources uploaded" progress display.
    *
-   * This method is NOT on IStorageAdapter — local mode continues
-   * to use getAllFiles().length for enumeration.
+   * This method is NOT on IStorageAdapter — it is specific to
+   * the server adapter's upload queue.
    */
   getResourceCount(): number {
     return this.uploadQueue.getResourceCount();

@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Download Status Display
-The system SHALL display download progress including server upload progress and assembly status when server mode is active. Each side panel instance SHALL only display status for its own tab's download, filtering out messages from other tabs. When the download is complete (`action === DOWNLOAD_DONE`), the DownloadStatus component SHALL hide regardless of the current `serverModeState.phase`.
+The system SHALL display download progress showing server upload progress and assembly status. Progress messages SHALL be filtered by tab ID to avoid cross-tab interference. When the download is complete (`action === DOWNLOAD_DONE`), the DownloadStatus component SHALL hide regardless of the current `serverModeState.phase`. No mode-selection logic in the UI.
 
 #### Scenario: DOWNLOAD_DONE hides uploading UI
 - **GIVEN** server mode is active and `serverModeState.phase` is `uploading`
@@ -69,7 +69,7 @@ The system SHALL display download progress including server upload progress and 
 - **GIVEN** server mode is active and assembly polling has been running for more than 5 minutes
 - **WHEN** the timeout is reached
 - **THEN** the status area shows "Server assembly is taking too long"
-- **AND** the user is offered a "Download locally" fallback option
+- **AND** the user is offered a retry button
 
 #### Scenario: Download ready from server
 - **GIVEN** server mode is active and the server ZIP is ready
@@ -100,6 +100,15 @@ The system SHALL display download progress including server upload progress and 
 - **WHEN** Tab A's download fails and a `DOWNLOAD_FAILED` message is sent with Tab A's `tabId`
 - **THEN** only Tab A's side panel shows the error state
 - **AND** Tab B's side panel continues showing its own download progress
+
+#### Scenario: Server error display
+- **WHEN** a server-mode download fails
+- **THEN** the UI shows an error card with retry button
+- **AND** does NOT show a "Download locally" fallback button
+
+#### Scenario: Server-mode state always active
+- **WHEN** the side panel is open
+- **THEN** server-mode state tracking is always active (no `IS_SERVER_MODE` conditional)
 
 ## ADDED Requirements
 
@@ -137,29 +146,6 @@ When the user clicks "Retry" after a server-mode failure, the system SHALL reset
 - **THEN** the system clears the stored session ID "abc-123"
 - **AND** creates a new session with a different ID
 - **AND** the old session remains on the server for its retention period
-
-### Requirement: Local Fallback Passes HTML and Options
-When the user clicks "Download locally" after a server-mode failure, the system SHALL pass the scraped HTML content and download options to the local pipeline via the `SERVER_LOCAL_FALLBACK` message.
-
-#### Scenario: Local fallback includes HTML content
-- **GIVEN** a server-mode download has failed and the error UI is displayed
-- **WHEN** the user clicks "Download locally"
-- **THEN** the `SERVER_LOCAL_FALLBACK` message includes `html` containing the last scraped HTML from the page
-- **AND** includes `downloadOptions` with all selected filter options
-- **AND** the background handler calls `startDownload` with the provided HTML and options
-- **AND** the local pipeline processes the download without crashing
-
-#### Scenario: Local fallback without HTML returns error
-- **GIVEN** a server-mode download has failed and no HTML is available (e.g., scraping never started)
-- **WHEN** the user clicks "Download locally"
-- **THEN** the `SERVER_LOCAL_FALLBACK` message handler returns a `{ success: false, error: "No HTML content available for local fallback" }` response
-- **AND** no crash occurs
-
-#### Scenario: Local fallback preserves download options
-- **GIVEN** the user selected "Download HTML", "Download Images", and "Single File" options
-- **WHEN** the user clicks "Download locally" after a server failure
-- **THEN** the local download runs with the same options (downloadHTML=true, downloadImages=true, singleFile=true, downloadAssets/downloadLinks/downloadDocuments/downloadContentAsText as originally set)
-- **AND** `_forceLocal` is set to `true` to bypass server mode
 
 ### Requirement: Save As toggle in configuration UI
 The system SHALL display an "Always ask where to save file" toggle checkbox in the Configuration section of the Filter component. The toggle SHALL reflect and update the `alwaysAskWhereToSave` setting in real-time.

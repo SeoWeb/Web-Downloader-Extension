@@ -5,7 +5,7 @@
  * Tasks 11.1–11.4 of the server-side-microservice migration.
  *
  * Key behaviors:
- * - (11.1) Replaces panel-download flow when server mode is active
+ * - (11.1) Server-side download flow
  * - (11.2) Uses chrome.downloads.download with server URL and custom filename
  * - (11.3) Polls session status with adaptive intervals after finalize until ready/failed
  *          with a 5-minute timeout (AssemblyTimeoutError)
@@ -80,8 +80,8 @@ function getPollInterval(elapsedMs: number): number {
  * a session, this handler polls for assembly completion and triggers the
  * download via chrome.downloads.download when the ZIP is ready.
  *
- * Unlike the local-mode flow (which delegates to the side panel for blob URL
- * creation), server downloads use a direct URL — no panel delegation needed.
+ * Unlike the previous local-mode flow (which delegated to the side panel for
+ * blob URL creation), server downloads use a direct URL — no panel needed.
  */
 export class ServerDownloadHandler {
   private readonly serverClient: ServerClient;
@@ -183,7 +183,7 @@ export class ServerDownloadHandler {
   /**
    * (11.2) Trigger a download from the server URL using chrome.downloads.download.
    *
-   * Unlike local-mode downloads that require panel delegation for blob URLs,
+   * Unlike the previous local-mode flow that required panel delegation for blob URLs,
    * server downloads use a direct HTTP URL that Chrome can download natively.
    * No side panel interaction is needed.
    *
@@ -489,7 +489,7 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 
 /**
  * Track a chrome download for completion detection.
- * Reuses the same tracking mechanism as panel-download.ts.
+ * Track a chrome download for completion detection.
  */
 function doTrackDownload(id: number, filename: string, tabId?: number): void {
   trackDownload(id, filename, tabId);

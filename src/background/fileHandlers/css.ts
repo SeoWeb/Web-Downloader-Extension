@@ -1,9 +1,8 @@
-import { IStorageAdapter } from "../storage/storage-adapter";
+import { IStorageAdapter } from "../storage/server-storage-adapter";
 import { fixFilename } from "../urlUtils";
 import { DEFAULT_MEMORY_LIMITS } from "../../utils/memoryLimits";
 import { requestQueue } from "../../utils/RequestQueue";
 import { RequestPriority, ResourceType } from "../../types/queue";
-import { IS_SERVER_MODE } from "../../common/server-mode";
 
 export async function addCssFiles(
   csss: string[],
@@ -46,8 +45,6 @@ export async function addCssFiles(
       // All relative paths (both '/path' and 'path') use origin as base
       fullCssUrl = new URL(css, tabOrigin).href;
     }
-    const u = new URL(fullCssUrl);
-    const baseUrl = u.origin;
 
     // Create a promise that resolves when the CSS is processed
     const cssPromise = new Promise<string>(async (resolve, reject) => {
@@ -103,21 +100,8 @@ export async function addCssFiles(
               );
             }
 
-            let cssBlob: Blob;
-            if (IS_SERVER_MODE) {
-              // Server mode: upload raw CSS so the server can rewrite url() references
-              // consistently during finalization (spec D10 / task 5.10). Client-side
-              // rewriting is intentionally skipped to avoid double-rewriting. (M2 fix.)
-              cssBlob = new Blob([cssContent], { type: "text/css" });
-            } else {
-              // Local mode: rewrite url() references to relative paths before storing.
-              const updatedCssContent = convertBackgroundImageUrlsToRelative(
-                cssContent,
-                baseUrl,
-                "../",
-              );
-              cssBlob = new Blob([updatedCssContent], { type: "text/css" });
-            }
+            // Upload raw CSS so the server can rewrite url() references during finalization.
+            const cssBlob = new Blob([cssContent], { type: "text/css" });
             const filename = new URL(fullCssUrl).pathname.split("/").pop();
             if (!filename) {
               failCount++;
@@ -263,65 +247,4 @@ async function downloadBackgroundImages(
       { key: "status.bgImagesSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
     );
   }
-}
-
-// Helper function to convert background image URLs to relative paths in CSS
-function convertBackgroundImageUrlsToRelative(
-  cssContent: string,
-  baseUrl: string,
-  path: string = "./",
-): string {
-  // Regular expression to match url() patterns in CSS
-  const urlPattern = /url\(['"]?(.*?)['"]?\)/gi;
-  let updatedContent = cssContent;
-
-  // Replace all image URLs with relative paths
-  updatedContent = updatedContent.replace(urlPattern, (match, imageUrl) => {
-    if (!imageUrl || imageUrl.startsWith("data:")) {
-      return match; // Skip data URLs
-    }
-
-    try {
-      let resolvedUrl = imageUrl;
-
-      // Handle protocol-relative URLs (//cdn.example.com/img.jpg)
-      if (imageUrl.startsWith("//")) {
-        resolvedUrl = "https:" + imageUrl;
-      }
-
-      // Handle absolute-path URLs (/images/photo.jpg) - resolve against baseUrl
-      if (imageUrl.startsWith("/") && !imageUrl.startsWith("//")) {
-        try {
-          const base = new URL(baseUrl);
-          resolvedUrl = base.origin + imageUrl;
-        } catch {
-          // If baseUrl is invalid, just use the path as-is
-        }
-      }
-
-      // Handle full http/https URLs
-      if (resolvedUrl.startsWith("http")) {
-        const filename = new URL(resolvedUrl).pathname.split("/").pop();
-        if (filename) {
-          const relativeImagePath = path + "images/" + fixFilename(filename);
-          return match.replace(imageUrl, relativeImagePath);
-        }
-      }
-
-      // Handle relative URLs (../images/photo.jpg, images/photo.jpg, etc.)
-      if (!imageUrl.startsWith("http") && !imageUrl.startsWith("//")) {
-        const filename = imageUrl.split("/").pop();
-        if (filename) {
-          const relativeImagePath = path + "images/" + fixFilename(filename);
-          return match.replace(imageUrl, relativeImagePath);
-        }
-      }
-    } catch {
-      // Ignore
-    }
-
-    return match; // Return original if conversion fails
-  });
-
-  return updatedContent;
 }

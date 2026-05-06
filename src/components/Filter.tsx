@@ -58,6 +58,7 @@ export default function Filter({
     setDownloadLinksFullScraping,
     setLinkedPagesMaxCount,
     setLinkedPagesDelay,
+    setLinkedPagesIncludeExternal,
     setAlwaysAskWhereToSave,
   } = useFilterOptions();
 

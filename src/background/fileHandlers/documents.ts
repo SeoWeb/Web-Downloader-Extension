@@ -1,4 +1,4 @@
-import { IStorageAdapter } from "../storage/storage-adapter";
+import { IStorageAdapter } from "../storage/server-storage-adapter";
 import { fixFilename } from "../urlUtils";
 import { requestQueue } from "../../utils/RequestQueue";
 import { RequestPriority, ResourceType } from "../../types/queue";

@@ -15,7 +15,6 @@ import { useScrapingDownloader } from "./sidepanel/hooks/useScrapingDownloader";
 import { usePermissions } from "./common/hooks/usePermissions";
 import { GlobalPermissionRequest } from "./common/components/GlobalPermissionRequest";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
-import { IS_SERVER_MODE } from "./common/server-mode";
 import { sendMessageToBackground } from "./client/message";
 import {
   ServerModeState,
@@ -25,17 +24,6 @@ import {
 
 // ServerModeState type and transition logic are imported from
 // server-mode-state.ts to avoid duplication and enable unit testing.
-
-// Keep track of blob URLs created by this side panel instance so they can be revoked later
-const activeBlobUrls = new Map<number, string>();
-
-const cleanupBlobUrl = (downloadId: number) => {
-  const url = activeBlobUrls.get(downloadId);
-  if (url) {
-    URL.revokeObjectURL(url);
-    activeBlobUrls.delete(downloadId);
-  }
-};
 
 interface Options {
   downloadHTML: boolean;
@@ -112,7 +100,7 @@ export default function SidePanel() {
   useActiveTabInfo({ setTabId, setTabUrl, setMessages });
 
   // Initialize useScrapingDownloader hook early so setDownloadResponse is available
-  const { downloadResponse, lastHtml, setDownloadResponse, setScrollAttempts, stopScraping } =
+  const { downloadResponse, setDownloadResponse, setScrollAttempts, stopScraping } =
     useScrapingDownloader({
       tabId,
       tabUrl,
@@ -130,45 +118,6 @@ export default function SidePanel() {
           // Service worker is checking if we're alive
           return "PONG";
 
-        case messageActions.PANEL_CREATE_DOWNLOAD: {
-          // Service worker is asking us to create a blob URL and download a file.
-          // This is needed because service workers can't use URL.createObjectURL,
-          // and data URLs cause Chrome to ignore the filename parameter.
-          try {
-            const { getBlob, deleteBlob } = await import("./common/blobStorage");
-            const blob = await getBlob(data.idbKey);
-
-            const objectUrl = URL.createObjectURL(blob);
-
-            try {
-              const downloadId = await chrome.downloads.download({
-                url: objectUrl,
-                filename: data.filename,
-                saveAs: data.saveAs ?? true,
-                conflictAction: "uniquify",
-              });
-
-              // Store the objectUrl for cleanup when download completes
-              activeBlobUrls.set(downloadId, objectUrl);
-
-              // Clean up the temp blob from IndexedDB
-              try {
-                await deleteBlob(data.idbKey);
-              } catch {
-                // Non-critical cleanup error
-              }
-
-              return { downloadId };
-            } catch (downloadError) {
-              URL.revokeObjectURL(objectUrl);
-              throw downloadError;
-            }
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Unknown error";
-            return { error: errorMessage };
-          }
-        }
-
         case messageActions.PANEL_MESSAGE:
           // Ignore messages from other tabs
           if (data.tabId !== undefined && data.tabId !== tabId) break;
@@ -185,20 +134,17 @@ export default function SidePanel() {
 
           // (15.7) Track server-mode phase transitions from messages.
           // Delegates to applyServerModeMessage() pure function (testable).
-          if (IS_SERVER_MODE) {
-            const msgKey = data.message?.key;
-            if (msgKey) {
-              setServerModeState((prev) =>
-                applyServerModeMessage(prev, msgKey, data.message?.options),
-              );
-            }
+          const msgKey = data.message?.key;
+          if (msgKey) {
+            setServerModeState((prev) =>
+              applyServerModeMessage(prev, msgKey, data.message?.options),
+            );
           }
           // Update completion based on message type if needed
           break;
 
         case messageActions.DOWNLOAD_COMPLETE:
           if (data.tabId !== undefined && data.tabId !== tabId) break;
-          if (data.downloadId) cleanupBlobUrl(data.downloadId);
           // Download actually completed - file was saved
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
@@ -218,7 +164,6 @@ export default function SidePanel() {
 
         case messageActions.DOWNLOAD_FAILED:
           if (data.tabId !== undefined && data.tabId !== tabId) break;
-          if (data.downloadId) cleanupBlobUrl(data.downloadId);
           // Download failed or was interrupted
           // Reset messages to connected status with error message
           setMessages([
@@ -234,7 +179,6 @@ export default function SidePanel() {
 
         case messageActions.DOWNLOAD_CANCELLED:
           if (data.tabId !== undefined && data.tabId !== tabId) break;
-          if (data.downloadId) cleanupBlobUrl(data.downloadId);
           // User cancelled the download
           setMessages([{ key: "status.connected" }]);
           setIsScraping(false);
@@ -315,17 +259,14 @@ export default function SidePanel() {
             chrome.storage.local.remove("downloadComplete");
             return;
           }
-          if (downloadComplete.downloadId) cleanupBlobUrl(downloadComplete.downloadId);
+          if (downloadComplete.downloadId) {
+            chrome.storage.local.set({ lastDownloadId: downloadComplete.downloadId });
+          }
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
           setServerModeState((prev) => prev ? { ...prev, phase: 'ready' } : prev);
           setMessages((prev) => [...prev, { key: "status.creating" }]);
           setMessages((prev) => [...prev, { key: "status.complete" }]);
-
-          // Store download ID for "Show in folder" functionality
-          if (downloadComplete.downloadId) {
-            chrome.storage.local.set({ lastDownloadId: downloadComplete.downloadId });
-          }
 
           // Reset downloadResponse to allow filter to show again
           setDownloadResponse(null);
@@ -373,9 +314,7 @@ export default function SidePanel() {
     setDownloadOptions(options);
     setMessages((prev) => [...prev, { key: "status.scraping" }]);
     // (15.7) Track singleFile option in server-mode state
-    if (IS_SERVER_MODE) {
-      setServerModeState((prev) => ({ ...prev, phase: 'scraping', isSingleFile: options.singleFile }));
-    }
+    setServerModeState((prev) => ({ ...prev, phase: 'scraping', isSingleFile: options.singleFile }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Keep dependencies minimal
 
@@ -438,7 +377,7 @@ export default function SidePanel() {
         downloadResponse={downloadResponse}
         onStopScraping={stopScraping}
         setIsPaused={setIsPaused}
-        serverModeState={IS_SERVER_MODE ? serverModeState : undefined}
+        serverModeState={serverModeState}
         onRetryServer={() => {
           // Re-trigger download with same options — reset all server
           // session refs so a fresh session is created on retry.
@@ -449,16 +388,6 @@ export default function SidePanel() {
             setMessages((prev) => [...prev, { key: "status.scraping" }]);
             setServerModeState((prev) => ({ ...prev, phase: 'scraping', serverError: null }));
           }
-        }}
-        onLocalFallback={() => {
-          // Send SERVER_LOCAL_FALLBACK message to background to re-run in local mode
-          sendMessageToBackground(messageActions.SERVER_LOCAL_FALLBACK, {
-              tabId,
-              tabUrl,
-              html: lastHtml || downloadResponse?.html,
-              downloadOptions,
-            });
-          setServerModeState(initialServerModeState);
         }}
         onDownloadFromServer={async () => {
           if (serverModeState.serverDownloadUrl) {
@@ -473,8 +402,8 @@ export default function SidePanel() {
         interruptData={interruptData}
         onRestartDownload={async () => {
           setInterruptData(null);
-          // If server mode and we have a server session ID, attempt resume
-          if (IS_SERVER_MODE && interruptData?.serverSessionId) {
+          // If we have a server session ID, attempt resume
+          if (interruptData?.serverSessionId) {
             setIsScraping(true);
             setMessages((prev) => [...prev, { key: "status.reconnectingServer" }]);
             setServerModeState((prev) => ({ ...prev, phase: 'uploading', serverError: null }));
@@ -505,9 +434,7 @@ export default function SidePanel() {
             setIsScraping(true);
             setDownloadOptions(downloadOptions);
             setMessages((prev) => [...prev, { key: "status.scraping" }]);
-            if (IS_SERVER_MODE) {
-              setServerModeState((prev) => ({ ...prev, phase: 'scraping', serverError: null }));
-            }
+            setServerModeState((prev) => ({ ...prev, phase: 'scraping', serverError: null }));
           }
         }}
         onDismissInterrupt={() => {
@@ -523,8 +450,8 @@ export default function SidePanel() {
         links={links}
         action={action}
         reset={reset}
-        serverDownloadUrl={IS_SERVER_MODE ? serverModeState.serverDownloadUrl : undefined}
-        isSingleFile={IS_SERVER_MODE ? serverModeState.isSingleFile : undefined}
+        serverDownloadUrl={serverModeState.serverDownloadUrl}
+        isSingleFile={serverModeState.isSingleFile}
       />
     </div>
   );

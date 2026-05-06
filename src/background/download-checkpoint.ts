@@ -31,7 +31,7 @@ export async function writeCheckpoint(data: Omit<DownloadCheckpoint, "downloadIn
     downloadInterrupted: true,
     timestamp: Date.now(),
   };
-  await chrome.storage.session.set({ [STORAGE_KEY]: checkpoint });
+  await chrome.storage?.session?.set({ [STORAGE_KEY]: checkpoint });
   console.log(`[Checkpoint] Written: phase=${data.phase}`);
 }
 
@@ -40,13 +40,14 @@ export async function updateCheckpointPhase(phase: string): Promise<void> {
   const existing = await readCheckpoint();
   if (existing) {
     existing.phase = phase;
-    await chrome.storage.session.set({ [STORAGE_KEY]: existing });
+    await chrome.storage?.session?.set({ [STORAGE_KEY]: existing });
     console.log(`[Checkpoint] Phase updated: ${phase}`);
   }
 }
 
 /** Read the current checkpoint, or null if none exists. */
 export async function readCheckpoint(): Promise<DownloadCheckpoint | null> {
+  if (!chrome.storage?.session) return null;
   const result = await chrome.storage.session.get(STORAGE_KEY);
   return (result[STORAGE_KEY] as DownloadCheckpoint) ?? null;
 }
@@ -56,13 +57,13 @@ export async function updateCheckpointResourceUrls(resourceUrls: ResourceUrlEntr
   const existing = await readCheckpoint();
   if (existing) {
     existing.resourceUrls = resourceUrls;
-    await chrome.storage.session.set({ [STORAGE_KEY]: existing });
+    await chrome.storage?.session?.set({ [STORAGE_KEY]: existing });
     console.log(`[Checkpoint] Resource URLs updated: ${resourceUrls.length} entries`);
   }
 }
 
 /** Clear the checkpoint from session storage. */
 export async function clearCheckpoint(): Promise<void> {
-  await chrome.storage.session.remove(STORAGE_KEY);
+  await chrome.storage?.session?.remove(STORAGE_KEY);
   console.log("[Checkpoint] Cleared");
 }

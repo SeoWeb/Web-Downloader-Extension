@@ -1,21 +1,15 @@
 ## MODIFIED Requirements
 
 ### Requirement: Download Concurrency Guard
-The system SHALL prevent concurrent downloads with a mode-aware guard. In server mode, the guard SHALL be per-tab (each tab may have one active download). In local mode, the guard SHALL be global (only one download across all tabs). When server mode is active, the concurrency guard applies to the combined upload + assembly pipeline.
+The system SHALL prevent concurrent downloads using per-tab blocking. If a tab already has an active download, the system SHALL reject the new download with an "already in progress" error.
 
-#### Scenario: Download rejected when another is active (local mode)
-- **GIVEN** local mode is active and any tab has a download in progress
-- **WHEN** the user initiates a new download on any tab
-- **THEN** the system rejects the request with a "download in progress" error
-- **AND** the existing download continues unaffected
-
-#### Scenario: Download rejected when same tab already downloading (server mode)
-- **GIVEN** server mode is active and Tab A already has a download in progress
+#### Scenario: Download rejected when same tab already downloading
+- **GIVEN** Tab A already has a download in progress
 - **WHEN** the user initiates a second download on Tab A
 - **THEN** the system rejects the request with a "download in progress" error
 
-#### Scenario: Concurrent downloads allowed in server mode (different tabs)
-- **GIVEN** server mode is active and Tab A has a download in progress
+#### Scenario: Concurrent downloads allowed (different tabs)
+- **GIVEN** Tab A has a download in progress
 - **WHEN** the user initiates a download on Tab B
 - **THEN** the download on Tab B is allowed to proceed
 - **AND** both downloads run concurrently with independent state
@@ -29,8 +23,8 @@ The system SHALL prevent concurrent downloads with a mode-aware guard. In server
 - **AND** the tab's abort controller is cleared
 - **AND** a new download can be initiated on that tab
 
-#### Scenario: Server mode session creation at download start
-- **GIVEN** server mode is active (VITE_SERVER_URL is configured at build time)
+#### Scenario: Session creation at download start
+- **GIVEN** a download is initiated
 - **WHEN** the user initiates a download
 - **THEN** a server session is created for that tab before any scrolling or resource downloading begins
 - **AND** the session ID is stored in the per-tab session state map
@@ -44,12 +38,12 @@ The system SHALL prevent concurrent downloads with a mode-aware guard. In server
 - **AND** clears the checkpoint from `chrome.storage.session`
 - **AND** per-tab Maps are empty (rebuilt from scratch after restart)
 
-### Requirement: Server-Mode Parallel Asset Processing
+### Requirement: Parallel Asset Processing
 
-In server mode, the system SHALL process independent asset categories (images, CSS/JS, documents) concurrently instead of sequentially. Images, CSS/JS assets, and documents have no dependencies on each other and their uploads can proceed in parallel, subject to the UploadQueue's concurrency limit.
+The system SHALL process independent asset categories (images, CSS/JS, documents) concurrently instead of sequentially. Images, CSS/JS assets, and documents have no dependencies on each other and their uploads can proceed in parallel, subject to the UploadQueue's concurrency limit.
 
 #### Scenario: Parallel image and asset processing
-- **GIVEN** server mode is active and the download includes images and CSS/JS assets
+- **GIVEN** the download includes images and CSS/JS assets
 - **WHEN** the server-mode download flow begins processing resources
 - **THEN** `processImages`, `processAssets`, and `processDocuments` are started concurrently
 - **AND** all three categories enqueue uploads into the shared UploadQueue simultaneously
@@ -148,13 +142,7 @@ The system SHALL track active downloads using per-tab state management. Each tab
 ## ADDED Requirements
 
 ### Requirement: Save As parameter propagation in download pipeline
-The system SHALL propagate the `alwaysAskWhereToSave` option from `FilterOptions` through the download pipeline to all `chrome.downloads.download()` calls. The `initiateDownload()` function SHALL accept a `saveAs` parameter. Server-mode download functions (`triggerServerDownload`, `waitForDownload`, `downloadWithFallback`) SHALL accept and propagate a `saveAs` parameter.
-
-#### Scenario: Local mode respects saveAs preference
-- **GIVEN** `alwaysAskWhereToSave` is `false`
-- **WHEN** a local-mode download completes ZIP generation
-- **THEN** `initiateDownload()` passes `saveAs: false` to `downloadViaPanel()`
-- **AND** the side panel triggers `chrome.downloads.download` with `saveAs: false`
+The system SHALL propagate the `alwaysAskWhereToSave` option from `FilterOptions` through the download pipeline to all `chrome.downloads.download()` calls. Server-mode download functions (`triggerServerDownload`, `waitForDownload`, `downloadWithFallback`) SHALL accept and propagate a `saveAs` parameter.
 
 #### Scenario: Server mode respects saveAs preference
 - **GIVEN** `alwaysAskWhereToSave` is `false`

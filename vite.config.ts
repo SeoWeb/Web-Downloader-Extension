@@ -129,7 +129,7 @@ export default defineConfig({
           // Split large dependencies into separate chunks for better caching
           if (id.includes('node_modules')) {
             // React core
-            if (id.includes('react') || id.includes('react-dom')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
               return 'vendor-react';
             }
             // i18n libraries

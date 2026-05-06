@@ -1,4 +1,4 @@
-import { IStorageAdapter } from "../storage/storage-adapter";
+import { IStorageAdapter } from "../storage/server-storage-adapter";
 import { generateImageFilename } from "../urlUtils";
 import { sniffImageMimeType } from "../sniffImageMime";
 import { requestQueue } from "../../utils/RequestQueue";

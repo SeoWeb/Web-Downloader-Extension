@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { CheckCircle, Circle, Loader2 } from "lucide-react";
 import cn from "classnames";
-import { IS_SERVER_MODE } from "../common/server-mode";
 
 export type Message = string | { key: string; options?: any };
 
@@ -13,57 +12,33 @@ export default function Actions({ messages }: { messages: Message[] }) {
   // if we see 'status.creating', we are in step 3.
   // if we see 'status.complete', we are in step 4.
 
-  // (15.7) In server mode, add "Uploading" and "Assembling" steps
-  const steps = IS_SERVER_MODE
-    ? [
-        {
-          id: "connect",
-          label: t("status.connected", "Connected"),
-          keyMatch: ["status.connected", "status.waiting"],
-        },
-        {
-          id: "scrape",
-          label: t("status.scraping", "Scraping Content"),
-          keyMatch: ["status.scraping", "status.scraped"],
-        },
-        {
-          id: "upload",
-          label: t("status.uploadingResources", "Uploading Resources"),
-          keyMatch: ["status.uploadProgress", "status.waitingForUploads", "status.sendingScrapeComplete", "status.scrapeComplete"],
-        },
-        {
-          id: "assemble",
-          label: t("status.assemblingServer", "Assembling on Server"),
-          keyMatch: ["status.assemblingServer", "status.assemblyProgress", "status.finalizingServer"],
-        },
-        {
-          id: "complete",
-          label: t("status.complete", "Complete"),
-          keyMatch: ["status.complete"],
-        },
-      ]
-    : [
-        {
-          id: "connect",
-          label: t("status.connected", "Connected"),
-          keyMatch: ["status.connected", "status.waiting"],
-        },
-        {
-          id: "scrape",
-          label: t("status.scraping", "Scraping Content"),
-          keyMatch: ["status.scraping", "status.scraped"],
-        },
-        {
-          id: "process",
-          label: t("status.creating", "Processing Files"),
-          keyMatch: ["status.creating"],
-        },
-        {
-          id: "complete",
-          label: t("status.complete", "Complete"),
-          keyMatch: ["status.complete"],
-        },
-      ];
+  const steps = [
+    {
+      id: "connect",
+      label: t("status.connected", "Connected"),
+      keyMatch: ["status.connected", "status.waiting"],
+    },
+    {
+      id: "scrape",
+      label: t("status.scraping", "Scraping Content"),
+      keyMatch: ["status.scraping", "status.scraped"],
+    },
+    {
+      id: "upload",
+      label: t("status.uploadingResources", "Uploading Resources"),
+      keyMatch: ["status.uploadProgress", "status.waitingForUploads", "status.sendingScrapeComplete", "status.scrapeComplete"],
+    },
+    {
+      id: "assemble",
+      label: t("status.assemblingServer", "Assembling on Server"),
+      keyMatch: ["status.assemblingServer", "status.assemblyProgress", "status.finalizingServer"],
+    },
+    {
+      id: "complete",
+      label: t("status.complete", "Complete"),
+      keyMatch: ["status.complete"],
+    },
+  ];
 
   // Determine current active step index
   // This logic is a bit heuristic based on the sequential nature of messages
@@ -72,23 +47,14 @@ export default function Actions({ messages }: { messages: Message[] }) {
 
   let currentStepIndex = -1;
   if (hasMessage("status.complete")) currentStepIndex = steps.length - 1;
-  else if (IS_SERVER_MODE) {
-    // Server-mode step detection
-    if (hasMessage("status.assemblingServer") || hasMessage("status.assemblyProgress") || hasMessage("status.finalizingServer"))
-      currentStepIndex = 3; // assembling
-    else if (hasMessage("status.uploadProgress") || hasMessage("status.waitingForUploads") || hasMessage("status.sendingScrapeComplete") || hasMessage("status.scrapeComplete"))
-      currentStepIndex = 2; // uploading
-    else if (hasMessage("status.scraping") || hasMessage("status.scraped"))
-      currentStepIndex = 1; // scraping
-    else if (hasMessage("status.connected"))
-      currentStepIndex = 0; // connected
-  } else {
-    // Local-mode step detection (original logic)
-    if (hasMessage("status.creating")) currentStepIndex = 2;
-    else if (hasMessage("status.scraping") || hasMessage("status.scraped"))
-      currentStepIndex = 1;
-    else if (hasMessage("status.connected")) currentStepIndex = 0;
-  }
+  else if (hasMessage("status.assemblingServer") || hasMessage("status.assemblyProgress") || hasMessage("status.finalizingServer"))
+    currentStepIndex = 3; // assembling
+  else if (hasMessage("status.uploadProgress") || hasMessage("status.waitingForUploads") || hasMessage("status.sendingScrapeComplete") || hasMessage("status.scrapeComplete"))
+    currentStepIndex = 2; // uploading
+  else if (hasMessage("status.scraping") || hasMessage("status.scraped"))
+    currentStepIndex = 1; // scraping
+  else if (hasMessage("status.connected"))
+    currentStepIndex = 0; // connected
 
   return (
     <div className="pt-4 animate-fade-in">

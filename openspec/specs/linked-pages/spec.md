@@ -241,29 +241,18 @@ The system SHALL provide statistics on the scraping process.
 
 ### Requirement: Linked Page Filename Generation
 
-The system SHALL generate safe HTML filenames for scraped linked pages that are deterministic and consistent with the link converter's filename generation, in both local and server modes.
+The system SHALL NOT perform client-side filename collision resolution for linked pages. The server handles filename generation and collision resolution during assembly. Linked page HTML chunks SHALL be uploaded with `pageType: "linked"` and `pageUrl` metadata for server-side processing.
 
-#### Scenario: URL with path
+#### Scenario: Linked page chunk uploaded to server
 
-- GIVEN a linked page URL of `https://example.com/about/team`
-- WHEN the filename is generated
-- THEN the last path segment is used as the base name
-- AND the `.html` extension is appended if not already present
-- AND special characters are replaced with safe alternatives
-- AND the same filename is used for both the stored page file and the href in link conversion
+- WHEN a linked page is scraped
+- THEN the system uploads the page's HTML chunks to the server with `pageType: "linked"` and the page's final URL as `pageUrl`
+- AND the server handles filename generation and cross-page link conversion
 
-#### Scenario: URL with no path
+#### Scenario: Incremental filename map uploaded after linked page
 
-- GIVEN a linked page URL of `https://example.com/`
-- WHEN the filename is generated
-- THEN a default filename of `page.html` is used
-
-#### Scenario: Filename collision between linked pages
-
-- GIVEN two linked page URLs that produce the same base filename (e.g., `/about/team` and `/contact/team`)
-- WHEN filenames are generated for both pages
-- THEN the second page's filename includes a short hash suffix to disambiguate (e.g., `team-a1b2.html`)
-- AND the same collision-avoidance logic is applied in both the extension and the server assembler
+- WHEN a linked page's assets are downloaded
+- THEN the system uploads a delta filename map containing only new entries not in the global map
 
 ### Requirement: Internal-first progress reporting
 

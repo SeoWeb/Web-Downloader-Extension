@@ -2,7 +2,6 @@ import { listenMessage } from "./src/common/chrome";
 import "./src/i18n/config-background"; // Use service worker-compatible i18n config
 
 import { messageWorker } from "./src/background/message";
-import { FileStore } from "./src/background/storage/file-store";
 import { readCheckpoint } from "./src/background/download-checkpoint";
 import { messageActions } from "./src/common/message";
 
@@ -10,13 +9,6 @@ import { messageActions } from "./src/common/message";
 const resetDownloadState = async () => {
   if (chrome.storage && chrome.storage.local) {
     await chrome.storage.local.set({ isDownloadInProgress: false, downloads: {} });
-  }
-  
-  // Run IndexedDB cleanup
-  try {
-    await FileStore.cleanupOldDownloads();
-  } catch {
-    // ignore
   }
 };
 
@@ -57,7 +49,7 @@ chrome.runtime.onStartup.addListener(notifyInterruptedDownload);
 // Run periodic cleanup (every 6 hours)
 setInterval(async () => {
   try {
-    await FileStore.cleanupOldDownloads();
+    // Server-mode: no local IndexedDB cleanup needed
   } catch {
     // ignore
   }

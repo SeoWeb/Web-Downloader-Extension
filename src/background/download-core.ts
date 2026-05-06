@@ -1,178 +1,114 @@
 
-import JSZip from "jszip";
 import { getResources } from "./resources";
 import { memoryManager } from "../utils/MemoryManager";
-import { MemoryPressureLevel } from "../utils/memoryLimits";
 import { requestQueue } from "../utils/RequestQueue";
-import { addIndexHtml } from "./fileHandlers";
 import { cleanupAfterDownload } from "./cleanupHandlers";
-import { finalizeIncrementalMerge } from "./merge-html";
 import { FilterOptions } from "../types/filterTypes";
-import { downloadId, setTabDownloadActive, setTabDownloadComplete, isAnyDownloadInProgress, isTabDownloadInProgress, setDownloadAbortController, getDownloadAbortController, createKeepalivePort, disconnectKeepalivePort } from "./download-state";
+import { downloadId, setTabDownloadActive, setTabDownloadComplete, isTabDownloadInProgress, setDownloadAbortController, getDownloadAbortController, createKeepalivePort, disconnectKeepalivePort } from "./download-state";
 import { writeCheckpoint, updateCheckpointPhase, updateCheckpointResourceUrls, clearCheckpoint } from "./download-checkpoint";
-import { initiateDownload, performInitialCleanup } from "./download-utils";
-import { isPanelAlive, downloadViaPanelAndWait, PanelUnavailableError } from "./panel-download";
-import { 
-  processRegularHtml, 
-  processAssets, 
-  processDocuments, 
-  processImages, 
-  processLinks, 
-  addIndexHtmlFromBlob 
+import { performInitialCleanup } from "./download-utils";
+
+class PanelUnavailableError extends Error {
+  constructor(message: string = "Extension panel is not available") {
+    super(message);
+    this.name = "PanelUnavailableError";
+  }
+}
+
+import {
+  processAssets,
+  processDocuments,
+  processImages,
 } from "./download-processors";
-import { addContentText } from "./fileHandlers";
 import { AssetRegistry } from "./asset-registry";
 import { LinkedPageScraper, setGlobalImageFilenameMap } from "./linked-page-scraper";
-import { convertToSingleFileHtml } from "./html-utils/html-converter";
 import { fixFilename } from "./urlUtils";
-import { SplitZipGenerator } from "./zip-stream-splitter";
-
-// IndexedDB Storage imports
-import { IStorageAdapter, JSZipAdapter, IndexedDBAdapter } from "./storage/storage-adapter";
 import { ServerStorageAdapter } from "./storage/server-storage-adapter";
 import { serverClient, ServerUnavailableError, AuthenticationError, AssemblyTimeoutError } from "./server-client";
 import { UploadQueue } from "./upload-queue";
-import { SessionManager } from "./storage/session-manager";
-import { FileStore } from "./storage/file-store";
 import { getServerDownloadHandler, AssemblyFailedError } from "./server-download";
-
-// Configuration
-const USE_INDEXEDDB = true; // Feature flag for IndexedDB mode
-const EMPTY_MAP: Map<string, string> = new Map();
-
-// Server mode is determined at build time by VITE_SERVER_URL.
-// When set, ServerStorageAdapter is used and server-side assembly replaces local ZIP generation.
-import { IS_SERVER_MODE } from "../common/server-mode";
-
-// Per-tab force-local-mode map. When a tab's entry is true, that tab's
-// download uses the local IndexedDB/JSZip pipeline regardless of VITE_SERVER_URL.
-const forceLocalModes = new Map<number, boolean>();
-
-/** Set the force-local-mode flag for a tab's download. */
-export function setForceLocalMode(tabId: number, value: boolean): void {
-  forceLocalModes.set(tabId, value);
-}
-
-/** Check if the given tab should use server mode.
- *  Returns false if forceLocalMode is set for that tab, otherwise follows IS_SERVER_MODE. */
-export function shouldUseServerMode(tabId?: number): boolean {
-  return IS_SERVER_MODE && !!tabId && !forceLocalModes.get(tabId);
-}
-
-/** Clear the force-local-mode entry for a tab. */
-export function clearForceLocalMode(tabId: number): void {
-  forceLocalModes.delete(tabId);
-}
-
 import { setCurrentScraper, stopScraping } from "./scraper-state";
 import { setActiveServerSession, getActiveServerSessionId, hasStreamedHtmlChunks } from "./message";
 import { loadFilterOptions } from "../common/storage/filterStorage";
 
-// ... (other imports remain, but we need to remove the local exports below)
+const EMPTY_MAP: Map<string, string> = new Map();
 
-/**
- * Enhanced download function with streaming support for large files
- */
 export async function downloadResources(
   html: string,
   tabUrl: string,
   downloadOptions: FilterOptions,
   sendMessage: (message: string | { key: string; options?: any }) => void,
-  assemblyJobId?: string, // Optional job ID for incremental assembly
-  tabId?: number, // Tab ID for tracking downloads
+  _assemblyJobId?: string,
+  tabId?: number,
 ) {
   if (!tabUrl) {
     sendMessage({ key: "error.noUrl" });
     return;
   }
 
-  // Prevent concurrent downloads (mode-aware):
-  // Server mode → block only if this tab already has an active download.
-  // Local mode → block if any tab has an active download (shared resources).
-  if (tabId && shouldUseServerMode(tabId)) {
-    if (isTabDownloadInProgress(tabId)) {
-      sendMessage({ key: "error.downloadInProgress" });
-      return;
-    }
-  } else {
-    if (isAnyDownloadInProgress()) {
-      sendMessage({ key: "error.downloadInProgress" });
-      return;
-    }
+  // Prevent concurrent downloads per-tab
+  if (tabId && isTabDownloadInProgress(tabId)) {
+    sendMessage({ key: "error.downloadInProgress" });
+    return;
   }
 
-  // Reset force-local flag at the start of each download, then check
-  // if the caller requested local mode via _forceLocal option.
-  if (tabId) {
-    forceLocalModes.delete(tabId);
-    if (downloadOptions?._forceLocal) {
-      forceLocalModes.set(tabId, true);
-    }
-  }
-
-  // Initial memory check and cleanup
-  // (S1) In server mode the memory rejection threshold is lower (100MB available)
-  // because ZIP assembly and HTML merging are offloaded to the server.
-  // In local mode the standard CRITICAL threshold applies (256MB available).
+  // Memory check — server mode threshold (100MB available)
   const initialMemoryStats = memoryManager.getMemoryStats();
   const availableMemoryBytes = initialMemoryStats.totalMemoryLimit - initialMemoryStats.totalMemoryUsed;
   const availableMemoryMB = availableMemoryBytes / (1024 * 1024);
-
-  if (shouldUseServerMode(tabId)) {
-    // Server mode: reject if < 100MB available (resources still need to be
-    // held in memory before upload, but ZIP assembly is server-side)
-    if (availableMemoryMB < 100) {
-      sendMessage({ key: "error.memoryPressure" });
-      return;
-    }
-    // Non-blocking warning when available memory is between 100-256MB
-    if (availableMemoryMB < 256) {
-      sendMessage({ key: "status.memoryWarningServerMode", options: { availableMB: Math.round(availableMemoryMB) } });
-    }
-  } else {
-    // Local mode: use the standard CRITICAL pressure level
-    if (initialMemoryStats.memoryPressureLevel === MemoryPressureLevel.CRITICAL) {
-      sendMessage({ key: "error.memoryPressure" });
-      return;
-    }
+  if (availableMemoryMB < 100) {
+    sendMessage({ key: "error.memoryPressure" });
+    return;
+  }
+  if (availableMemoryMB < 256) {
+    sendMessage({ key: "status.memoryWarningServerMode", options: { availableMB: Math.round(availableMemoryMB) } });
   }
 
   await setTabDownloadActive(tabId!);
-
-  // Create keepalive port to prevent Chrome from killing the service worker
-  // during the download lifecycle (scraping, uploading, packing).
   createKeepalivePort(tabId!);
 
-  // Write interrupt checkpoint so we can detect/recover if the SW is killed.
+  // Create server session (reuse existing if created during INITIALIZE_DIFFERENTIAL_SCRAPING)
+  const existingSessionId = getActiveServerSessionId(tabId!);
+  let serverSessionId: string;
+  if (existingSessionId) {
+    serverSessionId = existingSessionId;
+  } else {
+    serverSessionId = await serverClient.createSession(tabUrl, {
+      singleFile: downloadOptions?.singleFile ?? false,
+      retentionDays: 1,
+    });
+    setActiveServerSession(tabId!, serverSessionId);
+  }
+
+  const storage = new ServerStorageAdapter(serverClient);
+  storage.setSessionId(serverSessionId);
+
+  // Write interrupt checkpoint
   await writeCheckpoint({
     phase: "scraping",
-    serverSessionId: shouldUseServerMode(tabId) ? getActiveServerSessionId(tabId!) ?? undefined : undefined,
+    serverSessionId,
     tabId,
     tabUrl,
   });
 
-  // Create abort controller for this download session so the user
-  // can press Stop and cancel all in-progress uploads and the download flow.
+  // Create abort controller for this download session
   const downloadAbort = new AbortController();
   setDownloadAbortController(downloadAbort, tabId!);
 
   try {
-    // Perform initial cleanup
     await performInitialCleanup();
-
-    // Execute the download within a try-catch-finally block
-    await executeDownload(html, tabUrl, downloadOptions, sendMessage, assemblyJobId, tabId);
+    await executeDownloadServerMode(
+      html, tabUrl, downloadOptions, sendMessage,
+      storage, serverSessionId, tabId,
+    );
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    
-    // Categorize error for better user feedback
+
     let userFriendlyMessage: string | { key: string; options?: any } = { key: "status.failedWithError", options: { error: errorMessage } };
     let isMemoryError = false;
 
     if (error instanceof PanelUnavailableError) {
-      // Panel was closed or unavailable — already sent the app.panelUnavailable message
-      // from the inner catch, so just use a short error here
       userFriendlyMessage = { key: "app.panelUnavailable" };
     } else if (
       errorMessage.includes("memory") ||
@@ -193,24 +129,18 @@ export async function downloadResources(
 
     sendMessage(userFriendlyMessage);
 
-    // If it's a memory-related error, perform cleanup
     if (isMemoryError) {
       await memoryManager.forceCleanup();
       sendMessage({ key: "status.memoryCleanupPerformed" });
     }
   } finally {
-    // Always reset the per-tab state when done and cleanup
     await setTabDownloadComplete(tabId!);
     setDownloadAbortController(null, tabId!);
     disconnectKeepalivePort(tabId!);
-    clearForceLocalMode(tabId!);
     await clearCheckpoint();
 
-    // Cleanup download-specific resources
     try {
       await cleanupAfterDownload(downloadId);
-
-      // Clear the queue after download completion
       await requestQueue.clear();
     } catch {
       // ignore
@@ -218,481 +148,15 @@ export async function downloadResources(
   }
 }
 
-/**
- * Determine which storage adapter to use based on configuration.
- * Priority: server mode (VITE_SERVER_URL set) > IndexedDB > legacy JSZip.
- *
- * (12.2) In server mode, passes singleFile and retentionDays options
- * to ServerClient.createSession so the server can configure the
- * assembly pipeline accordingly.
- */
-async function selectStorageAdapter(
-  tabUrl: string,
-  sessionId?: string,
-  downloadOptions?: FilterOptions,
-  tabId?: number,
-): Promise<{ adapter: IStorageAdapter; sessionId: string; zip?: JSZip }> {
-  // Server mode: upload resources to the microservice instead of storing locally.
-  if (shouldUseServerMode(tabId)) {
-    // Reuse existing session if one was created during INITIALIZE_DIFFERENTIAL_SCRAPING
-    // (the incremental scrolling flow creates the session before scrolling starts
-    // so that HTML chunks can be uploaded in real-time via SCROLL_AND_EXTRACT_DIFF).
-    const existingSessionId = getActiveServerSessionId(tabId!);
-    let serverSessionId: string;
-
-    if (existingSessionId) {
-      serverSessionId = existingSessionId;
-    } else {
-      serverSessionId = await serverClient.createSession(tabUrl, {
-        singleFile: downloadOptions?.singleFile ?? false,
-        retentionDays: 1,
-      });
-      // (12.3) Set the active server session so the SCROLL_AND_EXTRACT_DIFF
-      // message handler can upload HTML chunks in real-time during scrolling.
-      setActiveServerSession(tabId!, serverSessionId);
-    }
-
-    const adapter = new ServerStorageAdapter(serverClient);
-    adapter.setSessionId(serverSessionId);
-    return {
-      adapter,
-      sessionId: serverSessionId,
-    };
-  }
-
-  // IndexedDB mode (local, default when VITE_SERVER_URL is not set).
-  if (USE_INDEXEDDB) {
-    const finalSessionId = sessionId || await SessionManager.createSession(tabUrl);
-    return {
-      adapter: new IndexedDBAdapter(finalSessionId),
-      sessionId: finalSessionId
-    };
-  }
-
-  // Legacy JSZip mode (retained for rollback only).
-  const zip = new JSZip();
-  return {
-    adapter: new JSZipAdapter(zip),
-    sessionId: sessionId || `jszip-${Date.now()}`,
-    zip
-  };
-}
-
-async function executeDownload(
-  html: string,
-  tabUrl: string,
-  downloadOptions: FilterOptions,
-  sendMessage: (message: string | { key: string; options?: any }) => void,
-  assemblyJobId?: string,
-  tabId?: number,
-) {
-  // Check network connectivity
-  try {
-    const online = await new Promise<boolean>((resolve) => {
-      // Simple connectivity check
-      fetch("https://www.google.com/favicon.ico", {
-        method: "HEAD",
-        mode: "no-cors",
-      })
-        .then(() => resolve(true))
-        .catch(() => resolve(false));
-
-      // Fallback timeout
-      setTimeout(() => resolve(false), 5000);
-    });
-
-    if (!online) {
-      sendMessage(
-        { key: "error.noInternet" },
-      );
-      // Continue with basic HTML download only
-      if (!downloadOptions.downloadHTML && !downloadOptions.singleFile) {
-        sendMessage(
-          { key: "error.enableHtmlForOffline" },
-        );
-        return;
-      }
-    }
-  } catch (error) {
-    // Continue with download but warn about potential issues
-    sendMessage({ key: "error.networkCheckFailed" });
-  }
-
-  // Select storage adapter (IndexedDB or JSZip)
-  // (12.2) Pass downloadOptions so server session gets singleFile/retentionDays
-  const { adapter: storage, sessionId } = await selectStorageAdapter(tabUrl, undefined, downloadOptions, tabId);
-  
-  let currentSessionId = sessionId;
-
-  // (12.1) Branch to server-mode flow when VITE_SERVER_URL is set.
-  // This replaces local HTML merging, ZIP generation, and panel-download
-  // with server-side HTML upload, finalization, and chrome.downloads.download.
-  if (shouldUseServerMode(tabId)) {
-    try {
-      await executeDownloadServerMode(
-        html, tabUrl, downloadOptions, sendMessage,
-        storage as ServerStorageAdapter, sessionId, tabId,
-      );
-    } catch (outerError) {
-      throw outerError;
-    }
-    return;
-  }
-  
-  try {
-    // Update session status
-    if (USE_INDEXEDDB) {
-      await SessionManager.updateSession(sessionId, { status: 'scraping' });
-    }
-    
-    const data = getResources(html);
-
-  const u = new URL(tabUrl || "");
-
-  // Generate a safe filename from the URL
-  // Remove protocols and common prefixes
-  const domain = u.hostname.replace(/^www\./i, "");
-  
-  // Clean hostname: allow only alphanumeric, dots, and hyphens
-  const hostname = domain.replace(/[^a-z0-9.-]/gi, "_") || "website";
-  
-  // Clean path: allow only alphanumeric, dots, and hyphens, replace others with hyphens
-  const pathParts = u.pathname
-    .split("/")
-    .filter((part) => part.length > 0)
-    .map(part => part.replace(/[^a-z0-9.-]/gi, "-"));
-    
-  let safePath = pathParts.join("-");
-
-  // Limit filename length and ensure it's not empty
-  // We keep it short to avoid OS/Browser limits (usually 255 total)
-  if (safePath.length > 50) {
-    safePath = safePath.substring(0, 50);
-  }
-  
-  const timestamp = Date.now();
-
-  let zipFilename: string;
-  if (downloadOptions.singleFile) {
-    // For single files, we use .html
-    const baseName = safePath ? `${hostname}-${safePath}` : hostname;
-    zipFilename = `${baseName}-${timestamp}`.substring(0, 200) + ".html";
-  } else {
-    // For ZIPs
-    const baseName = safePath ? `${hostname}-${safePath}` : hostname;
-    zipFilename = `${baseName}-${timestamp}`.substring(0, 200) + ".zip";
-  }
-
-  // Download images BEFORE processing HTML so we know the correct filenames
-  // (including proper extensions from Content-Type for extension-less URLs)
-  let imageFilenameMap = new Map<string, string>();
-  if (downloadOptions.downloadImages) {
-    imageFilenameMap = await processImages(data.images, storage, tabUrl, sendMessage);
-  }
-
-  if (downloadOptions.downloadHTML) {
-    sendMessage({ key: "status.creatingIndex" });
-
-    // Handle incremental assembly if job ID is provided
-    if (assemblyJobId) {
-      try {
-        const finalizeResult = finalizeIncrementalMerge(assemblyJobId);
-        
-        if (!finalizeResult.success) {
-          sendMessage(`Error: ${finalizeResult.error}`);
-          
-          // Fall back to regular HTML processing
-          await processRegularHtml(html, storage, tabUrl, sendMessage, imageFilenameMap);
-        } else {
-          // Use the assembled HTML
-          const finalHtml = finalizeResult.html;
-          if (finalHtml) {
-            await addIndexHtml(finalHtml, storage, tabUrl, imageFilenameMap);
-            sendMessage({ key: "status.htmlAssembled" });
-          } else if (finalizeResult.blob) {
-            // Handle blob case for large files
-            await addIndexHtmlFromBlob(finalizeResult.blob, storage);
-            sendMessage({ key: "status.largeHtmlAssembled" });
-          }
-        }
-      } catch {
-        sendMessage({ key: "status.htmlAssemblyError" });
-        await processRegularHtml(html, storage, tabUrl, sendMessage, imageFilenameMap);
-      }
-    } else {
-      // Regular HTML processing
-      await processRegularHtml(html, storage, tabUrl, sendMessage, imageFilenameMap);
-    }
-  }
-
-  if (downloadOptions.downloadAssets) {
-    await processAssets(data, storage, tabUrl, sendMessage);
-  }
-
-  if (downloadOptions.downloadDocuments) {
-    await processDocuments(data.documents, storage, tabUrl, sendMessage);
-  }
-
-  if (downloadOptions.downloadLinks) {
-    // Check if full scraping is enabled
-    if (downloadOptions.downloadLinksFullScraping && tabId) {
-      sendMessage({ key: "status.scrapingLinkedPages" });
-
-      // Create asset registry and register main page assets
-      const assetRegistry = new AssetRegistry();
-
-      // Register main page assets to avoid duplicate downloads.
-      // IMPORTANT: use fixFilename() so path keys match what linked-page-scraper.ts
-      // registers — without it, dedup checks always miss and linked pages re-download
-      // every main-page asset. (Bug C1 fix.)
-      for (const cssUrl of data.css) {
-        const fullUrl = new URL(cssUrl, tabUrl).href;
-        assetRegistry.register(fullUrl, `styles/${fixFilename(cssUrl)}`, 0);
-      }
-      for (const jsUrl of data.js) {
-        const fullUrl = new URL(jsUrl, tabUrl).href;
-        assetRegistry.register(fullUrl, `scripts/${fixFilename(jsUrl)}`, 0);
-      }
-      for (const imgUrl of data.images) {
-        const fullUrl = new URL(imgUrl, tabUrl).href;
-        assetRegistry.register(fullUrl, `images/${fixFilename(imgUrl)}`, 0);
-      }
-      for (const docUrl of data.documents) {
-        const fullUrl = new URL(docUrl, tabUrl).href;
-        assetRegistry.register(fullUrl, `documents/${fixFilename(docUrl)}`, 0);
-      }
-
-      // Create linked page scraper with options
-      const linkedPageScraper = new LinkedPageScraper(assetRegistry, {
-        maxPages: downloadOptions.linkedPagesMaxCount,
-        delayBetweenPages: downloadOptions.linkedPagesDelay,
-        includeExternal: downloadOptions.linkedPagesIncludeExternal,
-        pageTimeout: downloadOptions.linkedPagesTimeout,
-      });
-
-      // Guard text extraction with downloadContentAsText check
-      linkedPageScraper.setExtractText(!!downloadOptions.downloadContentAsText);
-
-      // Share the main page's image filename map so linked pages can reference
-      // already-downloaded images with correct filenames (including proper extensions)
-      setGlobalImageFilenameMap(imageFilenameMap);
-
-      // Queue all discovered links
-      setCurrentScraper(tabId, linkedPageScraper);
-      for (const link of data.links) {
-        try {
-          const fullUrl = new URL(link, tabUrl).href;
-          await linkedPageScraper.addToQueue({
-            url: fullUrl,
-            depth: 1,
-            parentUrl: tabUrl,
-            status: "queued",
-          });
-        } catch {
-          // Ignore invalid links
-        }
-      }
-
-      // Process the queue sequentially in the same tab
-      try {
-        const linkedPageText = await linkedPageScraper.processQueue(tabId, storage, sendMessage);
-        // Append linked page text to main content text for local mode
-        if (linkedPageText && downloadOptions.downloadContentAsText) {
-          data.text += linkedPageText;
-        }
-      } finally {
-        setCurrentScraper(tabId, null);
-      }
-    } else {
-      await processLinks(data.links, storage, tabUrl, sendMessage);
-    }
-  }
-
-  if (downloadOptions.downloadContentAsText) {
-    sendMessage({ key: "status.downloadingContent" });
-    await addContentText(data.text, storage);
-    sendMessage({ key: "status.contentDownloaded" });
-  }
-
-  try {
-    let blob: Blob | undefined;
-    let zipFilenameFinal = zipFilename;
-
-    if (downloadOptions.singleFile && !shouldUseServerMode(tabId)) {
-      // Single-file mode in local builds: fetch all resources and inline as base64.
-      // In server mode this branch is intentionally skipped — the server's zip_assembler.py
-      // handles single-file inlining on already-uploaded resources (task 6.5), preventing
-      // double-fetching and ensuring the merged (not raw-chunk) HTML is used. (Bug C4 fix.)
-      sendMessage({ key: "status.creatingIndex" });
-      const singleFileHtml = await convertToSingleFileHtml(html, tabUrl);
-      blob = new Blob([singleFileHtml], { type: "text/html;charset=UTF-8" });
-      zipFilenameFinal = zipFilename.replace(".zip", ".html");
-    } else {      
-      if (USE_INDEXEDDB) {
-        // Stream-based Split Zip Generation
-        sendMessage({ key: "status.creatingPackage" });
-        updateCheckpointPhase("packing");
-        sendMessage({ key: "status.generatingSplitZip" });
-
-        // Verify the side panel is available before starting multi-part download
-        const panelAlive = await isPanelAlive();
-        if (!panelAlive) {
-          throw new PanelUnavailableError(
-            "Extension panel is not available. Please keep the extension panel open during downloads."
-          );
-        }
-
-        const zip = new JSZip();
-
-        // Load all file metadata from IndexedDB
-        const files = await FileStore.getFileMetadata(sessionId);
-
-        // Add all files to JSZip as promises (lazy-ish loading)
-        for (const file of files) {
-          zip.file(file.path, FileStore.getFileBlobById(file.id).then(blob => {
-             if (!blob) throw new Error(`Blob not found for id ${file.id}`);
-             return blob;
-          }));
-        }
-
-        const generator = new SplitZipGenerator(zip); // Default 25MB chunks
-
-        // Handle parts as they are generated
-        generator.onPartReady(async (blob, partNumber, isLast, totalParts) => {
-          // Memory pressure check before downloading each part
-          const memoryStats = memoryManager.getMemoryStats();
-
-          // Pause if memory pressure is critical
-          if (memoryStats.memoryPressureLevel === MemoryPressureLevel.CRITICAL) {
-            sendMessage({ key: "status.waitingForCleanup", options: { part: partNumber } });
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            if (typeof (self as any).gc === 'function') {
-              (self as any).gc();
-            }
-          }
-
-          // Verify panel is still alive before each part
-          const stillAlive = await isPanelAlive();
-          if (!stillAlive) {
-            throw new PanelUnavailableError(
-              "Extension panel was closed during download. Please keep the extension panel open during downloads."
-            );
-          }
-
-          sendMessage({ key: "status.downloadingPart", options: { part: partNumber, total: totalParts } });
-          
-          let partFilename: string;
-          const nameWithoutExt = zipFilenameFinal.replace(/\.zip$/i, '');
-          
-          if (isLast) {
-             partFilename = `${nameWithoutExt}.zip`;
-          } else {
-             const ext = String(partNumber).padStart(2, '0');
-             partFilename = `${nameWithoutExt}.z${ext}`;
-          }
-
-          // Download via side panel (where URL.createObjectURL is available)
-          await downloadViaPanelAndWait(blob, partFilename, false, tabId);
-
-          // Add delay between parts to allow memory cleanup
-          if (!isLast) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            if (typeof (self as any).gc === 'function') {
-              (self as any).gc();
-            }
-          }
-        });
-
-        // Start generation
-        await generator.start();
-        
-        sendMessage({ key: "status.downloadCompleteZipInstruction" });
-        sendMessage({ key: "status.complete" });
-
-        blob = undefined; // Handled
-      } else {
-        // ... Legacy JSZip mode
-        // const partitions = await partitionFiles((storage as JSZipAdapter).zip);
-        // ... (keep legacy logic if needed, or just force single file)
-          const jsZipAdapter = storage as JSZipAdapter;
-          blob = await jsZipAdapter.zip.generateAsync({
-            type: "blob",
-            compression: "DEFLATE",
-            compressionOptions: { level: 6 },
-          });
-      }
-    }
-
-    if (blob) {
-      if (blob.size === 0) {
-        throw new Error("Blob is empty");
-      }
-
-      await initiateDownload(blob, zipFilenameFinal, (msg) => {
-          if (typeof msg === 'string') sendMessage(msg);
-          else sendMessage(msg);
-      }, tabId, downloadOptions.alwaysAskWhereToSave ?? true);
-    }
-    // If blob is undefined, multi-part download was already handled above
-
-  } catch (error) {    
-    // Mark session as failed if using IndexedDB
-    if (USE_INDEXEDDB) {
-      await SessionManager.failSession(currentSessionId, error instanceof Error ? error.message : 'Unknown error');
-    }
-    
-    // Handle panel unavailable errors with a user-friendly message
-    if (error instanceof PanelUnavailableError) {
-      sendMessage({ key: "app.panelUnavailable" });
-      throw error;
-    }
-    
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : { key: "status.packCreationError" };
-    // @ts-ignore - sendMessage accepts object but TS might benefit from explicit cast/check if needed, but signature matches
-    sendMessage(errorMessage);
-    throw error; // Re-throw to allow calling code to handle the error
-  } finally {
-    // Complete session if using IndexedDB
-    if (USE_INDEXEDDB) {
-      try {
-        const session = await SessionManager.getSession(currentSessionId);
-        if (session && session.status !== 'failed') {
-          await SessionManager.completeSession(currentSessionId);
-        }
-        // Cleanup files after successful download
-        await FileStore.deleteDownload(currentSessionId);
-      } catch {
-        // ignore
-      }
-    }
-  }
-
-  return data.links;
-  
-  } catch (outerError) {
-    // Handle errors from the main download logic    
-    if (USE_INDEXEDDB) {
-      await SessionManager.failSession(currentSessionId, outerError instanceof Error ? outerError.message : 'Unknown error');
-    }
-    
-    throw outerError;
-  } finally {
-    // Final cleanup for outer try block
-  }
-}
-
 // ---------------------------------------------------------------------------
-// Server-mode download flow (tasks 12.1–12.9)
+// Server-mode download flow
 // ---------------------------------------------------------------------------
 
 /**
  * (12.1–12.9) Server-mode download flow.
  *
- * Replaces the local-mode pipeline (IndexedDB → JSZip → panel-download)
- * with: HTML chunk upload → resource upload → filename map upload →
+ * Server-mode download pipeline:
+ * HTML chunk upload → resource upload → filename map upload →
  * scrape-complete → finalize → poll → chrome.downloads.download.
  *
  * On server failure (unavailable, auth error, assembly timeout/failed),
@@ -831,7 +295,7 @@ async function executeDownloadServerMode(
 
         const assetRegistry = new AssetRegistry();
 
-        // Register main page assets (same dedup logic as local mode)
+        // Register main page assets for deduplication
         for (const cssUrl of data.css) {
           const fullUrl = new URL(cssUrl, tabUrl).href;
           assetRegistry.register(fullUrl, `styles/${fixFilename(cssUrl)}`, 0);
@@ -855,7 +319,7 @@ async function executeDownloadServerMode(
           delayBetweenPages: downloadOptions.linkedPagesDelay,
           includeExternal: downloadOptions.linkedPagesIncludeExternal,
           pageTimeout: downloadOptions.linkedPagesTimeout,
-          serverSessionId: shouldUseServerMode(tabId) ? sessionId : undefined,
+          serverSessionId: sessionId,
         });
 
         // Guard text extraction with downloadContentAsText check
@@ -897,7 +361,19 @@ async function executeDownloadServerMode(
           setCurrentScraper(tabId, null);
         }
       } else {
-        await processLinks(data.links, storage, tabUrl, sendMessage);
+        // Non-full-scraping: fetch linked pages and upload to server
+        sendMessage({ key: "status.downloadingLinks", options: { count: data.links.length } });
+        for (let i = 0; i < data.links.length; i++) {
+          try {
+            const linkUrl = new URL(data.links[i], tabUrl).href;
+            const resp = await fetch(linkUrl, { signal: getDownloadAbortController(tabId!)?.signal });
+            const linkHtml = await resp.text();
+            await serverClient.uploadHtmlChunk(sessionId, linkHtml, i, "linked", linkUrl);
+          } catch {
+            // skip failed linked pages
+          }
+        }
+        sendMessage({ key: "status.linksDownloaded" });
       }
     }
 
@@ -1004,14 +480,11 @@ async function executeDownloadServerMode(
       sessionId,
       tabUrl,
       downloadOptions.singleFile,
-      // Local fallback callback — returns true if user chose local mode
+      // Fallback callback — returns true if user chose an alternative (currently unused)
       async (reason, errorMessage) => {
         sendMessage({ key: "status.serverFallbackOffer", options: { reason, errorMessage } });
         // The UI layer (task 15.5) will show a dialog. For now, we
         // send the message and return false (don't fall back automatically).
-        // The user must explicitly choose local fallback via the UI.
-        // When they do, a SERVER_LOCAL_FALLBACK message is sent (task 13.1),
-        // which re-runs the download in local mode.
         return false;
       },
       // Assembly status callback — forward to UI for progress display

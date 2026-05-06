@@ -4,15 +4,10 @@
  */
 
 import { memoryManager } from "../utils/MemoryManager";
-import {
-  cleanupOldBlobs,
-  cleanupDownloadBlobs,
-} from "../common/blobStorage";
 
 import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
 import { sendMessageToPanel, deleteServerSessionState } from "./message";
 import { messageActions } from "../common/message";
-import { DEFAULT_MEMORY_LIMITS } from "../utils/memoryLimits";
 import {
   abortActiveDownload,
   setDownloadAbortController,
@@ -21,7 +16,6 @@ import {
   removeDownloadsForTab,
 } from "./download-state";
 import { stopScraping, deleteScraper } from "./scraper-state";
-import { clearForceLocalMode } from "./download-core";
 
 // Type declarations for service worker events
 declare global {
@@ -89,9 +83,6 @@ async function performStartupCleanup(): Promise<void> {
       await handleInterruptedDownload();
     }
 
-    // Clean up old blobs
-    await cleanupOldBlobs();
-
     // Perform memory cleanup
     await memoryManager.forceCleanup();
   } catch {
@@ -112,9 +103,6 @@ async function handleInterruptedDownload(): Promise<void> {
 
     // Force cleanup to free any stuck resources
     await memoryManager.forceCleanup();
-
-    // Clean up any orphaned blobs
-    await cleanupOldBlobs(0);
 
     // Notify sidepanel about the interrupted download.
     // If the panel isn't open, we keep the checkpoint so
@@ -160,9 +148,6 @@ function performEmergencyCleanup(): void {
  */
 async function performMaintenanceCleanup(): Promise<void> {
   try {
-    // Clean up old blobs
-    await cleanupOldBlobs();
-
     // Memory cleanup
     await memoryManager.forceCleanup();
   } catch {
@@ -182,7 +167,7 @@ function setupPeriodicCleanup(): void {
 
       // Only perform cleanup if memory pressure is medium or higher
       if (memoryStats.memoryPressureLevel !== "low") {
-        await cleanupOldBlobs();
+        await memoryManager.forceCleanup();
       }
     } catch {
       // ignore
@@ -216,7 +201,6 @@ function setupMemoryPressureMonitoring(): void {
 async function handleCriticalMemoryPressure(): Promise<void> {
   try {
     await memoryManager.forceCleanup();
-    await cleanupOldBlobs(DEFAULT_MEMORY_LIMITS.MAX_BLOB_AGE / 4);
 
     // Suggest garbage collection if available
     if (typeof gc !== "undefined") {
@@ -242,7 +226,6 @@ function setupTabLifecycleCleanup(): void {
     stopScraping(tabId);
     deleteScraper(tabId);
     deleteServerSessionState(tabId);
-    clearForceLocalMode(tabId);
 
     // Remove from active download tracking
     setTabDownloadComplete(tabId);
@@ -253,9 +236,8 @@ function setupTabLifecycleCleanup(): void {
 /**
  * Cleanup resources for a completed download
  */
-export async function cleanupAfterDownload(downloadId: string): Promise<void> {
+export async function cleanupAfterDownload(_downloadId: string): Promise<void> {
   try {
-    await cleanupDownloadBlobs(downloadId);
     await memoryManager.forceCleanup();
   } catch {
     // ignore

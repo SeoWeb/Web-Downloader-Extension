@@ -7,7 +7,6 @@ import {
 import { mergeDownloadResponse } from "../utils/downloadUtils";
 import { sendMessageToBackground } from "../../client/message";
 import { messageActions } from "../../common/message";
-import { IS_SERVER_MODE } from "../../common/server-mode";
 
 export interface DownloadOptions {
   downloadHTML: boolean;
@@ -107,9 +106,9 @@ export function useScrapingDownloader({
       return;
     }
 
-    // (13.3) In server mode, create a server session before the first scroll
+    // (13.3) Create a server session before the first scroll
     // so that HTML chunks can be streamed in real-time.
-    if (IS_SERVER_MODE && !serverSessionCreatedRef.current) {
+    if (!serverSessionCreatedRef.current) {
       try {
         const result = await sendMessageToBackground(
           messageActions.SERVER_CREATE_SESSION,
@@ -138,10 +137,9 @@ export function useScrapingDownloader({
     const response = await startScrolling();
 
     if (response?.height && response.html) {
-      // (13.3) In server mode, stream the HTML chunk to the server immediately
-      // instead of accumulating it in downloadResponse. This prevents memory
-      // buildup for long pages with many scroll iterations.
-      if (IS_SERVER_MODE && serverSessionIdRef.current) {
+      // (13.3) Stream the HTML chunk to the server immediately
+      // instead of accumulating it in downloadResponse.
+      if (serverSessionIdRef.current) {
         try {
           await sendMessageToBackground(
             messageActions.SERVER_UPLOAD_HTML_CHUNK,
@@ -167,7 +165,7 @@ export function useScrapingDownloader({
       setDownloadResponse((prev) => {
         // (13.3) In server mode, don't accumulate HTML — only track scroll metadata.
         // The HTML has already been streamed to the server.
-        const data = IS_SERVER_MODE && serverSessionIdRef.current
+        const data = serverSessionIdRef.current
           ? { top: response.top, height: response.height, viewportHeight: response.viewportHeight }
           : mergeDownloadResponse(prev, response);
 
@@ -233,7 +231,7 @@ export function useScrapingDownloader({
       if (stoppedByUserRef.current) {
         stoppedByUserRef.current = false;
 
-        const htmlForStopDownload = IS_SERVER_MODE && serverSessionIdRef.current
+        const htmlForStopDownload = serverSessionIdRef.current
           ? lastHtmlRef.current
           : downloadResponse?.html;
 
@@ -242,7 +240,7 @@ export function useScrapingDownloader({
           handleStartDownload(tabId, htmlForStopDownload, tabUrl, stopOptions, (msg) =>
             setMessages((prev) => [...prev, msg]),
           ).then(() => {
-            if (IS_SERVER_MODE && serverSessionIdRef.current) {
+            if (serverSessionIdRef.current) {
               setServerStreamingDone(true);
             }
           }).catch(() => {
@@ -257,17 +255,15 @@ export function useScrapingDownloader({
       // the server during scrolling. We pass the LAST scroll response's HTML
       // to startDownload so that download-core.ts can extract resource URLs
       // from it. The actual HTML content is already on the server.
-      //
-      // In local mode, the full accumulated HTML is in downloadResponse.html.
-      const htmlForDownload = IS_SERVER_MODE && serverSessionIdRef.current
+      const htmlForDownload = serverSessionIdRef.current
         ? lastHtmlRef.current
         : downloadResponse?.html;
 
       if (htmlForDownload) {
         startDownload(htmlForDownload)
           .then(() => {
-            // (13.3) Mark streaming as done in server mode
-            if (IS_SERVER_MODE && serverSessionIdRef.current) {
+            // (13.3) Mark streaming as done
+            if (serverSessionIdRef.current) {
               setServerStreamingDone(true);
             }
             // Don't reset downloadResponse here - keep it to maintain filter hidden state

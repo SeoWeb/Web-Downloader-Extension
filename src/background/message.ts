@@ -1,9 +1,6 @@
 import { sendMessage } from "../common/chrome";
 import { MessageAction, messageActions } from "../common/message";
-import { IS_SERVER_MODE } from "../common/server-mode";
 import { scrollDownAndScrape, startDownload } from "./jobs";
-import { downloadResourcesWithIncrementalAssembly } from "./download";
-import { mergeHtmlIncremental } from "./merge-html";
 import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
 import { abortActiveDownload } from "./download-state";
 import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
@@ -138,11 +135,7 @@ export async function messageWorker(
       // Initialize differential scraping and return assembly job ID
       const assemblyJobId = `assembly-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       try {
-        // (12.3) In server mode, create a server session before scrolling
-        // starts so that SCROLL_AND_EXTRACT_DIFF can upload HTML chunks
-        // in real-time. Uses shared createServerSession helper (task 13.2
-        // SERVER_CREATE_SESSION uses the same logic).
-        if (IS_SERVER_MODE && data.tabUrl) {
+        if (data.tabUrl) {
           const result = await createServerSession(data.tabUrl, {
             singleFile: data.downloadOptions?.singleFile ?? false,
             retentionDays: 1,
@@ -152,10 +145,6 @@ export async function messageWorker(
           }
         }
 
-        await mergeHtmlIncremental(data.html, "", assemblyJobId, {
-          useIncrementalAssembly: true,
-          jobId: assemblyJobId,
-        });
         return {
           success: true,
           assemblyJobId,
@@ -168,12 +157,9 @@ export async function messageWorker(
       }
 
     case messageActions.SCROLL_AND_EXTRACT_DIFF:
-      // Process a new content chunk
+      // Upload HTML chunk to the server session.
       try {
-        // (12.3) In server mode, upload each HTML chunk to the server
-        // instead of merging locally. This streams the page content to
-        // the server in real-time as the user scrolls.
-        if (IS_SERVER_MODE && data.tabId) {
+        if (data.tabId) {
           const sessionState = getServerSessionState(data.tabId);
           if (sessionState.sessionId) {
             await serverClient.uploadHtmlChunk(
@@ -181,29 +167,13 @@ export async function messageWorker(
               data.htmlChunk,
               sessionState.scrollIndex++,
               "main",
-            // Do NOT send pageUrl for main pages — the server uses the
-            // absence of pageUrl to set page_url_hash="main", which the
-            // assembler looks up as merge_results.get("main").
-            undefined,
-          );
-          return {
-            success: true,
-            assemblyJobId: data.assemblyJobId,
-            chunkProcessed: true,
-          };
+              // Do NOT send pageUrl for main pages — the server uses the
+              // absence of pageUrl to set page_url_hash="main", which the
+              // assembler looks up as merge_results.get("main").
+              undefined,
+            );
           }
         }
-
-        // Local mode: merge incrementally
-        await mergeHtmlIncremental(
-          "", // Empty base HTML since we're adding to existing job
-          data.htmlChunk,
-          data.assemblyJobId,
-          {
-            useIncrementalAssembly: true,
-            jobId: data.assemblyJobId,
-          }
-        );
         return {
           success: true,
           assemblyJobId: data.assemblyJobId,
@@ -215,20 +185,6 @@ export async function messageWorker(
           error: error instanceof Error ? error.message : "Unknown error",
         };
       }
-
-    case messageActions.START_INCREMENTAL_DOWNLOAD:
-      // Start download with incremental assembly
-      return await downloadResourcesWithIncrementalAssembly(
-        data.assemblyJobId,
-        data.tabUrl,
-        data.downloadOptions,
-        (message: string | { key: string; options?: any }) =>
-          addMessage({
-            action: messageActions.PANEL_MESSAGE,
-            data: { message },
-          }),
-        data.tabId,
-      );
 
     case messageActions.CHECK_ONLINE_STATUS:
       return true;
@@ -302,14 +258,14 @@ export async function messageWorker(
     // Server-mode message actions (task 13.2)
     //
     // These actions provide direct server API access from the UI,
-    // enabling health checks, session status polling, local fallback
-    // triggering, and explicit server session management.
+    // enabling health checks, session status polling, and explicit
+    // server session management.
     // ------------------------------------------------------------------
 
     case messageActions.SERVER_CREATE_SESSION:
       // Create a new server session. Used when the UI needs to
-      // explicitly create a session (e.g., after local fallback
-      // cancellation, or to pre-create a session for a new download).
+      // explicitly create a session (e.g., to pre-create a session
+      // for a new download).
       // Delegates to shared createServerSession helper (unified with
       // INITIALIZE_DIFFERENTIAL_SCRAPING session creation).
       return await createServerSession(data.url, data.options, data.tabId, data.setActive ?? true);
@@ -461,42 +417,6 @@ export async function messageWorker(
       try {
         const result = await serverClient.checkHealth();
         return { success: true, result };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
-
-    case messageActions.SERVER_LOCAL_FALLBACK:
-      // User chose to fall back to local mode after server failure.
-      // Clear the active server session and restart the download in
-      // local mode (IndexedDB path). The UI should have already shown
-      // the re-scrape warning.
-      try {
-        if (!data.html) {
-          return {
-            success: false,
-            error: "No HTML content available for local fallback",
-          };
-        }
-
-        // Clear the active server session for this tab
-        setActiveServerSession(data.tabId, null);
-        // Re-run the download in local mode by calling startDownload
-        // with server mode temporarily disabled. The download-core.ts
-        // will use IndexedDB instead of ServerStorageAdapter.
-        return await startDownload(
-          data.html,
-          data.tabUrl,
-          { ...data.downloadOptions, _forceLocal: true },
-          (message: string | { key: string; options?: any }) =>
-            addMessage({
-              action: messageActions.PANEL_MESSAGE,
-              data: { message },
-            }),
-          data.tabId,
-        );
       } catch (error) {
         return {
           success: false,

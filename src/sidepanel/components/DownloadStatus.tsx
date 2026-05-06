@@ -42,12 +42,10 @@ interface DownloadStatusProps {
   downloadResponse: ScrollingResponse | null;
   onStopScraping?: () => void;
   setIsPaused: (value: boolean) => void;
-  /** (15.1–15.7) Server-mode state; only passed when IS_SERVER_MODE is true. */
+  /** (15.1–15.7) Server-mode state. */
   serverModeState?: ServerModeState;
   /** (15.5) Retry the server download. */
   onRetryServer?: () => void;
-  /** (15.5) Fall back to local download mode. */
-  onLocalFallback?: () => void;
   /** (15.3) Trigger download from server when ZIP is ready. */
   onDownloadFromServer?: () => void;
   /** Interrupt data: non-null when a download was interrupted by SW restart. */
@@ -122,7 +120,6 @@ export function DownloadStatus({
   setIsPaused,
   serverModeState,
   onRetryServer,
-  onLocalFallback,
   onDownloadFromServer,
   interruptData,
   onRestartDownload,
@@ -232,23 +229,7 @@ export function DownloadStatus({
                 {t('status.retryServer')}
               </button>
             )}
-            {serverError?.canFallback && onLocalFallback && (
-              <button
-                onClick={onLocalFallback}
-                className="btn-secondary w-full flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                {t('status.downloadLocally')}
-              </button>
-            )}
           </div>
-
-          {/* Re-scrape warning for local fallback */}
-          {serverError?.canFallback && (
-            <p className="text-xs text-amber-600 bg-amber-50/50 border border-amber-100 rounded p-2">
-              {t('status.localFallbackWarning')}
-            </p>
-          )}
         </div>
       </div>
     );
