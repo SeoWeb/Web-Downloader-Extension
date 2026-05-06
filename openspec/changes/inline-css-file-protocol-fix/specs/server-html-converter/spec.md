@@ -1,30 +1,30 @@
 ## ADDED Requirements
 
-### Requirement: CSS inlining function
-The HTML converter service SHALL provide an `inline_css_into_html()` function that reads CSS files from disk and replaces `<link rel="stylesheet">` elements with inline `<style>` tags containing the CSS content.
+### Requirement: CSS inlining during ZIP assembly
+The server SHALL inline CSS content into the main HTML file during ZIP assembly by replacing each `<link rel="stylesheet" href="./styles/...">` element with a `<style>` element containing the CSS file content read from disk.
 
-#### Scenario: Inline all stylesheets into HTML
-- **WHEN** `inline_css_into_html()` is called with an HTML string, storage root, session ID, and filename map
-- **THEN** all `<link rel="stylesheet">` elements with resolvable CSS files are replaced with `<style>` tags
-- **AND** CSS `url()` paths are adjusted based on the target path prefix (`./` for root, `../` for linked pages)
+#### Scenario: Stylesheet inlined into main page HTML
+- **WHEN** the ZIP assembler processes a multi-file (non-single-file) session
+- **THEN** each `<link rel="stylesheet">` in `index.html` is replaced with a `<style>` tag containing the CSS content
+- **AND** the CSS content has `url()` paths adjusted from `../images/` to `./images/` (and similarly for `../fonts/`)
+- **AND** CSS files are resolved via the `local_path_to_storage` mapping to handle UUID-based storage
 
-### Requirement: Extensionless stylesheet URL fallback
-The `_convert_stylesheets()` function SHALL generate a filename with `.css` extension for URLs that have no file extension, instead of leaving them unchanged.
+#### Scenario: Stylesheet inlined into linked page HTML
+- **WHEN** the ZIP assembler processes linked pages in `pages/` directory
+- **THEN** each `<link rel="stylesheet">` in the linked page is replaced with a `<style>` tag containing the CSS content
+- **AND** the CSS content preserves `../images/` paths (since linked pages are in `pages/` subdirectory)
 
-#### Scenario: Stylesheet URL with no file extension
-- **WHEN** a `<link rel="stylesheet" href="/styles/main">` URL has no file extension
-- **THEN** the converter generates a fallback filename like `main.css` and rewrites the href to `./styles/main.css`
+### Requirement: CSS files still included in ZIP
+The server SHALL continue writing CSS files to the `styles/` directory in the ZIP, even after inlining them into HTML, for completeness and fallback purposes.
 
-### Requirement: Extensionless script URL fallback
-The `_convert_scripts()` function SHALL generate a filename with `.js` extension for URLs that have no file extension, instead of leaving them unchanged.
+#### Scenario: CSS files present in ZIP alongside inline styles
+- **WHEN** ZIP assembly completes for a multi-file session
+- **THEN** the ZIP contains both inline `<style>` tags in `index.html` AND the original CSS files in `styles/` directory
 
-#### Scenario: Script URL with no file extension
-- **WHEN** a `<script src="/scripts/client">` URL has no file extension
-- **THEN** the converter generates a fallback filename like `client.js` and rewrites the src to `./scripts/client.js`
+### Requirement: Missing CSS files handled gracefully
+When a CSS file referenced by a `<link>` tag cannot be found on disk, the inlining function SHALL leave the `<link>` tag unchanged and log a warning.
 
-### Requirement: Undefined prefix stripping
-The `_convert_stylesheets()` and `_convert_scripts()` functions SHALL strip a leading `undefined` prefix from filenames that result from website JS variables being undefined at capture time.
-
-#### Scenario: Script URL with undefined prefix
-- **WHEN** a `<script src="undefinedbrowser-perf.8417c6bba72228fa2e29.js">` has a filename starting with "undefined"
-- **THEN** the converter strips the "undefined" prefix, resulting in `./scripts/browser-perf.8417c6bba72228fa2e29.js`
+#### Scenario: Referenced CSS file missing from storage
+- **WHEN** a `<link rel="stylesheet" href="./styles/missing.css">` references a file that does not exist on disk
+- **THEN** the `<link>` tag is preserved in the HTML as-is
+- **AND** a warning is logged

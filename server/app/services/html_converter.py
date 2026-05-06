@@ -1116,6 +1116,7 @@ def convert_html_to_single_file(
     storage_root: str,
     session_id: str,
     filename_map: Optional[dict[str, str]] = None,
+    local_path_to_storage: Optional[dict[str, str]] = None,
 ) -> str:
     """Produce a self-contained HTML file by inlining all resources as base64.
 
@@ -1125,7 +1126,7 @@ def convert_html_to_single_file(
     NOTE: For memory-efficient assembly, prefer write_single_file_to_disk()
     which writes output incrementally instead of returning a giant string.
     """
-    soup = _build_single_file_soup(html_string, storage_root, session_id, filename_map)
+    soup = _build_single_file_soup(html_string, storage_root, session_id, filename_map, local_path_to_storage)
     return str(soup)
 
 
@@ -1136,6 +1137,7 @@ def write_single_file_to_disk(
     session_id: str,
     output_path: str,
     filename_map: Optional[dict[str, str]] = None,
+    local_path_to_storage: Optional[dict[str, str]] = None,
 ) -> None:
     """Write a self-contained HTML file to disk with streaming writes.
 
@@ -1155,8 +1157,9 @@ def write_single_file_to_disk(
         session_id: Session identifier.
         output_path: File path to write the output HTML.
         filename_map: Mapping of original URLs → local filenames.
+        local_path_to_storage: Mapping of local_path → actual disk path.
     """
-    soup = _build_single_file_soup(html_string, storage_root, session_id, filename_map)
+    soup = _build_single_file_soup(html_string, storage_root, session_id, filename_map, local_path_to_storage)
 
     # Free the original HTML string — no longer needed
     del html_string
@@ -1188,6 +1191,7 @@ def _build_single_file_soup(
     storage_root: str,
     session_id: str,
     filename_map: Optional[dict[str, str]] = None,
+    local_path_to_storage: Optional[dict[str, str]] = None,
 ) -> BeautifulSoup:
     """Parse HTML and inline all resources as base64 data URIs.
 
@@ -1202,7 +1206,7 @@ def _build_single_file_soup(
         src = img.get("src", "")
         if src.startswith("data:"):
             continue
-        data_uri = _read_resource_as_data_uri(src, storage_root, session_id, filename_map)
+        data_uri = _read_resource_as_data_uri(src, storage_root, session_id, filename_map, local_path_to_storage)
         if data_uri:
             img["src"] = data_uri
 
@@ -1211,17 +1215,17 @@ def _build_single_file_soup(
         for attr in LAZY_LOAD_ATTRS:
             val = img.get(attr)
             if val and isinstance(val, str) and not val.startswith("data:"):
-                data_uri = _read_resource_as_data_uri(val, storage_root, session_id, filename_map)
+                data_uri = _read_resource_as_data_uri(val, storage_root, session_id, filename_map, local_path_to_storage)
                 if data_uri:
                     img[attr] = data_uri
 
     # Inline stylesheets: <link rel="stylesheet"> → <style>
     for link in soup.find_all("link", rel="stylesheet"):
         href = link.get("href", "")
-        css_content = _read_text_resource(href, storage_root, session_id)
+        css_content = _read_text_resource(href, storage_root, session_id, local_path_to_storage)
         if css_content is not None:
             # Rewrite url() references in the CSS content to base64
-            css_content = _inline_css_urls(css_content, storage_root, session_id, filename_map)
+            css_content = _inline_css_urls(css_content, storage_root, session_id, filename_map, local_path_to_storage)
             style_tag = soup.new_tag("style")
             style_tag.string = css_content
             link.replace_with(style_tag)
@@ -1229,7 +1233,7 @@ def _build_single_file_soup(
     # Inline scripts: <script src> → <script> with content
     for script in soup.find_all("script", src=True):
         src = script.get("src", "")
-        js_content = _read_text_resource(src, storage_root, session_id)
+        js_content = _read_text_resource(src, storage_root, session_id, local_path_to_storage)
         new_script = soup.new_tag("script")
         new_script.string = js_content or ""
         script.replace_with(new_script)
@@ -1240,21 +1244,21 @@ def _build_single_file_soup(
         if isinstance(obj_type, str) and obj_type.startswith("image/"):
             data = obj.get("data", "")
             if data and not data.startswith("data:"):
-                data_uri = _read_resource_as_data_uri(data, storage_root, session_id, filename_map)
+                data_uri = _read_resource_as_data_uri(data, storage_root, session_id, filename_map, local_path_to_storage)
                 if data_uri:
                     obj["data"] = data_uri
 
     # Inline background-image URLs in <style> tags
     for style_tag in soup.find_all("style"):
         css = style_tag.string or ""
-        css = _inline_css_urls(css, storage_root, session_id, filename_map)
+        css = _inline_css_urls(css, storage_root, session_id, filename_map, local_path_to_storage)
         style_tag.string = css
 
     # Inline background-image URLs in inline styles
     for element in soup.find_all(attrs={"style": True}):
         style = element.get("style", "")
         if "url(" in style:
-            updated = _inline_style_bg_images(style, storage_root, session_id, filename_map)
+            updated = _inline_style_bg_images(style, storage_root, session_id, filename_map, local_path_to_storage)
             element["style"] = updated
 
     return soup
@@ -1265,6 +1269,7 @@ def _inline_css_urls(
     storage_root: str,
     session_id: str,
     filename_map: Optional[dict[str, str]] = None,
+    local_path_to_storage: Optional[dict[str, str]] = None,
 ) -> str:
     """Inline all url() references in CSS content as base64 data URIs."""
 
@@ -1274,7 +1279,7 @@ def _inline_css_urls(
         if url.startswith("data:"):
             return full_match
 
-        data_uri = _read_resource_as_data_uri(url, storage_root, session_id, filename_map)
+        data_uri = _read_resource_as_data_uri(url, storage_root, session_id, filename_map, local_path_to_storage)
         if data_uri:
             return full_match.replace(url, data_uri)
         return full_match
@@ -1287,6 +1292,7 @@ def _inline_style_bg_images(
     storage_root: str,
     session_id: str,
     filename_map: Optional[dict[str, str]] = None,
+    local_path_to_storage: Optional[dict[str, str]] = None,
 ) -> str:
     """Inline url() references in an inline style attribute as base64 data URIs."""
 
@@ -1295,7 +1301,7 @@ def _inline_style_bg_images(
         if url.startswith("data:"):
             return match.group(0)
 
-        data_uri = _read_resource_as_data_uri(url, storage_root, session_id, filename_map)
+        data_uri = _read_resource_as_data_uri(url, storage_root, session_id, filename_map, local_path_to_storage)
         if data_uri:
             return match.group(0).replace(url, data_uri)
         return match.group(0)
@@ -1304,12 +1310,19 @@ def _inline_style_bg_images(
 
 
 def _resolve_local_path(
-    url: str, storage_root: str, session_id: str, filename_map: Optional[dict[str, str]] = None
+    url: str, storage_root: str, session_id: str, filename_map: Optional[dict[str, str]] = None,
+    local_path_to_storage: Optional[dict[str, str]] = None,
 ) -> Optional[str]:
     """Resolve a converted local path to an actual file path on disk.
 
     Given a path like "./images/photo.jpg" or "../fonts/roboto.woff2",
     find the actual file in the session's storage directory.
+
+    Resources are stored with UUID filenames on disk. The
+    local_path_to_storage mapping translates logical paths (e.g.,
+    ``styles/main.css``) to actual disk paths (e.g.,
+    ``resources/abc-123``). Without it, only human-readable paths work
+    (used in tests).
     """
     # Strip leading ./ and ../
     clean = url
@@ -1318,12 +1331,19 @@ def _resolve_local_path(
     while clean.startswith("../"):
         clean = clean[3:]
 
-    # Try direct path
+    # Primary lookup: explicit local_path → storage_path map
+    # Handles UUID-based storage where files are stored as resources/<uuid>
+    if local_path_to_storage:
+        disk_path = local_path_to_storage.get(clean)
+        if disk_path and os.path.isfile(disk_path):
+            return disk_path
+
+    # Fallback: direct path (works for tests with human-readable filenames)
     full_path = os.path.join(storage_root, session_id, "resources", clean)
     if os.path.isfile(full_path):
         return full_path
 
-    # Try with filename map reverse lookup — find the local_path from the map value
+    # Fallback: filename map reverse lookup
     if filename_map:
         for orig_url, local_name in filename_map.items():
             # local_name could be like "images/photo.jpg"
@@ -1340,9 +1360,10 @@ def _read_resource_as_data_uri(
     storage_root: str,
     session_id: str,
     filename_map: Optional[dict[str, str]] = None,
+    local_path_to_storage: Optional[dict[str, str]] = None,
 ) -> Optional[str]:
     """Read a resource file from disk and return it as a base64 data URI."""
-    path = _resolve_local_path(url, storage_root, session_id, filename_map)
+    path = _resolve_local_path(url, storage_root, session_id, filename_map, local_path_to_storage)
     if not path:
         return None
 
@@ -1364,9 +1385,10 @@ def _read_text_resource(
     url: str,
     storage_root: str,
     session_id: str,
+    local_path_to_storage: Optional[dict[str, str]] = None,
 ) -> Optional[str]:
     """Read a text resource file from disk."""
-    path = _resolve_local_path(url, storage_root, session_id)
+    path = _resolve_local_path(url, storage_root, session_id, local_path_to_storage=local_path_to_storage)
     if not path:
         return None
 
@@ -1488,6 +1510,7 @@ def inline_css_into_html(
     session_id: str,
     filename_map: Optional[dict[str, str]] = None,
     path: str = "./",
+    local_path_to_storage: Optional[dict[str, str]] = None,
 ) -> str:
     """Replace <link rel="stylesheet"> with inline <style> tags for file:// compatibility.
 
@@ -1500,6 +1523,7 @@ def inline_css_into_html(
         session_id: Session identifier.
         filename_map: Mapping of original URLs → local filenames (optional).
         path: Path prefix used in the HTML ("./" for root, "../" for linked pages).
+        local_path_to_storage: Mapping of local_path → actual disk path (optional).
 
     Returns:
         Modified HTML with stylesheets inlined as <style> tags.
@@ -1520,7 +1544,7 @@ def inline_css_into_html(
             continue
 
         # Read the CSS file from disk
-        css_content = _read_text_resource(href, storage_root, session_id)
+        css_content = _read_text_resource(href, storage_root, session_id, local_path_to_storage)
         if css_content is None:
             logger.warning("CSS file not found for inlining, keeping <link>: %s", href)
             continue
@@ -1603,10 +1627,11 @@ class HtmlConverterService:
         storage_root: str,
         session_id: str,
         filename_map: Optional[dict[str, str]] = None,
+        local_path_to_storage: Optional[dict[str, str]] = None,
     ) -> str:
         """Produce self-contained HTML with all resources inlined as base64."""
         return convert_html_to_single_file(
-            html_string, tab_url, storage_root, session_id, filename_map
+            html_string, tab_url, storage_root, session_id, filename_map, local_path_to_storage
         )
 
     def write_single_file_to_disk(
@@ -1617,11 +1642,12 @@ class HtmlConverterService:
         session_id: str,
         output_path: str,
         filename_map: Optional[dict[str, str]] = None,
+        local_path_to_storage: Optional[dict[str, str]] = None,
     ) -> None:
         """Write self-contained HTML to disk with streaming writes."""
         write_single_file_to_disk(
             html_string, tab_url, storage_root, session_id,
-            output_path, filename_map,
+            output_path, filename_map, local_path_to_storage,
         )
 
     def inline_css_into_html(
@@ -1631,9 +1657,10 @@ class HtmlConverterService:
         session_id: str,
         filename_map: Optional[dict[str, str]] = None,
         path: str = "./",
+        local_path_to_storage: Optional[dict[str, str]] = None,
     ) -> str:
         """Replace <link rel="stylesheet"> with inline <style> tags."""
-        return inline_css_into_html(html_string, storage_root, session_id, filename_map, path)
+        return inline_css_into_html(html_string, storage_root, session_id, filename_map, path, local_path_to_storage)
 
 
 # ---------------------------------------------------------------------------

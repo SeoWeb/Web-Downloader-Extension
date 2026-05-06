@@ -20,6 +20,7 @@ from app.services.html_converter import (
     convert_html_for_linked_page,
     _convert_css_file_impl as convert_css_file,
     _lookup_content_type,
+    _resolve_local_path,
     fix_filename,
     generate_image_filename,
     generate_page_filename,
@@ -1167,6 +1168,129 @@ def test_extensionless_script_linked_page():
 
 
 # ---------------------------------------------------------------------------
+# UUID-based storage path resolution (inline-css-file-protocol-fix)
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_local_path_with_uuid_map():
+    """_resolve_local_path resolves UUID-stored file via mapping."""
+    import uuid
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        # Create a UUID-named file on disk
+        uuid_name = str(uuid.uuid4())
+        uuid_path = os.path.join(resources_dir, uuid_name)
+        with open(uuid_path, "w") as f:
+            f.write("body { color: red; }")
+
+        # Mapping: local_path → actual disk path
+        mapping = {"styles/main.css": uuid_path}
+
+        result = _resolve_local_path(
+            "./styles/main.css", tmp, sid, local_path_to_storage=mapping
+        )
+        assert result == uuid_path, f"Expected {uuid_path}, got: {result}"
+
+
+def test_resolve_local_path_without_map_falls_back():
+    """_resolve_local_path falls back to direct path when no mapping."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        resources_dir = os.path.join(tmp, sid, "resources", "styles")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        # Create file at human-readable path
+        file_path = os.path.join(resources_dir, "main.css")
+        with open(file_path, "w") as f:
+            f.write("body { color: red; }")
+
+        result = _resolve_local_path(
+            "./styles/main.css", tmp, sid, local_path_to_storage=None
+        )
+        assert result is not None, "Should find file via direct path fallback"
+        assert result.endswith("styles/main.css"), f"Got: {result}"
+
+
+def test_resolve_local_path_uuid_map_takes_priority():
+    """UUID mapping takes priority over direct path."""
+    import uuid
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        # Create UUID-named file
+        uuid_name = str(uuid.uuid4())
+        uuid_path = os.path.join(resources_dir, uuid_name)
+        with open(uuid_path, "w") as f:
+            f.write("uuid content")
+
+        # Also create human-readable file (should NOT be returned)
+        styles_dir = os.path.join(resources_dir, "styles")
+        os.makedirs(styles_dir, exist_ok=True)
+        with open(os.path.join(styles_dir, "main.css"), "w") as f:
+            f.write("human content")
+
+        mapping = {"styles/main.css": uuid_path}
+        result = _resolve_local_path(
+            "./styles/main.css", tmp, sid, local_path_to_storage=mapping
+        )
+        assert result == uuid_path, f"UUID mapping should win, got: {result}"
+
+
+def test_inline_css_with_uuid_storage():
+    """inline_css_into_html works with UUID-stored CSS files via mapping."""
+    import uuid
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        # Create UUID-named CSS file
+        uuid_name = str(uuid.uuid4())
+        uuid_path = os.path.join(resources_dir, uuid_name)
+        with open(uuid_path, "w") as f:
+            f.write("body { color: blue; }")
+
+        mapping = {"styles/theme.css": uuid_path}
+
+        html = '<html><head><link rel="stylesheet" href="./styles/theme.css"></head><body></body></html>'
+        result = inline_css_into_html(html, tmp, sid, path="./", local_path_to_storage=mapping)
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        assert soup.find("link", rel="stylesheet") is None, "Link should be replaced"
+        style = soup.find("style")
+        assert style is not None, "Style tag should exist"
+        assert "color: blue" in (style.string or ""), f"CSS content missing, got: {style.string}"
+
+
+def test_inline_css_with_uuid_storage_and_url_adjustment():
+    """UUID-stored CSS with url() paths gets adjusted when inlining into root."""
+    import uuid
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        uuid_name = str(uuid.uuid4())
+        uuid_path = os.path.join(resources_dir, uuid_name)
+        with open(uuid_path, "w") as f:
+            f.write("body { background: url(../images/bg.jpg); }")
+
+        mapping = {"styles/theme.css": uuid_path}
+
+        html = '<html><head><link rel="stylesheet" href="./styles/theme.css"></head><body></body></html>'
+        result = inline_css_into_html(html, tmp, sid, path="./", local_path_to_storage=mapping)
+
+        assert "./images/bg.jpg" in result, f"Expected ./images/ path, got: {result}"
+        assert "../images/bg.jpg" not in result, f"../images/ should be rewritten"
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -1272,6 +1396,12 @@ def run_all():
         test_script_undefined_prefix_stripped,
         test_extensionless_stylesheet_linked_page,
         test_extensionless_script_linked_page,
+        # UUID-based storage path resolution (inline-css-file-protocol-fix)
+        test_resolve_local_path_with_uuid_map,
+        test_resolve_local_path_without_map_falls_back,
+        test_resolve_local_path_uuid_map_takes_priority,
+        test_inline_css_with_uuid_storage,
+        test_inline_css_with_uuid_storage_and_url_adjustment,
     ]
 
     passed = 0

@@ -12,10 +12,18 @@
 
 ## 3. Client-side filename fixes
 
-- [x] 3.1 Fix `src/background/fileHandlers/css.ts` — add `.css` extension for extensionless filenames using Content-Type header, strip `undefined` prefix
-- [x] 3.2 Fix `src/background/fileHandlers/js.ts` — add `.js` extension for extensionless filenames using Content-Type header, strip `undefined` prefix
+- [x] 3.1 Fix `src/background/fileHandlers/css.ts` — add `.css` extension for extensionless filenames, strip `undefined` prefix
+- [x] 3.2 Fix `src/background/fileHandlers/js.ts` — add `.js` extension for extensionless filenames, strip `undefined` prefix
 
-## 4. Verification
+## 4. UUID storage path resolution fix
 
-- [x] 4.1 Run server tests (`pytest server/tests/`) to verify no regressions
-- [ ] 4.2 Build extension and manually test downloading a complex website, extracting ZIP, opening via `file://` to confirm CSS renders correctly and no broken paths in console
+- [x] 4.1 Fix `_resolve_local_path()` in `html_converter.py` to accept a `local_path_to_storage` mapping that translates logical paths (e.g., `styles/main.css`) to actual UUID-based disk paths, inserted as primary lookup before existing direct-path fallback
+- [x] 4.2 Thread `local_path_to_storage` parameter through: `_read_text_resource`, `_read_resource_as_data_uri`, `_inline_css_urls`, `_inline_style_bg_images`, `_build_single_file_soup`, `convert_html_to_single_file`, `write_single_file_to_disk`, `inline_css_into_html`, and corresponding `HtmlConverterService` facade methods
+- [x] 4.3 Build `local_path_to_storage` dict from `all_resources` in `zip_assembler.py` after fetching resources, pass to Phase 3b `inline_css_into_html` calls (main HTML + linked pages) and to `_assemble_single_file`
+- [x] 4.4 Add `local_path_to_storage` parameter to `_assemble_single_file()` and pass through to `write_single_file_to_disk`
+
+## 5. Verification
+
+- [x] 5.1 Run server tests (`pytest server/tests/`) to verify no regressions
+- [x] 5.2 Add tests for UUID-based path resolution: create UUID-named file on disk, build mapping, verify `inline_css_into_html()` inlines correctly
+- [ ] 5.3 Build extension and manually test downloading a complex website (e.g., mercadolivre.com.br), extracting ZIP, opening via `file://` to confirm CSS renders correctly and no broken paths in console

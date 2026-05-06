@@ -49,6 +49,14 @@ Additionally, some resource paths are malformed: extensionless filenames (`style
 
 **Rationale**: The Content-Type check is unnecessary because each handler only receives resources of the correct type. The CSS handler is invoked exclusively for `<link rel="stylesheet">` resources, and the JS handler for `<script>` resources. Adding a Content-Type check would be redundant belt-and-suspenders with no practical benefit.
 
+### 5. UUID-based storage path resolution via `local_path_to_storage` mapping
+
+**Decision**: Thread a `local_path → storage_path` mapping from the database through the assembly pipeline to `_resolve_local_path()`, rather than trying to derive disk paths from logical paths.
+
+**Rationale**: Resources are stored on disk with UUID filenames (e.g., `resources/abc-123`) in the `resources/` directory. The `local_path` field (e.g., `styles/main.css`) only determines placement in the ZIP archive. The mapping between logical name and physical disk path lives in the database `resources` table. Without this mapping, `_resolve_local_path()` constructs wrong paths and `inline_css_into_html()` silently fails for all CSS files.
+
+**Implementation**: Build a `{local_path: storage_path}` dict from `all_resources` in `zip_assembler.py` and pass it as a new optional parameter through the call chain (`_resolve_local_path` → `_read_text_resource` / `_read_resource_as_data_uri` → `_build_single_file_soup` / `inline_css_into_html`). The parameter defaults to `None` for backward compatibility with tests that create files at human-readable paths.
+
 ## Risks / Trade-offs
 
 - **[Large CSS increases HTML size]** → Acceptable tradeoff. Total CSS is usually under 500KB. If a site has >2MB of CSS, the HTML gets larger but still renders correctly.

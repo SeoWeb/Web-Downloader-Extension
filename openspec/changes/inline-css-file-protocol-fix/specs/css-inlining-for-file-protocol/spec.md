@@ -1,29 +1,47 @@
 ## ADDED Requirements
 
-### Requirement: CSS inlining during ZIP assembly
-The server SHALL inline CSS content into the main HTML file during ZIP assembly by replacing each `<link rel="stylesheet" href="./styles/...">` element with a `<style>` element containing the CSS file content read from disk.
+### Requirement: CSS inlining function
+The HTML converter service SHALL provide an `inline_css_into_html()` function that reads CSS files from disk and replaces `<link rel="stylesheet">` elements with inline `<style>` tags containing the CSS content.
 
-#### Scenario: Stylesheet inlined into main page HTML
-- **WHEN** the ZIP assembler processes a multi-file (non-single-file) session
-- **THEN** each `<link rel="stylesheet">` in `index.html` is replaced with a `<style>` tag containing the CSS content
-- **AND** the CSS content has `url()` paths adjusted from `../images/` to `./images/` (and similarly for `../fonts/`)
+#### Scenario: Inline all stylesheets into HTML
+- **WHEN** `inline_css_into_html()` is called with an HTML string, storage root, session ID, filename map, and a `local_path_to_storage` mapping
+- **THEN** all `<link rel="stylesheet">` elements with resolvable CSS files are replaced with `<style>` tags
+- **AND** CSS `url()` paths are adjusted based on the target path prefix (`./` for root, `../` for linked pages)
 
-#### Scenario: Stylesheet inlined into linked page HTML
-- **WHEN** the ZIP assembler processes linked pages in `pages/` directory
-- **THEN** each `<link rel="stylesheet">` in the linked page is replaced with a `<style>` tag containing the CSS content
-- **AND** the CSS content preserves `../images/` paths (since linked pages are in `pages/` subdirectory)
+#### Scenario: CSS file stored with UUID filename
+- **WHEN** a CSS resource is stored on disk at `resources/<uuid>` but referenced by local path `styles/main.css`
+- **AND** a `local_path_to_storage` mapping is provided that maps `styles/main.css` to the UUID-based disk path
+- **THEN** the inlining function resolves the correct disk path via the mapping and reads the CSS content successfully
 
-### Requirement: CSS files still included in ZIP
-The server SHALL continue writing CSS files to the `styles/` directory in the ZIP, even after inlining them into HTML, for completeness and fallback purposes.
+### Requirement: Extensionless stylesheet URL fallback
+The `_convert_stylesheets()` function SHALL generate a filename with `.css` extension for URLs that have no file extension, instead of leaving them unchanged.
 
-#### Scenario: CSS files present in ZIP alongside inline styles
-- **WHEN** ZIP assembly completes for a multi-file session
-- **THEN** the ZIP contains both inline `<style>` tags in `index.html` AND the original CSS files in `styles/` directory
+#### Scenario: Stylesheet URL with no file extension
+- **WHEN** a `<link rel="stylesheet" href="/styles/main">` URL has no file extension
+- **THEN** the converter generates a fallback filename like `main.css` and rewrites the href to `./styles/main.css`
 
-### Requirement: Missing CSS files handled gracefully
-When a CSS file referenced by a `<link>` tag cannot be found on disk, the inlining function SHALL leave the `<link>` tag unchanged and log a warning.
+### Requirement: Extensionless script URL fallback
+The `_convert_scripts()` function SHALL generate a filename with `.js` extension for URLs that have no file extension, instead of leaving them unchanged.
 
-#### Scenario: Referenced CSS file missing from storage
-- **WHEN** a `<link rel="stylesheet" href="./styles/missing.css">` references a file that does not exist on disk
-- **THEN** the `<link>` tag is preserved in the HTML as-is
-- **AND** a warning is logged
+#### Scenario: Script URL with no file extension
+- **WHEN** a `<script src="/scripts/client">` URL has no file extension
+- **THEN** the converter generates a fallback filename like `client.js` and rewrites the src to `./scripts/client.js`
+
+### Requirement: Undefined prefix stripping
+The `_convert_stylesheets()` and `_convert_scripts()` functions SHALL strip a leading `undefined` prefix from filenames that result from website JS variables being undefined at capture time.
+
+#### Scenario: Script URL with undefined prefix
+- **WHEN** a `<script src="undefinedbrowser-perf.8417c6bba72228fa2e29.js">` has a filename starting with "undefined"
+- **THEN** the converter strips the "undefined" prefix, resulting in `./scripts/browser-perf.8417c6bba72228fa2e29.js`
+
+### Requirement: UUID-based storage path resolution
+The `_resolve_local_path()` function SHALL accept a `local_path_to_storage` mapping that translates logical local paths (e.g., `styles/main.css`) to actual filesystem paths (e.g., `resources/<uuid>`). Resources are stored on disk with UUID filenames, not their logical local_path names. Without this mapping, the function cannot locate files for inlining or base64 encoding.
+
+#### Scenario: Resolve UUID-stored resource via mapping
+- **WHEN** `_resolve_local_path()` is called with a URL like `./styles/main.css`
+- **AND** a `local_path_to_storage` dict maps `styles/main.css` to `/data/sessions/{sid}/resources/abc-123`
+- **THEN** the function returns `/data/sessions/{sid}/resources/abc-123`
+
+#### Scenario: Fallback without mapping
+- **WHEN** `_resolve_local_path()` is called without a `local_path_to_storage` mapping
+- **THEN** the function falls back to constructing `{storage_root}/{session_id}/resources/{clean_path}` (works for tests with human-readable filenames)

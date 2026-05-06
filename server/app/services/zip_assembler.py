@@ -131,6 +131,15 @@ class ZipAssemblerService:
                     if r.content_type
                 }
 
+                # Build local_path → storage_path mapping for disk lookups.
+                # Resources are stored with UUID filenames on disk, but the
+                # HTML references them by local_path (e.g., "styles/main.css").
+                local_path_to_storage: dict[str, str] = {
+                    r.local_path: r.storage_path
+                    for r in all_resources
+                    if r.local_path and r.storage_path
+                }
+
                 # Build filename-ext map from local_path values as a safety net.
                 # When the content_type_map lookup misses (e.g., filename map fails for
                 # a CSS background image), this map lets the converter find the correct
@@ -254,12 +263,14 @@ class ZipAssemblerService:
                     main_html = await asyncio.to_thread(
                         html_converter_service.inline_css_into_html,
                         main_html, self.storage_root, session_id, filename_map, "./",
+                        local_path_to_storage,
                     )
                     # Also inline CSS into linked pages (using ../ path prefix)
                     for page_hash, page_html in linked_page_htmls.items():
                         linked_page_htmls[page_hash] = await asyncio.to_thread(
                             html_converter_service.inline_css_into_html,
                             page_html, self.storage_root, session_id, filename_map, "../",
+                            local_path_to_storage,
                         )
                     await self._update_progress(db, session, "inlining_css", 100)
 
@@ -273,6 +284,7 @@ class ZipAssemblerService:
                     output_path = await self._assemble_single_file(
                         session_id, db, session,
                         main_html, tab_url, filename_map, content_text,
+                        local_path_to_storage,
                     )
                 else:
                     output_path = await self._assemble_zip(
@@ -498,6 +510,7 @@ class ZipAssemblerService:
         tab_url: str,
         filename_map: dict[str, str],
         content_text: Optional[str],
+        local_path_to_storage: Optional[dict[str, str]] = None,
     ) -> Optional[str]:
         """Assemble a single self-contained HTML file with all resources inlined.
 
@@ -519,7 +532,7 @@ class ZipAssemblerService:
             await asyncio.to_thread(
                 html_converter_service.write_single_file_to_disk,
                 main_html, tab_url, self.storage_root, session_id,
-                html_path, filename_map,
+                html_path, filename_map, local_path_to_storage,
             )
             await self._update_progress(db, session, "assembling_zip", 50)
 
