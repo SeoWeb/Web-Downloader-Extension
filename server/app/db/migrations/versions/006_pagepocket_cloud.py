@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "006"
-down_revision = "005"
+down_revision = "005_html_chunks_size"
 branch_labels = None
 depends_on = None
 
