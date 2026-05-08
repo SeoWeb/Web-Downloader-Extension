@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   setAuthCookies(response.cookies, {
     access: data.access_token,
     refresh: data.refresh_token,
-    expiresAt: data.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
+    expiresAt: data.expires_at ?? Math.floor(Date.now() / 1000) + 7 * 24 * 3600,
   });
 
   return response;

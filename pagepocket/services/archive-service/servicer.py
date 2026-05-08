@@ -3,6 +3,7 @@
 import json
 import os
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 import time
@@ -18,6 +19,8 @@ import archive_pb2
 import archive_pb2_grpc
 import search_pb2
 import search_pb2_grpc
+import library_pb2
+import library_pb2_grpc
 from db import db_session, get_engine
 from grpc_mtls import secure_channel_credentials
 from models import Page, UserQuota
@@ -36,6 +39,18 @@ def _get_search_stub():
     else:
         channel = grpc.insecure_channel(addr)
     return search_pb2_grpc.SearchServiceStub(channel)
+
+
+def _get_library_stub():
+    addr = os.environ.get("LIBRARY_SERVICE_ADDR")
+    if not addr:
+        return None
+    mtls = os.environ.get("MTLS_ENABLED", "false").lower() == "true"
+    if mtls:
+        channel = grpc.secure_channel(addr, secure_channel_credentials())
+    else:
+        channel = grpc.insecure_channel(addr)
+    return library_pb2_grpc.LibraryServiceStub(channel)
 
 
 class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
@@ -70,7 +85,7 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             total_size = len(request.html_content)
 
             for asset in request.assets:
-                asset_map[asset.filename] = f"/r2/{user_id}/{page_id}/assets/{asset.filename}"
+                asset_map[asset.filename] = f"assets/{asset.filename}"
                 total_size += len(asset.data)
 
             # Quota check
@@ -85,15 +100,30 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                 request.html_content, asset_map
             )
 
-            # Upload to R2
+            # Upload to R2 (parallel for throughput)
             prefix = f"{user_id}/{page_id}"
+            upload_errors = []
 
-            for asset in request.assets:
-                self.r2.upload(
-                    f"{prefix}/assets/{asset.filename}",
-                    asset.data,
-                    asset.content_type or "application/octet-stream",
-                )
+            def _upload_asset(asset):
+                try:
+                    self.r2.upload(
+                        f"{prefix}/assets/{asset.filename}",
+                        asset.data,
+                        asset.content_type or "application/octet-stream",
+                    )
+                except Exception as exc:
+                    return f"{asset.filename}: {exc}"
+                return None
+
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                futures = {pool.submit(_upload_asset, a): a for a in request.assets}
+                for future in as_completed(futures):
+                    err = future.result()
+                    if err:
+                        upload_errors.append(err)
+
+            if upload_errors:
+                raise RuntimeError(f"R2 upload failures: {'; '.join(upload_errors)}")
 
             r2_key = f"{prefix}/index.html"
             self.r2.upload(r2_key, rewritten_html, "text/html; charset=utf-8")
@@ -173,9 +203,29 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
         page_size = max(min(request.page_size or 20, 100), 1)
         offset = (page_num - 1) * page_size
 
+        # If collection_id is set, resolve page IDs from library service
+        collection_page_ids = None
+        if request.collection_id:
+            stub = _get_library_stub()
+            if stub:
+                try:
+                    resp = stub.ListCollectionPageIds(library_pb2.ListCollectionPageIdsRequest(
+                        collection_id=request.collection_id,
+                        user_id=request.user_id,
+                    ))
+                    collection_page_ids = set(resp.page_ids)
+                except grpc.RpcError:
+                    collection_page_ids = set()
+            else:
+                collection_page_ids = set()
+
         with db_session(self.engine) as session:
             query = select(Page).where(Page.user_id == request.user_id)
             count_q = select(func.count()).select_from(Page).where(Page.user_id == request.user_id)
+
+            if collection_page_ids is not None:
+                query = query.where(Page.id.in_(collection_page_ids))
+                count_q = count_q.where(Page.id.in_(collection_page_ids))
 
             if sort_by == "title":
                 query = query.order_by(Page.title.asc())
@@ -207,16 +257,52 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                 select(Page).where(Page.id == request.page_id)
             ).scalar_one_or_none()
 
-            if not page or page.user_id != request.user_id:
+            if not page or (request.user_id and page.user_id != request.user_id):
                 context.set_code(grpc.StatusCode.NOT_FOUND)
                 context.set_details("Page not found")
                 return archive_pb2.PageContentResponse()
 
-        url = self.r2.presign(page.r2_key, expires=3600)
+            r2_key = page.r2_key
+
+        url = self.r2.presign(r2_key, expires=3600)
         return archive_pb2.PageContentResponse(
             signed_url=url,
             expires_at=int(time.time()) + 3600,
         )
+
+    def GetArchiveFile(self, request, context):
+        file_path = request.file_path
+
+        # Security: prevent path traversal
+        if "/.." in file_path or file_path.startswith("/"):
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details("Invalid file path")
+            return archive_pb2.ArchiveFileResponse()
+
+        with db_session(self.engine) as session:
+            page = session.execute(
+                select(Page).where(Page.id == request.page_id)
+            ).scalar_one_or_none()
+
+            if not page or (request.user_id and page.user_id != request.user_id):
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details("Page not found")
+                return archive_pb2.ArchiveFileResponse()
+
+            user_id = page.user_id
+            page_id = page.id
+
+        r2_key = f"{user_id}/{page_id}/{file_path}"
+
+        try:
+            response = self.r2.client.get_object(Bucket=self.r2.bucket, Key=r2_key)
+            data = response["Body"].read()
+            content_type = response.get("ContentType", "application/octet-stream")
+            return archive_pb2.ArchiveFileResponse(data=data, content_type=content_type)
+        except Exception:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details("File not found")
+            return archive_pb2.ArchiveFileResponse()
 
     def DeletePage(self, request, context):
         with db_session(self.engine) as session:

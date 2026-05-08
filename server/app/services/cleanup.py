@@ -121,27 +121,35 @@ class CleanupService:
         logger.info("Running startup cleanup...")
         result: dict = {}
 
-        # Step 1a: Mark stale scraping/uploading sessions as failed
-        result["stale_sessions_failed"] = await self._mark_stale_sessions_failed(db)
+        try:
+            # Step 1a: Mark stale scraping/uploading sessions as failed
+            result["stale_sessions_failed"] = await self._mark_stale_sessions_failed(db)
 
-        # Step 1b: Mark assembling sessions as failed
-        result["assembling_sessions_failed"] = await self._mark_assembling_sessions_failed(db)
+            # Step 1b: Mark assembling sessions as failed
+            result["assembling_sessions_failed"] = await self._mark_assembling_sessions_failed(db)
 
-        # Commit the status changes before removing expired sessions
-        await db.flush()
+            # Commit the status changes before removing expired sessions
+            await db.flush()
 
-        # Step 2: Remove expired sessions and files
-        result["expired_sessions_removed"] = await self._remove_expired_sessions(db)
+            # Step 2: Remove expired and old failed sessions
+            result["expired_sessions_removed"] = await self._remove_expired_sessions(db)
 
-        # Step 3: Clean up orphaned API keys
-        result["orphaned_keys_removed"] = await self._cleanup_orphaned_api_keys(db)
+            # Step 3: Clean up orphaned API keys
+            result["orphaned_keys_removed"] = await self._cleanup_orphaned_api_keys(db)
 
-        # Step 4: Clean up orphaned session directories
-        result["orphaned_dirs_removed"] = await self._cleanup_orphaned_directories(db)
+            # Step 4: Clean up orphaned session directories
+            result["orphaned_dirs_removed"] = await self._cleanup_orphaned_directories(db)
 
-        await db.flush()
+            # Step 5: Clean up orphaned DB records (no directory on disk)
+            result["orphaned_sessions_removed"] = await self._cleanup_orphaned_db_records(db)
 
-        logger.info("Startup cleanup complete: %s", result)
+            await db.flush()
+            logger.info("Startup cleanup complete: %s", result)
+
+        except Exception:
+            logger.exception("Error during startup cleanup")
+            raise
+
         return result
 
     async def run_periodic_cleanup(self, db: AsyncSession) -> dict:
@@ -158,42 +166,52 @@ class CleanupService:
         disk_before = self._get_disk_usage_pct()
         result: dict = {}
 
-        # Step 1a: Mark stale scraping/uploading sessions as failed
-        result["stale_sessions_failed"] = await self._mark_stale_sessions_failed(db)
+        try:
+            # Step 1a: Mark stale scraping/uploading sessions as failed
+            result["stale_sessions_failed"] = await self._mark_stale_sessions_failed(db)
 
-        # Step 1c: Mark stale assembling sessions as failed (age + no active task)
-        result["stale_assembling_sessions_failed"] = await self._mark_stale_assembling_sessions_failed(db)
+            # Step 1c: Mark stale assembling sessions as failed (age + no active task)
+            result["stale_assembling_sessions_failed"] = await self._mark_stale_assembling_sessions_failed(db)
 
-        await db.flush()
+            await db.flush()
 
-        # Step 2: Remove expired sessions and files
-        result["expired_sessions_removed"] = await self._remove_expired_sessions(db)
+            # Step 2: Remove expired and old failed sessions
+            result["expired_sessions_removed"] = await self._remove_expired_sessions(db)
 
-        # Step 3: Clean up orphaned API keys
-        result["orphaned_keys_removed"] = await self._cleanup_orphaned_api_keys(db)
+            # Step 3: Clean up orphaned API keys
+            result["orphaned_keys_removed"] = await self._cleanup_orphaned_api_keys(db)
 
-        # Step 4: Clean up orphaned session directories
-        result["orphaned_dirs_removed"] = await self._cleanup_orphaned_directories(db)
+            # Step 4: Clean up orphaned session directories
+            result["orphaned_dirs_removed"] = await self._cleanup_orphaned_directories(db)
 
-        await db.flush()
+            # Step 5: Clean up orphaned DB records (no directory on disk)
+            result["orphaned_sessions_removed"] = await self._cleanup_orphaned_db_records(db)
 
-        # Step 5: Aggressive cleanup if disk usage exceeds threshold
-        disk_after_normal = self._get_disk_usage_pct()
-        if disk_after_normal > self.disk_cleanup_threshold_pct:
-            logger.warning(
-                "Disk usage %.1f%% exceeds threshold %d%%, starting aggressive cleanup",
-                disk_after_normal,
-                self.disk_cleanup_threshold_pct,
+            await db.flush()
+
+            # Step 6: Aggressive cleanup if disk usage exceeds threshold
+            disk_after_normal = self._get_disk_usage_pct()
+
+            if disk_after_normal > self.disk_cleanup_threshold_pct:
+                logger.warning(
+                    "Disk usage %.1f%% exceeds threshold %d%%, starting aggressive cleanup",
+                    disk_after_normal,
+                    self.disk_cleanup_threshold_pct,
+                )
+                result["aggressive_sessions_removed"] = await self._aggressive_cleanup(db)
+
+            disk_after = self._get_disk_usage_pct()
+            logger.info(
+                "Periodic cleanup complete: %s (disk: %.1f%% → %.1f%%)",
+                result,
+                disk_before,
+                disk_after,
             )
-            result["aggressive_sessions_removed"] = await self._aggressive_cleanup(db)
 
-        disk_after = self._get_disk_usage_pct()
-        logger.info(
-            "Periodic cleanup complete: %s (disk: %.1f%% → %.1f%%)",
-            result,
-            disk_before,
-            disk_after,
-        )
+        except Exception:
+            logger.exception("Error during periodic cleanup")
+            raise
+
         return result
 
     # ------------------------------------------------------------------
@@ -371,16 +389,18 @@ class CleanupService:
     async def _remove_expired_sessions(self, db: AsyncSession) -> int:
         """Remove all expired sessions and their files.
 
-        Two-pass approach:
-          1. Bulk UPDATE to mark expired sessions as EXPIRED (so polling
-             clients observe the terminal status).
-          2. Batched bulk DELETE with per-batch commit for crash durability.
-             CASCADE handles resource and html_chunk rows automatically.
+        Three-pass approach:
+          1. Mark all sessions past their expires_at as EXPIRED.
+          2. Mark FAILED sessions older than 24 hours as EXPIRED.
+          3. Batched bulk DELETE with per-batch commit for crash durability.
+             We delete DB records FIRST, then files. If a crash occurs between
+             the two, orphaned directory cleanup will catch the files later.
 
         Returns:
             Number of sessions removed.
         """
         now = datetime.now(timezone.utc)
+        failed_cutoff = now - timedelta(hours=24)
         batch_size = 100
         total_count = 0
 
@@ -393,9 +413,19 @@ class CleanupService:
             )
             .values(status=SessionStatus.EXPIRED)
         )
+
+        # Pass 2: Mark FAILED sessions older than 24h as EXPIRED
+        await db.execute(
+            update(Session)
+            .where(
+                Session.status == SessionStatus.FAILED,
+                Session.updated_at <= failed_cutoff,
+            )
+            .values(status=SessionStatus.EXPIRED)
+        )
         await db.flush()
 
-        # Pass 2: Delete expired sessions in batches with per-batch commit
+        # Pass 3: Delete expired sessions in batches with per-batch commit
         while True:
             stmt = (
                 select(Session.id)
@@ -408,20 +438,23 @@ class CleanupService:
             if not batch_ids:
                 break
 
+            # Bulk DELETE sessions FIRST — CASCADE removes resources + html_chunks
+            # This ensures that even if file deletion fails or crashes, the session
+            # is gone from the DB and won't be processed again.
+            await db.execute(
+                delete(Session).where(Session.id.in_(batch_ids))
+            )
+            await db.commit()
+
             # Delete files for this batch (non-blocking)
             for session_id in batch_ids:
                 session_dir = os.path.join(self.storage_root, session_id)
                 await self._remove_dir_async(session_dir)
 
-            # Bulk DELETE sessions — CASCADE removes resources + html_chunks
-            await db.execute(
-                delete(Session).where(Session.id.in_(batch_ids))
-            )
-            await db.commit()
             total_count += len(batch_ids)
 
         if total_count > 0:
-            logger.info("Removed %d expired sessions", total_count)
+            logger.info("Removed %d expired/failed sessions", total_count)
         return total_count
 
     # ------------------------------------------------------------------
@@ -452,19 +485,19 @@ class CleanupService:
         expired = result.scalars().all()
 
         if expired:
-            session_ids = []
-            for session in expired:
-                session_dir = os.path.join(self.storage_root, session.id)
+            session_ids = [s.id for s in expired]
+            for session_id in session_ids:
+                session_dir = os.path.join(self.storage_root, session_id)
                 freed = await self._dir_size_async(session_dir) if await asyncio.to_thread(os.path.exists, session_dir) else 0
-                await self._remove_dir_async(session_dir)
-                session_ids.append(session.id)
                 total_freed += freed
+                # Delete files (non-blocking)
+                await self._remove_dir_async(session_dir)
 
             # Bulk DELETE sessions — CASCADE handles resources + html_chunks
             await db.execute(
                 delete(Session).where(Session.id.in_(session_ids))
             )
-            await db.flush()
+            await db.commit()
             total_removed += len(expired)
 
         if self._get_disk_usage_pct() < self.disk_cleanup_threshold_pct:
@@ -493,13 +526,19 @@ class CleanupService:
             if self._get_disk_usage_pct() < self.disk_cleanup_threshold_pct:
                 break
 
-            session_dir = os.path.join(self.storage_root, session.id)
+            session_id = session.id
+            session_dir = os.path.join(self.storage_root, session_id)
             freed = await self._dir_size_async(session_dir) if await asyncio.to_thread(os.path.exists, session_dir) else 0
-            await self._remove_dir_async(session_dir)
+
+            # Delete DB record FIRST
             await db.execute(
-                delete(Session).where(Session.id == session.id)
+                delete(Session).where(Session.id == session_id)
             )
             await db.commit()
+
+            # Then delete files
+            await self._remove_dir_async(session_dir)
+
             total_freed += freed
             total_removed += 1
 
@@ -601,6 +640,47 @@ class CleanupService:
 
         if count > 0:
             logger.info("Removed %d orphaned session directories", count)
+        return count
+
+    async def _cleanup_orphaned_db_records(self, db: AsyncSession) -> int:
+        """Delete session records that have no corresponding directory on disk.
+
+        Prevents 'zombie' sessions in the DB when storage was wiped or
+        cleanup failed halfway. Skips sessions created in the last hour
+        to avoid race conditions with session creation.
+
+        Returns:
+            Number of orphaned DB records removed.
+        """
+        now = datetime.now(timezone.utc)
+        safety_cutoff = now - timedelta(hours=1)
+
+        # Fetch candidate sessions (not EXPIRED)
+        stmt = select(Session.id).where(
+            Session.created_at < safety_cutoff,
+            Session.status != SessionStatus.EXPIRED,
+        )
+        result = await db.execute(stmt)
+        session_ids = [row[0] for row in result.all()]
+
+        count = 0
+        batch_ids = []
+        for session_id in session_ids:
+            session_dir = os.path.join(self.storage_root, session_id)
+            if not await asyncio.to_thread(os.path.exists, session_dir):
+                batch_ids.append(session_id)
+                count += 1
+                if len(batch_ids) >= 100:
+                    await db.execute(delete(Session).where(Session.id.in_(batch_ids)))
+                    await db.commit()
+                    batch_ids = []
+
+        if batch_ids:
+            await db.execute(delete(Session).where(Session.id.in_(batch_ids)))
+            await db.commit()
+
+        if count > 0:
+            logger.info("Removed %d orphaned DB records (missing disk directory)", count)
         return count
 
     # ------------------------------------------------------------------

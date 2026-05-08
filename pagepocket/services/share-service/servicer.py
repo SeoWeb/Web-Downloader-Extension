@@ -86,6 +86,19 @@ class ShareServicer(share_pb2_grpc.ShareServiceServicer):
                 revoked_at="",
             )
 
+    def _link_to_response(self, link):
+        return share_pb2.ShareLinkResponse(
+            token=link.token,
+            short_url=f"{self.base_url}/s/{link.token}",
+            is_public=link.is_public,
+            expires_at=int(link.expires_at.timestamp()) if link.expires_at else 0,
+            view_count=link.view_count,
+            page_id=link.page_id,
+            user_id=link.user_id,
+            created_at=link.created_at.isoformat(),
+            revoked_at=link.revoked_at.isoformat() if link.revoked_at else "",
+        )
+
     def GetShareLink(self, request, context):
         with db_session(self.engine) as session:
             link = session.execute(
@@ -97,17 +110,24 @@ class ShareServicer(share_pb2_grpc.ShareServiceServicer):
                 context.set_details("Share link not found")
                 return share_pb2.ShareLinkResponse()
 
-            return share_pb2.ShareLinkResponse(
-                token=link.token,
-                short_url=f"{self.base_url}/s/{link.token}",
-                is_public=link.is_public,
-                expires_at=int(link.expires_at.timestamp()) if link.expires_at else 0,
-                view_count=link.view_count,
-                page_id=link.page_id,
-                user_id=link.user_id,
-                created_at=link.created_at.isoformat(),
-                revoked_at=link.revoked_at.isoformat() if link.revoked_at else "",
-            )
+            return self._link_to_response(link)
+
+    def GetShareLinkByPage(self, request, context):
+        with db_session(self.engine) as session:
+            link = session.execute(
+                select(ShareLink).where(
+                    ShareLink.user_id == request.user_id,
+                    ShareLink.page_id == request.page_id,
+                    ShareLink.revoked_at.is_(None),
+                ).order_by(ShareLink.created_at.desc())
+            ).scalar_one_or_none()
+
+            if not link:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details("No active share link for this page")
+                return share_pb2.ShareLinkResponse()
+
+            return self._link_to_response(link)
 
     def RevokeShareLink(self, request, context):
         with db_session(self.engine) as session:

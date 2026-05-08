@@ -6,6 +6,7 @@ import Actions, { Message } from "../../components/Actions";
 
 import { ScrollingResponse } from "../hooks/useScrapingDownloader";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
+import { PagePocketAuth } from "../../components/PagePocketAuth";
 
 const Filter = React.lazy(() => import("../../components/Filter"));
 
@@ -18,6 +19,7 @@ interface MainContentProps {
   downloadResponse: ScrollingResponse | null;
   onClickStartDownload: (options: any) => void;
   tabUrl: string;
+  showAuthForm?: boolean;
 }
 
 export function MainContent({
@@ -29,6 +31,7 @@ export function MainContent({
   downloadResponse,
   onClickStartDownload,
   tabUrl,
+  showAuthForm,
 }: MainContentProps) {
   const { t } = useTranslation();
   return (
@@ -44,14 +47,20 @@ export function MainContent({
         !isScrapingLinkedPages &&
         !downloadResponse && (
           <div className="pt-4">
-            <ErrorBoundary name="Filter">
-              <React.Suspense fallback={<div className="p-4">{t('filter.loading')}</div>}>
-                <Filter
-                  download={onClickStartDownload}
-                  tabUrl={tabUrl}
-                />
-              </React.Suspense>
-            </ErrorBoundary>
+            {showAuthForm ? (
+              <ErrorBoundary name="PagePocketAuth">
+                <PagePocketAuth />
+              </ErrorBoundary>
+            ) : (
+              <ErrorBoundary name="Filter">
+                <React.Suspense fallback={<div className="p-4">{t('filter.loading')}</div>}>
+                  <Filter
+                    download={onClickStartDownload}
+                    tabUrl={tabUrl}
+                  />
+                </React.Suspense>
+              </ErrorBoundary>
+            )}
           </div>
         )}
     </>

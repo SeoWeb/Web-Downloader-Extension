@@ -8,6 +8,7 @@ service ArchiveService {
   rpc ListPages(ListPagesRequest) returns (ListPagesResponse);
   rpc DeletePage(DeletePageRequest) returns (StatusResponse);
   rpc GetPageContent(GetPageContentRequest) returns (PageContentResponse);
+  rpc GetArchiveFile(GetArchiveFileRequest) returns (ArchiveFileResponse);
 }
 
 message Asset {
@@ -54,6 +55,7 @@ message ListPagesRequest {
   int32 page = 2;
   int32 page_size = 3;
   string sort_by = 4; // "archived_at" or "title"
+  string collection_id = 5; // optional: filter to pages in this collection
 }
 
 message ListPagesResponse {
@@ -79,4 +81,15 @@ message PageContentResponse {
 message StatusResponse {
   bool success = 1;
   string message = 2;
+}
+
+message GetArchiveFileRequest {
+  string page_id = 1;
+  string user_id = 2;   // optional: empty for share-token access
+  string file_path = 3; // e.g. "index.html" or "assets/images/foo.jpg"
+}
+
+message ArchiveFileResponse {
+  bytes data = 1;
+  string content_type = 2;
 }

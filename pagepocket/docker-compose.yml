@@ -48,6 +48,7 @@ services:
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
       R2_BUCKET_NAME: ${R2_BUCKET_NAME:-pagepocket-pages}
       SEARCH_SERVICE_ADDR: search-service:50054
+      LIBRARY_SERVICE_ADDR: library-service:50053
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
@@ -102,7 +103,7 @@ services:
       dockerfile: services/share-service/Dockerfile
     environment:
       DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/share_db
-      BASE_URL: ${BASE_URL:-http://localhost:8000}
+      BASE_URL: ${BASE_URL:-http://localhost:8090}
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
@@ -128,7 +129,7 @@ services:
       SHARE_SERVICE_ADDR: share-service:50055
       MTLS_ENABLED: "false"
     ports:
-      - "8000:8000"
+      - "8090:8090"
     depends_on:
       auth-service:
         condition: service_healthy

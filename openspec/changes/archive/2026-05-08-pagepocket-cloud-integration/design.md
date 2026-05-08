@@ -40,9 +40,9 @@ The download pipeline entry point is `downloadResources()` in `src/background/do
 **Alternative considered:** Post-download upload (local ZIP + cloud copy). More resilient but adds complexity and confusion about where the page lives.
 
 ### 3. Branch in download-core.ts alongside existing server-mode branch
-**Decision:** Add a `shouldUseCloudUpload()` check in `downloadResources()` that parallels the existing `shouldUseServerMode()` check. Priority order: server-mode > cloud-mode > local-mode.
+**Decision:** Add a `shouldUseCloudUpload()` check in `downloadResources()` that gates cloud-mode. Priority order: cloud-mode > server-mode. The server-mode pipeline runs when cloud is off (the former `shouldUseServerMode()` check was removed when server-mode became the default pipeline). Cloud mode takes precedence because it is an explicit user opt-in that replaces the download entirely.
 
-**Rationale:** Server mode (Python microservice) and cloud mode (PagePocket) are independent features that should not conflict. Server mode takes precedence because it's a build-time setting, while cloud mode is a user runtime toggle.
+**Rationale:** Server mode is now the default download pipeline (replacing local-only). Cloud mode is a runtime toggle that, when enabled, should override server-mode since the user explicitly chose cloud storage over local/server download.
 
 ### 4. Build-time feature flag via VITE_PAGEPOCKET_URL
 **Decision:** Use `VITE_PAGEPOCKET_URL` env var at build time to enable PagePocket features. When not set, all cloud UI is hidden.

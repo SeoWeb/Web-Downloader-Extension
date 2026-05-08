@@ -75,6 +75,24 @@ The extension SHALL provide a `ServerClient` class that encapsulates all HTTP co
 - **THEN** a GET request is sent to `<serverUrl>/api/v1/sessions/{sessionId}/status`
 - **AND** the session status, progress, assembly phase, and download URL (if ready) are returned
 
+#### Scenario: Create session with PagePocket user ID
+- **WHEN** `createSession(url, { singleFile, retentionDays, pagepocketUserId })` is called with a non-null `pagepocketUserId`
+- **THEN** the POST request body SHALL include `options.pagepocketUserId` alongside existing options
+- **AND** the server response is unchanged
+
+#### Scenario: Create session without PagePocket user ID
+- **WHEN** `createSession(url, { singleFile, retentionDays })` is called without `pagepocketUserId`
+- **THEN** the POST request body SHALL NOT include `pagepocketUserId` in options
+- **AND** existing behavior is preserved
+
+#### Scenario: Status response with cloud fields
+- **WHEN** `getSessionStatus(sessionId)` is called for a session that has cloud push data
+- **THEN** the response SHALL include `cloud_status` (null | "pending" | "success" | "failed"), `cloud_page_id` (null | UUID string), and `cloud_error` (null | error message)
+
+#### Scenario: Status response without cloud fields
+- **WHEN** `getSessionStatus(sessionId)` is called for a non-cloud session
+- **THEN** `cloud_status`, `cloud_page_id`, and `cloud_error` SHALL be `null`
+
 #### Scenario: Server unreachable
 - **WHEN** any API call fails due to network error or server unavailability
 - **THEN** the client throws a `ServerUnavailableError` with details

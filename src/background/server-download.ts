@@ -34,6 +34,10 @@ export interface ServerDownloadResult {
   downloadUrl: string;
   /** Filename assigned to the download. */
   filename: string;
+  /** PagePocket cloud page ID when server pushed to cloud instead of ZIP. */
+  cloudPageId?: string;
+  /** Cloud push error message when server cloud push failed. */
+  cloudError?: string;
 }
 
 /** Callback type for status updates during assembly polling. */
@@ -261,6 +265,26 @@ export class ServerDownloadHandler {
   ): Promise<ServerDownloadResult> {
     // Poll until assembly is complete
     const status = await this.pollAssemblyStatus(sessionId, onStatusUpdate);
+
+    // Cloud mode: server pushed to PagePocket instead of creating a download
+    if (status.cloud_page_id) {
+      return {
+        downloadId: 0,
+        downloadUrl: "",
+        filename: "",
+        cloudPageId: status.cloud_page_id,
+      };
+    }
+
+    // Cloud push failed: server finished assembly but cloud push errored
+    if (status.cloud_error) {
+      return {
+        downloadId: 0,
+        downloadUrl: "",
+        filename: "",
+        cloudError: status.cloud_error,
+      };
+    }
 
     // Extract download URL from status
     const downloadUrl = status.download_url;

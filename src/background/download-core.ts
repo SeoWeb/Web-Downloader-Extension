@@ -30,8 +30,36 @@ import { getServerDownloadHandler, AssemblyFailedError } from "./server-download
 import { setCurrentScraper, stopScraping } from "./scraper-state";
 import { setActiveServerSession, getActiveServerSessionId, hasStreamedHtmlChunks } from "./message";
 import { loadFilterOptions } from "../common/storage/filterStorage";
+import { PAGEPOCKET_CLOUD_ENABLED_KEY, PAGEPOCKET_AUTH_STORAGE_KEY, type PagePocketAuthState } from "../types/authTypes";
 
 const EMPTY_MAP: Map<string, string> = new Map();
+
+/**
+ * Get the PagePocket user ID when cloud mode is enabled.
+ *
+ * Returns the user ID when ALL of the following hold:
+ *  1. The PagePocket cloud toggle is ON (chrome.storage.local)
+ *  2. Valid auth tokens exist in chrome.storage.local
+ *
+ * Returns null otherwise — the server will create a normal (non-cloud) session.
+ */
+async function getPagepocketUserId(): Promise<string | null> {
+  try {
+    if (!chrome?.storage?.local) return null;
+    const result = await chrome.storage.local.get([
+      PAGEPOCKET_CLOUD_ENABLED_KEY,
+      PAGEPOCKET_AUTH_STORAGE_KEY,
+    ]);
+    const cloudEnabled = result[PAGEPOCKET_CLOUD_ENABLED_KEY] === true;
+    const auth = result[PAGEPOCKET_AUTH_STORAGE_KEY] as PagePocketAuthState | undefined;
+    if (cloudEnabled && auth?.accessToken && auth?.user?.id) {
+      return auth.user.id;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export async function downloadResources(
   html: string,
@@ -67,6 +95,11 @@ export async function downloadResources(
   await setTabDownloadActive(tabId!);
   createKeepalivePort(tabId!);
 
+  // Read PagePocket cloud user ID if cloud mode is enabled.
+  // When set, the server will push the assembled result to PagePocket
+  // instead of creating a ZIP file.
+  const pagepocketUserId = await getPagepocketUserId();
+
   // Create server session (reuse existing if created during INITIALIZE_DIFFERENTIAL_SCRAPING)
   const existingSessionId = getActiveServerSessionId(tabId!);
   let serverSessionId: string;
@@ -76,6 +109,7 @@ export async function downloadResources(
     serverSessionId = await serverClient.createSession(tabUrl, {
       singleFile: downloadOptions?.singleFile ?? false,
       retentionDays: 1,
+      pagepocketUserId: pagepocketUserId ?? undefined,
     });
     setActiveServerSession(tabId!, serverSessionId);
   }
@@ -498,26 +532,41 @@ async function executeDownloadServerMode(
       downloadOptions.alwaysAskWhereToSave ?? true,
     );
 
-    // (15.3 + 15.4) Send the server download URL to the UI so it can display
-    // a "Download from server" button and show the URL in DownloadComplete.
-    // Also include the URL in the status.complete message as a defensive
-    // measure — the UI handler merges both, ensuring the download URL is
-    // available even if serverDownloadReady was missed or reordered.
-    const serverCompleteOptions = downloadResult?.downloadUrl
-      ? { downloadUrl: downloadResult.downloadUrl, isSingleFile: downloadOptions.singleFile }
-      : undefined;
-
-    if (downloadResult?.downloadUrl) {
+    // Cloud mode: server pushed to PagePocket, show cloud success
+    if (downloadResult?.cloudPageId) {
       sendMessage({
-        key: "status.serverDownloadReady",
-        options: {
-          downloadUrl: downloadResult.downloadUrl,
-          isSingleFile: downloadOptions.singleFile,
-        },
+        key: "status.pagepocketUploadComplete",
+        options: { pageId: downloadResult.cloudPageId },
       });
-    }
+      sendMessage({ key: "status.complete" });
+    } else if (downloadResult?.cloudError) {
+      // Cloud push failed — show specific error
+      sendMessage({
+        key: "status.pagepocketUploadError",
+        options: { error: downloadResult.cloudError },
+      });
+    } else {
+      // (15.3 + 15.4) Send the server download URL to the UI so it can display
+      // a "Download from server" button and show the URL in DownloadComplete.
+      // Also include the URL in the status.complete message as a defensive
+      // measure — the UI handler merges both, ensuring the download URL is
+      // available even if serverDownloadReady was missed or reordered.
+      const serverCompleteOptions = downloadResult?.downloadUrl
+        ? { downloadUrl: downloadResult.downloadUrl, isSingleFile: downloadOptions.singleFile }
+        : undefined;
 
-    sendMessage({ key: "status.complete", options: serverCompleteOptions });
+      if (downloadResult?.downloadUrl) {
+        sendMessage({
+          key: "status.serverDownloadReady",
+          options: {
+            downloadUrl: downloadResult.downloadUrl,
+            isSingleFile: downloadOptions.singleFile,
+          },
+        });
+      }
+
+      sendMessage({ key: "status.complete", options: serverCompleteOptions });
+    }
 
   } catch (error) {
     // Best-effort: ensure scrapeComplete is sent so the server transitions
@@ -625,7 +674,18 @@ async function finalizeAndPollAssembly(
     saveAs,
   );
 
-  if (downloadResult?.downloadUrl) {
+  if (downloadResult?.cloudPageId) {
+    sendMessage({
+      key: "status.pagepocketUploadComplete",
+      options: { pageId: downloadResult.cloudPageId },
+    });
+    sendMessage({ key: "status.complete" });
+  } else if (downloadResult?.cloudError) {
+    sendMessage({
+      key: "status.pagepocketUploadError",
+      options: { error: downloadResult.cloudError },
+    });
+  } else if (downloadResult?.downloadUrl) {
     sendMessage({
       key: "status.serverDownloadReady",
       options: { downloadUrl: downloadResult.downloadUrl },
@@ -696,7 +756,18 @@ export async function resumeServerDownload(
       tabId,
       saveAs,
     );
-    if (downloadResult?.downloadUrl) {
+    if (downloadResult?.cloudPageId) {
+      sendMessage({
+        key: "status.pagepocketUploadComplete",
+        options: { pageId: downloadResult.cloudPageId },
+      });
+      sendMessage({ key: "status.complete" });
+    } else if (downloadResult?.cloudError) {
+      sendMessage({
+        key: "status.pagepocketUploadError",
+        options: { error: downloadResult.cloudError },
+      });
+    } else if (downloadResult?.downloadUrl) {
       sendMessage({ key: "status.complete", options: { downloadUrl: downloadResult.downloadUrl } });
     }
     return;

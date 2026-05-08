@@ -5,6 +5,7 @@ package share;
 service ShareService {
   rpc CreateShareLink(CreateShareLinkRequest) returns (ShareLinkResponse);
   rpc GetShareLink(GetShareLinkRequest) returns (ShareLinkResponse);
+  rpc GetShareLinkByPage(GetShareLinkByPageRequest) returns (ShareLinkResponse);
   rpc RevokeShareLink(RevokeShareLinkRequest) returns (StatusResponse);
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateShareResponse);
 }
@@ -18,6 +19,11 @@ message CreateShareLinkRequest {
 
 message GetShareLinkRequest {
   string token = 1;
+}
+
+message GetShareLinkByPageRequest {
+  string user_id = 1;
+  string page_id = 2;
 }
 
 message RevokeShareLinkRequest {

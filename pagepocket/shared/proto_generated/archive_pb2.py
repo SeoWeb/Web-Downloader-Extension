@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rarchive.proto\x12\x07\x61rchive\"=\n\x05\x41sset\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x14\n\x0c\x63ontent_type\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"\x9e\x01\n\x11IngestPageRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0b\n\x03url\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x14\n\x0chtml_content\x18\x04 \x01(\x0c\x12\x1e\n\x06\x61ssets\x18\x05 \x03(\x0b\x32\x0e.archive.Asset\x12\x18\n\x10\x65xtension_job_id\x18\x06 \x01(\t\x12\x0c\n\x04plan\x18\x07 \x01(\t\"G\n\x12IngestPageResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07page_id\x18\x02 \x01(\t\x12\x0f\n\x07message\x18\x03 \x01(\t\"2\n\x0eGetPageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"\xb0\x01\n\x0cPageResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x0b\n\x03url\x18\x03 \x01(\t\x12\r\n\x05title\x18\x04 \x01(\t\x12\x14\n\x0cpreview_text\x18\x05 \x01(\t\x12\x0e\n\x06r2_key\x18\x06 \x01(\t\x12\x12\n\nsize_bytes\x18\x07 \x01(\x03\x12\x18\n\x10\x65xtension_job_id\x18\x08 \x01(\t\x12\x13\n\x0b\x61rchived_at\x18\t \x01(\t\"U\n\x10ListPagesRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0c\n\x04page\x18\x02 \x01(\x05\x12\x11\n\tpage_size\x18\x03 \x01(\x05\x12\x0f\n\x07sort_by\x18\x04 \x01(\t\"H\n\x11ListPagesResponse\x12$\n\x05pages\x18\x01 \x03(\x0b\x32\x15.archive.PageResponse\x12\r\n\x05total\x18\x02 \x01(\x05\"5\n\x11\x44\x65letePageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"9\n\x15GetPageContentRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"=\n\x13PageContentResponse\x12\x12\n\nsigned_url\x18\x01 \x01(\t\x12\x12\n\nexpires_at\x18\x02 \x01(\x03\"2\n\x0eStatusResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t2\xe9\x02\n\x0e\x41rchiveService\x12\x45\n\nIngestPage\x12\x1a.archive.IngestPageRequest\x1a\x1b.archive.IngestPageResponse\x12\x39\n\x07GetPage\x12\x17.archive.GetPageRequest\x1a\x15.archive.PageResponse\x12\x42\n\tListPages\x12\x19.archive.ListPagesRequest\x1a\x1a.archive.ListPagesResponse\x12\x41\n\nDeletePage\x12\x1a.archive.DeletePageRequest\x1a\x17.archive.StatusResponse\x12N\n\x0eGetPageContent\x12\x1e.archive.GetPageContentRequest\x1a\x1c.archive.PageContentResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rarchive.proto\x12\x07\x61rchive\"=\n\x05\x41sset\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x14\n\x0c\x63ontent_type\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"\x9e\x01\n\x11IngestPageRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0b\n\x03url\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x14\n\x0chtml_content\x18\x04 \x01(\x0c\x12\x1e\n\x06\x61ssets\x18\x05 \x03(\x0b\x32\x0e.archive.Asset\x12\x18\n\x10\x65xtension_job_id\x18\x06 \x01(\t\x12\x0c\n\x04plan\x18\x07 \x01(\t\"G\n\x12IngestPageResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07page_id\x18\x02 \x01(\t\x12\x0f\n\x07message\x18\x03 \x01(\t\"2\n\x0eGetPageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"\xb0\x01\n\x0cPageResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x0b\n\x03url\x18\x03 \x01(\t\x12\r\n\x05title\x18\x04 \x01(\t\x12\x14\n\x0cpreview_text\x18\x05 \x01(\t\x12\x0e\n\x06r2_key\x18\x06 \x01(\t\x12\x12\n\nsize_bytes\x18\x07 \x01(\x03\x12\x18\n\x10\x65xtension_job_id\x18\x08 \x01(\t\x12\x13\n\x0b\x61rchived_at\x18\t \x01(\t\"l\n\x10ListPagesRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0c\n\x04page\x18\x02 \x01(\x05\x12\x11\n\tpage_size\x18\x03 \x01(\x05\x12\x0f\n\x07sort_by\x18\x04 \x01(\t\x12\x15\n\rcollection_id\x18\x05 \x01(\t\"H\n\x11ListPagesResponse\x12$\n\x05pages\x18\x01 \x03(\x0b\x32\x15.archive.PageResponse\x12\r\n\x05total\x18\x02 \x01(\x05\"5\n\x11\x44\x65letePageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"9\n\x15GetPageContentRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"=\n\x13PageContentResponse\x12\x12\n\nsigned_url\x18\x01 \x01(\t\x12\x12\n\nexpires_at\x18\x02 \x01(\x03\"2\n\x0eStatusResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"L\n\x15GetArchiveFileRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x11\n\tfile_path\x18\x03 \x01(\t\"9\n\x13\x41rchiveFileResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x14\n\x0c\x63ontent_type\x18\x02 \x01(\t2\xb9\x03\n\x0e\x41rchiveService\x12\x45\n\nIngestPage\x12\x1a.archive.IngestPageRequest\x1a\x1b.archive.IngestPageResponse\x12\x39\n\x07GetPage\x12\x17.archive.GetPageRequest\x1a\x15.archive.PageResponse\x12\x42\n\tListPages\x12\x19.archive.ListPagesRequest\x1a\x1a.archive.ListPagesResponse\x12\x41\n\nDeletePage\x12\x1a.archive.DeletePageRequest\x1a\x17.archive.StatusResponse\x12N\n\x0eGetPageContent\x12\x1e.archive.GetPageContentRequest\x1a\x1c.archive.PageContentResponse\x12N\n\x0eGetArchiveFile\x12\x1e.archive.GetArchiveFileRequest\x1a\x1c.archive.ArchiveFileResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -42,17 +42,21 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_PAGERESPONSE']._serialized_start=376
   _globals['_PAGERESPONSE']._serialized_end=552
   _globals['_LISTPAGESREQUEST']._serialized_start=554
-  _globals['_LISTPAGESREQUEST']._serialized_end=639
-  _globals['_LISTPAGESRESPONSE']._serialized_start=641
-  _globals['_LISTPAGESRESPONSE']._serialized_end=713
-  _globals['_DELETEPAGEREQUEST']._serialized_start=715
-  _globals['_DELETEPAGEREQUEST']._serialized_end=768
-  _globals['_GETPAGECONTENTREQUEST']._serialized_start=770
-  _globals['_GETPAGECONTENTREQUEST']._serialized_end=827
-  _globals['_PAGECONTENTRESPONSE']._serialized_start=829
-  _globals['_PAGECONTENTRESPONSE']._serialized_end=890
-  _globals['_STATUSRESPONSE']._serialized_start=892
-  _globals['_STATUSRESPONSE']._serialized_end=942
-  _globals['_ARCHIVESERVICE']._serialized_start=945
-  _globals['_ARCHIVESERVICE']._serialized_end=1306
+  _globals['_LISTPAGESREQUEST']._serialized_end=662
+  _globals['_LISTPAGESRESPONSE']._serialized_start=664
+  _globals['_LISTPAGESRESPONSE']._serialized_end=736
+  _globals['_DELETEPAGEREQUEST']._serialized_start=738
+  _globals['_DELETEPAGEREQUEST']._serialized_end=791
+  _globals['_GETPAGECONTENTREQUEST']._serialized_start=793
+  _globals['_GETPAGECONTENTREQUEST']._serialized_end=850
+  _globals['_PAGECONTENTRESPONSE']._serialized_start=852
+  _globals['_PAGECONTENTRESPONSE']._serialized_end=913
+  _globals['_STATUSRESPONSE']._serialized_start=915
+  _globals['_STATUSRESPONSE']._serialized_end=965
+  _globals['_GETARCHIVEFILEREQUEST']._serialized_start=967
+  _globals['_GETARCHIVEFILEREQUEST']._serialized_end=1043
+  _globals['_ARCHIVEFILERESPONSE']._serialized_start=1045
+  _globals['_ARCHIVEFILERESPONSE']._serialized_end=1102
+  _globals['_ARCHIVESERVICE']._serialized_start=1105
+  _globals['_ARCHIVESERVICE']._serialized_end=1546
 # @@protoc_insertion_point(module_scope)

@@ -108,9 +108,10 @@ async def remove_page_from_collection(request: Request, collection_id: str, page
 def _coll_to_dict(c):
     return {
         "id": c.id,
+        "user_id": c.user_id,
         "name": c.name,
         "description": c.description,
-        "parent_id": c.parent_id,
+        "parent_id": c.parent_id or None,
         "color": c.color,
         "page_count": c.page_count,
         "created_at": c.created_at,

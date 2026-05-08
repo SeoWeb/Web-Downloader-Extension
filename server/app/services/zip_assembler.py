@@ -274,7 +274,81 @@ class ZipAssemblerService:
                         )
                     await self._update_progress(db, session, "inlining_css", 100)
 
-                # ---- Phase 4: Assembling output ----
+                # ---- Cloud-only assembly branch ----
+                if session.pagepocket_user_id:
+                    await self._update_progress(db, session, "assembling_zip", 0)
+
+                    if is_single_file:
+                        # Single-file cloud: produce inlined HTML, push without assets
+                        content_text = self._read_content_txt(session_id)
+                        html_path = await self._assemble_single_file(
+                            session_id, db, session,
+                            main_html, tab_url, filename_map, content_text,
+                            local_path_to_storage,
+                        )
+                        if html_path is None:
+                            return
+
+                        # Read inlined HTML from disk
+                        with open(html_path, "rb") as f:
+                            html_bytes = f.read()
+
+                        # Push to cloud with no assets (all inlined)
+                        from app.services.archive_client import push_to_archive
+                        title = self._extract_title(html_bytes)
+                        session.cloud_status = "pending"
+                        session.cloud_error = None
+                        await db.flush()
+
+                        try:
+                            result = await asyncio.to_thread(
+                                push_to_archive,
+                                user_id=session.pagepocket_user_id,
+                                session_id=session_id,
+                                url=session.url,
+                                title=title,
+                                html_content=html_bytes,
+                                assets=[],
+                            )
+                            if result.page_id:
+                                session.cloud_status = "success"
+                                session.cloud_page_id = result.page_id
+                                session.cloud_error = None
+                            else:
+                                session.cloud_status = "failed"
+                                session.cloud_error = result.error
+                        except Exception as cloud_exc:
+                            logger.exception(
+                                "Cloud push failed for session %s: %s",
+                                session_id, cloud_exc,
+                            )
+                            session.cloud_status = "failed"
+                            session.cloud_error = str(cloud_exc)
+
+                        # Delete local file after push (success or failure)
+                        try:
+                            os.remove(html_path)
+                        except OSError:
+                            pass
+
+                        session.status = "ready"
+                        session.assembly_phase = None
+                        session.assembly_progress_pct = None
+                        session.zip_path = None
+                        await db.flush()
+                        logger.info(
+                            "Cloud single-file assembly complete: session=%s cloud_status=%s",
+                            session_id, session.cloud_status,
+                        )
+                    else:
+                        # Multi-file cloud: push processed HTML + assets
+                        await self._assemble_cloud_push(
+                            session_id, db, session,
+                            main_html, linked_page_htmls, page_hash_to_filename,
+                        )
+                    return
+
+                # ---- Phase 4: Assembling output (non-cloud) ----
                 await self._update_progress(db, session, "assembling_zip", 0)
 
                 # Read content.txt if present
@@ -308,50 +382,6 @@ class ZipAssemblerService:
                     "Assembly complete: session=%s output=%s",
                     session_id, output_path,
                 )
-
-                # Cloud archive push (after local finalization succeeds)
-                from app.services.archive_client import push_to_archive, is_configured
-                if is_configured() and session.pagepocket_user_id:
-                    session.cloud_status = "pending"
-                    session.cloud_error = None
-                    await db.flush()
-                    try:
-                        with open(output_path, "rb") as f:
-                            html_bytes = f.read()
-
-                        # Extract title from HTML
-                        title = self._extract_title(html_bytes)
-
-                        # Build assets list from session resources
-                        assets = await self._build_cloud_assets(
-                            session_id, db,
-                        )
-
-                        result = await asyncio.to_thread(
-                            push_to_archive,
-                            user_id=session.pagepocket_user_id,
-                            session_id=session_id,
-                            url=session.url,
-                            title=title,
-                            html_content=html_bytes,
-                            assets=assets,
-                        )
-                        if result.page_id:
-                            session.cloud_status = "success"
-                            session.cloud_page_id = result.page_id
-                            session.cloud_error = None
-                        else:
-                            session.cloud_status = "failed"
-                            session.cloud_error = result.error
-                        await db.flush()
-                    except Exception as cloud_exc:
-                        logger.exception(
-                            "Cloud push failed for session %s: %s",
-                            session_id, cloud_exc,
-                        )
-                        session.cloud_status = "failed"
-                        session.cloud_error = str(cloud_exc)
-                        await db.flush()
 
         except asyncio.CancelledError:
             logger.info("Assembly cancelled for session %s", session_id)
@@ -552,6 +582,76 @@ class ZipAssemblerService:
                     pass
             await self._mark_failed(db, session, f"Single-file assembly error: {exc}")
             return None
+
+    # ------------------------------------------------------------------
+    # Cloud-only assembly (replaces ZIP for cloud sessions)
+    # ------------------------------------------------------------------
+
+    async def _assemble_cloud_push(
+        self,
+        session_id: str,
+        db,
+        session,
+        main_html: str,
+        linked_page_htmls: dict[str, str],
+        page_hash_to_filename: dict[str, str],
+    ) -> None:
+        """Push processed HTML + assets to PagePocket cloud (no local file).
+
+        Encodes main_html as UTF-8, builds asset list from session
+        resources, appends linked page HTMLs, calls push_to_archive(),
+        and updates session cloud fields.
+        """
+        from app.services.archive_client import push_to_archive
+
+        html_bytes = main_html.encode("utf-8")
+        title = self._extract_title(html_bytes)
+
+        assets = await self._build_cloud_assets(session_id, db)
+
+        for page_hash, page_html in linked_page_htmls.items():
+            filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
+            assets.append((f"pages/{filename}", "text/html", page_html.encode("utf-8")))
+
+        session.cloud_status = "pending"
+        session.cloud_error = None
+        await db.flush()
+
+        try:
+            result = await asyncio.to_thread(
+                push_to_archive,
+                user_id=session.pagepocket_user_id,
+                session_id=session_id,
+                url=session.url,
+                title=title,
+                html_content=html_bytes,
+                assets=assets,
+            )
+            if result.page_id:
+                session.cloud_status = "success"
+                session.cloud_page_id = result.page_id
+                session.cloud_error = None
+            else:
+                session.cloud_status = "failed"
+                session.cloud_error = result.error
+        except Exception as cloud_exc:
+            logger.exception(
+                "Cloud push failed for session %s: %s",
+                session_id, cloud_exc,
+            )
+            session.cloud_status = "failed"
+            session.cloud_error = str(cloud_exc)
+
+        session.status = "ready"
+        session.assembly_phase = None
+        session.assembly_progress_pct = None
+        session.zip_path = None
+        await db.flush()
+
+        logger.info(
+            "Cloud assembly complete: session=%s cloud_status=%s page_id=%s",
+            session_id, session.cloud_status, session.cloud_page_id,
+        )
 
     # ------------------------------------------------------------------
     # CSS file conversion (Phase 3 helper)

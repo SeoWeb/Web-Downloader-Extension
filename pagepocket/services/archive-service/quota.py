@@ -19,21 +19,22 @@ def check_and_reserve(session, user_id: str, plan: str, request_size: int) -> st
     ).scalar_one_or_none()
 
     now = datetime.now(timezone.utc)
+    now_naive = now.replace(tzinfo=None)
 
     if quota is None:
         quota = UserQuota(
             user_id=user_id,
             pages_this_month=0,
             total_bytes=0,
-            quota_reset_at=now + timedelta(days=30),
+            quota_reset_at=now_naive + timedelta(days=30),
         )
         session.add(quota)
         session.flush()
 
     # Monthly rollover
-    if quota.quota_reset_at < now:
+    if quota.quota_reset_at < now_naive:
         quota.pages_this_month = 0
-        quota.quota_reset_at = now + timedelta(days=30)
+        quota.quota_reset_at = now_naive + timedelta(days=30)
 
     # Check page limit
     if quota.pages_this_month >= limits["pages_per_month"]:

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { MessageAction, messageActions } from "../../common/message";
 import { useTranslation } from "react-i18next";
-import { CheckCircle, FolderOpen, RefreshCcw, Info, ChevronDown, Copy, Check, Server, FileText } from "lucide-react";
+import { CheckCircle, FolderOpen, RefreshCcw, Info, ChevronDown, Copy, Check, Server, FileText, Cloud } from "lucide-react";
+import { CloudUploadState } from "../../components/CloudUploadStatus";
+import { PAGEPOCKET_URL } from "../../common/pagepocket-mode";
 
 const ChromeExtensionRating = React.lazy(
   () => import("../../components/ChromeExtensionRating"),
@@ -17,6 +19,8 @@ interface DownloadCompleteProps {
   serverDownloadUrl?: string | null;
   /** (15.4) Whether the download is a single-file HTML (affects filename display). */
   isSingleFile?: boolean;
+  /** Cloud upload state — when present, show "Saved to PagePocket" instead of local download UI. */
+  cloudUploadState?: CloudUploadState | null;
 }
 
 export function DownloadComplete({
@@ -25,6 +29,7 @@ export function DownloadComplete({
   reset,
   serverDownloadUrl,
   isSingleFile,
+  cloudUploadState,
 }: DownloadCompleteProps) {
   const { t } = useTranslation();
   const [downloadId, setDownloadId] = useState<number | null>(null);
@@ -101,7 +106,7 @@ export function DownloadComplete({
         </div>
 
         {/* (15.4) Server download URL with copy button */}
-        {serverDownloadUrl && (
+        {serverDownloadUrl && !cloudUploadState && (
           <div className="w-full bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-4 space-y-2">
             <div className="flex items-center gap-2">
               <Server className="w-4 h-4 text-indigo-600 flex-shrink-0" />
@@ -134,7 +139,29 @@ export function DownloadComplete({
           </div>
         )}
 
-        {/* Extraction Alert - Accordion */}
+        {/* Cloud upload success badge */}
+        {cloudUploadState?.status === "success" && cloudUploadState.pageId && (
+          <div className="w-full bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <Cloud className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+              <span className="text-sm font-medium text-indigo-900">{t('status.pagepocketSavedTo')}</span>
+            </div>
+            {PAGEPOCKET_URL && (
+              <a
+                href={`${PAGEPOCKET_URL}/pages/${cloudUploadState.pageId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+              >
+                <Cloud className="w-3 h-3" />
+                {t('status.pagepocketViewPage')}
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* Extraction Alert - Accordion (hidden for cloud uploads) */}
+        {!cloudUploadState && (
         <div className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg overflow-hidden">
           {/* Clickable Header */}
           <button
@@ -251,8 +278,10 @@ export function DownloadComplete({
             </div>
           )}
         </div>
+        )}
 
         <div className="flex flex-col w-full gap-3">
+          {!cloudUploadState && (
           <button
             onClick={handleShowInFolder}
             disabled={!downloadId}
@@ -261,6 +290,7 @@ export function DownloadComplete({
             <FolderOpen className="w-5 h-5" />
             {t('actions.showInFolder')}
           </button>
+          )}
           <button
             onClick={handleReset}
             className="btn-secondary w-full flex items-center justify-center gap-2 cursor-pointer"

@@ -1,10 +1,10 @@
 ## ADDED Requirements
 
 ### Requirement: Page Ingestion from Extension Server
-The Archive Service SHALL expose an `ArchiveService.IngestPage` RPC that receives a captured page (HTML + assets) from the extension server and persists it.
+The Archive Service SHALL expose an `ArchiveService.IngestPage` RPC that receives a captured page (HTML + assets) from the extension server and persists it. When receiving pre-processed HTML with relative asset paths, the `sanitise_and_rewrite` function SHALL correctly match basenames (e.g., `images/photo.jpg` → basename `photo.jpg`) against the asset map.
 
-#### Scenario: Successful ingest
-- **WHEN** `IngestPage` is called with `user_id`, `url`, `title`, `html_content`, a list of `Asset { filename, content_type, data }`, and a unique `extension_job_id`
+#### Scenario: Successful ingest with pre-processed HTML
+- **WHEN** `IngestPage` is called with `user_id`, `url`, `title`, `html_content` containing relative paths like `images/photo.jpg`, a list of `Asset { filename, content_type, data }`, and a unique `extension_job_id`
 - **THEN** the service MUST generate a UUIDv4 `page_id`
 - **AND** upload every asset to R2 under `{user_id}/{page_id}/assets/{filename}`
 - **AND** rewrite every `src`/`href` in the HTML whose basename matches an asset filename to `/r2/{user_id}/{page_id}/assets/{filename}`

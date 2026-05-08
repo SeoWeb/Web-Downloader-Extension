@@ -44,6 +44,11 @@ class ShareServiceStub(object):
                 request_serializer=share__pb2.GetShareLinkRequest.SerializeToString,
                 response_deserializer=share__pb2.ShareLinkResponse.FromString,
                 _registered_method=True)
+        self.GetShareLinkByPage = channel.unary_unary(
+                '/share.ShareService/GetShareLinkByPage',
+                request_serializer=share__pb2.GetShareLinkByPageRequest.SerializeToString,
+                response_deserializer=share__pb2.ShareLinkResponse.FromString,
+                _registered_method=True)
         self.RevokeShareLink = channel.unary_unary(
                 '/share.ShareService/RevokeShareLink',
                 request_serializer=share__pb2.RevokeShareLinkRequest.SerializeToString,
@@ -66,6 +71,12 @@ class ShareServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetShareLink(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetShareLinkByPage(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -94,6 +105,11 @@ def add_ShareServiceServicer_to_server(servicer, server):
             'GetShareLink': grpc.unary_unary_rpc_method_handler(
                     servicer.GetShareLink,
                     request_deserializer=share__pb2.GetShareLinkRequest.FromString,
+                    response_serializer=share__pb2.ShareLinkResponse.SerializeToString,
+            ),
+            'GetShareLinkByPage': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetShareLinkByPage,
+                    request_deserializer=share__pb2.GetShareLinkByPageRequest.FromString,
                     response_serializer=share__pb2.ShareLinkResponse.SerializeToString,
             ),
             'RevokeShareLink': grpc.unary_unary_rpc_method_handler(
@@ -160,6 +176,33 @@ class ShareService(object):
             target,
             '/share.ShareService/GetShareLink',
             share__pb2.GetShareLinkRequest.SerializeToString,
+            share__pb2.ShareLinkResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetShareLinkByPage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/share.ShareService/GetShareLinkByPage',
+            share__pb2.GetShareLinkByPageRequest.SerializeToString,
             share__pb2.ShareLinkResponse.FromString,
             options,
             channel_credentials,

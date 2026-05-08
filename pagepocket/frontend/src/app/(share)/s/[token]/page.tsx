@@ -14,12 +14,11 @@ export const metadata: Metadata = {
 export default async function SharedPagePage({ params }: Props) {
   const { token } = await params;
 
-  let data;
   try {
-    data = await share.validatePublic(token);
+    await share.validatePublic(token);
   } catch {
     notFound();
   }
 
-  return <PublicViewerShell url={data!.url} expiresAt={data!.expires_at} />;
+  return <PublicViewerShell token={token} />;
 }

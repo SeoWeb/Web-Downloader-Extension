@@ -26,10 +26,10 @@ import archive_pb2
 class TestPageProcessor(unittest.TestCase):
     def test_rewrite_asset_refs(self):
         html = b'<html><img src="photo.jpg"><link href="style.css"></html>'
-        asset_map = {"photo.jpg": "/r2/u1/p1/assets/photo.jpg", "style.css": "/r2/u1/p1/assets/style.css"}
+        asset_map = {"photo.jpg": "assets/photo.jpg", "style.css": "assets/style.css"}
         rewritten, preview, body = sanitise_and_rewrite(html, asset_map)
-        self.assertIn(b"/r2/u1/p1/assets/photo.jpg", rewritten)
-        self.assertIn(b"/r2/u1/p1/assets/style.css", rewritten)
+        self.assertIn(b"assets/photo.jpg", rewritten)
+        self.assertIn(b"assets/style.css", rewritten)
 
     def test_preview_text_extraction(self):
         html = b"<html><body><p>Hello World</p></body></html>"
@@ -44,10 +44,10 @@ class TestPageProcessor(unittest.TestCase):
 
     def test_no_matching_assets(self):
         html = b'<html><img src="other.png"></html>'
-        asset_map = {"photo.jpg": "/r2/u1/p1/assets/photo.jpg"}
+        asset_map = {"photo.jpg": "assets/photo.jpg"}
         rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
         self.assertIn(b"other.png", rewritten)
-        self.assertNotIn(b"/r2/u1/p1/assets/photo.jpg", rewritten)
+        self.assertNotIn(b"assets/photo.jpg", rewritten)
 
     def test_rewrite_mixed_asset_refs(self):
         """HTML with img, link, script, source, video, audio referencing assets."""
@@ -64,13 +64,13 @@ class TestPageProcessor(unittest.TestCase):
             b'</body></html>'
         )
         asset_map = {
-            "styles.css": "/r2/u1/p1/assets/styles.css",
-            "app.js": "/r2/u1/p1/assets/app.js",
-            "photo.jpg": "/r2/u1/p1/assets/photo.jpg",
-            "video.mp4": "/r2/u1/p1/assets/video.mp4",
-            "clip.webm": "/r2/u1/p1/assets/clip.webm",
-            "sound.mp3": "/r2/u1/p1/assets/sound.mp3",
-            "lazy.png": "/r2/u1/p1/assets/lazy.png",
+            "styles.css": "assets/styles.css",
+            "app.js": "assets/app.js",
+            "photo.jpg": "assets/photo.jpg",
+            "video.mp4": "assets/video.mp4",
+            "clip.webm": "assets/clip.webm",
+            "sound.mp3": "assets/sound.mp3",
+            "lazy.png": "assets/lazy.png",
         }
         rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
         for orig, new in asset_map.items():
@@ -80,9 +80,29 @@ class TestPageProcessor(unittest.TestCase):
 
     def test_asset_with_query_params(self):
         html = b'<html><img src="photo.jpg?v=1&w=200"></html>'
-        asset_map = {"photo.jpg": "/r2/u1/p1/assets/photo.jpg"}
+        asset_map = {"photo.jpg": "assets/photo.jpg"}
         rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
-        self.assertIn(b"/r2/u1/p1/assets/photo.jpg", rewritten)
+        self.assertIn(b"assets/photo.jpg", rewritten)
+
+    def test_rewrite_nested_asset_paths(self):
+        """Full path matching for nested local paths like images/foo.jpg."""
+        html = b'<html><img src="./images/photo.jpg"><link href="./styles/main.css"></html>'
+        asset_map = {
+            "images/photo.jpg": "assets/images/photo.jpg",
+            "styles/main.css": "assets/styles/main.css",
+        }
+        rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
+        self.assertIn(b"assets/images/photo.jpg", rewritten)
+        self.assertIn(b"assets/styles/main.css", rewritten)
+        self.assertNotIn(b"./images/photo.jpg", rewritten)
+
+    def test_removes_base_tags(self):
+        """Base tags must be removed to prevent overriding relative paths."""
+        html = b'<html><head><base href="https://example.com/"></head><body><img src="images/photo.jpg"></body></html>'
+        asset_map = {"images/photo.jpg": "assets/images/photo.jpg"}
+        rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
+        self.assertNotIn(b"<base", rewritten)
+        self.assertIn(b"assets/images/photo.jpg", rewritten)
 
 
 # ---------------------------------------------------------------------------
@@ -420,6 +440,117 @@ class TestDeletePage(unittest.TestCase):
 
         # Search removal called
         mock_search_stub.RemovePage.assert_called_once()
+
+
+class TestGetArchiveFile(unittest.TestCase):
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_fetch_file_success(self, mock_engine, mock_db_session, mock_r2_cls):
+        from servicer import ArchiveServicer
+
+        page = _make_page(page_id="p1", user_id="u1")
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        mock_r2 = MagicMock()
+        mock_r2.bucket = "test-bucket"
+        body = MagicMock()
+        body.read.return_value = b"<html>data</html>"
+        mock_r2.client.get_object.return_value = {
+            "Body": body,
+            "ContentType": "text/html; charset=utf-8",
+        }
+        mock_r2_cls.return_value = mock_r2
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        req = archive_pb2.GetArchiveFileRequest(
+            page_id="p1", user_id="", file_path="index.html",
+        )
+        resp = svc.GetArchiveFile(req, ctx)
+
+        self.assertEqual(resp.data, b"<html>data</html>")
+        self.assertEqual(resp.content_type, "text/html; charset=utf-8")
+        mock_r2.client.get_object.assert_called_once_with(
+            Bucket="test-bucket", Key="u1/p1/index.html",
+        )
+
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_path_traversal_rejected(self, mock_engine, mock_db_session, mock_r2_cls):
+        from servicer import ArchiveServicer
+        import grpc
+
+        mock_r2_cls.return_value = MagicMock()
+        svc = ArchiveServicer()
+
+        # Reject paths with /.. traversal
+        ctx = _FakeContext()
+        req = archive_pb2.GetArchiveFileRequest(
+            page_id="p1", user_id="", file_path="foo/../../../etc/passwd",
+        )
+        svc.GetArchiveFile(req, ctx)
+        self.assertEqual(ctx._code, grpc.StatusCode.INVALID_ARGUMENT)
+
+        # Reject absolute paths
+        ctx2 = _FakeContext()
+        req2 = archive_pb2.GetArchiveFileRequest(
+            page_id="p1", user_id="", file_path="/etc/passwd",
+        )
+        svc.GetArchiveFile(req2, ctx2)
+        self.assertEqual(ctx2._code, grpc.StatusCode.INVALID_ARGUMENT)
+
+        # Allow filenames containing ".." without a slash (edge case)
+        ctx3 = _FakeContext()
+        req3 = archive_pb2.GetArchiveFileRequest(
+            page_id="p1", user_id="", file_path="assets/image..thumb.jpg",
+        )
+        mock_session = MagicMock()
+        page = _make_page(page_id="p1", user_id="u1")
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+        mock_r2 = MagicMock()
+        mock_r2.bucket = "test-bucket"
+        body = MagicMock()
+        body.read.return_value = b"\xff\xd8\xff"
+        mock_r2.client.get_object.return_value = {"Body": body, "ContentType": "image/jpeg"}
+        svc.r2 = mock_r2
+
+        resp = svc.GetArchiveFile(req3, ctx3)
+        self.assertIsNone(ctx3._code)  # No error set
+
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_file_not_found_in_r2(self, mock_engine, mock_db_session, mock_r2_cls):
+        from servicer import ArchiveServicer
+        import grpc
+
+        page = _make_page(page_id="p1", user_id="u1")
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        mock_r2 = MagicMock()
+        mock_r2.bucket = "test-bucket"
+        mock_r2.client.get_object.side_effect = Exception("NoSuchKey")
+        mock_r2_cls.return_value = mock_r2
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        req = archive_pb2.GetArchiveFileRequest(
+            page_id="p1", user_id="", file_path="assets/missing.jpg",
+        )
+        resp = svc.GetArchiveFile(req, ctx)
+
+        self.assertEqual(ctx._code, grpc.StatusCode.NOT_FOUND)
+        self.assertEqual(resp.data, b"")
 
 
 if __name__ == "__main__":

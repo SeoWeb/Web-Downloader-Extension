@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bshare.proto\x12\x05share\"a\n\x16\x43reateShareLinkRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0f\n\x07page_id\x18\x02 \x01(\t\x12\x11\n\tis_public\x18\x03 \x01(\x08\x12\x12\n\nexpires_at\x18\x04 \x01(\x03\"$\n\x13GetShareLinkRequest\x12\r\n\x05token\x18\x01 \x01(\t\"8\n\x16RevokeShareLinkRequest\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"%\n\x14ValidateTokenRequest\x12\r\n\x05token\x18\x01 \x01(\t\"\xba\x01\n\x11ShareLinkResponse\x12\r\n\x05token\x18\x01 \x01(\t\x12\x11\n\tshort_url\x18\x02 \x01(\t\x12\x11\n\tis_public\x18\x03 \x01(\x08\x12\x12\n\nexpires_at\x18\x04 \x01(\x03\x12\x12\n\nview_count\x18\x05 \x01(\x05\x12\x0f\n\x07page_id\x18\x06 \x01(\t\x12\x0f\n\x07user_id\x18\x07 \x01(\t\x12\x12\n\ncreated_at\x18\x08 \x01(\t\x12\x12\n\nrevoked_at\x18\t \x01(\t\"7\n\x15ValidateShareResponse\x12\r\n\x05valid\x18\x01 \x01(\x08\x12\x0f\n\x07page_id\x18\x02 \x01(\t\"2\n\x0eStatusResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t2\xb5\x02\n\x0cShareService\x12J\n\x0f\x43reateShareLink\x12\x1d.share.CreateShareLinkRequest\x1a\x18.share.ShareLinkResponse\x12\x44\n\x0cGetShareLink\x12\x1a.share.GetShareLinkRequest\x1a\x18.share.ShareLinkResponse\x12G\n\x0fRevokeShareLink\x12\x1d.share.RevokeShareLinkRequest\x1a\x15.share.StatusResponse\x12J\n\rValidateToken\x12\x1b.share.ValidateTokenRequest\x1a\x1c.share.ValidateShareResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bshare.proto\x12\x05share\"a\n\x16\x43reateShareLinkRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0f\n\x07page_id\x18\x02 \x01(\t\x12\x11\n\tis_public\x18\x03 \x01(\x08\x12\x12\n\nexpires_at\x18\x04 \x01(\x03\"$\n\x13GetShareLinkRequest\x12\r\n\x05token\x18\x01 \x01(\t\"=\n\x19GetShareLinkByPageRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0f\n\x07page_id\x18\x02 \x01(\t\"8\n\x16RevokeShareLinkRequest\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"%\n\x14ValidateTokenRequest\x12\r\n\x05token\x18\x01 \x01(\t\"\xba\x01\n\x11ShareLinkResponse\x12\r\n\x05token\x18\x01 \x01(\t\x12\x11\n\tshort_url\x18\x02 \x01(\t\x12\x11\n\tis_public\x18\x03 \x01(\x08\x12\x12\n\nexpires_at\x18\x04 \x01(\x03\x12\x12\n\nview_count\x18\x05 \x01(\x05\x12\x0f\n\x07page_id\x18\x06 \x01(\t\x12\x0f\n\x07user_id\x18\x07 \x01(\t\x12\x12\n\ncreated_at\x18\x08 \x01(\t\x12\x12\n\nrevoked_at\x18\t \x01(\t\"7\n\x15ValidateShareResponse\x12\r\n\x05valid\x18\x01 \x01(\x08\x12\x0f\n\x07page_id\x18\x02 \x01(\t\"2\n\x0eStatusResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t2\x87\x03\n\x0cShareService\x12J\n\x0f\x43reateShareLink\x12\x1d.share.CreateShareLinkRequest\x1a\x18.share.ShareLinkResponse\x12\x44\n\x0cGetShareLink\x12\x1a.share.GetShareLinkRequest\x1a\x18.share.ShareLinkResponse\x12P\n\x12GetShareLinkByPage\x12 .share.GetShareLinkByPageRequest\x1a\x18.share.ShareLinkResponse\x12G\n\x0fRevokeShareLink\x12\x1d.share.RevokeShareLinkRequest\x1a\x15.share.StatusResponse\x12J\n\rValidateToken\x12\x1b.share.ValidateTokenRequest\x1a\x1c.share.ValidateShareResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,16 +35,18 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_CREATESHARELINKREQUEST']._serialized_end=119
   _globals['_GETSHARELINKREQUEST']._serialized_start=121
   _globals['_GETSHARELINKREQUEST']._serialized_end=157
-  _globals['_REVOKESHARELINKREQUEST']._serialized_start=159
-  _globals['_REVOKESHARELINKREQUEST']._serialized_end=215
-  _globals['_VALIDATETOKENREQUEST']._serialized_start=217
-  _globals['_VALIDATETOKENREQUEST']._serialized_end=254
-  _globals['_SHARELINKRESPONSE']._serialized_start=257
-  _globals['_SHARELINKRESPONSE']._serialized_end=443
-  _globals['_VALIDATESHARERESPONSE']._serialized_start=445
-  _globals['_VALIDATESHARERESPONSE']._serialized_end=500
-  _globals['_STATUSRESPONSE']._serialized_start=502
-  _globals['_STATUSRESPONSE']._serialized_end=552
-  _globals['_SHARESERVICE']._serialized_start=555
-  _globals['_SHARESERVICE']._serialized_end=864
+  _globals['_GETSHARELINKBYPAGEREQUEST']._serialized_start=159
+  _globals['_GETSHARELINKBYPAGEREQUEST']._serialized_end=220
+  _globals['_REVOKESHARELINKREQUEST']._serialized_start=222
+  _globals['_REVOKESHARELINKREQUEST']._serialized_end=278
+  _globals['_VALIDATETOKENREQUEST']._serialized_start=280
+  _globals['_VALIDATETOKENREQUEST']._serialized_end=317
+  _globals['_SHARELINKRESPONSE']._serialized_start=320
+  _globals['_SHARELINKRESPONSE']._serialized_end=506
+  _globals['_VALIDATESHARERESPONSE']._serialized_start=508
+  _globals['_VALIDATESHARERESPONSE']._serialized_end=563
+  _globals['_STATUSRESPONSE']._serialized_start=565
+  _globals['_STATUSRESPONSE']._serialized_end=615
+  _globals['_SHARESERVICE']._serialized_start=618
+  _globals['_SHARESERVICE']._serialized_end=1009
 # @@protoc_insertion_point(module_scope)

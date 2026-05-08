@@ -30,6 +30,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
 
+        # Allow CORS preflight requests
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         # Allow public paths
         if path in PUBLIC_PATHS:
             return await call_next(request)

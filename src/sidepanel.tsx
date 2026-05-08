@@ -21,6 +21,8 @@ import {
   initialServerModeState,
   applyServerModeMessage,
 } from "./sidepanel/server-mode-state";
+import { usePagePocket } from "./hooks/usePagePocket";
+import { CloudUploadState } from "./components/CloudUploadStatus";
 
 // ServerModeState type and transition logic are imported from
 // server-mode-state.ts to avoid duplication and enable unit testing.
@@ -76,6 +78,10 @@ export default function SidePanel() {
   const [serverModeState, setServerModeState] = useState<ServerModeState>(initialServerModeState);
   // Interrupt state: shown when the service worker was killed during a download
   const [interruptData, setInterruptData] = useState<InterruptData | null>(null);
+  // PagePocket cloud upload state
+  const [cloudUploadState, setCloudUploadState] = useState<CloudUploadState | null>(null);
+  // PagePocket auth/cloud state
+  const { cloudStorageEnabled, isAuthenticated } = usePagePocket();
   // downloadResponse and scrollAttempts are now managed by useScrapingDownloader hook
   const [downloadOptions, setDownloadOptions] = useState<{
     downloadHTML: boolean;
@@ -132,6 +138,42 @@ export default function SidePanel() {
             setIsScrapingLinkedPages(false);
           }
 
+          // PagePocket cloud upload state (via PANEL_MESSAGE from
+          // download-core.ts executeDownloadServerMode — cloud result
+          // detected via server status response).
+          // The download pipeline sends these as regular PANEL_MESSAGEs,
+          // not as dedicated PAGEPOCKET_UPLOAD_* actions.
+          const ppKey = data.message?.key;
+          if (ppKey === "status.pagepocketUploading") {
+            setCloudUploadState({ status: "uploading", progress: 0 });
+          } else if (ppKey === "status.pagepocketUploadProgress") {
+            const { loaded = 0, total = 1 } = data.message?.options ?? {};
+            const pct = total > 0 ? (loaded / total) * 100 : 0;
+            setCloudUploadState((prev) =>
+              prev ? { ...prev, progress: pct } : { status: "uploading", progress: pct },
+            );
+          } else if (ppKey === "status.pagepocketUploadComplete") {
+            setCloudUploadState({
+              status: "success",
+              progress: 100,
+              pageId: data.message?.options?.pageId,
+            });
+            setAction(messageActions.DOWNLOAD_DONE);
+            setIsScraping(false);
+            setIsScrapingLinkedPages(false);
+            setDownloadResponse(null);
+          } else if (ppKey === "status.pagepocketUploadError") {
+            const opts = data.message?.options ?? {};
+            setCloudUploadState({
+              status: "error",
+              progress: 0,
+              errorMessage: opts.error,
+              isQuotaError: opts.quotaExceeded ?? false,
+            });
+            setIsScraping(false);
+            setIsScrapingLinkedPages(false);
+          }
+
           // (15.7) Track server-mode phase transitions from messages.
           // Delegates to applyServerModeMessage() pure function (testable).
           const msgKey = data.message?.key;
@@ -140,7 +182,44 @@ export default function SidePanel() {
               applyServerModeMessage(prev, msgKey, data.message?.options),
             );
           }
-          // Update completion based on message type if needed
+          break;
+
+        // PagePocket cloud upload message handling
+        case messageActions.PAGEPOCKET_UPLOAD_START:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          setCloudUploadState({ status: "uploading", progress: 0 });
+          break;
+
+        case messageActions.PAGEPOCKET_UPLOAD_PROGRESS:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          setCloudUploadState((prev) =>
+            prev ? { ...prev, progress: data.progress ?? prev.progress } : prev,
+          );
+          break;
+
+        case messageActions.PAGEPOCKET_UPLOAD_COMPLETE:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          setCloudUploadState({
+            status: "success",
+            progress: 100,
+            pageId: data.pageId,
+          });
+          setAction(messageActions.DOWNLOAD_DONE);
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
+          setDownloadResponse(null);
+          break;
+
+        case messageActions.PAGEPOCKET_UPLOAD_ERROR:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          setCloudUploadState({
+            status: "error",
+            progress: 0,
+            errorMessage: data.error,
+            isQuotaError: data.isQuotaError ?? false,
+          });
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
           break;
 
         case messageActions.DOWNLOAD_COMPLETE:
@@ -301,6 +380,7 @@ export default function SidePanel() {
       setScrollAttempts(0); // Use setter from hook
       setDownloadOptions(null);
       setServerModeState(initialServerModeState); // Reset server-mode state
+      setCloudUploadState(null); // Reset cloud upload state
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [setDownloadResponse, setScrollAttempts],
@@ -310,6 +390,7 @@ export default function SidePanel() {
   const onClickStartDownload = useCallback(async (options: Options) => {
     setAction(null);
     setInterruptData(null);
+    setCloudUploadState(null);
     setIsScraping(true);
     setDownloadOptions(options);
     setMessages((prev) => [...prev, { key: "status.scraping" }]);
@@ -367,6 +448,8 @@ export default function SidePanel() {
         downloadResponse={downloadResponse}
         onClickStartDownload={onClickStartDownload}
         tabUrl={tabUrl}
+        // Don't interrupt a running download with the auth form
+        showAuthForm={cloudStorageEnabled && !isAuthenticated && !isScraping}
       />
       <DownloadStatus
         tabId={tabId}
@@ -443,6 +526,14 @@ export default function SidePanel() {
           // Clear the checkpoint so re-opening the panel doesn't show stale state
           sendMessageToBackground(messageActions.DISMISS_INTERRUPTED_DOWNLOAD, {});
         }}
+        cloudUploadState={cloudUploadState}
+        onRetryCloudUpload={() => {
+          if (downloadOptions) {
+            setCloudUploadState(null);
+            setIsScraping(true);
+            setMessages((prev) => [...prev, { key: "status.scraping" }]);
+          }
+        }}
       />
       <DownloadComplete
         tabId={tabId}
@@ -452,6 +543,7 @@ export default function SidePanel() {
         reset={reset}
         serverDownloadUrl={serverModeState.serverDownloadUrl}
         isSingleFile={serverModeState.isSingleFile}
+        cloudUploadState={cloudUploadState}
       />
     </div>
   );

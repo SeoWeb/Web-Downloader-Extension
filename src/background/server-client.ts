@@ -66,6 +66,7 @@ export class HttpError extends Error {
 export interface SessionOptions {
   singleFile?: boolean;
   retentionDays?: number;
+  pagepocketUserId?: string;
 }
 
 export interface CreateSessionResponse {
@@ -136,6 +137,9 @@ export interface SessionStatusResponse {
   output_type: string | null;
   output_size: number | null;
   error_message: string | null;
+  cloud_status?: string | null;
+  cloud_page_id?: string | null;
+  cloud_error?: string | null;
   api_version: string;
 }
 
@@ -230,6 +234,7 @@ export class ServerClient {
       body.options = {
         singleFile: options.singleFile ?? false,
         retentionDays: options.retentionDays,
+        pagepocketUserId: options.pagepocketUserId,
       };
     }
 
@@ -667,7 +672,17 @@ export class ServerClient {
     // Apply control-plane timeout when caller hasn't provided a signal
     // (uploadResource already sets its own 5-minute timeout)
     const effectiveSignal = init.signal ?? AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS);
-    let res = await fetch(url, { ...init, headers, signal: effectiveSignal });
+
+    let res: Response;
+    try {
+      res = await fetch(url, { ...init, headers, signal: effectiveSignal });
+    } catch (err) {
+      if (err instanceof DOMException) throw err;
+      throw new ServerUnavailableError(
+        `Network error: ${err instanceof Error ? err.message : String(err)}`,
+        err,
+      );
+    }
 
     // On 401, attempt re-registration and retry once
     if (res.status === 401) {
@@ -691,7 +706,15 @@ export class ServerClient {
       const retrySignal = init.signal
         ? withTimeout(undefined, UPLOAD_TIMEOUT_MS)
         : AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS);
-      res = await fetch(url, { ...init, headers: retryHeaders, signal: retrySignal });
+      try {
+        res = await fetch(url, { ...init, headers: retryHeaders, signal: retrySignal });
+      } catch (err) {
+        if (err instanceof DOMException) throw err;
+        throw new ServerUnavailableError(
+          `Network error on retry: ${err instanceof Error ? err.message : String(err)}`,
+          err,
+        );
+      }
 
       // If the retry also returns 401, it's a permanent auth failure
       if (res.status === 401) {

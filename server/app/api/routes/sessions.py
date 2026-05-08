@@ -38,6 +38,9 @@ class SessionOptions(BaseModel):
         le=settings.max_retention_days,
         description="Days until session expires (clamped 1-30)",
     )
+    pagepocketUserId: str | None = Field(
+        None, description="PagePocket user ID for cloud push after assembly"
+    )
 
 
 class CreateSessionRequest(BaseModel):
@@ -203,9 +206,10 @@ async def create_session(
         options={
             "singleFile": opts.singleFile,
             "retentionDays": retention_days,
+            **({"pagepocketUserId": opts.pagepocketUserId} if opts.pagepocketUserId is not None else {}),
         },
         expires_at=now + timedelta(days=retention_days),
-        pagepocket_user_id=client.pagepocket_user_id,
+        pagepocket_user_id=opts.pagepocketUserId if opts.pagepocketUserId is not None else client.pagepocket_user_id,
     )
     db.add(session)
     await db.flush()
@@ -214,6 +218,11 @@ async def create_session(
     session_dir = os.path.join(settings.storage_root, session.id)
     resources_dir = os.path.join(session_dir, "resources")
     os.makedirs(resources_dir, exist_ok=True)
+
+    # Commit before returning so the session is visible to subsequent
+    # requests (uploadHtmlChunk, etc.) when they arrive before the
+    # post-response get_db() commit runs.
+    await db.commit()
 
     logger.info("Created session: id=%s url=%s", session.id, body.url[:80])
     return _session_to_response(session)
@@ -301,12 +310,10 @@ async def get_session_status(
         select(func.coalesce(func.sum(Resource.size), 0)).where(Resource.session_id == session_id)
     )).scalar() or 0
 
-    from app.services.archive_client import is_configured as cloud_is_configured
-
     cloud_status_val = None
     cloud_page_id_val = None
     cloud_error_val = None
-    if cloud_is_configured() and session.pagepocket_user_id:
+    if session.pagepocket_user_id:
         cloud_status_val = session.cloud_status
         cloud_page_id_val = session.cloud_page_id
         cloud_error_val = session.cloud_error

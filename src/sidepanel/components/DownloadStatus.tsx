@@ -12,6 +12,7 @@ import {
   Loader2,
   Clock,
 } from "lucide-react";
+import { CloudUploadStatus, CloudUploadState } from "../../components/CloudUploadStatus";
 
 // ---------------------------------------------------------------------------
 // Server-mode UI state (tasks 15.1–15.7)
@@ -54,6 +55,10 @@ interface DownloadStatusProps {
   onRestartDownload?: () => void;
   /** Dismiss the interrupted state without restarting. */
   onDismissInterrupt?: () => void;
+  /** Cloud upload state for PagePocket. */
+  cloudUploadState?: CloudUploadState | null;
+  /** Retry the cloud upload. */
+  onRetryCloudUpload?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,6 +129,8 @@ export function DownloadStatus({
   interruptData,
   onRestartDownload,
   onDismissInterrupt,
+  cloudUploadState,
+  onRetryCloudUpload,
 }: DownloadStatusProps) {
   const { t } = useTranslation();
 
@@ -173,6 +180,20 @@ export function DownloadStatus({
               </button>
             )}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // PagePocket cloud upload progress
+  // -----------------------------------------------------------------------
+  if (cloudUploadState && cloudUploadState.status === "uploading") {
+    return (
+      <div className="pt-8 animate-fade-in">
+        <div className="card p-6 bg-white space-y-4">
+          <CloudUploadStatus state={cloudUploadState} onRetry={onRetryCloudUpload} />
+          <ScrapingControls tabId={tabId} isPaused={isPaused} setIsPaused={setIsPaused} onStop={onStopScraping} />
         </div>
       </div>
     );

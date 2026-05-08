@@ -213,3 +213,22 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             ).delete()
 
         return library_pb2.StatusResponse(success=True)
+
+    def ListCollectionPageIds(self, request, context):
+        with db_session(self.engine) as session:
+            coll = session.execute(
+                select(Collection).where(Collection.id == request.collection_id)
+            ).scalar_one_or_none()
+
+            if not coll or coll.user_id != request.user_id:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details("Collection not found")
+                return library_pb2.ListCollectionPageIdsResponse()
+
+            rows = session.execute(
+                select(PageCollection.page_id).where(
+                    PageCollection.collection_id == request.collection_id
+                )
+            ).scalars().all()
+
+            return library_pb2.ListCollectionPageIdsResponse(page_ids=list(rows))

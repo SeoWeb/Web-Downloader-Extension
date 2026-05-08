@@ -59,6 +59,11 @@ class ArchiveServiceStub(object):
                 request_serializer=archive__pb2.GetPageContentRequest.SerializeToString,
                 response_deserializer=archive__pb2.PageContentResponse.FromString,
                 _registered_method=True)
+        self.GetArchiveFile = channel.unary_unary(
+                '/archive.ArchiveService/GetArchiveFile',
+                request_serializer=archive__pb2.GetArchiveFileRequest.SerializeToString,
+                response_deserializer=archive__pb2.ArchiveFileResponse.FromString,
+                _registered_method=True)
 
 
 class ArchiveServiceServicer(object):
@@ -94,6 +99,12 @@ class ArchiveServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetArchiveFile(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ArchiveServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -121,6 +132,11 @@ def add_ArchiveServiceServicer_to_server(servicer, server):
                     servicer.GetPageContent,
                     request_deserializer=archive__pb2.GetPageContentRequest.FromString,
                     response_serializer=archive__pb2.PageContentResponse.SerializeToString,
+            ),
+            'GetArchiveFile': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetArchiveFile,
+                    request_deserializer=archive__pb2.GetArchiveFileRequest.FromString,
+                    response_serializer=archive__pb2.ArchiveFileResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -258,6 +274,33 @@ class ArchiveService(object):
             '/archive.ArchiveService/GetPageContent',
             archive__pb2.GetPageContentRequest.SerializeToString,
             archive__pb2.PageContentResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetArchiveFile(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/archive.ArchiveService/GetArchiveFile',
+            archive__pb2.GetArchiveFileRequest.SerializeToString,
+            archive__pb2.ArchiveFileResponse.FromString,
             options,
             channel_credentials,
             insecure,

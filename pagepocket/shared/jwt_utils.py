@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import jwt
 
 JWT_SECRET = os.environ["JWT_SECRET"]
-ACCESS_TOKEN_EXPIRY = 3600  # 1 hour
+ACCESS_TOKEN_EXPIRY = 7 * 24 * 3600  # 7 days
 REFRESH_TOKEN_EXPIRY = 30 * 24 * 3600  # 30 days
 
 

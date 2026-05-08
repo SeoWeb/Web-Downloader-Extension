@@ -1,7 +1,10 @@
 """HTML sanitisation and asset rewriting."""
 
-from bs4 import BeautifulSoup
 import re
+
+from bs4 import BeautifulSoup
+
+_STRIP_PREFIX = re.compile(r"^\./+")
 
 
 def sanitise_and_rewrite(html_bytes: bytes, asset_map: dict[str, str]) -> tuple[bytes, str, str]:
@@ -16,14 +19,32 @@ def sanitise_and_rewrite(html_bytes: bytes, asset_map: dict[str, str]) -> tuple[
     """
     soup = BeautifulSoup(html_bytes, "lxml")
 
+    # Remove <base> tags — they override relative path resolution
+    for base_tag in soup.find_all("base"):
+        base_tag.decompose()
+
     # Rewrite src/href in tags that reference assets
     for tag in soup.find_all(["img", "script", "link", "source", "video", "audio"]):
         for attr in ["src", "href", "data-src"]:
             val = tag.get(attr)
-            if val:
-                basename = val.rsplit("/", 1)[-1].split("?")[0]
-                if basename in asset_map:
-                    tag[attr] = asset_map[basename]
+            if not val:
+                continue
+
+            # Normalize: strip ./ prefix, query strings
+            normalized = _STRIP_PREFIX.sub("", val)
+            normalized = normalized.split("?")[0]
+            if not normalized:
+                continue
+
+            # Try full normalized path first (e.g., "images/foo.jpg")
+            if normalized in asset_map:
+                tag[attr] = asset_map[normalized]
+                continue
+
+            # Fallback: try basename only (e.g., "foo.jpg")
+            basename = normalized.rsplit("/", 1)[-1]
+            if basename in asset_map:
+                tag[attr] = asset_map[basename]
 
     rewritten = str(soup).encode("utf-8")
 

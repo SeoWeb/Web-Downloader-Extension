@@ -5,5 +5,5 @@ import { Dashboard } from "@/components/app/dashboard";
 
 export default function CollectionPage() {
   const { id } = useParams<{ id: string }>();
-  return <Dashboard collectionId={id} />;
+  return <Dashboard key={id} collectionId={id} />;
 }

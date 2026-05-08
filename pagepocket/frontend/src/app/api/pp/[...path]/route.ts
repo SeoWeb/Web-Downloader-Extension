@@ -127,8 +127,10 @@ async function proxyRequest(
     ...(hasBody ? { body: body! } : {}),
   });
 
-  if (response.status === 401 && accessToken) {
-    const userId = decodeJwtSubject(accessToken) ?? "anonymous";
+  if (response.status === 401) {
+    const userId = accessToken
+      ? decodeJwtSubject(accessToken) ?? "anonymous"
+      : "anonymous";
     let refreshPromise = refreshPromises.get(userId);
 
     if (!refreshPromise) {
@@ -164,7 +166,7 @@ async function proxyRequest(
         setAuthCookies(responseCookieSetter(finalResponse), {
           access: newAccess,
           refresh: tokens.refresh_token ?? "",
-          expiresAt: tokens.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
+          expiresAt: tokens.expires_at ?? Math.floor(Date.now() / 1000) + 7 * 24 * 3600,
         });
 
         return finalResponse;

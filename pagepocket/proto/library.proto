@@ -10,6 +10,7 @@ service LibraryService {
   rpc DeleteCollection(DeleteCollectionRequest) returns (StatusResponse);
   rpc AddPageToCollection(PageCollectionRequest) returns (StatusResponse);
   rpc RemovePageFromCollection(PageCollectionRequest) returns (StatusResponse);
+  rpc ListCollectionPageIds(ListCollectionPageIdsRequest) returns (ListCollectionPageIdsResponse);
 }
 
 message CreateCollectionRequest {
@@ -68,4 +69,13 @@ message ListCollectionsResponse {
 message StatusResponse {
   bool success = 1;
   string message = 2;
+}
+
+message ListCollectionPageIdsRequest {
+  string collection_id = 1;
+  string user_id = 2;
+}
+
+message ListCollectionPageIdsResponse {
+  repeated string page_ids = 1;
 }

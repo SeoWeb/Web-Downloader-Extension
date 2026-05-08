@@ -25,6 +25,8 @@ import {
 } from "../hooks/useFilterOptions";
 import { StoragePermissionBanner } from "./StoragePermissionBanner";
 import { hasStoragePermission } from "../common/permissions";
+import { IS_PAGEPOCKET_AVAILABLE } from "../common/pagepocket-mode";
+import { PagePocketToggle } from "./PagePocketToggle";
 
 export default function Filter({
   download,
@@ -214,6 +216,9 @@ export default function Filter({
           showAdvanced ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
         )}>
           <div className="p-4 space-y-4 bg-white">
+
+            {/* Cloud Storage Toggle */}
+            {IS_PAGEPOCKET_AVAILABLE && <PagePocketToggle />}
 
             {/* Mode Selection */}
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 mb-2">

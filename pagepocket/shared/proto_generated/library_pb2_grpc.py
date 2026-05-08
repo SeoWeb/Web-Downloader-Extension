@@ -69,6 +69,11 @@ class LibraryServiceStub(object):
                 request_serializer=library__pb2.PageCollectionRequest.SerializeToString,
                 response_deserializer=library__pb2.StatusResponse.FromString,
                 _registered_method=True)
+        self.ListCollectionPageIds = channel.unary_unary(
+                '/library.LibraryService/ListCollectionPageIds',
+                request_serializer=library__pb2.ListCollectionPageIdsRequest.SerializeToString,
+                response_deserializer=library__pb2.ListCollectionPageIdsResponse.FromString,
+                _registered_method=True)
 
 
 class LibraryServiceServicer(object):
@@ -116,6 +121,12 @@ class LibraryServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ListCollectionPageIds(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LibraryServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -153,6 +164,11 @@ def add_LibraryServiceServicer_to_server(servicer, server):
                     servicer.RemovePageFromCollection,
                     request_deserializer=library__pb2.PageCollectionRequest.FromString,
                     response_serializer=library__pb2.StatusResponse.SerializeToString,
+            ),
+            'ListCollectionPageIds': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListCollectionPageIds,
+                    request_deserializer=library__pb2.ListCollectionPageIdsRequest.FromString,
+                    response_serializer=library__pb2.ListCollectionPageIdsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -344,6 +360,33 @@ class LibraryService(object):
             '/library.LibraryService/RemovePageFromCollection',
             library__pb2.PageCollectionRequest.SerializeToString,
             library__pb2.StatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListCollectionPageIds(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/library.LibraryService/ListCollectionPageIds',
+            library__pb2.ListCollectionPageIdsRequest.SerializeToString,
+            library__pb2.ListCollectionPageIdsResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -20,8 +20,10 @@ export const PageResponseSchema = z.object({
   url: z.string(),
   title: z.string(),
   archived_at: z.string(),
-  collection_id: z.string().nullable(),
-  thumbnail_key: z.string().nullable(),
+  preview_text: z.string().optional(),
+  size_bytes: z.number().optional(),
+  collection_id: z.string().nullable().optional(),
+  thumbnail_key: z.string().nullable().optional(),
 });
 
 export const ListPagesResponseSchema = z.object({
@@ -35,6 +37,8 @@ export const PageContentResponseSchema = z.object({
   url: z.string(),
   expires_at: z.number(),
 });
+
+export const SuccessResponseSchema = z.object({ success: z.boolean() });
 
 export const CollectionResponseSchema = z.object({
   id: z.string(),
@@ -79,7 +83,6 @@ export const ShareLinkResponseSchema = z.object({
 export const ValidateShareResponseSchema = z.object({
   url: z.string(),
   expires_at: z.string().nullable(),
-  title: z.string(),
 });
 
 export const StatusResponseSchema = z.object({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink, Share2, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -9,13 +9,7 @@ import { ShareDialog } from "@/components/app/share-dialog";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import type { PageResponse } from "@/lib/api/schemas";
 
-type ViewerData = {
-  url: string;
-  expires_at: number;
-};
-
 type PageViewerShellProps = {
-  initialViewer: ViewerData;
   pageId: string;
   pageMeta: PageResponse | null;
 };
@@ -23,55 +17,12 @@ type PageViewerShellProps = {
 const IFRAME_SANDBOX = "allow-same-origin allow-popups allow-forms";
 
 export function PageViewerShell({
-  initialViewer,
   pageId,
   pageMeta,
 }: PageViewerShellProps) {
   const router = useRouter();
-  const [viewer, setViewer] = useState(initialViewer);
   const [shareOpen, setShareOpen] = useState(false);
-
-  const refreshUrl = useCallback(async () => {
-    try {
-      const iframe = document.querySelector<HTMLIFrameElement>(
-        "iframe[title='Saved page content']",
-      );
-      const scrollY = iframe?.contentWindow?.scrollY ?? 0;
-
-      const res = await fetch(`/api/pp/archive/pages/${pageId}/view`);
-      if (res.ok) {
-        const data = (await res.json()) as ViewerData;
-        setViewer(data);
-
-        // Best-effort scroll restoration (only works same-origin)
-        if (scrollY > 0) {
-          requestAnimationFrame(() => {
-            try {
-              const newIframe = document.querySelector<HTMLIFrameElement>(
-                "iframe[title='Saved page content']",
-              );
-              if (newIframe?.contentWindow) {
-                newIframe.contentWindow.scrollTo(0, scrollY);
-              }
-            } catch {
-              // Cross-origin — cannot restore scroll
-            }
-          });
-        }
-      }
-    } catch {
-      // Silently fail — the current URL may still work
-    }
-  }, [pageId]);
-
-  // Timer: refetch presigned URL 5 minutes before expiry
-  useEffect(() => {
-    const expiresAt = viewer.expires_at * 1000;
-    const refreshAt = expiresAt - 5 * 60 * 1000;
-    const delay = Math.max(refreshAt - Date.now(), 1000);
-    const timer = setTimeout(refreshUrl, delay);
-    return () => clearTimeout(timer);
-  }, [viewer.expires_at, refreshUrl]);
+  const iframeSrc = `/api/pp/archive/pages/${pageId}/f/index.html`;
 
   function handleBack() {
     const referrer = document.referrer;
@@ -171,7 +122,7 @@ export function PageViewerShell({
           </div>
         </div>
         <iframe
-          src={viewer.url}
+          src={iframeSrc}
           sandbox={IFRAME_SANDBOX}
           className="flex-1 w-full border-0"
           title="Saved page content"

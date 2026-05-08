@@ -1,9 +1,9 @@
 """API Gateway integration tests — requires the full docker-compose stack running.
 
-Tests hit http://localhost:8000 (api-gateway) and exercise every route
+Tests hit http://localhost:8090 (api-gateway) and exercise every route
 end-to-end through the gateway → gRPC services → MySQL pipeline.
 
-Set PAGEPOCKET_GATEWAY_URL to override the base URL (default: http://localhost:8000).
+Set PAGEPOCKET_GATEWAY_URL to override the base URL (default: http://localhost:8090).
 Skips automatically if the gateway is unreachable.
 """
 
@@ -14,7 +14,7 @@ import unittest
 
 import httpx
 
-BASE_URL = os.environ.get("PAGEPOCKET_GATEWAY_URL", "http://localhost:8000")
+BASE_URL = os.environ.get("PAGEPOCKET_GATEWAY_URL", "http://localhost:8090")
 
 _gateway_available = False
 try:
@@ -168,8 +168,98 @@ class TestGatewayIntegration(unittest.TestCase):
         r = self.client.get("/api/v1/share/public/nonexistent-token")
         self.assertEqual(r.status_code, 404)
 
+    def test_share_file_proxy_nonexistent_token(self):
+        """Share file proxy returns 404 for invalid tokens."""
+        r = self.client.get("/api/v1/share/public/nonexistent-token/f/index.html")
+        self.assertEqual(r.status_code, 404)
+
+    def test_share_file_proxy_nonexistent_file(self):
+        """Share file proxy returns 404 for valid token but missing file."""
+        # First create a page to share
+        import io
+        html_file = ("index.html", io.BytesIO(b"<html><body>Share Test</body></html>"), "text/html")
+        r = self.client.post(
+            "/api/v1/archive/pages/ingest",
+            headers=self._headers(),
+            data={"url": "https://example.com/share-test"},
+            files=[("html_content", html_file)],
+        )
+        if r.status_code != 200:
+            return  # Skip if ingest fails (quota etc.)
+        page_id = r.json()["page_id"]
+
+        # Create share link
+        r = self.client.post(
+            "/api/v1/share",
+            json={"page_id": page_id, "is_public": True},
+            headers=self._headers(),
+        )
+        self.assertEqual(r.status_code, 200)
+        token = r.json()["token"]
+
+        # Request a file that doesn't exist
+        r = self.client.get(f"/api/v1/share/public/{token}/f/nonexistent-asset.png")
+        self.assertEqual(r.status_code, 404)
+
     def test_share_requires_auth(self):
         r = self.client.post("/api/v1/share", json={"page_id": "fake"})
+        self.assertEqual(r.status_code, 401)
+
+    # -- Ingest route --
+
+    def test_ingest_page_with_assets(self):
+        import io
+
+        html_file = ("index.html", io.BytesIO(b"<html><head><title>Test Page</title></head><body>Hello</body></html>"), "text/html")
+        css_file = ("style.css", io.BytesIO(b"body { color: red; }"), "text/css")
+
+        r = self.client.post(
+            "/api/v1/archive/pages/ingest",
+            headers=self._headers(),
+            data={
+                "url": "https://example.com/test",
+                "title": "Test Page",
+                "extension_job_id": "int-test-123",
+            },
+            files=[
+                ("html_content", html_file),
+                ("assets", css_file),
+            ],
+        )
+        self.assertIn(r.status_code, (200, 402))
+        if r.status_code == 200:
+            data = r.json()
+            self.assertTrue(data["success"])
+            self.assertTrue(data["page_id"])
+            self.assertEqual(data["api_version"], "v1")
+
+    def test_ingest_page_without_assets(self):
+        import io
+
+        html_file = ("index.html", io.BytesIO(b"<html><body>Minimal</body></html>"), "text/html")
+
+        r = self.client.post(
+            "/api/v1/archive/pages/ingest",
+            headers=self._headers(),
+            data={"url": "https://example.com/minimal"},
+            files=[("html_content", html_file)],
+        )
+        self.assertIn(r.status_code, (200, 402))
+        if r.status_code == 200:
+            data = r.json()
+            self.assertTrue(data["success"])
+            self.assertTrue(data["page_id"])
+            self.assertEqual(data["api_version"], "v1")
+
+    def test_ingest_page_requires_auth(self):
+        import io
+
+        html_file = ("index.html", io.BytesIO(b"<html></html>"), "text/html")
+        r = self.client.post(
+            "/api/v1/archive/pages/ingest",
+            data={"url": "https://example.com"},
+            files=[("html_content", html_file)],
+        )
         self.assertEqual(r.status_code, 401)
 
 

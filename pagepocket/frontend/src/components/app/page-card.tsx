@@ -19,7 +19,7 @@ type PageCardProps = {
     title: string;
     url: string;
     archived_at: string;
-    collection_id: string | null;
+    collection_id: string | null | undefined;
   };
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
@@ -84,28 +84,30 @@ export function PageCard({ page, onDelete, onShare, onMove }: PageCardProps) {
           </div>
         </div>
         <DropdownMenu>
-          <DropdownMenuTrigger>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label="Page actions"
-            >
-              <ExternalLink className="size-3.5" />
-            </Button>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Page actions"
+              />
+            }
+          >
+            <ExternalLink className="size-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => onShare?.(page.id)}>
+            <DropdownMenuItem onClick={() => onShare?.(page.id)}>
               <Share2 className="size-4 mr-2" />
               Share
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => onMove?.(page.id)}>
+            <DropdownMenuItem onClick={() => onMove?.(page.id)}>
               <FolderInput className="size-4 mr-2" />
               Move to collection
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive"
-              onSelect={() => onDelete?.(page.id)}
+              onClick={() => onDelete?.(page.id)}
             >
               <Trash2 className="size-4 mr-2" />
               Delete

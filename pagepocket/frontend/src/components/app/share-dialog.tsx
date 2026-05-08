@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -25,7 +24,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Copy, Link2, Trash2, CalendarIcon } from "lucide-react";
+import { Copy, ExternalLink, Link2, Trash2, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useQK } from "@/components/providers/query-provider";
 import { format } from "date-fns";
@@ -42,7 +41,6 @@ function resolveShareUrl(link: { short_url?: string; token: string } | undefined
 }
 
 export function ShareDialog({ pageId, open, onOpenChange }: ShareDialogProps) {
-  const [isPublic, setIsPublic] = useState(true);
   const [expiry, setExpiry] = useState("never");
   const [customDate, setCustomDate] = useState<Date | undefined>();
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -71,7 +69,7 @@ export function ShareDialog({ pageId, open, onOpenChange }: ShareDialogProps) {
 
       return clientApi.createLink({
         page_id: pageId,
-        is_public: isPublic,
+        is_public: true,
         expires_at: expiresAt,
       });
     },
@@ -92,10 +90,10 @@ export function ShareDialog({ pageId, open, onOpenChange }: ShareDialogProps) {
     },
   });
 
-  const shareUrl = resolveShareUrl(existingLink);
+  const shareUrl = resolveShareUrl(existingLink || undefined);
 
   const copyLink = useCallback(async () => {
-    const url = resolveShareUrl(existingLink);
+    const url = resolveShareUrl(existingLink || undefined);
     try {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied to clipboard");
@@ -132,17 +130,8 @@ export function ShareDialog({ pageId, open, onOpenChange }: ShareDialogProps) {
         <DialogHeader>
           <DialogTitle>Share page</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="public-toggle">Public link</Label>
-            <Switch
-              id="public-toggle"
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
-            />
-          </div>
-
-          <div className="space-y-2">
+        <div className="space-y-4 pt-4">
+          <div className="space-x-2 flex justify-between">
             <Label>Expires</Label>
             {expiry === "custom" && !hasActiveLink ? (
               <div className="flex items-center gap-2">
@@ -195,10 +184,10 @@ export function ShareDialog({ pageId, open, onOpenChange }: ShareDialogProps) {
           </div>
 
           {hasActiveLink ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 rounded-md border border-border bg-muted p-3">
+            <div className="space-y-3 w-full">
+              <div className="flex items-center gap-2 rounded-md border border-border bg-muted p-3 w-full">
                 <Link2 className="size-4 shrink-0 text-muted-foreground" />
-                <span className="text-sm truncate">
+                <span className="text-sm flex-1 w-full break-all">
                   {shareUrl}
                 </span>
               </div>
@@ -211,6 +200,12 @@ export function ShareDialog({ pageId, open, onOpenChange }: ShareDialogProps) {
                 <Button onClick={copyLink} className="flex-1">
                   <Copy className="size-4 mr-2" />
                   Copy link
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(shareUrl, "_blank")}
+                >
+                  <ExternalLink className="size-4" />
                 </Button>
                 <Button
                   variant="destructive"

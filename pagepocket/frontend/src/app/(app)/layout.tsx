@@ -4,14 +4,14 @@ import { getCurrentUserId } from "@/lib/auth/server-session";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AppSidebar } from "@/components/app/sidebar";
 import { AppTopbar } from "@/components/app/topbar";
-import { AppDndProvider } from "@/components/app/dnd-context";
+import { ClientDndProvider } from "@/components/app/client-dnd-provider";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const userId = await getCurrentUserId(await cookies());
 
   return (
     <QueryProvider userId={userId}>
-      <AppDndProvider>
+      <ClientDndProvider>
         <div className="flex h-screen">
           <AppSidebar />
           <div className="flex flex-1 flex-col min-w-0">
@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <main className="flex-1 overflow-auto p-6">{children}</main>
           </div>
         </div>
-      </AppDndProvider>
+      </ClientDndProvider>
     </QueryProvider>
   );
 }

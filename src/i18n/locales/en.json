@@ -55,7 +55,20 @@
       "includeExternal": "Include external links",
       "serverMode": "Server mode",
       "insecureServerWarning": "Not using HTTPS",
-      "alwaysAskWhereToSave": "Always ask where to save file"
+      "alwaysAskWhereToSave": "Always ask where to save file",
+      "cloudStorage": "PagePocket Cloud Storage",
+      "cloudStorageDescription": "Save pages directly to your PagePocket account",
+      "cloudLoginRequired": "Login required",
+      "cloudEmail": "Email",
+      "cloudPassword": "Password",
+      "cloudName": "Name",
+      "cloudLogin": "Login",
+      "cloudRegister": "Register",
+      "cloudLogout": "Sign Out",
+      "cloudLoggedInAs": "Connected as {{email}}",
+      "cloudNoAccount": "Don't have an account?",
+      "cloudHasAccount": "Already have an account?",
+      "cloudAuthError": "Authentication failed"
     },
     "actions": {
       "title": "Actions:",
@@ -201,7 +214,15 @@
       "urlCopied": "URL copied!",
       "serverSessionFailed": "Failed to create server session: {{error}}",
       "memoryWarningServerMode": "Low memory warning ({{availableMB}}MB available) — server mode active",
-      "serverModeActive": "Server mode active"
+      "serverModeActive": "Server mode active",
+      "pagepocketUploading": "Uploading to PagePocket...",
+      "pagepocketUploadProgress": "Upload progress: {{progress}}%",
+      "pagepocketUploadComplete": "Saved to PagePocket",
+      "pagepocketUploadError": "Upload failed",
+      "pagepocketUploadRetry": "Retry upload",
+      "pagepocketViewPage": "View in PagePocket",
+      "pagepocketQuotaExceeded": "PagePocket storage quota exceeded",
+      "pagepocketSavedTo": "Saved to PagePocket"
     },
     "permissions": {
       "storage": {

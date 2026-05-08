@@ -53,7 +53,12 @@ def _get_stub():
     import grpc
     import sys
 
-    proto_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "pagepocket", "shared", "proto_generated"))
+    # Resolve proto_generated directory:
+    # 1. PROTO_DIR env var (explicit, used in Docker)
+    # 2. Relative path to pagepocket/shared/proto_generated (local dev)
+    proto_dir = os.environ.get("PROTO_DIR") or os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "pagepocket", "shared", "proto_generated")
+    )
     if proto_dir not in sys.path:
         sys.path.insert(0, proto_dir)
 
@@ -118,7 +123,7 @@ def push_to_archive(
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            response = stub.IngestPage(request, timeout=30)
+            response = stub.IngestPage(request, timeout=600)
             if response.success:
                 logger.info(
                     "Cloud push succeeded: session=%s page_id=%s attempt=%d",
@@ -153,18 +158,30 @@ def is_configured() -> bool:
 
 
 def validate_config() -> list[str]:
-    """Validate archive service config. Returns list of errors."""
+    """Validate archive service config. Returns list of warnings.
+
+    mTLS certs are optional — plaintext mode is allowed for local dev.
+    Only file-existence checks are errors (when cert env vars ARE set).
+    """
     errors = []
     addr = os.environ.get("ARCHIVE_SERVICE_ADDR", "")
     if not addr:
         return errors  # Not configured is fine (feature is optional)
 
-    required_env = ["ARCHIVE_CA_CERT", "ARCHIVE_CLIENT_KEY", "ARCHIVE_CLIENT_CERT"]
-    for env_var in required_env:
-        path = os.environ.get(env_var, "")
-        if not path:
-            errors.append(f"{env_var} is required when ARCHIVE_SERVICE_ADDR is set")
-        elif not os.path.isfile(path):
-            errors.append(f"{env_var}={path} does not exist or is not readable")
+    cert_env = {
+        "ARCHIVE_CA_CERT": os.environ.get("ARCHIVE_CA_CERT", ""),
+        "ARCHIVE_CLIENT_KEY": os.environ.get("ARCHIVE_CLIENT_KEY", ""),
+        "ARCHIVE_CLIENT_CERT": os.environ.get("ARCHIVE_CLIENT_CERT", ""),
+    }
+    any_cert_set = any(v for v in cert_env.values())
+
+    if any_cert_set:
+        # If any cert is provided, all three must be present and valid
+        for env_var, path in cert_env.items():
+            if not path:
+                errors.append(f"{env_var} is required when other cert paths are set")
+            elif not os.path.isfile(path):
+                errors.append(f"{env_var}={path} does not exist or is not readable")
+    # else: no certs configured — plaintext mode for local dev, no error
 
     return errors

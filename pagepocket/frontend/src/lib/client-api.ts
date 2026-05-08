@@ -21,6 +21,7 @@ import {
   CollectionResponseSchema,
   SearchResponseSchema,
   ShareLinkResponseSchema,
+  SuccessResponseSchema,
 } from "./api/schemas";
 
 type ClientFetchOptions<T> = {
@@ -167,17 +168,16 @@ export const clientApi = {
 
   addPageToCollection: (collectionId: string, pageId: string) =>
     clientFetch({
-      route: `/library/collections/${collectionId}/pages`,
+      route: `/library/collections/${collectionId}/pages/${pageId}`,
       method: "POST",
-      body: { page_id: pageId },
-      schema: CollectionResponseSchema,
+      schema: SuccessResponseSchema,
     }),
 
   removePageFromCollection: (collectionId: string, pageId: string) =>
     clientFetch({
       route: `/library/collections/${collectionId}/pages/${pageId}`,
       method: "DELETE",
-      schema: CollectionResponseSchema,
+      schema: SuccessResponseSchema,
     }),
 
   // Search
@@ -210,7 +210,7 @@ export const clientApi = {
     clientFetch({
       route: `/share/${token}`,
       method: "DELETE",
-      schema: ShareLinkResponseSchema,
+      schema: SuccessResponseSchema,
     }),
 
   getLink: (pageId: string) =>
@@ -218,5 +218,8 @@ export const clientApi = {
       route: "/share",
       query: { page_id: pageId },
       schema: ShareLinkResponseSchema,
+    }).catch((e) => {
+      if (e instanceof NotFoundError) return null;
+      throw e;
     }),
 };
