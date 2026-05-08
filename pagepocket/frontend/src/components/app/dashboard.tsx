@@ -256,7 +256,7 @@ export function Dashboard({ initialData, collectionId }: DashboardProps) {
             key={p.id}
             onFocus={() => {
               setFocusedPageId(p.id);
-              setFocusedCollectionId(p.collection_id);
+              setFocusedCollectionId(p.collection_id ?? null);
             }}
             onBlur={() => {
               setFocusedPageId(null);

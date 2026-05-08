@@ -3,3 +3,4 @@ grpcio-tools>=1.60.0
 protobuf>=4.25.0
 sqlalchemy>=2.0.0
 pymysql>=1.1.0
+alembic>=1.13.0

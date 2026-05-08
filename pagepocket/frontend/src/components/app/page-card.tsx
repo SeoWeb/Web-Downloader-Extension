@@ -19,7 +19,7 @@ type PageCardProps = {
     title: string;
     url: string;
     archived_at: string;
-    collection_id: string | null | undefined;
+    collection_id?: string | null | undefined;
   };
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;

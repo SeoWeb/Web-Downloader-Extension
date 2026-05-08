@@ -142,5 +142,10 @@ services:
       share-service:
         condition: service_healthy
 
+networks:
+  default:
+    name: pagepocket_default
+    external: true
+
 volumes:
   mysql_data:
