@@ -125,9 +125,9 @@ export function useScrapingDownloader({
           serverSessionIdRef.current = result.sessionId;
           serverScrollIndexRef.current = 0;
           serverSessionCreatedRef.current = true;
-        } else {
-          // Failed to create server session — fall back to local accumulation
-          setMessages((prev) => [...prev, { key: "status.serverSessionFailed", options: { error: result?.error } }]);
+        } else if (result?.error) {
+          // Failed to create server session — show error only for real failures
+          setMessages((prev) => [...prev, { key: "status.serverSessionFailed", options: { error: result.error } }]);
         }
       } catch {
         // Failed to create server session — fall back to local accumulation

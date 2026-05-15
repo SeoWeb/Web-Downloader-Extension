@@ -11,9 +11,12 @@ class Base(DeclarativeBase):
     pass
 
 
-def get_engine(db_url: str | None = None):
+def get_engine(db_url: str | None = None, auto_create: bool = True):
     url = db_url or os.environ["DB_URL"]
-    return create_engine(url, pool_pre_ping=True, pool_recycle=3600)
+    engine = create_engine(url, pool_pre_ping=True, pool_recycle=3600)
+    if auto_create and os.environ.get("MTLS_ENABLED", "false").lower() != "true":
+        Base.metadata.create_all(engine)
+    return engine
 
 
 def get_session_factory(engine=None):

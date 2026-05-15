@@ -98,7 +98,7 @@ export function PageViewerShell({
             )}
             {archivedAt && (
               <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">
-                saved {formatDistanceToNow(new Date(archivedAt), { addSuffix: true })}
+                saved {formatDistanceToNow(new Date(archivedAt + "Z"), { addSuffix: true })}
               </span>
             )}
           </div>

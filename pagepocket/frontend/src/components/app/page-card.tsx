@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { ExternalLink, Share2, FolderInput, Trash2 } from "lucide-react";
+import { MoreVertical, Share2, FolderInput, Trash2 } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -94,7 +94,7 @@ export function PageCard({ page, onDelete, onShare, onMove }: PageCardProps) {
               />
             }
           >
-            <ExternalLink className="size-3.5" />
+            <MoreVertical className="size-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onShare?.(page.id)}>
@@ -116,7 +116,7 @@ export function PageCard({ page, onDelete, onShare, onMove }: PageCardProps) {
         </DropdownMenu>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        Archived {formatDistanceToNow(new Date(page.archived_at), { addSuffix: true })}
+        Archived {formatDistanceToNow(new Date(page.archived_at + "Z"), { addSuffix: true })}
       </p>
     </div>
   );

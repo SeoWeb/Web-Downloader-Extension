@@ -224,11 +224,23 @@ export class ServerClient {
   // Public API
   // -----------------------------------------------------------------------
 
+  /** Check whether the server URL is configured. */
+  get isConfigured(): boolean {
+    return this.serverUrl.length > 0;
+  }
+
+  private assertConfigured(): void {
+    if (!this.serverUrl) {
+      throw new ServerUnavailableError("Server URL not configured");
+    }
+  }
+
   /** (8.2) Create a new download session on the server. */
   async createSession(
     url: string,
     options?: SessionOptions,
   ): Promise<string> {
+    this.assertConfigured();
     const body: Record<string, unknown> = { url };
     if (options) {
       body.options = {
@@ -260,6 +272,7 @@ export class ServerClient {
     pageType?: "main" | "linked",
     pageUrl?: string,
   ): Promise<UploadHtmlChunkResponse> {
+    this.assertConfigured();
     const body: Record<string, unknown> = {
       html,
       scrollIndex,
@@ -290,6 +303,7 @@ export class ServerClient {
     sessionId: string,
     resourceCount: number,
   ): Promise<ScrapeCompleteResponse> {
+    this.assertConfigured();
     return this.withRetry(async () => {
       const res = await this.authenticatedFetch(
         `/api/v1/sessions/${sessionId}/scrape-complete`,
@@ -318,6 +332,7 @@ export class ServerClient {
     signal?: AbortSignal,
     onUploadProgress?: (loaded: number, total: number) => void,
   ): Promise<UploadResourceResponse> {
+    this.assertConfigured();
     let uploadBlob: Blob;
     let gzipped = false;
 
@@ -442,6 +457,7 @@ export class ServerClient {
     sessionId: string,
     text: string,
   ): Promise<UploadContentResponse> {
+    this.assertConfigured();
     return this.withRetry(async () => {
       const res = await this.authenticatedFetch(
         `/api/v1/sessions/${sessionId}/content`,
@@ -464,6 +480,7 @@ export class ServerClient {
   async finalizeSession(
     sessionId: string,
   ): Promise<FinalizeResponse> {
+    this.assertConfigured();
     return this.withRetry(async () => {
       const res = await this.authenticatedFetch(
         `/api/v1/sessions/${sessionId}/finalize`,
@@ -498,6 +515,7 @@ export class ServerClient {
   async getSessionStatus(
     sessionId: string,
   ): Promise<SessionStatusResponse> {
+    this.assertConfigured();
     const res = await this.authenticatedFetch(
       `/api/v1/sessions/${sessionId}/status`,
     );
@@ -511,6 +529,7 @@ export class ServerClient {
 
   /** (8.10) Check server health without authentication. */
   async checkHealth(): Promise<HealthResponse> {
+    this.assertConfigured();
     try {
       const res = await fetch(`${this.serverUrl}/api/v1/health`, {
         method: "GET",
@@ -536,6 +555,7 @@ export class ServerClient {
 
   /** Delete a session on the server. */
   async deleteSession(sessionId: string): Promise<void> {
+    this.assertConfigured();
     const res = await this.authenticatedFetch(
       `/api/v1/sessions/${sessionId}`,
       { method: "DELETE" },

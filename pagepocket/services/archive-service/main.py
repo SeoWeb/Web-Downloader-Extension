@@ -18,8 +18,8 @@ def serve():
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10),
         options=[
-            ("grpc.max_receive_message_length", 128 * 1024 * 1024),
-            ("grpc.max_send_message_length", 16 * 1024 * 1024),
+            ("grpc.max_receive_message_length", 256 * 1024 * 1024),
+            ("grpc.max_send_message_length", 256 * 1024 * 1024),
         ],
     )
     archive_pb2_grpc.add_ArchiveServiceServicer_to_server(ArchiveServicer(), server)

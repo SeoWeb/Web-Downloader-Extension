@@ -17,6 +17,7 @@ from models import PageIndex
 MEDIUMTEXT_LIMIT = 16 * 1024 * 1024  # 16 MB
 
 MATCH_FTS = "MATCH(title, body_text) AGAINST(:query IN NATURAL LANGUAGE MODE)"
+LIKE_FILTER = "(title LIKE :like_q OR body_text LIKE :like_q)"
 
 
 class SearchServicer(search_pb2_grpc.SearchServiceServicer):
@@ -71,7 +72,7 @@ class SearchServicer(search_pb2_grpc.SearchServiceServicer):
         page_num = max(request.page, 1)
         page_size = max(min(request.page_size or 20, 100), 1)
         offset = (page_num - 1) * page_size
-        params = {"query": query_str, "uid": request.user_id}
+        params = {"query": query_str, "uid": request.user_id, "like_q": f"%{query_str}%"}
 
         coll_filter = ""
         if request.collection_id:
@@ -83,19 +84,22 @@ class SearchServicer(search_pb2_grpc.SearchServiceServicer):
             params["coll_id"] = request.collection_id
 
         with db_session(self.engine) as session:
+            score_expr = f"{MATCH_FTS}"
+            base_where = f"user_id = :uid AND {LIKE_FILTER} {coll_filter}"
+
             # Count
             count_sql = text(f"""
                 SELECT COUNT(*) FROM page_index
-                WHERE user_id = :uid AND {MATCH_FTS} {coll_filter}
+                WHERE {base_where}
             """)
             total = session.execute(count_sql, params).scalar()
 
             # Fetch results
             results_sql = text(f"""
                 SELECT page_id, url, title, body_text, archived_at,
-                       {MATCH_FTS} AS score
+                       {score_expr} AS score
                 FROM page_index
-                WHERE user_id = :uid AND {MATCH_FTS} {coll_filter}
+                WHERE {base_where}
                 ORDER BY score DESC
                 LIMIT :lim OFFSET :off
             """)

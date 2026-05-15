@@ -5,7 +5,7 @@ import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
 import { abortActiveDownload } from "./download-state";
 import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
 import { resumeServerDownload } from "./download-core";
-import { serverClient } from "./server-client";
+import { serverClient, ServerUnavailableError } from "./server-client";
 
 interface ServerSessionState {
   sessionId: string | null;
@@ -45,6 +45,9 @@ async function createServerSession(
     }
     return { success: true, sessionId };
   } catch (error) {
+    if (error instanceof ServerUnavailableError) {
+      return { success: false };
+    }
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

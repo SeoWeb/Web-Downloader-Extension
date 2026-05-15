@@ -65,7 +65,7 @@ function ResultCard({ result }: { result: SearchResult }) {
           <p className="mt-0.5 text-xs text-muted-foreground">{hostname}</p>
         </div>
         <span className="shrink-0 text-xs text-muted-foreground">
-          {format(new Date(result.archived_at), "MMM d, yyyy")}
+          {format(new Date(result.archived_at + "Z"), "MMM d, yyyy")}
         </span>
       </div>
       <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">

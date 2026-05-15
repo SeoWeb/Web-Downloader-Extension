@@ -69,11 +69,15 @@ def _get_stub():
         return None
 
     credentials = _build_credentials()
+    options = [
+        ("grpc.max_receive_message_length", 256 * 1024 * 1024),
+        ("grpc.max_send_message_length", 256 * 1024 * 1024),
+    ]
     if credentials is not None:
-        channel = grpc.secure_channel(addr, credentials)
+        channel = grpc.secure_channel(addr, credentials, options=options)
     else:
         # Fallback to plaintext for local dev (when certs are not configured)
-        channel = grpc.insecure_channel(addr)
+        channel = grpc.insecure_channel(addr, options=options)
     _channel = channel
     _stub = archive_pb2_grpc.ArchiveServiceStub(channel)
     return _stub

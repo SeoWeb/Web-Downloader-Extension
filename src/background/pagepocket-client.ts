@@ -587,9 +587,9 @@ export class PagePocketClient {
     let detail: string;
     try {
       const json = JSON.parse(bodyText);
+      const d = json?.detail;
       detail =
-        json?.detail?.message ??
-        json?.detail?.error ??
+        (typeof d === "string" ? d : d?.message ?? d?.error ?? d?.detail) ??
         json?.message ??
         JSON.stringify(json);
     } catch {

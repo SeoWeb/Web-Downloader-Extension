@@ -60,15 +60,13 @@ export const SearchResultSchema = z.object({
   title: z.string(),
   url: z.string(),
   snippet: z.string(),
-  highlights: z.array(z.object({ start: z.number(), end: z.number() })),
+  highlights: z.array(z.object({ start: z.number(), end: z.number() })).optional().default([]),
   archived_at: z.string(),
 });
 
 export const SearchResponseSchema = z.object({
   results: z.array(SearchResultSchema),
   total: z.number(),
-  page: z.number(),
-  page_size: z.number(),
 });
 
 export const ShareLinkResponseSchema = z.object({

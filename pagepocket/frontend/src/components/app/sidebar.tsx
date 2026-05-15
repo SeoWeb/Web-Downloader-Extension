@@ -117,7 +117,7 @@ export function AppSidebar() {
               </DialogDescription>
             )}
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 py-4">
             <Input
               placeholder="Collection name"
               value={newName}
