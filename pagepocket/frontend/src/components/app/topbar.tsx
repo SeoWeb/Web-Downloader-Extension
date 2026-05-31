@@ -124,7 +124,7 @@ export function AppTopbar() {
             <User className="size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={handleLogout}>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="size-4 mr-2" />
               Log out
             </DropdownMenuItem>

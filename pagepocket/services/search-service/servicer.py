@@ -13,6 +13,8 @@ import search_pb2
 import search_pb2_grpc
 from db import db_session, get_engine
 from models import PageIndex
+from cache import cache_get, cache_set, cache_invalidate_pattern
+from cache_config import TTL_LONG, key_search, pattern_search
 
 MEDIUMTEXT_LIMIT = 16 * 1024 * 1024  # 16 MB
 
@@ -50,6 +52,7 @@ class SearchServicer(search_pb2_grpc.SearchServiceServicer):
                 )
                 session.add(entry)
 
+        cache_invalidate_pattern(pattern_search(request.user_id))
         return search_pb2.StatusResponse(success=True)
 
     def RemovePage(self, request, context):
@@ -60,6 +63,7 @@ class SearchServicer(search_pb2_grpc.SearchServiceServicer):
                     PageIndex.user_id == request.user_id,
                 )
             )
+        cache_invalidate_pattern(pattern_search(request.user_id))
         return search_pb2.StatusResponse(success=True)
 
     def Search(self, request, context):
@@ -72,6 +76,16 @@ class SearchServicer(search_pb2_grpc.SearchServiceServicer):
         page_num = max(request.page, 1)
         page_size = max(min(request.page_size or 20, 100), 1)
         offset = (page_num - 1) * page_size
+        coll_id = request.collection_id or ""
+
+        ck = key_search(request.user_id, query_str, page_num, page_size, coll_id)
+        cached = cache_get(ck)
+        if cached is not None:
+            results = [
+                search_pb2.SearchResult(**r) for r in cached["results"]
+            ]
+            return search_pb2.SearchResponse(results=results, total=cached["total"])
+
         params = {"query": query_str, "uid": request.user_id, "like_q": f"%{query_str}%"}
 
         coll_filter = ""
@@ -108,18 +122,29 @@ class SearchServicer(search_pb2_grpc.SearchServiceServicer):
             rows = session.execute(results_sql, params).fetchall()
 
             search_results = []
+            serializable_results = []
             for row in rows:
                 body = row.body_text or ""
                 snippet = _make_snippet(body, query_str, max_len=240)
-                search_results.append(search_pb2.SearchResult(
+                result = search_pb2.SearchResult(
                     page_id=row.page_id,
                     url=row.url,
                     title=row.title,
                     snippet=snippet,
                     score=float(row.score),
                     archived_at=row.archived_at.isoformat(),
-                ))
+                )
+                search_results.append(result)
+                serializable_results.append({
+                    "page_id": row.page_id,
+                    "url": row.url,
+                    "title": row.title,
+                    "snippet": snippet,
+                    "score": float(row.score),
+                    "archived_at": row.archived_at.isoformat(),
+                })
 
+            cache_set(ck, {"results": serializable_results, "total": total}, TTL_LONG)
             return search_pb2.SearchResponse(results=search_results, total=total)
 
 

@@ -17,6 +17,14 @@ services:
       timeout: 5s
       retries: 30
 
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   auth-service:
     build:
       context: .
@@ -24,9 +32,12 @@ services:
     environment:
       DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/auth_db
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      REDIS_URL: redis://redis:6379/0
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "50051:50051"
@@ -49,9 +60,12 @@ services:
       R2_BUCKET_NAME: ${R2_BUCKET_NAME:-pagepocket-pages}
       SEARCH_SERVICE_ADDR: search-service:50054
       LIBRARY_SERVICE_ADDR: library-service:50053
+      REDIS_URL: redis://redis:6379/1
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "50052:50052"
@@ -67,9 +81,12 @@ services:
       dockerfile: services/library-service/Dockerfile
     environment:
       DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/library_db
+      REDIS_URL: redis://redis:6379/2
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "50053:50053"
@@ -85,9 +102,12 @@ services:
       dockerfile: services/search-service/Dockerfile
     environment:
       DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/search_db
+      REDIS_URL: redis://redis:6379/3
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "50054:50054"
@@ -104,9 +124,12 @@ services:
     environment:
       DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/share_db
       BASE_URL: ${BASE_URL:-http://localhost:8090}
+      REDIS_URL: redis://redis:6379/4
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "50055:50055"

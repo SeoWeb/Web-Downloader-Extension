@@ -68,7 +68,7 @@ export function AppSidebar() {
 
   return (
     <>
-      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card">
+      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-sidebar">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <Link href="/app" className="font-semibold text-lg">
             PagePocket

@@ -27,6 +27,12 @@ from models import Page, UserQuota
 from page_processor import sanitise_and_rewrite
 from quota import check_and_reserve
 from r2_client import R2Client
+from cache import cache_get, cache_set, cache_delete, cache_invalidate_pattern
+from cache_config import (
+    TTL_MEDIUM, TTL_SHORT,
+    key_page, key_pages_list,
+    pattern_pages,
+)
 
 
 def _get_search_stub():
@@ -51,6 +57,24 @@ def _get_library_stub():
     else:
         channel = grpc.insecure_channel(addr)
     return library_pb2_grpc.LibraryServiceStub(channel)
+
+
+def _page_to_dict(p):
+    return {
+        "id": p.id,
+        "user_id": p.user_id,
+        "url": p.url,
+        "title": p.title,
+        "preview_text": p.preview_text or "",
+        "r2_key": p.r2_key,
+        "size_bytes": p.size_bytes,
+        "extension_job_id": p.extension_job_id or "",
+        "archived_at": p.archived_at.isoformat(),
+    }
+
+
+def _dict_to_page_response(d):
+    return archive_pb2.PageResponse(**d)
 
 
 class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
@@ -172,9 +196,16 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
         except Exception:
             pass  # Fire-and-forget
 
+        cache_invalidate_pattern(pattern_pages(user_id))
+
         return archive_pb2.IngestPageResponse(success=True, page_id=page_id)
 
     def GetPage(self, request, context):
+        ck = key_page(request.page_id)
+        cached = cache_get(ck)
+        if cached and cached.get("user_id") == request.user_id:
+            return _dict_to_page_response(cached)
+
         with db_session(self.engine) as session:
             page = session.execute(
                 select(Page).where(Page.id == request.page_id)
@@ -185,17 +216,9 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                 context.set_details("Page not found")
                 return archive_pb2.PageResponse()
 
-            return archive_pb2.PageResponse(
-                id=page.id,
-                user_id=page.user_id,
-                url=page.url,
-                title=page.title,
-                preview_text=page.preview_text or "",
-                r2_key=page.r2_key,
-                size_bytes=page.size_bytes,
-                extension_job_id=page.extension_job_id or "",
-                archived_at=page.archived_at.isoformat(),
-            )
+            data = _page_to_dict(page)
+            cache_set(ck, data, TTL_MEDIUM)
+            return _dict_to_page_response(data)
 
     def ListPages(self, request, context):
         sort_by = request.sort_by or "archived_at"
@@ -203,8 +226,10 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
         page_size = max(min(request.page_size or 20, 100), 1)
         offset = (page_num - 1) * page_size
 
-        # If collection_id is set, resolve page IDs from library service
         collection_page_ids = None
+        coll_id = request.collection_id or ""
+
+        # If collection_id is set, resolve page IDs from library service
         if request.collection_id:
             stub = _get_library_stub()
             if stub:
@@ -218,6 +243,14 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                     collection_page_ids = set()
             else:
                 collection_page_ids = set()
+
+        ck = key_pages_list(request.user_id, page_num, page_size, sort_by, coll_id)
+        cached = cache_get(ck)
+        if cached is not None:
+            return archive_pb2.ListPagesResponse(
+                pages=[_dict_to_page_response(p) for p in cached["pages"]],
+                total=cached["total"],
+            )
 
         with db_session(self.engine) as session:
             query = select(Page).where(Page.user_id == request.user_id)
@@ -235,21 +268,13 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             total = session.execute(count_q).scalar()
             rows = session.execute(query.offset(offset).limit(page_size)).scalars().all()
 
-            pages = [
-                archive_pb2.PageResponse(
-                    id=p.id,
-                    user_id=p.user_id,
-                    url=p.url,
-                    title=p.title,
-                    preview_text=p.preview_text or "",
-                    r2_key=p.r2_key,
-                    size_bytes=p.size_bytes,
-                    extension_job_id=p.extension_job_id or "",
-                    archived_at=p.archived_at.isoformat(),
-                )
-                for p in rows
-            ]
-            return archive_pb2.ListPagesResponse(pages=pages, total=total)
+            pages = [_page_to_dict(p) for p in rows]
+            cache_set(ck, {"pages": pages, "total": total}, TTL_SHORT)
+
+            return archive_pb2.ListPagesResponse(
+                pages=[_dict_to_page_response(p) for p in pages],
+                total=total,
+            )
 
     def GetPageContent(self, request, context):
         with db_session(self.engine) as session:
@@ -324,6 +349,7 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                 pass
 
             size = page.size_bytes
+            user_id = page.user_id
             session.delete(page)
 
             # Decrement quota
@@ -332,6 +358,9 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             ).scalar_one_or_none()
             if quota:
                 quota.total_bytes = max(0, quota.total_bytes - size)
+
+        cache_delete(key_page(request.page_id))
+        cache_invalidate_pattern(pattern_pages(user_id))
 
         # Fire-and-forget search removal
         try:

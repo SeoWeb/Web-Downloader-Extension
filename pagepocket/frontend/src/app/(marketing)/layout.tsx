@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { getCurrentUserId } from "@/lib/auth/server-session";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default async function MarketingLayout({
   children,
@@ -45,6 +46,7 @@ export default async function MarketingLayout({
                 Sign in
               </Link>
             )}
+            <ThemeToggle />
           </div>
         </nav>
       </header>
