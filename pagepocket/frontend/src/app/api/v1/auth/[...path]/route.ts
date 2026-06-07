@@ -50,7 +50,7 @@ export async function POST(
   const gatewayResponse = await fetch(gatewayUrl, {
     method: "POST",
     headers,
-    body: body || undefined,
+    ...(body ? { body } : {}),
   });
 
   // Return the raw gateway response — tokens stay in the JSON body
