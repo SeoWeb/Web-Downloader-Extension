@@ -278,6 +278,20 @@
       "alertMessage": "Sebelum mengekstrak file ZIP, harap instal program ekstraksi yang tepat. Alat sistem bawaan memiliki keterbatasan signifikan saat menangani file ZIP multipart (terbagi) dan mungkin gagal mengekstrak dengan benar.",
       "recommendedTools": "Alat yang disarankan:",
       "hideNextTime": "Sembunyikan lain kali"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Memperkenalkan PagePocket",
+      "description": "Simpan halaman web apa pun di arsip cloud pribadi Anda. Akses halaman tersimpan dari mana saja, cari secara instan, dan bagikan dengan tautan.",
+      "freeLabel": "Starter",
+      "freeTier": "50 halaman/bulan · 500 MB penyimpanan",
+      "proTier": "$2/bulan",
+      "proStorage": "99.999 halaman · 10 GB",
+      "proUnlimitedCollections": "Koleksi tak terbatas",
+      "proPrioritySupport": "Dukungan prioritas",
+      "proAdvancedSearch": "Filter pencarian lanjutan",
+      "proCustomExpiry": "Masa berlaku berbagi kustom",
+      "getStarted": "Mulai",
+      "maybeLater": "Mungkin nanti"
     }
   }
 }

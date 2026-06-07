@@ -278,6 +278,20 @@
       "alertMessage": "Installer venligst et passende udpakningsprogram, før du udpakker ZIP-filen. Standard systemværktøjer har væsentlige begrænsninger ved håndtering af opdelte ZIP-filer og kan fejle ved udpakning.",
       "recommendedTools": "Anbefalede værktøjer:",
       "hideNextTime": "Skjul næste gang"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Introducerer PagePocket",
+      "description": "Gem enhver webside i dit personlige cloud-arkiv. Få adgang til dine gemte sider fra hvor som helst, søg gennem dem med det samme, og del med et link.",
+      "freeLabel": "Starter",
+      "freeTier": "50 sider/måned · 500 MB lagerplads",
+      "proTier": "$2/måned",
+      "proStorage": "99,999 sider · 10 GB",
+      "proUnlimitedCollections": "Ubegrænsede samlinger",
+      "proPrioritySupport": "Prioriteret support",
+      "proAdvancedSearch": "Avancerede søgefiltre",
+      "proCustomExpiry": "Tilpasset delingsudløb",
+      "getStarted": "Kom i gang",
+      "maybeLater": "Måske senere"
     }
   }
 }

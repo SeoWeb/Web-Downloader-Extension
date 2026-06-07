@@ -278,6 +278,20 @@
       "alertMessage": "Trước khi giải nén tệp ZIP, vui lòng cài đặt chương trình giải nén phù hợp. Các công cụ mặc định của hệ thống có những hạn chế đáng kể khi xử lý các tệp ZIP chia nhỏ (nhiều phần) và có thể không giải nén đúng cách.",
       "recommendedTools": "Công cụ được khuyến nghị:",
       "hideNextTime": "Ẩn lần sau"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Giới thiệu PagePocket",
+      "description": "Lưu bất kỳ trang web nào vào kho lưu trữ đám mây cá nhân của bạn. Truy cập các trang đã lưu từ mọi nơi, tìm kiếm ngay lập tức và chia sẻ bằng liên kết.",
+      "freeLabel": "Starter",
+      "freeTier": "50 trang/tháng · 500 MB lưu trữ",
+      "proTier": "$2/tháng",
+      "proStorage": "99.999 trang · 10 GB",
+      "proUnlimitedCollections": "Bộ sưu tập không giới hạn",
+      "proPrioritySupport": "Hỗ trợ ưu tiên",
+      "proAdvancedSearch": "Bộ lọc tìm kiếm nâng cao",
+      "proCustomExpiry": "Tùy chỉnh thời hạn chia sẻ",
+      "getStarted": "Bắt đầu",
+      "maybeLater": "Có thể để sau"
     }
   }
 }

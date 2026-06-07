@@ -23,6 +23,7 @@ import {
 } from "./sidepanel/server-mode-state";
 import { usePagePocket } from "./hooks/usePagePocket";
 import { CloudUploadState } from "./components/CloudUploadStatus";
+import { PagePocketAnnouncement } from "./components/PagePocketAnnouncement";
 
 // ServerModeState type and transition logic are imported from
 // server-mode-state.ts to avoid duplication and enable unit testing.
@@ -439,6 +440,7 @@ export default function SidePanel() {
 
   return (
     <div className="p-6">
+      <PagePocketAnnouncement />
       <MainContent
         messages={messages}
         tabId={tabId}

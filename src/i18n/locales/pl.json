@@ -278,6 +278,20 @@
       "alertMessage": "Przed rozpakowaniem pliku ZIP zainstaluj odpowiedni program. Domyślne narzędzia systemowe mają znaczne ograniczenia przy obsłudze wieloczęściowych (podzielonych) plików ZIP i mogą nie rozpakować ich poprawnie.",
       "recommendedTools": "Zalecane narzędzia:",
       "hideNextTime": "Nie pokazuj następnym razem"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Przedstawiamy PagePocket",
+      "description": "Zapisz dowolną stronę internetową w swoim osobistym archiwum chmurowym. Uzyskaj dostęp do zapisanych stron z dowolnego miejsca, przeszukuj je natychmiast i udostępniaj za pomocą linku.",
+      "freeLabel": "Starter",
+      "freeTier": "50 stron/miesiąc · 500 MB pamięci",
+      "proTier": "$2/miesiąc",
+      "proStorage": "99 999 stron · 10 GB",
+      "proUnlimitedCollections": "Nieograniczone kolekcje",
+      "proPrioritySupport": "Wsparcie priorytetowe",
+      "proAdvancedSearch": "Zaawansowane filtry wyszukiwania",
+      "proCustomExpiry": "Niestandardowy czas wygaśnięcia udostępnienia",
+      "getStarted": "Rozpocznij",
+      "maybeLater": "Może później"
     }
   }
 }

@@ -278,6 +278,20 @@
       "alertMessage": "Kabla ya kutoa faili la ZIP, tafadhali sakinisha programu ifaayo ya uchimbaji. Zana chaguo-msingi za mfumo zina vikwazo vikubwa wakati wa kushughulikia faili za ZIP za sehemu nyingi (zilizogawanyika) na huenda zikashindwa kutoa ipasavyo.",
       "recommendedTools": "Zana zinazopendekezwa:",
       "hideNextTime": "Ficha wakati ujao"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Tunawasilisha PagePocket",
+      "description": "Hifadhi ukurasa wowote wa wavuti kwenye hazina yako ya wingu ya kibinafsi. Fikia kurasa zako zilizohifadhiwa kutoka popote, zitafute mara moja na zishiriki kwa kiungo.",
+      "freeLabel": "Starter",
+      "freeTier": "50 kurasa/mwezi · 500 MB ya hifadhi",
+      "proTier": "$2/mwezi",
+      "proStorage": "99,999 kurasa · 10 GB",
+      "proUnlimitedCollections": "Mkusanyiko bila kikomo",
+      "proPrioritySupport": "Msaada wa kipaumbele",
+      "proAdvancedSearch": "Vichujio vya utafutaji vilivyoboreshwa",
+      "proCustomExpiry": "Muda wa kuisha wa kushiriki wa kibinafsi",
+      "getStarted": "Anza",
+      "maybeLater": "Labda baadaye"
     }
   }
 }

@@ -278,6 +278,20 @@
       "alertMessage": "ZIPファイルを解凍する前に、適切な解凍プログラムをインストールしてください。標準のシステムツールでは、分割ZIPファイルを正しく解凍できない場合があります。",
       "recommendedTools": "推奨ツール：",
       "hideNextTime": "次回から表示しない"
+    },
+    "pagepocketAnnouncement": {
+      "title": "PagePocketのご紹介",
+      "description": "あらゆるウェブページを個人クラウドアーカイブに保存できます。保存したページにどこからでもアクセスし、瞬時に検索して、リンクで共有できます。",
+      "freeLabel": "スターター",
+      "freeTier": "月50ページ · 500 MB ストレージ",
+      "proTier": "$2/月",
+      "proStorage": "99,999ページ · 10 GB",
+      "proUnlimitedCollections": "無制限のコレクション",
+      "proPrioritySupport": "優先サポート",
+      "proAdvancedSearch": "高度な検索フィルター",
+      "proCustomExpiry": "カスタム共有有効期限",
+      "getStarted": "始める",
+      "maybeLater": "また後で"
     }
   }
 }

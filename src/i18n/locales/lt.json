@@ -278,6 +278,20 @@
       "alertMessage": "Prieš išskleisdami ZIP failą, įdiekite tinkamą išskleidimo programą. Numatytieji sistemos įrankiai turi didelių apribojimų tvarkant daugiadalius (padalintus) ZIP failus ir gali nepavykti teisingai išskleisti.",
       "recommendedTools": "Rekomenduojami įrankiai:",
       "hideNextTime": "Slėpti kitą kartą"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Pristatome PagePocket",
+      "description": "Išsaugokite bet kurį tinklalapį savo asmeninėje debesies saugykloje. Pasiekite išsaugotus puslapius iš bet kur, ieškokite juose akimirksniu ir dalinkitės nuoroda.",
+      "freeLabel": "Pradinis",
+      "freeTier": "50 psl./mėn. · 500 MB saugykla",
+      "proTier": "$2/mėn.",
+      "proStorage": "99 999 psl. · 10 GB",
+      "proUnlimitedCollections": "Neribotos kolekcijos",
+      "proPrioritySupport": "Pirmenybinė pagalba",
+      "proAdvancedSearch": "Išplėstiniai paieškos filtrai",
+      "proCustomExpiry": "Tinkintas bendrinimo galiojimas",
+      "getStarted": "Pradėti",
+      "maybeLater": "Galbūt vėliau"
     }
   }
 }

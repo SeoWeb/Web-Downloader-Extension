@@ -278,6 +278,20 @@
       "alertMessage": "Installeer een geschikt extractieprogramma voordat u het ZIP-bestand uitpakt. Standaard systeemtools hebben aanzienlijke beperkingen bij het verwerken van meerdelige (gesplitste) ZIP-bestanden en kunnen mogelijk niet correct uitpakken.",
       "recommendedTools": "Aanbevolen tools:",
       "hideNextTime": "Volgende keer verbergen"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Maak kennis met PagePocket",
+      "description": "Sla elke webpagina op in je persoonlijke cloudarchief. Toegang tot je opgeslagen pagina's vanaf elke locatie, doorzoek ze direct en deel ze via een link.",
+      "freeLabel": "Starter",
+      "freeTier": "50 pagina's/maand · 500 MB opslag",
+      "proTier": "$2/maand",
+      "proStorage": "99.999 pagina's · 10 GB",
+      "proUnlimitedCollections": "Onbeperkte verzamelingen",
+      "proPrioritySupport": "Prioriteitsondersteuning",
+      "proAdvancedSearch": "Geavanceerde zoekfilters",
+      "proCustomExpiry": "Aangepaste deellink-vervaldatum",
+      "getStarted": "Aan de slag",
+      "maybeLater": "Misschien later"
     }
   }
 }

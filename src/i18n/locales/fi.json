@@ -278,6 +278,20 @@
       "alertMessage": "Asenna asianmukainen purkuohjelma ennen ZIP-tiedoston purkamista. Järjestelmän oletustyökaluilla on merkittäviä rajoituksia moniosaisten (jaettujen) ZIP-tiedostojen käsittelyssä, eivätkä ne välttämättä purkaudu oikein.",
       "recommendedTools": "Suositellut työkalut:",
       "hideNextTime": "Piilota ensi kerralla"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Esittelyssä PagePocket",
+      "description": "Tallenna mikä tahansa verkkosivu henkilökohtaiseen pilviarkistoosi. Käytä tallennettuja sivuja mistä tahansa, hae niistä hetkessä ja jaa linkillä.",
+      "freeLabel": "Aloittelija",
+      "freeTier": "50 sivua/kuukausi · 500 MB tallennustilaa",
+      "proTier": "$2/kuukausi",
+      "proStorage": "99 999 sivua · 10 GB",
+      "proUnlimitedCollections": "Rajoittamattomat kokoelmat",
+      "proPrioritySupport": "Etuoikeutettu tuki",
+      "proAdvancedSearch": "Kehittyneet hakusuodattimet",
+      "proCustomExpiry": "Mukautettu jakamisen vanheneminen",
+      "getStarted": "Aloita",
+      "maybeLater": "Ehkä myöhemmin"
     }
   }
 }

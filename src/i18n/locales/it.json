@@ -278,6 +278,20 @@
       "alertMessage": "Prima di estrarre il file ZIP, installare un programma di estrazione adeguato. Gli strumenti di sistema predefiniti hanno limitazioni significative nella gestione di file ZIP multipart (divisi) e potrebbero non estrarre correttamente.",
       "recommendedTools": "Strumenti consigliati:",
       "hideNextTime": "Nascondi la prossima volta"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Presentiamo PagePocket",
+      "description": "Salva qualsiasi pagina web nel tuo archivio cloud personale. Accedi alle tue pagine salvate da qualsiasi luogo, cercale istantaneamente e condividile con un link.",
+      "freeLabel": "Starter",
+      "freeTier": "50 pagine/mese · 500 MB di spazio",
+      "proTier": "$2/mese",
+      "proStorage": "99.999 pagine · 10 GB",
+      "proUnlimitedCollections": "Raccolte illimitate",
+      "proPrioritySupport": "Supporto prioritario",
+      "proAdvancedSearch": "Filtri di ricerca avanzati",
+      "proCustomExpiry": "Scadenza personalizzata condivisione",
+      "getStarted": "Inizia",
+      "maybeLater": "Forse dopo"
     }
   }
 }

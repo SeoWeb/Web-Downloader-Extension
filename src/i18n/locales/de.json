@@ -278,6 +278,20 @@
       "alertMessage": "Bitte installieren Sie vor dem Extrahieren der ZIP-Datei ein geeignetes Extraktionsprogramm. Standard-Systemtools haben bei der Handhabung von mehrteiligen (geteilten) ZIP-Dateien erhebliche Einschränkungen und können möglicherweise nicht korrekt extrahieren.",
       "recommendedTools": "Empfohlene Tools:",
       "hideNextTime": "Beim nächsten Mal ausblenden"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Vorstellung: PagePocket",
+      "description": "Speichern Sie jede Webseite in Ihrem persönlichen Cloud-Archiv. Greifen Sie von überall auf Ihre gespeicherten Seiten zu, durchsuchen Sie sie sofort und teilen Sie sie mit einem Link.",
+      "freeLabel": "Starter",
+      "freeTier": "50 Seiten/Monat · 500 MB Speicher",
+      "proTier": "$2/Monat",
+      "proStorage": "99.999 Seiten · 10 GB",
+      "proUnlimitedCollections": "Unbegrenzte Sammlungen",
+      "proPrioritySupport": "Priorisierter Support",
+      "proAdvancedSearch": "Erweiterte Suchfilter",
+      "proCustomExpiry": "Benutzerdefiniertes Freigabe-Ablaufdatum",
+      "getStarted": "Loslegen",
+      "maybeLater": "Vielleicht später"
     }
   }
 }

@@ -278,6 +278,20 @@
       "alertMessage": "Înainte de a extrage fișierul ZIP, vă rugăm să instalați un program de extracție adecvat. Instrumentele implicite de sistem au limitări semnificative atunci când gestionează fișiere ZIP multipart (divizate) și este posibil să nu extragă corect.",
       "recommendedTools": "Instrumente recomandate:",
       "hideNextTime": "Ascunde data viitoare"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Prezentăm PagePocket",
+      "description": "Salvează orice pagină web în arhiva ta personală din cloud. Accesează paginile salvate de oriunde, caută-le instantaneu și distribuie-le cu un link.",
+      "freeLabel": "Starter",
+      "freeTier": "50 pagini/lună · 500 MB stocare",
+      "proTier": "$2/lună",
+      "proStorage": "99.999 pagini · 10 GB",
+      "proUnlimitedCollections": "Colecții nelimitate",
+      "proPrioritySupport": "Asistență prioritară",
+      "proAdvancedSearch": "Filtre avansate de căutare",
+      "proCustomExpiry": "Expirare personalizată a distribuirii",
+      "getStarted": "Începe",
+      "maybeLater": "Poate mai târziu"
     }
   }
 }

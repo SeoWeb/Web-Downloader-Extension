@@ -278,6 +278,20 @@
       "alertMessage": "לפני חילוץ קובץ ה-ZIP, אנא התקן תוכנת חילוץ מתאימה. לכלים המובנים במערכת יש מגבלות משמעותיות בטיפול בקבצי ZIP מפוצלים (multipart), והם עלולים להיכשל בחילוץ תקין.",
       "recommendedTools": "כלים מומלצים:",
       "hideNextTime": "הסתר בפעם הבאה"
+    },
+    "pagepocketAnnouncement": {
+      "title": "מציגים את PagePocket",
+      "description": "שמור כל דף אינטרנט בארכיון הענן האישי שלך. גש לדפים השמורים שלך מכל מקום, חפש בהם מיד ושתף עם קישור.",
+      "freeLabel": "Starter",
+      "freeTier": "50 עמודים/חודש · 500 MB אחסון",
+      "proTier": "$2/חודש",
+      "proStorage": "99,999 עמודים · 10 GB",
+      "proUnlimitedCollections": "אוספים ללא הגבלה",
+      "proPrioritySupport": "תמיכה בעדיפות גבוהה",
+      "proAdvancedSearch": "מסנני חיפוש מתקדמים",
+      "proCustomExpiry": "תפוגת שיתוף מותאמת אישית",
+      "getStarted": "התחל",
+      "maybeLater": "אולי אחר כך"
     }
   }
 }

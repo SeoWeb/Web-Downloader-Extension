@@ -278,6 +278,20 @@
       "alertMessage": "Bago i-extract ang ZIP file, mangyaring mag-install ng wastong extraction program. Ang mga default na tool ng system ay may malalaking limitasyon kapag humahawak ng mga multipart (split) ZIP file at maaaring mabigo na mag-extract nang tama.",
       "recommendedTools": "Mga inirerekomendang tool:",
       "hideNextTime": "Itago sa susunod"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Ipinakikilala ang PagePocket",
+      "description": "I-save ang anumang web page sa iyong personal na cloud archive. I-access ang iyong mga naka-save na pahina mula sa kahit saan, maghanap agad, at magbahagi gamit ang link.",
+      "freeLabel": "Starter",
+      "freeTier": "50 pahina/buwan · 500 MB storage",
+      "proTier": "$2/buwan",
+      "proStorage": "99,999 pahina · 10 GB",
+      "proUnlimitedCollections": "Walang limitasyong koleksyon",
+      "proPrioritySupport": "Priority na suporta",
+      "proAdvancedSearch": "Advanced na filter sa paghahanap",
+      "proCustomExpiry": "Custom na pag-expire ng pag-share",
+      "getStarted": "Magsimula",
+      "maybeLater": "Bukas na lang"
     }
   }
 }

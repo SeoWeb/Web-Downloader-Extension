@@ -278,6 +278,20 @@
       "alertMessage": "ZIP dosyasını çıkarmadan önce lütfen uygun bir çıkarma programı yükleyin. Varsayılan sistem araçları, çok parçalı (bölünmüş) ZIP dosyalarını işlerken önemli sınırlamalara sahiptir ve doğru şekilde çıkaramayabilir.",
       "recommendedTools": "Önerilen araçlar:",
       "hideNextTime": "Bir dahaki sefere gizle"
+    },
+    "pagepocketAnnouncement": {
+      "title": "PagePocket'ı Tanıyalım",
+      "description": "Herhangi bir web sayfasını kişisel bulut arşivinize kaydedin. Kaydedilen sayfalarınıza her yerden erişin, anında arayın ve bir bağlantıyla paylaşın.",
+      "freeLabel": "Başlangıç",
+      "freeTier": "50 sayfa/ay · 500 MB depolama",
+      "proTier": "$2/ay",
+      "proStorage": "99.999 sayfa · 10 GB",
+      "proUnlimitedCollections": "Sınırsız koleksiyon",
+      "proPrioritySupport": "Öncelikli destek",
+      "proAdvancedSearch": "Gelişmiş arama filtreleri",
+      "proCustomExpiry": "Özel paylaşım son kullanma tarihi",
+      "getStarted": "Başlayalım",
+      "maybeLater": "Belki sonra"
     }
   }
 }

@@ -278,6 +278,20 @@
       "alertMessage": "Pred razširitvijo datoteke ZIP namestite ustrezen program za razširitev. Privzeta sistemska orodja imajo precejšnje omejitve pri ravnanju z večdelnimi (razdeljenimi) datotekami ZIP in morda ne bodo pravilno razširila.",
       "recommendedTools": "Priporočena orodja:",
       "hideNextTime": "Skrij naslednjič"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Predstavljamo PagePocket",
+      "description": "Shranite katero koli spletno stran v osebni oblačni arhiv. Dostopajte do shranjenih strani od koder koli, jih hipno preiskujte in delite s povezavo.",
+      "freeLabel": "Starter",
+      "freeTier": "50 strani/mesec · 500 MB shrambe",
+      "proTier": "$2/mesec",
+      "proStorage": "99.999 strani · 10 GB",
+      "proUnlimitedCollections": "Neomejene zbirke",
+      "proPrioritySupport": "Prednostna podpora",
+      "proAdvancedSearch": "Napredni iskalni filtri",
+      "proCustomExpiry": "Potek deljenja po meri",
+      "getStarted": "Začni",
+      "maybeLater": "Morda kasneje"
     }
   }
 }

@@ -278,6 +278,20 @@
       "alertMessage": "Vennligst installer et egnet utpakkingsprogram før du pakker ut ZIP-filen. Standard systemverktøy har betydelige begrensninger ved håndtering av oppdelte ZIP-filer og kan mislykkes med å pakke ut riktig.",
       "recommendedTools": "Anbefalte verktøy:",
       "hideNextTime": "Skjul neste gang"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Introduserer PagePocket",
+      "description": "Lagre enhver nettside i ditt personlige skyarkiv. Få tilgang til lagrede sider fra hvor som helst, søk gjennom dem umiddelbart og del med en lenke.",
+      "freeLabel": "Starter",
+      "freeTier": "50 sider/måned · 500 MB lagring",
+      "proTier": "$2/måned",
+      "proStorage": "99 999 sider · 10 GB",
+      "proUnlimitedCollections": "Ubegrensede samlinger",
+      "proPrioritySupport": "Prioritert støtte",
+      "proAdvancedSearch": "Avanserte søkefiltre",
+      "proCustomExpiry": "Tilpasset utløp for deling",
+      "getStarted": "Kom i gang",
+      "maybeLater": "Kanskje senere"
     }
   }
 }

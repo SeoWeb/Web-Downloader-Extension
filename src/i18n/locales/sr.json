@@ -278,6 +278,20 @@
       "alertMessage": "Пре него што распакујете ЗИП датотеку, инсталирајте одговарајући програм. Подразумевани системски алати имају значајна ограничења при руковању вишеделним (подељеним) ЗИП датотекама.",
       "recommendedTools": "Препоручени алати:",
       "hideNextTime": "Сакриј следећи пут"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Predstavljamo PagePocket",
+      "description": "Sačuvajte bilo koju veb stranicu u ličnom cloud arhivu. Pristupite sačuvanim stranicama sa bilo kog mesta, pretražujte ih trenutno i delite putem linka.",
+      "freeLabel": "Starter",
+      "freeTier": "50 stranica/mesec · 500 MB skladišta",
+      "proTier": "$2/mesec",
+      "proStorage": "99.999 stranica · 10 GB",
+      "proUnlimitedCollections": "Neograničene kolekcije",
+      "proPrioritySupport": "Prioritetna podrška",
+      "proAdvancedSearch": "Napredni filteri pretrage",
+      "proCustomExpiry": "Prilagođeni istek deljenja",
+      "getStarted": "Započni",
+      "maybeLater": "Možda kasnije"
     }
   }
 }

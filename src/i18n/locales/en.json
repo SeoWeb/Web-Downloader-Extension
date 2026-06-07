@@ -297,6 +297,20 @@
       "prompt": "Enjoying the extension?",
       "ariaLabel_one": "Rate {{count}} star",
       "ariaLabel_other": "Rate {{count}} stars"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Introducing PagePocket",
+      "description": "Save any web page to your personal cloud archive. Access your saved pages from anywhere, search through them instantly, and share with a link.",
+      "freeLabel": "Starter",
+      "freeTier": "50 pages/month · 500 MB storage",
+      "proTier": "$2/month",
+      "proStorage": "99,999 pages · 10 GB",
+      "proUnlimitedCollections": "Unlimited collections",
+      "proPrioritySupport": "Priority support",
+      "proAdvancedSearch": "Advanced search filters",
+      "proCustomExpiry": "Custom share expiry",
+      "getStarted": "Get Started",
+      "maybeLater": "Maybe Later"
     }
   }
 }

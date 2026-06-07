@@ -278,6 +278,20 @@
       "alertMessage": "Enne ZIP-faili lahtipakkimist installige palun korralik lahtipakkimisprogramm. Süsteemi vaiketööriistadel on mitmeosaliste (jagatud) ZIP-failide käsitlemisel olulised piirangud ja need ei pruugi õigesti lahti pakkida.",
       "recommendedTools": "Soovitatavad tööriistad:",
       "hideNextTime": "Peida järgmine kord"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Tutvustame PagePocketit",
+      "description": "Salvesta mis tahes veebileht oma isiklikku pilvearhiivi. Ligipääs salvestatud lehtedele kõikjalt, kohene otsing ja jagamine lingiga.",
+      "freeLabel": "Starter",
+      "freeTier": "50 lehte/kuus · 500 MB salvestusruum",
+      "proTier": "$2/kuu",
+      "proStorage": "99 999 lehte · 10 GB",
+      "proUnlimitedCollections": "Piiramatud kollektsioonid",
+      "proPrioritySupport": "Prioriteetne tugi",
+      "proAdvancedSearch": "Täpsemad otsingufiltrid",
+      "proCustomExpiry": "Kohandatud jagamise aegumine",
+      "getStarted": "Alusta",
+      "maybeLater": "Võib-olla hiljem"
     }
   }
 }

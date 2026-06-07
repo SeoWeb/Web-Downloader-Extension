@@ -278,6 +278,20 @@
       "alertMessage": "A ZIP fájl kibontása előtt telepítsen megfelelő programot. Az alapértelmezett rendszereszközök korlátozottan kezelik a darabolt (több részes) ZIP fájlokat, és előfordulhat, hogy nem tudják helyesen kibontani.",
       "recommendedTools": "Ajánlott eszközök:",
       "hideNextTime": "Elrejtés legközelebb"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Bemutatjuk a PagePocketet",
+      "description": "Mentsen el bármilyen weboldalt a személyes felhőarchívumába. Érje el a mentett oldalait bárhonnan, keressen bennük azonnal, és ossza meg egy hivatkozással.",
+      "freeLabel": "Kezdő",
+      "freeTier": "50 oldal/hónap · 500 MB tárhely",
+      "proTier": "$2/hónap",
+      "proStorage": "99 999 oldal · 10 GB",
+      "proUnlimitedCollections": "Korlátlan gyűjtemények",
+      "proPrioritySupport": "Prioritásos támogatás",
+      "proAdvancedSearch": "Speciális keresési szűrők",
+      "proCustomExpiry": "Egyéni megosztási lejárat",
+      "getStarted": "Kezdés",
+      "maybeLater": "Talán később"
     }
   }
 }

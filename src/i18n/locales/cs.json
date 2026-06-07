@@ -278,6 +278,20 @@
       "alertMessage": "Před extrakcí souboru ZIP si prosím nainstalujte vhodný extrakční program. Výchozí systémové nástroje mají při práci s vícedílnými (rozdělenými) soubory ZIP značná omezení a nemusí se podařit je správně extrahovat.",
       "recommendedTools": "Doporučené nástroje:",
       "hideNextTime": "Příště skrýt"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Představujeme PagePocket",
+      "description": "Uložte si jakoukoli webovou stránku do svého osobního cloudového archivu. Přistupujte ke svým uloženým stránkám odkudkoli, prohledávejte je okamžitě a sdílejte pomocí odkazu.",
+      "freeLabel": "Starter",
+      "freeTier": "50 stránek/měsíc · 500 MB úložiště",
+      "proTier": "$2/měsíc",
+      "proStorage": "99,999 stránek · 10 GB",
+      "proUnlimitedCollections": "Neomezené kolekce",
+      "proPrioritySupport": "Prioritní podpora",
+      "proAdvancedSearch": "Pokročilé filtry vyhledávání",
+      "proCustomExpiry": "Vlastní expirace sdílení",
+      "getStarted": "Začít",
+      "maybeLater": "Možná později"
     }
   }
 }

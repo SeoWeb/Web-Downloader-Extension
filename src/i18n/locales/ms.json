@@ -278,6 +278,20 @@
       "alertMessage": "Sebelum mengekstrak fail ZIP, sila pasang program pengekstrakan yang sesuai. Alat sistem lalai mempunyai batasan ketara apabila mengendalikan fail ZIP berbilang bahagian (berpecah) dan mungkin gagal mengekstrak dengan betul.",
       "recommendedTools": "Alat yang disyorkan:",
       "hideNextTime": "Sembunyikan lain kali"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Memperkenalkan PagePocket",
+      "description": "Simpan sebarang halaman web ke dalam arkib cloud peribadi anda. Akses halaman yang disimpan dari mana sahaja, cari serta-merta, dan kongsi dengan pautan.",
+      "freeLabel": "Starter",
+      "freeTier": "50 halaman/bulan · 500 MB storan",
+      "proTier": "$2/bulan",
+      "proStorage": "99,999 halaman · 10 GB",
+      "proUnlimitedCollections": "Koleksi tanpa had",
+      "proPrioritySupport": "Sokongan keutamaan",
+      "proAdvancedSearch": "Penapis carian lanjutan",
+      "proCustomExpiry": "Tamat tempoh perkongsian tersuai",
+      "getStarted": "Mula",
+      "maybeLater": "Mungkin kemudian"
     }
   }
 }

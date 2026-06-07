@@ -278,6 +278,20 @@
       "alertMessage": "Installera ett lämpligt uppackningsprogram innan du packar upp ZIP-filen. Standardsystemverktyg har betydande begränsningar vid hantering av uppdelade ZIP-filer och kan misslyckas.",
       "recommendedTools": "Rekommenderade verktyg:",
       "hideNextTime": "Dölj nästa gång"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Introducerar PagePocket",
+      "description": "Spara alla webbsidor i ditt personliga molnarkiv. Kom åt dina sparade sidor var du än är, sök bland dem direkt och dela med en länk.",
+      "freeLabel": "Starter",
+      "freeTier": "50 sidor/månad · 500 MB lagring",
+      "proTier": "$2/månad",
+      "proStorage": "99 999 sidor · 10 GB",
+      "proUnlimitedCollections": "Obegränsade samlingar",
+      "proPrioritySupport": "Prioriterat stöd",
+      "proAdvancedSearch": "Avancerade sökfilter",
+      "proCustomExpiry": "Anpassat utgångsdatum för delning",
+      "getStarted": "Kom igång",
+      "maybeLater": "Kanske senare"
     }
   }
 }

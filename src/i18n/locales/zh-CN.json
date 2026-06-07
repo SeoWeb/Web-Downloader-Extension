@@ -278,6 +278,20 @@
       "alertMessage": "在解压 ZIP 文件之前，请安装合适的解压程序。默认系统工具在处理分卷（分割）ZIP 文件时存在很大局限性，可能无法正确解压。",
       "recommendedTools": "推荐解压工具：",
       "hideNextTime": "下次隐藏"
+    },
+    "pagepocketAnnouncement": {
+      "title": "PagePocket 上线了",
+      "description": "将任意网页保存到您的个人云端档案馆。随时随地访问已保存的页面，即时搜索，并通过链接分享。",
+      "freeLabel": "入门版",
+      "freeTier": "每月50页 · 500 MB 存储",
+      "proTier": "$2/月",
+      "proStorage": "99,999 页 · 10 GB",
+      "proUnlimitedCollections": "无限收藏夹",
+      "proPrioritySupport": "优先支持",
+      "proAdvancedSearch": "高级搜索筛选",
+      "proCustomExpiry": "自定义分享有效期",
+      "getStarted": "开始使用",
+      "maybeLater": "以后再说"
     }
   }
 }

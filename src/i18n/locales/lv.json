@@ -278,6 +278,20 @@
       "alertMessage": "Pirms ZIP faila atzipēšanas, lūdzu, instalējiet atbilstošu programmu. Noklusējuma sistēmas rīkiem ir ievērojami ierobežojumi, strādājot ar sadalītiem ZIP failiem, un tie var neizdoties pareizi atzipēt.",
       "recommendedTools": "Ieteicamie rīki:",
       "hideNextTime": "Paslēpt nākamreiz"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Iepazīstinām ar PagePocket",
+      "description": "Saglabājiet jebkuru tīmekļa lapu savā personīgajā mākoņarhīvā. Piekļūstiet saglabātajām lapām no jebkurienes, meklējiet tajās acumirklī un dalieties ar saiti.",
+      "freeLabel": "Sākotnējais",
+      "freeTier": "50 lapas/mēnesī · 500 MB krātuves",
+      "proTier": "$2/mēnesī",
+      "proStorage": "99 999 lapas · 10 GB",
+      "proUnlimitedCollections": "Neierobežotas kolekcijas",
+      "proPrioritySupport": "Prioritārais atbalsts",
+      "proAdvancedSearch": "Papildu meklēšanas filtri",
+      "proCustomExpiry": "Pielāgots koplietošanas derīguma termiņš",
+      "getStarted": "Sākt",
+      "maybeLater": "Varbūt vēlāk"
     }
   }
 }

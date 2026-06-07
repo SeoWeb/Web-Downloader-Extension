@@ -278,6 +278,20 @@
       "alertMessage": "Prije raspakiravanja ZIP datoteke, instalirajte odgovarajući program za ekstrakciju. Zadani alati sustava imaju značajna ograničenja pri rukovanju višedijelnim (podijeljenim) ZIP datotekama i možda neće uspjeti ispravno raspakirati.",
       "recommendedTools": "Preporučeni alati:",
       "hideNextTime": "Sakrij sljedeći put"
+    },
+    "pagepocketAnnouncement": {
+      "title": "Predstavljamo PagePocket",
+      "description": "Spremite bilo koju web stranicu u svoj osobni oblak. Pristupite spremljenim stranicama s bilo kojeg mjesta, pretražujte ih trenutno i dijelite putem poveznice.",
+      "freeLabel": "Starter",
+      "freeTier": "50 stranica/mjesec · 500 MB pohrane",
+      "proTier": "$2/mjesec",
+      "proStorage": "99.999 stranica · 10 GB",
+      "proUnlimitedCollections": "Neograničene zbirke",
+      "proPrioritySupport": "Prioritetna podrška",
+      "proAdvancedSearch": "Napredni filtri pretraživanja",
+      "proCustomExpiry": "Prilagođeni istek dijeljenja",
+      "getStarted": "Započni",
+      "maybeLater": "Možda kasnije"
     }
   }
 }

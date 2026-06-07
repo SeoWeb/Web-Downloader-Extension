@@ -278,6 +278,20 @@
       "alertMessage": "在解壓 ZIP 文件之前，請安裝合適的解壓程式。默認系統工具在處理分卷（分割）ZIP 文件時存在很大局限性，可能無法正確解壓。",
       "recommendedTools": "推薦解壓工具：",
       "hideNextTime": "下次隱藏"
+    },
+    "pagepocketAnnouncement": {
+      "title": "PagePocket 上線了",
+      "description": "將任意網頁儲存到您的個人雲端檔案館。隨時隨地存取已儲存的頁面，即時搜尋，並透過連結分享。",
+      "freeLabel": "入門版",
+      "freeTier": "每月50頁 · 500 MB 儲存空間",
+      "proTier": "$2/月",
+      "proStorage": "99,999 頁 · 10 GB",
+      "proUnlimitedCollections": "無限收藏夾",
+      "proPrioritySupport": "優先支援",
+      "proAdvancedSearch": "進階搜尋篩選",
+      "proCustomExpiry": "自訂分享有效期",
+      "getStarted": "開始使用",
+      "maybeLater": "以後再說"
     }
   }
 }
