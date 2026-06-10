@@ -93,43 +93,44 @@ export async function downloadResources(
   }
 
   await setTabDownloadActive(tabId!);
-  createKeepalivePort(tabId!);
-
-  // Read PagePocket cloud user ID if cloud mode is enabled.
-  // When set, the server will push the assembled result to PagePocket
-  // instead of creating a ZIP file.
-  const pagepocketUserId = await getPagepocketUserId();
-
-  // Create server session (reuse existing if created during INITIALIZE_DIFFERENTIAL_SCRAPING)
-  const existingSessionId = getActiveServerSessionId(tabId!);
-  let serverSessionId: string;
-  if (existingSessionId) {
-    serverSessionId = existingSessionId;
-  } else {
-    serverSessionId = await serverClient.createSession(tabUrl, {
-      singleFile: downloadOptions?.singleFile ?? false,
-      retentionDays: 1,
-      pagepocketUserId: pagepocketUserId ?? undefined,
-    });
-    setActiveServerSession(tabId!, serverSessionId);
-  }
-
-  const storage = new ServerStorageAdapter(serverClient);
-  storage.setSessionId(serverSessionId);
-
-  // Write interrupt checkpoint
-  await writeCheckpoint({
-    phase: "scraping",
-    serverSessionId,
-    tabId,
-    tabUrl,
-  });
-
-  // Create abort controller for this download session
-  const downloadAbort = new AbortController();
-  setDownloadAbortController(downloadAbort, tabId!);
 
   try {
+    createKeepalivePort(tabId!);
+
+    // Read PagePocket cloud user ID if cloud mode is enabled.
+    // When set, the server will push the assembled result to PagePocket
+    // instead of creating a ZIP file.
+    const pagepocketUserId = await getPagepocketUserId();
+
+    // Create server session (reuse existing if created during INITIALIZE_DIFFERENTIAL_SCRAPING)
+    const existingSessionId = getActiveServerSessionId(tabId!);
+    let serverSessionId: string;
+    if (existingSessionId) {
+      serverSessionId = existingSessionId;
+    } else {
+      serverSessionId = await serverClient.createSession(tabUrl, {
+        singleFile: downloadOptions?.singleFile ?? false,
+        retentionDays: 1,
+        pagepocketUserId: pagepocketUserId ?? undefined,
+      });
+      setActiveServerSession(tabId!, serverSessionId);
+    }
+
+    const storage = new ServerStorageAdapter(serverClient);
+    storage.setSessionId(serverSessionId);
+
+    // Write interrupt checkpoint
+    await writeCheckpoint({
+      phase: "scraping",
+      serverSessionId,
+      tabId,
+      tabUrl,
+    });
+
+    // Create abort controller for this download session
+    const downloadAbort = new AbortController();
+    setDownloadAbortController(downloadAbort, tabId!);
+
     await performInitialCleanup();
     await executeDownloadServerMode(
       html, tabUrl, downloadOptions, sendMessage,
@@ -144,6 +145,15 @@ export async function downloadResources(
 
     if (error instanceof PanelUnavailableError) {
       userFriendlyMessage = { key: "app.panelUnavailable" };
+    } else if (error instanceof AuthenticationError || error instanceof ServerUnavailableError) {
+      userFriendlyMessage = {
+        key: "status.serverError",
+        options: {
+          error: error.message.split("\n")[0],
+          canFallback: true,
+          reason: "server_unavailable",
+        },
+      };
     } else if (
       errorMessage.includes("memory") ||
       errorMessage.includes("size") ||
