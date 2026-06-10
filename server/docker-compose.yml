@@ -10,10 +10,14 @@ services:
       - STORAGE_ROOT=/app/storage
       - CORS_ALLOWED_ORIGINS=[]
       - ARCHIVE_SERVICE_ADDR=archive-service:50052
+      - ARCHIVE_CA_CERT=/app/certs/ca.pem
+      - ARCHIVE_CLIENT_KEY=/app/certs/extension-server-key.pem
+      - ARCHIVE_CLIENT_CERT=/app/certs/extension-server.pem
       - PROTO_DIR=/app/proto_generated
     volumes:
       - ./storage:/app/storage
       - ../pagepocket/shared/proto_generated:/app/proto_generated:ro
+      - ../pagepocket/certs:/app/certs:ro
     command: ["sh", "-c", "i=0; until python -c 'import socket; socket.create_connection((\"db\",3306),timeout=1)' 2>/dev/null; do sleep 1; i=$$((i+1)); if [ $$i -ge 120 ]; then echo 'Timed out waiting for db:3306' >&2; exit 1; fi; done; exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     networks:
       - default
