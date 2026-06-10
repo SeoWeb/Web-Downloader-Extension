@@ -19,8 +19,14 @@ class AssemblyTaskManager:
     For multi-worker deployments, use a shared store (e.g. Redis).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, max_concurrent_assemblies: int = 2) -> None:
         self._tasks: dict[str, asyncio.Task[Any]] = {}
+        self._semaphore = asyncio.Semaphore(max_concurrent_assemblies)
+
+    @property
+    def semaphore(self) -> asyncio.Semaphore:
+        """Get the concurrency semaphore for assembly tasks."""
+        return self._semaphore
 
     def register(self, session_id: str, task: asyncio.Task[Any]) -> None:
         """Register an assembly task for a session."""

@@ -580,7 +580,8 @@ async def finalize_session(
     from app.db.database import async_session_factory
     
     async def _run_assembly() -> None:
-        await zip_assembler_service.assemble_session(session_id, async_session_factory)
+        async with assembly_task_manager.semaphore:
+            await zip_assembler_service.assemble_session(session_id, async_session_factory)
     
     task = asyncio.create_task(_run_assembly())
     assembly_task_manager.register(session_id, task)
