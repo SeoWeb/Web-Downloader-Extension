@@ -148,7 +148,7 @@ export function DownloadComplete({
             </div>
             {PAGEPOCKET_URL && (
               <a
-                href={`${PAGEPOCKET_URL}/pages/${cloudUploadState.pageId}`}
+                href={`${PAGEPOCKET_URL}/app/pages/${cloudUploadState.pageId}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium"

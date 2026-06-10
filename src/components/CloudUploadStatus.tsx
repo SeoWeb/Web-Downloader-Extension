@@ -40,7 +40,7 @@ export function CloudUploadStatus({ state, onRetry }: CloudUploadStatusProps) {
 
   if (state.status === "success") {
     const viewUrl = PAGEPOCKET_URL
-      ? `${PAGEPOCKET_URL}/pages/${state.pageId}`
+      ? `${PAGEPOCKET_URL}/app/pages/${state.pageId}`
       : undefined;
 
     return (
