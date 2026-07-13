@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { setAuthCookies, clearAuthCookies } from "@/lib/auth/cookies";
+import { API_GATEWAY_URL } from "@/lib/env";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+const API_BASE = API_GATEWAY_URL;
 
 const refreshPromises = new Map<string, Promise<Response>>();
 
@@ -124,6 +125,7 @@ async function proxyRequest(
   let response = await fetch(gatewayUrl, {
     method: request.method,
     headers,
+    cache: "no-store",
     ...(hasBody ? { body: body! } : {}),
   });
 
@@ -154,6 +156,7 @@ async function proxyRequest(
             "Content-Type": "application/json",
             Authorization: `Bearer ${newAccess}`,
           },
+          cache: "no-store",
           ...(hasBody ? { body: body! } : {}),
         });
 

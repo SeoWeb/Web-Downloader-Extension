@@ -50,6 +50,7 @@ async function clientFetch<T>({
 
   const init: RequestInit = {
     method,
+    cache: "no-store",
     headers: { "Content-Type": "application/json" },
   };
   if (body !== undefined) {

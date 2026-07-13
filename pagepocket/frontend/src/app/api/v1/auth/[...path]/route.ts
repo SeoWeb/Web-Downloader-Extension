@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { API_GATEWAY_URL } from "@/lib/env";
 
 /**
  * Proxy route for extension auth requests.
@@ -12,8 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
  * tokens in HttpOnly cookies for the web frontpage.
  */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8090/api/v1";
+const API_BASE = API_GATEWAY_URL;
 
 // Only allow known auth sub-paths
 const ALLOWED_PATHS = new Set(["login", "register", "refresh", "logout"]);
@@ -49,6 +49,7 @@ export async function POST(
 
   const gatewayResponse = await fetch(gatewayUrl, {
     method: "POST",
+    cache: "no-store",
     headers,
     ...(body ? { body } : {}),
   });

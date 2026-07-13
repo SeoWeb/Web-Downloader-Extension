@@ -70,26 +70,29 @@ export class NetworkError extends Error {
 }
 
 export function throwForStatus(status: number, body: Record<string, unknown>): never {
+  // The API gateway returns errors as `detail` (FastAPI convention); some
+  // responses use `error`. Surface whichever is present.
+  const message = (body.error ?? body.detail)?.toString();
   switch (status) {
     case 400: {
       const fields = (body.fields ?? {}) as Record<string, string>;
       throw new ValidationError(fields);
     }
     case 401:
-      throw new AuthenticationError(body.error?.toString());
+      throw new AuthenticationError(message);
     case 402:
-      throw new QuotaExceededError(body.error?.toString());
+      throw new QuotaExceededError(message);
     case 403:
-      throw new PermissionError(body.error?.toString());
+      throw new PermissionError(message);
     case 404:
-      throw new NotFoundError(body.error?.toString());
+      throw new NotFoundError(message);
     case 409:
-      throw new ConflictError(body.error?.toString());
+      throw new ConflictError(message);
     case 429: {
       const retryAfter = Number(body.retry_after ?? 60);
       throw new RateLimitError(retryAfter);
     }
     default:
-      throw new Error(`API error ${status}: ${body.error ?? "Unknown"}`);
+      throw new Error(`API error ${status}: ${message ?? "Unknown"}`);
   }
 }

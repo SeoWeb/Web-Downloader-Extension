@@ -299,10 +299,12 @@
       "ariaLabel_other": "Rate {{count}} stars"
     },
     "pagepocketAnnouncement": {
-      "title": "Introducing PagePocket",
-      "description": "Save any web page to your personal cloud archive. Access your saved pages from anywhere, search through them instantly, and share with a link.",
+      "title": "Save pages with PagePocket",
+      "description": "Drop any web page into your personal cloud archive. Revisit it from any device, find it in seconds with full-text search, and share it with a single link.",
       "freeLabel": "Starter",
-      "freeTier": "50 pages/month · 500 MB storage",
+      "freeBadge": "FREE",
+      "freeTier": "50 pages or 500 MB storage",
+      "freeNoLimit": "No time limit — yours to keep, forever",
       "proTier": "$2/month",
       "proStorage": "99,999 pages · 10 GB",
       "proUnlimitedCollections": "Unlimited collections",

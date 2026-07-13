@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Cloud, X, Sparkles, FolderSearch, Search, Clock } from "lucide-react";
+import { Cloud, X, Check } from "lucide-react";
 import { Button } from "./Button";
 import { IS_PAGEPOCKET_AVAILABLE } from "../common/pagepocket-mode";
 import { usePagePocket } from "../hooks/usePagePocket";
@@ -34,13 +34,6 @@ export function PagePocketAnnouncement() {
 
   if (!show) return null;
 
-  const proFeatures = [
-    { icon: FolderSearch, label: t("pagepocketAnnouncement.proUnlimitedCollections") },
-    { icon: Search, label: t("pagepocketAnnouncement.proAdvancedSearch") },
-    { icon: Clock, label: t("pagepocketAnnouncement.proCustomExpiry") },
-    { icon: Sparkles, label: t("pagepocketAnnouncement.proPrioritySupport") },
-  ];
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in p-4">
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
@@ -69,44 +62,24 @@ export function PagePocketAnnouncement() {
           </p>
         </div>
 
-        {/* Body — pricing cards */}
+        {/* Body — Starter plan */}
         <div className="px-5 pt-5 pb-5 space-y-3">
-          {/* Free tier */}
-          <div className="rounded-xl border border-slate-200 p-4">
-            <div className="flex items-center justify-between mb-1">
+          <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50/40 p-4 relative">
+            <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold text-slate-700">
                 {t("pagepocketAnnouncement.freeLabel")}
               </span>
-              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                FREE
+              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                {t("pagepocketAnnouncement.freeBadge")}
               </span>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-600">
               {t("pagepocketAnnouncement.freeTier")}
             </p>
-          </div>
-
-          {/* Pro tier */}
-          <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50/50 p-4 relative">
-            <div className="absolute -top-2.5 left-4 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
-              Pro
+            <div className="mt-3 flex items-center gap-2 text-xs text-emerald-700">
+              <Check className="h-3.5 w-3.5 flex-shrink-0" />
+              {t("pagepocketAnnouncement.freeNoLimit")}
             </div>
-            <div className="flex items-center justify-between mb-2 mt-1">
-              <span className="text-sm font-semibold text-slate-700">
-                {t("pagepocketAnnouncement.proTier")}
-              </span>
-              <span className="text-xs text-indigo-600 font-medium">
-                {t("pagepocketAnnouncement.proStorage")}
-              </span>
-            </div>
-            <ul className="space-y-1.5">
-              {proFeatures.map(({ icon: Icon, label }) => (
-                <li key={label} className="flex items-center gap-2 text-xs text-slate-600">
-                  <Icon className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
-                  {label}
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
 

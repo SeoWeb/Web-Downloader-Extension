@@ -3,14 +3,16 @@ import {
   setAuthCookies,
   clearAuthCookies,
 } from "@/lib/auth/cookies";
+import { API_GATEWAY_URL } from "@/lib/env";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+const API_BASE = API_GATEWAY_URL;
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
+    cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -38,6 +40,7 @@ export async function DELETE(request: NextRequest) {
   if (accessToken) {
     await fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
+      cache: "no-store",
       headers: { Authorization: `Bearer ${accessToken}` },
     }).catch(() => {});
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { API_GATEWAY_URL } from "@/lib/env";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+const API_BASE = API_GATEWAY_URL;
 
 export async function GET(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function GET(
   const gatewayUrl = `${API_BASE}/share/public/${token}/f/${filePath}`;
 
   try {
-    const response = await fetch(gatewayUrl);
+    const response = await fetch(gatewayUrl, { cache: "no-store" });
 
     if (!response.ok) {
       return new NextResponse(

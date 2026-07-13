@@ -3,8 +3,9 @@ import {
   setAuthCookies,
   clearAuthCookies,
 } from "@/lib/auth/cookies";
+import { API_GATEWAY_URL } from "@/lib/env";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+const API_BASE = API_GATEWAY_URL;
 
 export async function POST(request: NextRequest) {
   const refreshToken = (await request.cookies).get("pp_refresh")?.value;
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
 
   const res = await fetch(`${API_BASE}/auth/refresh`, {
     method: "POST",
+    cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
   });

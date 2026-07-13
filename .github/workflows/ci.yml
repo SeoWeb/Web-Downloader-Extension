@@ -1,0 +1,161 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # Determine which components changed so we only run relevant jobs.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      extension: ${{ steps.filter.outputs.extension }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-changed@v3
+        id: filter
+        with:
+          base: ${{ github.ref == 'refs/heads/main' && github.event.before || github.event.pull_request.base.sha }}
+          ref: ${{ github.ref }}
+          filters: |
+            extension:
+              - 'src/**'
+              - 'background.js'
+              - 'public/**'
+              - 'vite.config.ts'
+              - 'package.json'
+              - 'tsconfig.json'
+              - 'jest.config.cjs'
+              - '*.cjs'
+              - 'tests/**'
+            frontend:
+              - 'pagepocket/frontend/**'
+            backend:
+              - 'pagepocket/services/**'
+              - 'pagepocket/shared/**'
+              - 'pagepocket/proto/**'
+
+  # ---------------------------------------------------------------------------
+  # Browser extension (repo root)
+  # ---------------------------------------------------------------------------
+  extension:
+    needs: changes
+    if: needs.changes.outputs.extension == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install
+
+      - name: Style check
+        run: pnpm style
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Upload extension zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: zip/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Frontend (Next.js)
+  # ---------------------------------------------------------------------------
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pagepocket/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pagepocket/frontend/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Size limit
+        run: pnpm size-limit
+
+  # ---------------------------------------------------------------------------
+  # Backend (Python gRPC services)
+  # ---------------------------------------------------------------------------
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: pagepocket/shared:pagepocket/shared/proto_generated
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest grpcio-tools
+
+      - name: Install service dependencies
+        run: |
+          for f in pagepocket/services/*/requirements.txt; do
+            echo "Installing $f"
+            pip install -r "$f"
+          done
+
+      - name: Generate gRPC stubs
+        working-directory: pagepocket
+        run: make proto
+
+      - name: Lint
+        working-directory: pagepocket
+        run: make lint
+
+      - name: Tests
+        working-directory: pagepocket
+        run: make test

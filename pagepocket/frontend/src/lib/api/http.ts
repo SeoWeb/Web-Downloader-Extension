@@ -2,9 +2,11 @@ import "server-only";
 import type { cookies } from "next/headers";
 import type { ZodType } from "zod";
 import { ZodError } from "zod";
+import { fetch as nativeFetch, type RequestInit as UndiciRequestInit } from "undici";
 import { ApiContractError, NetworkError, throwForStatus } from "./errors";
+import { API_GATEWAY_URL } from "@/lib/env";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+const API_BASE = API_GATEWAY_URL;
 
 type ServerFetchOptions<T> = {
   route: string;
@@ -39,6 +41,7 @@ export async function serverFetch<T>({
 
   const init: RequestInit = {
     method,
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -48,9 +51,12 @@ export async function serverFetch<T>({
     init.body = JSON.stringify(body);
   }
 
-  let response: Response;
+  let response: Awaited<ReturnType<typeof nativeFetch>>;
   try {
-    response = await fetch(url.toString(), init);
+    // Use undici's native fetch directly (not Next's patched global fetch) to
+    // avoid the Turbopack fetch-cache adapter ("adapterFn is not a function")
+    // that crashes inside Server Component renders in Next 16.2.x.
+    response = await nativeFetch(url.toString(), init as UndiciRequestInit);
   } catch {
     throw new NetworkError();
   }
