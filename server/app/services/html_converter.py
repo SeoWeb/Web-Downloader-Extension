@@ -719,7 +719,7 @@ def _convert_scripts(
             # Strip "undefined" prefix from broken JS-generated URLs
             if filename.startswith("undefined"):
                 filename = filename[len("undefined"):] or filename
-            script["src"] = path + "scripts/" + filename
+            script["src"] = path + "scripts/" + fix_filename(filename)
         else:
             # Extensionless URL — generate fallback filename with .js extension
             segment = resolved.split("/")[-1] if "/" in resolved else resolved
@@ -780,7 +780,7 @@ def _convert_stylesheets(
             # Strip "undefined" prefix from broken JS-generated URLs
             if filename.startswith("undefined"):
                 filename = filename[len("undefined"):] or filename
-            link["href"] = path + "styles/" + filename
+            link["href"] = path + "styles/" + fix_filename(filename)
         else:
             # Extensionless URL — generate fallback filename with .css extension
             segment = resolved.split("/")[-1] if "/" in resolved else resolved
@@ -793,6 +793,59 @@ def _convert_stylesheets(
 # ---------------------------------------------------------------------------
 # Link URL conversion (5.7)
 # ---------------------------------------------------------------------------
+
+
+def _convert_preload_links(
+    soup: BeautifulSoup,
+    tab_url: str,
+    path: str = "./",
+    filename_map: Optional[dict[str, str]] = None,
+) -> None:
+    """Convert <link rel="preload|modulepreload|prefetch"> asset URLs to local paths.
+
+    Next.js (and many modern frameworks) load JS chunks, CSS, and fonts via
+    these link types rather than <script src> / <link rel="stylesheet">.
+    Without rewriting them, the references stay absolute (e.g. ``/_next/...``)
+    and resolve against the host origin, 404-ing in the archived preview.
+    """
+    for link in soup.find_all("link"):
+        rel = link.get("rel")
+        if isinstance(rel, list):
+            rel = " ".join(rel)
+        rel = (rel or "").lower()
+        if not ("preload" in rel or "modulepreload" in rel or "prefetch" in rel):
+            continue
+
+        href = link.get("href")
+        if not isinstance(href, str) or not href or href.startswith(("#", "data:")):
+            continue
+
+        as_attr = (link.get("as") or "").lower()
+        if as_attr == "script" or "modulepreload" in rel:
+            # modulepreload is exclusively for JS modules, even without an `as`.
+            bucket = "scripts/"
+        elif as_attr == "style":
+            bucket = "styles/"
+        else:
+            # as="font", as="image", as="fetch", or unspecified — the CSS/image
+            # handlers store all url() assets under images/.
+            bucket = "images/"
+
+        original_href = href
+        href_clean = href.split("?")[0]
+        if not href_clean:
+            continue
+
+        # Try filename map first (same multi-strategy lookup as scripts/css).
+        mapped = _lookup_filename_map(original_href, tab_url, filename_map)
+        if mapped:
+            link["href"] = path + mapped
+            continue
+
+        # Fallback: derive a sanitised basename from the URL path.
+        if _has_extension(href_clean):
+            filename = fix_filename(href_clean.split("/")[-1])
+            link["href"] = path + bucket + filename
 
 
 def _convert_links(
@@ -1492,6 +1545,9 @@ def convert_html(
 
     # 6. Convert stylesheets
     _convert_stylesheets(soup, tab_url, path, filename_map)
+
+    # 6b. Convert preload / modulepreload / prefetch asset links
+    _convert_preload_links(soup, tab_url, path, filename_map)
 
     # 7. Convert scripts
     _convert_scripts(soup, tab_url, path, filename_map)

@@ -143,6 +143,38 @@ def test_stylesheet_conversion():
     )
 
 
+def test_preload_link_conversion():
+    """<link rel="preload"> chunks/fonts must be rewritten to local paths.
+
+    Next.js references most JS chunks and fonts via preload/modulepreload
+    links rather than <script src> / <link rel="stylesheet">. Without this
+    they stay absolute and 404 in the archived preview.
+    """
+    html = (
+        '<html><head>'
+        '<link rel="preload" as="script" href="https://example.com/_next/static/chunks/1s6lcszef--st.js?dpl=dpl_abc">'
+        '<link rel="modulepreload" href="https://example.com/_next/static/chunks/vendor.js">'
+        '<link rel="preload" as="style" href="https://example.com/_next/static/css/main.css">'
+        '<link rel="preload" as="font" href="https://example.com/_next/static/media/roboto.woff2" crossorigin>'
+        '</head><body></body></html>'
+    )
+    result = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
+    assert _has_attr(result, "link", "href", "./scripts/1s6lcszef-st.js"), (
+        f"Expected ./scripts/1s6lcszef-st.js, got: {_get_attr(result, 'link', 'href')}"
+    )
+    # All preload references must be archive-relative, never host-absolute.
+    assert "/_next/" not in result, f"Absolute /_next/ path leaked: {result}"
+    assert _has_attr(result, "link", "href", "./scripts/vendor.js"), (
+        f"Expected ./scripts/vendor.js, got: {_get_attr(result, 'link', 'href')}"
+    )
+    assert _has_attr(result, "link", "href", "./styles/main.css"), (
+        f"Expected ./styles/main.css, got: {_get_attr(result, 'link', 'href')}"
+    )
+    assert _has_attr(result, "link", "href", "./images/roboto.woff2"), (
+        f"Expected ./images/roboto.woff2, got: {_get_attr(result, 'link', 'href')}"
+    )
+
+
 def test_link_document_conversion():
     """Link to document → ./documents/<filename> (5.7)."""
     html = '<html><body><a href="https://example.com/docs/report.pdf">Report</a></body></html>'
@@ -1305,6 +1337,7 @@ def run_all():
         test_inline_style_background_image,
         test_script_conversion,
         test_stylesheet_conversion,
+        test_preload_link_conversion,
         test_link_document_conversion,
         test_link_html_page_conversion,
         test_link_clean_url_conversion,

@@ -113,6 +113,45 @@ export function getResources(html: string): {
     ?.map((el) => $(el).attr("src") || "")
     ?.filter((el) => !!el?.length);
 
+  // Extract assets referenced via <link rel="preload" / modulepreload / prefetch>.
+  // Next.js (and many modern sites) load JS chunks, CSS, and fonts this way
+  // rather than via <script src> / <link rel="stylesheet">, so without this
+  // they are never downloaded (and 404 in the archived preview).
+  const preloadLinks = $("link")
+    ?.filter((_i, el) => {
+      const rel = ($(el).attr("rel") || "").toLowerCase();
+      return (
+        (rel.includes("preload") ||
+          rel.includes("modulepreload") ||
+          rel.includes("prefetch")) &&
+        !!$(el).attr("href")
+      );
+    })
+    ?.toArray()
+    ?.map((el) => ({
+      href: $(el).attr("href") || "",
+      as: ($(el).attr("as") || "").toLowerCase(),
+    }))
+    ?.filter(
+      (item) =>
+        !!item.href?.length &&
+        !item.href.startsWith("#") &&
+        !item.href.startsWith("data:"),
+    )
+    || [];
+
+  const preloadJs = preloadLinks
+    .filter((l) => l.as === "script")
+    .map((l) => l.href);
+  const preloadCss = preloadLinks
+    .filter((l) => l.as === "style")
+    .map((l) => l.href);
+  // Fonts are stored under the images/ bucket by the CSS handler, so route
+  // preload fonts (and any other asset) there too.
+  const preloadFonts = preloadLinks
+    .filter((l) => l.as === "font")
+    .map((l) => l.href);
+
   // Extract regular images from img tags (src attribute)
   const images = $("img")
     ?.filter((_i, el) => el && !$(el).attr("src")?.startsWith("#"))
@@ -249,9 +288,9 @@ export function getResources(html: string): {
   const text = $("body").text();
 
   return {
-    css: [...new Set(css)],
-    js: [...new Set(js)],
-    images: [...new Set(allImages)],
+    css: [...new Set([...css, ...preloadCss])],
+    js: [...new Set([...js, ...preloadJs])],
+    images: [...new Set([...allImages, ...preloadFonts])],
     links: [...new Set(links)],
     documents: [...new Set(documents)],
     text,

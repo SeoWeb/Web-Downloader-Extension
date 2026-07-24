@@ -96,6 +96,53 @@ class TestPageProcessor(unittest.TestCase):
         self.assertIn(b"assets/styles/main.css", rewritten)
         self.assertNotIn(b"./images/photo.jpg", rewritten)
 
+    def test_rewrite_root_absolute_asset_refs(self):
+        """Root-absolute references (e.g. Next.js /_next/...) must be rewritten
+        to archive-relative paths so they resolve inside the archive folder
+        rather than the host origin (which would 404)."""
+        html = (
+            b'<html><head>'
+            b'<script src="/_next/static/chunks/app.js"></script>'
+            b'<link href="/_next/static/css/main.css">'
+            b'</head><body>'
+            b'<img src="/images/photo.jpg">'
+            b'</body></html>'
+        )
+        asset_map = {
+            "app.js": "assets/app.js",
+            "main.css": "assets/main.css",
+            "photo.jpg": "assets/photo.jpg",
+        }
+        rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
+        # Mapped assets resolve to the archive-relative path.
+        self.assertIn(b"assets/app.js", rewritten)
+        self.assertIn(b"assets/main.css", rewritten)
+        self.assertIn(b"assets/photo.jpg", rewritten)
+        # No host-root absolute paths remain.
+        self.assertNotIn(b'src="/_next', rewritten)
+        self.assertNotIn(b'href="/_next', rewritten)
+        self.assertNotIn(b'src="/images', rewritten)
+
+    def test_rewrite_unmapped_root_absolute_stays_in_archive(self):
+        """An unmapped root-absolute asset is made archive-relative (no leading
+        slash) so the request stays within the archive namespace, not the host."""
+        html = b'<html><script src="/_next/static/chunks/missing.js"></script></html>'
+        rewritten, _, _ = sanitise_and_rewrite(html, {})
+        self.assertIn(b'src="_next/static/chunks/missing.js"', rewritten)
+        self.assertNotIn(b'src="/_next', rewritten)
+
+    def test_external_and_anchor_urls_left_untouched(self):
+        html = (
+            b'<html><img src="https://cdn.example.com/a.png">'
+            b'<a href="#section">x</a>'
+            b'<img src="//cdn.example.com/b.png">'
+            b'</html>'
+        )
+        rewritten, _, _ = sanitise_and_rewrite(html, {})
+        self.assertIn(b"https://cdn.example.com/a.png", rewritten)
+        self.assertIn(b'href="#section"', rewritten)
+        self.assertIn(b"//cdn.example.com/b.png", rewritten)
+
     def test_removes_base_tags(self):
         """Base tags must be removed to prevent overriding relative paths."""
         html = b'<html><head><base href="https://example.com/"></head><body><img src="images/photo.jpg"></body></html>'
