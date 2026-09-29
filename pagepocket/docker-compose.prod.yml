@@ -7,7 +7,7 @@ services:
       resources:
         limits:
           memory: 2G
-    ports: []
+    ports: !override []
 
   auth-service:
     restart: always
