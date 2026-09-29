@@ -78,6 +78,11 @@ def sanitise_and_rewrite(html_bytes: bytes, asset_map: dict[str, str]) -> tuple[
             if rewritten is not None:
                 tag[attr] = rewritten
 
+    # Scripts can never run in the sandboxed viewer — remove them to
+    # avoid "blocked script execution" console errors and save storage
+    for script in soup.find_all("script"):
+        script.decompose()
+
     rewritten = str(soup).encode("utf-8")
 
     # Extract plain text

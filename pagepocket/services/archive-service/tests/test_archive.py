@@ -50,11 +50,10 @@ class TestPageProcessor(unittest.TestCase):
         self.assertNotIn(b"assets/photo.jpg", rewritten)
 
     def test_rewrite_mixed_asset_refs(self):
-        """HTML with img, link, script, source, video, audio referencing assets."""
+        """HTML with img, link, source, video, audio referencing assets."""
         html = (
             b'<html><head>'
             b'<link href="styles.css">'
-            b'<script src="app.js"></script>'
             b'</head><body>'
             b'<img src="photo.jpg">'
             b'<source src="video.mp4">'
@@ -65,7 +64,6 @@ class TestPageProcessor(unittest.TestCase):
         )
         asset_map = {
             "styles.css": "assets/styles.css",
-            "app.js": "assets/app.js",
             "photo.jpg": "assets/photo.jpg",
             "video.mp4": "assets/video.mp4",
             "clip.webm": "assets/clip.webm",
@@ -77,6 +75,7 @@ class TestPageProcessor(unittest.TestCase):
             self.assertIn(new.encode(), rewritten, f"{orig} should be rewritten to {new}")
         self.assertNotIn(b'src="photo.jpg"', rewritten)
         self.assertNotIn(b'href="styles.css"', rewritten)
+        self.assertNotIn(b"<script", rewritten)
 
     def test_asset_with_query_params(self):
         html = b'<html><img src="photo.jpg?v=1&w=200"></html>'
@@ -150,6 +149,20 @@ class TestPageProcessor(unittest.TestCase):
         rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
         self.assertNotIn(b"<base", rewritten)
         self.assertIn(b"assets/images/photo.jpg", rewritten)
+
+    def test_strips_script_tags(self):
+        """All <script> tags (inline, external, JSON-LD) must be removed from stored HTML."""
+        html = (
+            b'<html><head><script src="app.js"></script>'
+            b'<script type="application/ld+json">{"a":1}</script></head>'
+            b'<body><p>Hi</p><script>alert(1)</script><img src="photo.jpg"></body></html>'
+        )
+        rewritten, _, body = sanitise_and_rewrite(html, {"photo.jpg": "assets/photo.jpg"})
+        self.assertNotIn(b"<script", rewritten)
+        self.assertNotIn(b"alert(1)", rewritten)
+        self.assertNotIn(b"app.js", rewritten)
+        self.assertIn(b"assets/photo.jpg", rewritten)
+        self.assertIn("Hi", body)
 
 
 # ---------------------------------------------------------------------------
