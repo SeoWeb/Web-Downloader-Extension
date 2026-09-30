@@ -1,0 +1,152 @@
+import { useEffect, useState } from "react";
+import LeftMenu from "./sections/LeftMenu";
+import Header from "./sections/Header";
+import PermissionsCard from "./sections/PermissionsCard";
+import ContentFilteringCard from "./sections/ContentFilteringCard";
+import ActionFooter from "./sections/ActionFooter";
+import { getActiveTab } from "../../common/chrome";
+import { useDownloadSettingsStore } from "../../store/downloadSettingsStore";
+import { useDownloadStatusStore } from "../../store/downloadStatusStore";
+import { useConnectListener } from "../../hooks/useConnectListener";
+import { MESSAGE_POPUP } from "../../types/message";
+import { useLanguageStore } from "../../store/languageStore";
+import SingleFileCard from "./sections/SingleFileCard";
+import { ContentFilteringCardProps } from "./sections/content-filtering/types";
+import WebsiteCard from "./sections/websiteCard";
+import { Button } from "../ui/button";
+
+const singlePageCardComponents = [
+  ContentFilteringCard,
+];
+const singleFileCardComponents = [
+  SingleFileCard,
+];
+const websiteCardComponents = [
+  WebsiteCard,
+];
+
+export default function Popup() {
+  useConnectListener(MESSAGE_POPUP);
+  const { direction, getTranslation } = useLanguageStore();
+  const [activeCardIndex, setActiveCardIndex] = useState(1);
+  const [hasPermissions, setHasPermissions] = useState<boolean>(false);
+  const [cardComponents, setCardComponents] = useState<React.FC<ContentFilteringCardProps>[]>(singlePageCardComponents);
+  const { activeTabId, isSidePanelOpen, downloadMode, setActiveTabId, setIsSidePanelOpen } = useDownloadSettingsStore();
+  const { isDownloading } = useDownloadStatusStore();
+
+  const handleNext = () => {
+    setActiveCardIndex((prevIndex) =>
+      Math.min(prevIndex + 1, cardComponents.length - 1),
+    );
+  };
+
+  const handleBack = () => {
+    setActiveCardIndex((prevIndex) => Math.max(prevIndex - 1, 0));
+  };
+
+  const ActiveCardComponent = cardComponents[activeCardIndex];
+  const isFirstCard = activeCardIndex === 0;
+  const isLastCard = activeCardIndex === cardComponents.length - 1;
+
+  useEffect(() => {
+    getActiveTab().then((tab) => {
+      const url = tab?.url || null;
+      const tabId = tab?.id && url && url.startsWith('https://') ? tab.id : null;
+      setActiveTabId(tabId);
+    });
+  }, []);
+
+  useEffect(() => {
+    setActiveCardIndex(0);
+    setHasPermissions(false);
+    if (downloadMode === "single_file") {
+      setCardComponents(singleFileCardComponents);
+    } else if (downloadMode === "single") {
+      setCardComponents(singlePageCardComponents);
+    } else if (downloadMode === "website") {
+      setCardComponents(websiteCardComponents);
+    }
+  }, [downloadMode]);
+
+  const handleCloseSidePanel = async () => {
+    try {
+      const tab = await getActiveTab();
+      if (tab?.id) {
+        // Disable the sidepanel for the current tab
+        await chrome.sidePanel.setOptions({
+          tabId: tab.id,
+          enabled: false,
+        });
+      }
+      // Update the store to reflect that sidepanel is closed
+      setIsSidePanelOpen(false);
+    } catch (error) {
+      console.error('Error closing sidepanel:', error);
+      // Still update the store even if Chrome API fails
+      setIsSidePanelOpen(false);
+    }
+  };
+
+  const renderPermissonsCard = () => (
+    <PermissionsCard
+      hasPermissions={hasPermissions}
+      setHasPermissions={setHasPermissions}
+      downloadMode={downloadMode}
+    />
+  );
+
+  const renderActiveCarcComponent = () => (
+    <ActiveCardComponent
+      onNext={handleNext}
+      onBack={handleBack}
+      isFirst={isFirstCard}
+      isLast={isLastCard}
+      key={activeCardIndex}
+    />
+  );
+
+  const renderLayout = (children: React.ReactNode) => (
+    <div className={`w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 overflow-y-auto flex ${direction === "rtl" ? "flex-row-reverse justify-start" : ""}`}>
+      <LeftMenu />
+
+      <div className={`flex-grow flex flex-col h-full ${direction === "rtl" ? "mr-56" : "ml-56"}`}>
+        <Header />
+        <div className="p-2 flex-grow flex flex-col">{children}</div>
+        <ActionFooter isDownloadDisabled={!isLastCard} />
+      </div>
+    </div>
+  );
+
+  if (activeTabId === undefined) {
+    return renderLayout(<p>{getTranslation('loading')}</p>);
+  }
+
+  if (activeTabId === null) {
+    return renderLayout(<p>{getTranslation('not_downloadable')}</p>)
+  }
+
+  if (!hasPermissions) {
+    return renderLayout(renderPermissonsCard());
+  }
+
+  if (isDownloading) {
+    return renderLayout(<p>{getTranslation('downloading')}</p>);
+  }
+
+  if (isSidePanelOpen) {
+    return renderLayout(
+      <div className="flex flex-col items-center justify-center space-y-4 p-6">
+        <p className="text-center text-gray-600">{getTranslation('close_sidepanel_message')}</p>
+        <Button
+          onClick={handleCloseSidePanel}
+          variant="primary"
+          size="default"
+        >
+          {getTranslation('close_sidepanel')}
+        </Button>
+      </div>
+    );
+  }
+
+  return renderLayout(renderActiveCarcComponent());
+}
