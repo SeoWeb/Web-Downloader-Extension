@@ -34,6 +34,29 @@ export async function POST(request: NextRequest) {
   return response;
 }
 
+export async function GET(request: NextRequest) {
+  // Lightweight auth probe for statically rendered pages. Only decodes the
+  // cookie — the gateway remains the authoritative token verifier.
+  const accessToken = (await request.cookies).get("pp_access")?.value;
+  let authenticated = false;
+
+  if (accessToken) {
+    try {
+      const payloadPart = accessToken.split(".")[1];
+      if (payloadPart) {
+        const payload = JSON.parse(
+          atob(payloadPart.replace(/-/g, "+").replace(/_/g, "/")),
+        ) as { sub?: string };
+        authenticated = Boolean(payload.sub);
+      }
+    } catch {
+      authenticated = false;
+    }
+  }
+
+  return NextResponse.json({ authenticated });
+}
+
 export async function DELETE(request: NextRequest) {
   const accessToken = (await request.cookies).get("pp_access")?.value;
 

@@ -16,18 +16,9 @@ vi.mock("../share-dialog", () => ({
 
 const { PageViewerShell } = await import("../page-viewer-shell");
 
-const mockViewer = {
-  url: "https://example.com/presigned",
-  expires_at: Math.floor(Date.now() / 1000) + 3600,
-};
-
 function renderShell() {
   return render(
-    <PageViewerShell
-      initialViewer={mockViewer}
-      pageId="test-page-id"
-      pageMeta={null}
-    />,
+    <PageViewerShell pageId="test-page-id" pageMeta={null} />,
   );
 }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { Search, LogOut, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   DropdownMenu,

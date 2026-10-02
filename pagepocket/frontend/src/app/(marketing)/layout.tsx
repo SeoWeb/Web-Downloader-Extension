@@ -1,18 +1,14 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { getCurrentUserId } from "@/lib/auth/server-session";
+import { Archive } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Button } from "@/components/ui/button";
-import { Archive, Download } from "lucide-react";
+import { MarketingAuthCta } from "@/components/app/marketing-auth-cta";
 
 export default async function MarketingLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const userId = await getCurrentUserId(await cookies());
-
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
@@ -34,32 +30,7 @@ export default async function MarketingLayout({
             >
               Pricing
             </Link>
-            {userId ? (
-              <Link
-                href="/app"
-                className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-              >
-                Open dashboard
-              </Link>
-            ) : (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  nativeButton={false}
-                  render={<Link href="/features" />}
-                >
-                  <Download className="size-3.5" />
-                  Install
-                </Button>
-                <Link
-                  href="/login"
-                  className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-                >
-                  Sign in
-                </Link>
-              </>
-            )}
+            <MarketingAuthCta />
             <ThemeToggle />
           </div>
         </nav>
