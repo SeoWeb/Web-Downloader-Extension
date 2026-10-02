@@ -99,3 +99,5 @@ services:
           memory: 512M
     ports:
       - "8090:8090"
+
+# deploy pipeline probe (2026-10-02): exercises the deploy-backend changes gate.
