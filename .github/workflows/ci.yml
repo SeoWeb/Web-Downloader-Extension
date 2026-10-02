@@ -97,7 +97,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node 22: undici v8 (direct dependency) uses util.markAsUncloneable,
+          # which Node 20 lacks — the build crashes during page-data collection.
+          node-version: 22
           cache: pnpm
           cache-dependency-path: pagepocket/frontend/pnpm-lock.yaml
 
