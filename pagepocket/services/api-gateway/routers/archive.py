@@ -1,16 +1,18 @@
 """Archive REST routes."""
 
+import os
 import re
+import sys
 
-from fastapi import APIRouter, Form, Request, UploadFile, File
-from fastapi.responses import Response as FastAPIResponse
 import grpc
+from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi.responses import Response as FastAPIResponse
 
-import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared", "proto_generated"))
 
 import archive_pb2
 from grpc_clients import archive_stub
+
 from routers import handle_grpc_error
 
 router = APIRouter(prefix="/api/v1/archive", tags=["archive"])

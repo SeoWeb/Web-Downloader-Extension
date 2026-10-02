@@ -1,18 +1,20 @@
 """Share REST routes."""
 
+import os
 import re
+import sys
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import Response as FastAPIResponse
 import grpc
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import Response as FastAPIResponse
 
-import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared", "proto_generated"))
 
-import share_pb2
 import archive_pb2
-from grpc_clients import share_stub, archive_stub
+import share_pb2
+from grpc_clients import archive_stub, share_stub
+
 from routers import handle_grpc_error
 
 router = APIRouter(prefix="/api/v1/share", tags=["share"])

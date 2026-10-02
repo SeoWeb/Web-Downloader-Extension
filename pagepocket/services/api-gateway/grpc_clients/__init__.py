@@ -1,14 +1,15 @@
 """gRPC client manager - lazily opens and memoises channels."""
 
 import os
+import sys
+
 import grpc
 
-import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared", "proto_generated"))
 
-import auth_pb2_grpc
 import archive_pb2_grpc
+import auth_pb2_grpc
 import library_pb2_grpc
 import search_pb2_grpc
 import share_pb2_grpc

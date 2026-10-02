@@ -2,37 +2,38 @@
 
 import json
 import os
+import sys
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
-import time
-
 import grpc
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
-import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared", "proto_generated"))
 
 import archive_pb2
 import archive_pb2_grpc
-import search_pb2
-import search_pb2_grpc
 import library_pb2
 import library_pb2_grpc
+import search_pb2
+import search_pb2_grpc
+from cache import cache_delete, cache_get, cache_invalidate_pattern, cache_set
+from cache_config import (
+    TTL_MEDIUM,
+    TTL_SHORT,
+    key_page,
+    key_pages_list,
+    pattern_pages,
+)
 from db import db_session, get_engine
 from grpc_mtls import secure_channel_credentials
 from models import Page, UserQuota
 from page_processor import sanitise_and_rewrite
 from quota import check_and_reserve
 from r2_client import R2Client
-from cache import cache_get, cache_set, cache_delete, cache_invalidate_pattern
-from cache_config import (
-    TTL_MEDIUM, TTL_SHORT,
-    key_page, key_pages_list,
-    pattern_pages,
-)
 
 
 def _get_search_stub():

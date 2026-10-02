@@ -1,8 +1,8 @@
 """Redis cache helper with graceful degradation."""
 
 import json
-import os
 import logging
+import os
 from typing import Any
 
 import redis

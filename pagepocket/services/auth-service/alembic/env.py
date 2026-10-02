@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "sh
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from db import Base
-from models import User, RefreshToken  # noqa: F401
+from models import RefreshToken, User  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

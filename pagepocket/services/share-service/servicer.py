@@ -1,23 +1,22 @@
 """Share service gRPC servicer implementation."""
 
-import base64
 import os
 import secrets
+import sys
 from datetime import datetime, timezone
 
 import grpc
 from sqlalchemy import select, update
 
-import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared", "proto_generated"))
 
 import share_pb2
 import share_pb2_grpc
+from cache import cache_delete, cache_get, cache_set
+from cache_config import TTL_SHARE_LINK, key_share_page, key_share_token
 from db import db_session, get_engine
 from models import ShareLink
-from cache import cache_get, cache_set, cache_delete, cache_invalidate_pattern
-from cache_config import TTL_SHARE_LINK, key_share_token, key_share_page
 
 
 def _utcnow():
@@ -159,9 +158,11 @@ class ShareServicer(share_pb2_grpc.ShareServiceServicer):
                 return share_pb2.StatusResponse(success=False, message="not found")
 
             link.revoked_at = _utcnow()
+            page_owner = link.user_id
+            page_id = link.page_id
 
         cache_delete(key_share_token(request.token))
-        cache_delete(key_share_page(link.user_id, link.page_id))
+        cache_delete(key_share_page(page_owner, page_id))
         return share_pb2.StatusResponse(success=True)
 
     def ValidateToken(self, request, context):

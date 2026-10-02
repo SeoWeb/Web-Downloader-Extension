@@ -5,7 +5,7 @@ import os
 import sys
 import time
 import unittest
-from datetime import datetime, timezone, timedelta
+import unittest.mock
 
 _shared = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared"))
 
@@ -21,10 +21,10 @@ sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), ".."
 os.environ.setdefault("BASE_URL", "http://localhost:8000")
 
 import grpc
+import servicer as _servicer_mod
 import share_pb2
 from db import Base, db_session, get_engine
 from models import ShareLink
-import servicer as _servicer_mod
 
 
 class _FakeRpcContext:
@@ -127,7 +127,7 @@ class TestShareServicer(unittest.TestCase):
 
     def test_validate_valid_token(self):
         created, _ = self._create()
-        resp, ctx = self._validate(created.token)
+        resp, _ctx = self._validate(created.token)
         self.assertTrue(resp.valid)
         self.assertEqual(resp.page_id, PAGE_1)
 
@@ -140,7 +140,7 @@ class TestShareServicer(unittest.TestCase):
         self.assertEqual(resp.view_count, 2)
 
     def test_validate_unknown_token(self):
-        resp, ctx = self._validate("nonexistent-token")
+        resp, _ctx = self._validate("nonexistent-token")
         self.assertFalse(resp.valid)
 
     # -- Expiry --
@@ -148,43 +148,43 @@ class TestShareServicer(unittest.TestCase):
     def test_validate_expired_token(self):
         past = int(time.time()) - 10
         created, _ = self._create(expires_at=past)
-        resp, ctx = self._validate(created.token)
+        resp, _ctx = self._validate(created.token)
         self.assertFalse(resp.valid)
 
     def test_validate_non_expired_token(self):
         future = int(time.time()) + 3600
         created, _ = self._create(expires_at=future)
-        resp, ctx = self._validate(created.token)
+        resp, _ctx = self._validate(created.token)
         self.assertTrue(resp.valid)
 
     def test_validate_never_expiring_token(self):
         created, _ = self._create(expires_at=0)
-        resp, ctx = self._validate(created.token)
+        resp, _ctx = self._validate(created.token)
         self.assertTrue(resp.valid)
 
     # -- Revocation --
 
     def test_revoke_success(self):
         created, _ = self._create()
-        resp, ctx = self._revoke(created.token)
+        resp, _ctx = self._revoke(created.token)
         self.assertTrue(resp.success)
 
     def test_validate_revoked_token(self):
         created, _ = self._create()
         self._revoke(created.token)
-        resp, ctx = self._validate(created.token)
+        resp, _ctx = self._validate(created.token)
         self.assertFalse(resp.valid)
 
     def test_revoke_others_link_fails(self):
         created, _ = self._create(user_id=USER_A)
-        resp, ctx = self._revoke(created.token, user_id=USER_B)
+        resp, _ctx = self._revoke(created.token, user_id=USER_B)
         self.assertFalse(resp.success)
 
     # -- Non-public tokens --
 
     def test_validate_non_public_token(self):
         created, _ = self._create(is_public=False)
-        resp, ctx = self._validate(created.token)
+        resp, _ctx = self._validate(created.token)
         self.assertFalse(resp.valid)
 
     # -- Enumeration-proof error uniformity --

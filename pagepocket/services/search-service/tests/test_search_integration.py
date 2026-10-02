@@ -11,8 +11,9 @@ Usage:
 import importlib.util
 import os
 import sys
-import uuid
 import unittest
+import unittest.mock
+import uuid
 
 _shared = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared"))
 
@@ -27,9 +28,9 @@ sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), ".."
 
 import grpc
 import search_pb2
+import servicer as _servicer_mod
 from db import Base, db_session, get_engine
 from models import PageIndex
-import servicer as _servicer_mod
 
 DB_URL = os.environ.get(
     "SEARCH_TEST_DB_URL",
@@ -135,7 +136,7 @@ class TestSearchIntegration(unittest.TestCase):
         self.assertEqual(resp.results[0].page_id, pid)
 
     def test_english_fulltext_still_works(self):
-        _, _, pid = self._index(
+        _, _, _pid = self._index(
             title="Machine Learning Overview",
             body_text="Machine learning is a subset of artificial intelligence.",
         )

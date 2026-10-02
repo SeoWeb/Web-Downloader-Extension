@@ -1,25 +1,27 @@
 """Library service gRPC servicer implementation."""
 
 import os
-import uuid
+import sys
 
 import grpc
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
-import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared", "proto_generated"))
 
 import library_pb2
 import library_pb2_grpc
+from cache import cache_delete, cache_get, cache_invalidate_pattern, cache_set
+from cache_config import (
+    TTL_MEDIUM,
+    TTL_SHORT,
+    key_collection,
+    key_collection_page_ids,
+    key_collections_list,
+    pattern_collections,
+)
 from db import db_session, get_engine
 from models import Collection, PageCollection
-from cache import cache_get, cache_set, cache_delete, cache_invalidate_pattern
-from cache_config import (
-    TTL_MEDIUM, TTL_SHORT,
-    key_collection, key_collections_list, key_collection_page_ids,
-    pattern_collections, pattern_collection_pages,
-)
 
 
 def _coll_to_dict(c, page_count):
@@ -168,9 +170,10 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             ).scalar()
 
             data = _coll_to_dict(coll, page_count)
+            user_id = coll.user_id
 
         cache_delete(key_collection(request.collection_id))
-        cache_invalidate_pattern(pattern_collections(coll.user_id))
+        cache_invalidate_pattern(pattern_collections(user_id))
 
         return _dict_to_response(data)
 
@@ -217,10 +220,11 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
                     collection_id=request.collection_id,
                 )
                 session.add(pc)
+            user_id = coll.user_id
 
         cache_delete(key_collection(request.collection_id))
         cache_delete(key_collection_page_ids(request.collection_id))
-        cache_invalidate_pattern(pattern_collections(coll.user_id))
+        cache_invalidate_pattern(pattern_collections(user_id))
         return library_pb2.StatusResponse(success=True)
 
     def RemovePageFromCollection(self, request, context):
@@ -238,10 +242,11 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
                 PageCollection.page_id == request.page_id,
                 PageCollection.collection_id == request.collection_id,
             ).delete()
+            user_id = coll.user_id
 
         cache_delete(key_collection(request.collection_id))
         cache_delete(key_collection_page_ids(request.collection_id))
-        cache_invalidate_pattern(pattern_collections(coll.user_id))
+        cache_invalidate_pattern(pattern_collections(user_id))
         return library_pb2.StatusResponse(success=True)
 
     def ListCollectionPageIds(self, request, context):

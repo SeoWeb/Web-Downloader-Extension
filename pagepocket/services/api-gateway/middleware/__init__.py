@@ -1,12 +1,12 @@
 """JWT authentication middleware for FastAPI."""
 
-import json
 import os
+import sys
+
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared"))
 
 from jwt_utils import verify_access_token

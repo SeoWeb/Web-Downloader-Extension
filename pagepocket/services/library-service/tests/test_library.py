@@ -4,6 +4,7 @@ import importlib.util
 import os
 import sys
 import unittest
+import unittest.mock
 
 _shared = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared"))
 
@@ -18,9 +19,9 @@ sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), ".."
 
 import grpc
 import library_pb2
-from db import Base, db_session, get_engine
-from models import Collection, PageCollection
 import servicer as _servicer_mod
+from db import Base, db_session
+from models import Collection, PageCollection
 
 
 class _FakeRpcContext:
@@ -40,9 +41,12 @@ USER_B = "user-b-002"
 
 
 def _init_db():
-    from sqlalchemy import event
+    from sqlalchemy import create_engine, event
 
-    engine = get_engine("sqlite://")
+    # Build the engine directly so the pragma listener is attached before the
+    # first connection is pooled (get_engine() would connect during create_all
+    # before a late-attached listener could run, leaving FKs disabled).
+    engine = create_engine("sqlite://")
 
     @event.listens_for(engine, "connect")
     def _set_sqlite_pragma(dbapi_connection, connection_record):
@@ -205,7 +209,7 @@ class TestLibraryServicer(unittest.TestCase):
         req = library_pb2.UpdateCollectionRequest(
             collection_id=coll.id, user_id=USER_B, name="Hacked"
         )
-        _, ctx = self.svc.UpdateCollection(req, ctx), ctx
+        self.svc.UpdateCollection(req, ctx)
         self.assertEqual(ctx.code, grpc.StatusCode.NOT_FOUND)
 
     def test_list_only_own_collections(self):
@@ -299,7 +303,7 @@ class TestLibraryServicer(unittest.TestCase):
         req = library_pb2.UpdateCollectionRequest(
             collection_id=coll.id, user_id=USER_A, name="New"
         )
-        resp, ctx = self.svc.UpdateCollection(req, ctx), ctx
+        resp = self.svc.UpdateCollection(req, ctx)
         self.assertIsNone(ctx.code)
         self.assertEqual(resp.name, "New")
 
@@ -309,7 +313,7 @@ class TestLibraryServicer(unittest.TestCase):
         req = library_pb2.UpdateCollectionRequest(
             collection_id=coll.id, user_id=USER_A, color="#00FF00"
         )
-        resp, ctx = self.svc.UpdateCollection(req, ctx), ctx
+        resp = self.svc.UpdateCollection(req, ctx)
         self.assertEqual(resp.color, "#00FF00")
 
 

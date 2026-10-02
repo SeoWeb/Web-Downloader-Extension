@@ -1,13 +1,16 @@
 """Auth REST routes."""
 
-from fastapi import APIRouter
-import grpc
+import os
+import sys
 
-import sys, os
+import grpc
+from fastapi import APIRouter
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared", "proto_generated"))
 
 import auth_pb2
 from grpc_clients import auth_stub
+
 from routers import handle_grpc_error
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -79,7 +82,6 @@ async def refresh(body: dict):
 
 @router.post("/logout")
 async def logout(request):
-    from fastapi import Request
     user_id = request.state.user_id
     auth_stub().Logout(auth_pb2.LogoutRequest(user_id=user_id))
     return {"success": True}

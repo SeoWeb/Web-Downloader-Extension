@@ -1,7 +1,6 @@
 """Cloudflare R2 S3-compatible client wrapper."""
 
 import os
-from typing import Iterator
 
 import boto3
 from botocore.config import Config

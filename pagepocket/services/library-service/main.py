@@ -10,8 +10,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared", "proto_generated"))
 
 import library_pb2_grpc
-from servicer import LibraryServicer
 from grpc_mtls import require_certs, secure_server_credentials
+from servicer import LibraryServicer
 
 
 def serve():
@@ -25,7 +25,7 @@ def serve():
     else:
         server.add_insecure_port("[::]:50053")
 
-    print("Library service starting on :50053 (mTLS=%s)" % mtls)
+    print(f"Library service starting on :50053 (mTLS={mtls})")
     server.start()
     server.wait_for_termination()
 

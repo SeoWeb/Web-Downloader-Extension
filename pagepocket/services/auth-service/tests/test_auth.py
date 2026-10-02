@@ -6,7 +6,7 @@ import os
 import sys
 import time
 import unittest
-from unittest.mock import MagicMock
+import unittest.mock
 
 # ---------------------------------------------------------------------------
 # Path setup — pre-load shared/db.py as 'db' to avoid name collision with
@@ -25,12 +25,17 @@ sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), ".."
 
 os.environ.setdefault("JWT_SECRET", "test-secret-key")
 
-import grpc
 import auth_pb2
-from db import Base, db_session, get_engine
-from jwt_utils import issue_access_token, issue_refresh_token, verify_access_token
-from models import User, RefreshToken
+import grpc
 import servicer as _servicer_mod
+from db import Base, db_session, get_engine
+from jwt_utils import (
+    ACCESS_TOKEN_EXPIRY,
+    issue_access_token,
+    issue_refresh_token,
+    verify_access_token,
+)
+from models import RefreshToken, User
 
 
 class _FakeRpcContext:
@@ -56,7 +61,7 @@ def _init_db():
 
 class TestJWTUtils(unittest.TestCase):
     def test_issue_and_verify_access_token(self):
-        token, expires_at = issue_access_token("user-1", "a@b.com", "free")
+        token, _expires_at = issue_access_token("user-1", "a@b.com", "free")
         payload = verify_access_token(token)
         self.assertIsNotNone(payload)
         self.assertEqual(payload["sub"], "user-1")
@@ -68,7 +73,12 @@ class TestJWTUtils(unittest.TestCase):
         self.assertIsNone(payload)
 
     def test_expired_token_returns_none(self):
-        with unittest.mock.patch("jwt_utils.time.time", return_value=time.time() - 7200):
+        # Rewind the clock past the full token lifetime so the issued
+        # token is genuinely expired regardless of ACCESS_TOKEN_EXPIRY.
+        with unittest.mock.patch(
+            "jwt_utils.time.time",
+            return_value=time.time() - ACCESS_TOKEN_EXPIRY - 7200,
+        ):
             token, _ = issue_access_token("user-1", "a@b.com", "free")
         payload = verify_access_token(token)
         self.assertIsNone(payload)
@@ -154,19 +164,19 @@ class TestAuthServicer(unittest.TestCase):
 
     def test_register_duplicate_email(self):
         self._register()
-        resp, ctx = self._register()
+        _resp, ctx = self._register()
         self.assertEqual(ctx.code, grpc.StatusCode.ALREADY_EXISTS)
 
     def test_register_invalid_email(self):
-        resp, ctx = self._register(email="not-an-email")
+        _resp, ctx = self._register(email="not-an-email")
         self.assertEqual(ctx.code, grpc.StatusCode.INVALID_ARGUMENT)
 
     def test_register_short_password(self):
-        resp, ctx = self._register(password="abc")
+        _resp, ctx = self._register(password="abc")
         self.assertEqual(ctx.code, grpc.StatusCode.INVALID_ARGUMENT)
 
     def test_register_empty_name(self):
-        resp, ctx = self._register(name="")
+        _resp, ctx = self._register(name="")
         self.assertEqual(ctx.code, grpc.StatusCode.INVALID_ARGUMENT)
 
     # -- Login --
@@ -180,13 +190,13 @@ class TestAuthServicer(unittest.TestCase):
         self.assertEqual(resp.user.email, "alice@example.com")
 
     def test_login_wrong_email_same_error(self):
-        resp, ctx = self._login(email="nobody@example.com", password="secret1234")
+        _resp, ctx = self._login(email="nobody@example.com", password="secret1234")
         self.assertEqual(ctx.code, grpc.StatusCode.UNAUTHENTICATED)
         self.assertEqual(ctx.details, "invalid credentials")
 
     def test_login_wrong_password_same_error(self):
         self._register()
-        resp, ctx = self._login(password="wrong-password")
+        _resp, ctx = self._login(password="wrong-password")
         self.assertEqual(ctx.code, grpc.StatusCode.UNAUTHENTICATED)
         self.assertEqual(ctx.details, "invalid credentials")
 
@@ -238,7 +248,7 @@ class TestAuthServicer(unittest.TestCase):
         self.svc.Refresh(auth_pb2.RefreshRequest(refresh_token=reg_resp.refresh_token), ctx)
 
         ctx2 = _FakeRpcContext()
-        resp2 = self.svc.Refresh(
+        self.svc.Refresh(
             auth_pb2.RefreshRequest(refresh_token=reg_resp.refresh_token), ctx2
         )
         self.assertEqual(ctx2.code, grpc.StatusCode.UNAUTHENTICATED)
@@ -246,7 +256,7 @@ class TestAuthServicer(unittest.TestCase):
     def test_refresh_reuse_detection_revokes_all(self):
         reg_resp, _ = self._register()
         ctx = _FakeRpcContext()
-        new_resp = self.svc.Refresh(
+        self.svc.Refresh(
             auth_pb2.RefreshRequest(refresh_token=reg_resp.refresh_token), ctx
         )
         self.assertIsNone(ctx.code)

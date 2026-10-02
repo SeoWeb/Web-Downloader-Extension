@@ -1,10 +1,9 @@
 """Quota enforcement for page ingestion."""
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
+from models import PLAN_LIMITS, UserQuota
 from sqlalchemy import select
-
-from models import UserQuota, PLAN_LIMITS
 
 
 def check_and_reserve(session, user_id: str, plan: str, request_size: int) -> str | None:
@@ -31,8 +30,14 @@ def check_and_reserve(session, user_id: str, plan: str, request_size: int) -> st
         session.add(quota)
         session.flush()
 
+    # Normalize to naive UTC: the DateTime column is timezone-naive, but
+    # values set programmatically (or legacy rows) may carry tzinfo.
+    reset_at = quota.quota_reset_at
+    if reset_at.tzinfo is not None:
+        reset_at = reset_at.astimezone(timezone.utc).replace(tzinfo=None)
+
     # Monthly rollover
-    if quota.quota_reset_at < now_naive:
+    if reset_at < now_naive:
         quota.pages_this_month = 0
         quota.quota_reset_at = now_naive + timedelta(days=30)
 

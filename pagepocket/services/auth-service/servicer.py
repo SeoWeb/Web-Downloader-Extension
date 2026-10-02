@@ -1,22 +1,23 @@
 """Auth service gRPC servicer implementation."""
 
 import hashlib
+import os
 import re
+import sys
 from datetime import datetime, timezone
 
 import grpc
 from passlib.context import CryptContext
 from sqlalchemy import select
 
-import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared", "proto_generated"))
 
-from jwt_utils import issue_access_token, issue_refresh_token, verify_access_token
 import auth_pb2
 import auth_pb2_grpc
 from db import db_session, get_engine
-from models import User, RefreshToken
+from jwt_utils import issue_access_token, issue_refresh_token, verify_access_token
+from models import RefreshToken, User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 

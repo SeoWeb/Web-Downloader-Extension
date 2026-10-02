@@ -1,7 +1,7 @@
 """Shared gRPC-to-HTTP error translation."""
 
-from fastapi import HTTPException
 import grpc
+from fastapi import HTTPException
 
 
 def handle_grpc_error(e: grpc.RpcError):

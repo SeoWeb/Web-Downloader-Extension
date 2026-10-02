@@ -8,7 +8,6 @@ Skips automatically if the gateway is unreachable.
 """
 
 import os
-import sys
 import time
 import unittest
 

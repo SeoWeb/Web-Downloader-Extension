@@ -1,10 +1,9 @@
 """JWT utility functions for HS256 access/refresh token management."""
 
-import os
-import time
-import secrets
 import hashlib
-from datetime import datetime, timezone
+import os
+import secrets
+import time
 
 import jwt
 

@@ -1,13 +1,16 @@
 """Library REST routes."""
 
-from fastapi import APIRouter, Request
-import grpc
+import os
+import sys
 
-import sys, os
+import grpc
+from fastapi import APIRouter, Request
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared", "proto_generated"))
 
 import library_pb2
 from grpc_clients import library_stub
+
 from routers import handle_grpc_error
 
 router = APIRouter(prefix="/api/v1/library", tags=["library"])

@@ -1,20 +1,20 @@
 """Search service gRPC servicer implementation."""
 
 import os
+import sys
 
 import grpc
-from sqlalchemy import select, func, text, delete
+from sqlalchemy import delete, select, text
 
-import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared", "proto_generated"))
 
 import search_pb2
 import search_pb2_grpc
+from cache import cache_get, cache_invalidate_pattern, cache_set
+from cache_config import TTL_LONG, key_search, pattern_search
 from db import db_session, get_engine
 from models import PageIndex
-from cache import cache_get, cache_set, cache_invalidate_pattern
-from cache_config import TTL_LONG, key_search, pattern_search
 
 MEDIUMTEXT_LIMIT = 16 * 1024 * 1024  # 16 MB
 

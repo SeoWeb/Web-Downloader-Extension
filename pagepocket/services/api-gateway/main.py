@@ -11,8 +11,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "sh
 
 from middleware import AuthMiddleware
 from middleware.rate_limit import RateLimitMiddleware
-from routers import auth as auth_router
 from routers import archive as archive_router
+from routers import auth as auth_router
 from routers import library as library_router
 from routers import search as search_router
 from routers import share as share_router
