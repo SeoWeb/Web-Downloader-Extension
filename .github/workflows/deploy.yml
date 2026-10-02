@@ -135,8 +135,11 @@ jobs:
             rm -rf .next.bak-*
             cp -al .next ".next.bak-$(date +%s)"
             # Frontend runs under PM2 (app: pagepocket-frontend). Stop it first
-            # so it cannot respawn mid-restart, clear any orphan next-server
-            # squatting on :3000, then let PM2 own the process again.
+            # so it cannot respawn mid-restart, clear any orphan server
+            # squatters on :3000, then let PM2 own the process again.
+            # NB: keep this script free of the literal patterns used by the
+            # pkill lines below - the whole script text is visible in this
+            # shell's cmdline and pkill -f would otherwise match it.
             pm2 stop pagepocket-frontend > /dev/null 2>&1 || true
             pkill -f 'next[-]server' || true
             sleep 2
