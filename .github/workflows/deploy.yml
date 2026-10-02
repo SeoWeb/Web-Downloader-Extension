@@ -134,12 +134,15 @@ jobs:
             # Keep one previous good build for rollback (hardlink copy is cheap).
             rm -rf .next.bak-*
             cp -al .next ".next.bak-$(date +%s)"
-            # Restart plain `next start` (no pm2/systemd). Bracketed patterns
-            # stop pkill from matching this shell's own command line.
-            pkill -f 'next[ ]start' || true
+            # Frontend runs under PM2 (app: pagepocket-frontend). Stop it first
+            # so it cannot respawn mid-restart, clear any orphan next-server
+            # squatting on :3000, then let PM2 own the process again.
+            pm2 stop pagepocket-frontend > /dev/null 2>&1 || true
             pkill -f 'next[-]server' || true
             sleep 2
-            nohup npm run start > /var/www/Web-Downloader-Extension/pagepocket/frontend/next.log 2>&1 < /dev/null &
+            pm2 restart pagepocket-frontend --update-env > /dev/null 2>&1 || \
+              pm2 start npm --name pagepocket-frontend -- run start > /dev/null 2>&1
+            pm2 save > /dev/null 2>&1 || true
             code=000
             for i in $(seq 1 30); do
               code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ || true)
@@ -149,5 +152,5 @@ jobs:
             echo "==> Frontend :3000 HTTP status: ${code:-none}"
             case "$code" in
               2*|3*) exit 0 ;;
-              *) echo "::error::frontend did not respond on :3000 (check next.log on server)"; exit 1 ;;
+              *) echo "::error::frontend did not respond on :3000 (check pm2 logs pagepocket-frontend on server)"; exit 1 ;;
             esac

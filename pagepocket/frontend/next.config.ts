@@ -8,4 +8,4 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 
-// deploy pipeline probe (2026-10-02): exercises the deploy-frontend changes gate.
+// deploy pipeline probe (2026-10-02, rev 2): exercises the deploy-frontend gate.
