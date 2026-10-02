@@ -2,10 +2,16 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [pagepocket]
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+# Never overlap deploys; queue instead of cancelling a running deploy.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
 
 jobs:
   # Determine which components changed so we only deploy what is necessary.
@@ -22,7 +28,9 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
-          base: ${{ github.event.before }}
+          # Push events diff against the previous commit; manual runs have no
+          # `before` SHA, so fall back to the default branch (deploys all).
+          base: ${{ github.event.before || github.event.repository.default_branch }}
           filters: |
             extension:
               - 'src/**'
@@ -40,6 +48,7 @@ jobs:
               - 'pagepocket/services/**'
               - 'pagepocket/shared/**'
               - 'pagepocket/proto/**'
+              - 'pagepocket/docker-compose*.yml'
 
   # ---------------------------------------------------------------------------
   # Extension: build the .zip artifact for manual store publishing.
@@ -65,35 +74,77 @@ jobs:
           retention-days: 30
 
   # ---------------------------------------------------------------------------
-  # Backend: deploy to Contabo via SSH (git pull + docker compose rebuild).
+  # Backend: deploy to Contabo via SSH (hard reset to origin/pagepocket, then
+  # rebuild the 5 gRPC services and restart the api-gateway; plain compose).
   # ---------------------------------------------------------------------------
   deploy-backend:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - name: Deploy backend to Contabo
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.CONTABO_HOST }}
           username: ${{ secrets.CONTABO_USER }}
           key: ${{ secrets.CONTABO_SSH_KEY }}
-          script: bash scripts/deploy-contabo.sh backend
+          command_timeout: 30m
+          script: |
+            set -e
+            cd /var/www/Web-Downloader-Extension
+            git fetch origin
+            git reset --hard origin/pagepocket
+            cd pagepocket
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --no-deps archive-service auth-service library-service search-service share-service
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml restart api-gateway
+            echo "==> Backend containers after deploy:"
+            docker ps --filter name=pagepocket --format '{{.Names}}\t{{.Status}}'
 
   # ---------------------------------------------------------------------------
-  # Frontend: deploy to Contabo via SSH (git pull + pnpm build + pm2 restart).
+  # Frontend: deploy to Contabo via SSH (hard reset, pnpm build, keep one
+  # .next backup, restart plain `next start` on :3000, verify with curl).
   # ---------------------------------------------------------------------------
   deploy-frontend:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - name: Deploy frontend to Contabo
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.CONTABO_HOST }}
           username: ${{ secrets.CONTABO_USER }}
           key: ${{ secrets.CONTABO_SSH_KEY }}
-          script: bash scripts/deploy-contabo.sh frontend
+          command_timeout: 30m
+          script: |
+            set -e
+            cd /var/www/Web-Downloader-Extension
+            git fetch origin
+            git reset --hard origin/pagepocket
+            cd pagepocket/frontend
+            export PATH="$PATH:$(npm config get prefix)/bin"
+            if ! command -v pnpm >/dev/null 2>&1; then
+              corepack enable || npm install -g pnpm@10
+            fi
+            pnpm install --frozen-lockfile
+            pnpm build
+            # Keep one previous good build for rollback (hardlink copy is cheap).
+            rm -rf .next.bak-*
+            cp -al .next ".next.bak-$(date +%s)"
+            # Restart plain `next start` (no pm2/systemd). Bracketed patterns
+            # stop pkill from matching this shell's own command line.
+            pkill -f 'next[ ]start' || true
+            pkill -f 'next[-]server' || true
+            sleep 2
+            nohup npm run start > /var/www/Web-Downloader-Extension/pagepocket/frontend/next.log 2>&1 < /dev/null &
+            code=000
+            for i in $(seq 1 30); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ || true)
+              if [ -n "$code" ] && [ "$code" != "000" ]; then break; fi
+              sleep 2
+            done
+            echo "==> Frontend :3000 HTTP status: ${code:-none}"
+            case "$code" in
+              2*|3*) exit 0 ;;
+              *) echo "::error::frontend did not respond on :3000 (check next.log on server)"; exit 1 ;;
+            esac

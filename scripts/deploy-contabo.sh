@@ -1,42 +1,50 @@
 #!/usr/bin/env bash
 #
-# PagePocket deploy script — runs on the Contabo server via GitHub Actions SSH.
-# Usage: bash scripts/deploy-contabo.sh <backend|frontend|all>
+# PagePocket deploy helper — LOCAL WRAPPER ONLY (prints the deploy plan).
 #
-# Expected environment (provided by the server / CI):
-#   CONTABO_DEPLOY_PATH   path to the checked-out repo (default below)
-#   The repo must already be cloned and have push/pull access (deploy key).
+# Real deploys are executed by GitHub Actions (.github/workflows/deploy.yml):
+#   - trigger: push to `pagepocket`, or manual `gh workflow run deploy.yml`
+#   - backend:  SSH to Contabo → git reset --hard origin/pagepocket →
+#               docker compose (base + prod overlay) rebuilds the 5 gRPC
+#               services, restarts api-gateway, prints `docker ps`
+#   - frontend: SSH to Contabo → git reset --hard origin/pagepocket →
+#               pnpm install --frozen-lockfile && pnpm build → keep one
+#               .next.bak-* → restart plain `next start` on :3000 →
+#               verify with curl
+#
+# This script intentionally no longer deploys directly: the previous version
+# drifted from production reality (pm2 + `git pull origin main` no longer
+# apply; production trunk is `pagepocket`, frontend is a plain `next start`).
+# Keeping a single deploy codepath (the workflow) avoids future drift.
+#
+# To deploy: push to `pagepocket`, or run:
+#   gh workflow run deploy.yml --ref pagepocket
 
 set -euo pipefail
 
-REPO_DIR="${CONTABO_DEPLOY_PATH:-/var/www/Web-Downloader-Extension}"
-TARGET="${1:-all}"
+cat <<'EOF'
+==> Deploys run via CI: .github/workflows/deploy.yml (production branch: pagepocket)
 
-cd "$REPO_DIR"
-echo "==> Deploying from $REPO_DIR (target: $TARGET)"
+  Backend job (runs when pagepocket/services|shared|proto|compose files change):
+    cd /var/www/Web-Downloader-Extension
+    git fetch origin && git reset --hard origin/pagepocket
+    cd pagepocket
+    docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+      up -d --build --no-deps \
+      archive-service auth-service library-service search-service share-service
+    docker compose -f docker-compose.yml -f docker-compose.prod.yml restart api-gateway
+    docker ps --filter name=pagepocket --format '{{.Names}}\t{{.Status}}'
 
-git pull origin main
+  Frontend job (runs when pagepocket/frontend changes):
+    cd /var/www/Web-Downloader-Extension
+    git fetch origin && git reset --hard origin/pagepocket
+    cd pagepocket/frontend
+    pnpm install --frozen-lockfile
+    pnpm build
+    rm -rf .next.bak-* && cp -al .next ".next.bak-$(date +%s)"   # keep one rollback copy
+    pkill -f 'next[ ]start' / 'next[-]server' || true
+    nohup npm run start > next.log 2>&1 &
+    curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/   # must be 2xx/3xx
 
-if [ "$TARGET" = "backend" ] || [ "$TARGET" = "all" ]; then
-  echo "==> Rebuilding backend services (docker compose, prod mTLS)"
-  cd "$REPO_DIR/pagepocket"
-  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-  echo "==> Running database migrations"
-  make migrate || echo "::warning:: migrations did not complete; check logs"
-  cd "$REPO_DIR"
-fi
-
-if [ "$TARGET" = "frontend" ] || [ "$TARGET" = "all" ]; then
-  echo "==> Building & restarting frontend (Next.js + pm2)"
-  cd "$REPO_DIR/pagepocket/frontend"
-  pnpm install --frozen-lockfile
-  pnpm build
-  if pm2 describe pagepocket-frontend >/dev/null 2>&1; then
-    pm2 restart pagepocket-frontend
-  else
-    pm2 start "pnpm start" --name pagepocket-frontend
-  fi
-  cd "$REPO_DIR"
-fi
-
-echo "==> Deploy finished"
+  Manual trigger: gh workflow run deploy.yml --ref pagepocket
+EOF
