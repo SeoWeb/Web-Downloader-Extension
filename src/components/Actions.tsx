@@ -26,12 +26,21 @@ export default function Actions({ messages }: { messages: Message[] }) {
     {
       id: "upload",
       label: t("status.uploadingResources", "Uploading Resources"),
-      keyMatch: ["status.uploadProgress", "status.waitingForUploads", "status.sendingScrapeComplete", "status.scrapeComplete"],
+      keyMatch: [
+        "status.uploadProgress",
+        "status.waitingForUploads",
+        "status.sendingScrapeComplete",
+        "status.scrapeComplete",
+      ],
     },
     {
       id: "assemble",
       label: t("status.assemblingServer", "Assembling on Server"),
-      keyMatch: ["status.assemblingServer", "status.assemblyProgress", "status.finalizingServer"],
+      keyMatch: [
+        "status.assemblingServer",
+        "status.assemblyProgress",
+        "status.finalizingServer",
+      ],
     },
     {
       id: "complete",
@@ -47,14 +56,22 @@ export default function Actions({ messages }: { messages: Message[] }) {
 
   let currentStepIndex = -1;
   if (hasMessage("status.complete")) currentStepIndex = steps.length - 1;
-  else if (hasMessage("status.assemblingServer") || hasMessage("status.assemblyProgress") || hasMessage("status.finalizingServer"))
+  else if (
+    hasMessage("status.assemblingServer") ||
+    hasMessage("status.assemblyProgress") ||
+    hasMessage("status.finalizingServer")
+  )
     currentStepIndex = 3; // assembling
-  else if (hasMessage("status.uploadProgress") || hasMessage("status.waitingForUploads") || hasMessage("status.sendingScrapeComplete") || hasMessage("status.scrapeComplete"))
+  else if (
+    hasMessage("status.uploadProgress") ||
+    hasMessage("status.waitingForUploads") ||
+    hasMessage("status.sendingScrapeComplete") ||
+    hasMessage("status.scrapeComplete")
+  )
     currentStepIndex = 2; // uploading
   else if (hasMessage("status.scraping") || hasMessage("status.scraped"))
     currentStepIndex = 1; // scraping
-  else if (hasMessage("status.connected"))
-    currentStepIndex = 0; // connected
+  else if (hasMessage("status.connected")) currentStepIndex = 0; // connected
 
   return (
     <div className="pt-4 animate-fade-in">
@@ -75,9 +92,9 @@ export default function Actions({ messages }: { messages: Message[] }) {
               (typeof messages[messages.length - 1] === "string"
                 ? (messages[messages.length - 1] as string)
                 : (t(
-                  (messages[messages.length - 1] as any).key,
-                  (messages[messages.length - 1] as any).options,
-                ) as string))}
+                    (messages[messages.length - 1] as any).key,
+                    (messages[messages.length - 1] as any).options,
+                  ) as string))}
           </div>
         </div>
 
@@ -88,7 +105,9 @@ export default function Actions({ messages }: { messages: Message[] }) {
 
           {steps.map((step, index) => {
             const isCompleted =
-              index < currentStepIndex || currentStepIndex === 3 || (index === 0 && currentStepIndex === 0);
+              index < currentStepIndex ||
+              currentStepIndex === 3 ||
+              (index === 0 && currentStepIndex === 0);
             const isCurrent =
               index === currentStepIndex && currentStepIndex !== 3;
 

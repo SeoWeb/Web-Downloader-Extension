@@ -3,13 +3,13 @@
  * Provides memory-efficient ZIP creation with streaming capabilities
  */
 
-import JSZip from 'jszip';
+import JSZip from "jszip";
 import {
   ChunkedZipOptions,
   DEFAULT_CHUNKED_ZIP_OPTIONS,
   StreamingDownload,
-} from '../types/streaming';
-import { memoryManager } from './MemoryManager';
+} from "../types/streaming";
+import { memoryManager } from "./MemoryManager";
 
 export interface ZipEntry {
   /** Entry path within ZIP */
@@ -34,7 +34,7 @@ export interface ZipCreationProgress {
   /** Completed bytes */
   completedBytes: number;
   /** Current operation */
-  currentOperation: 'adding' | 'compressing' | 'finalizing' | 'completed';
+  currentOperation: "adding" | "compressing" | "finalizing" | "completed";
   /** Current entry being processed */
   currentEntry?: string;
 }
@@ -54,7 +54,7 @@ export class ChunkedZipProcessor {
       completedEntries: 0,
       totalBytes: 0,
       completedBytes: 0,
-      currentOperation: 'adding',
+      currentOperation: "adding",
     };
   }
 
@@ -91,7 +91,7 @@ export class ChunkedZipProcessor {
    * Generate the final ZIP file
    */
   async generateZip(): Promise<Blob> {
-    this.currentProgress.currentOperation = 'finalizing';
+    this.currentProgress.currentOperation = "finalizing";
 
     // Process any remaining entries
     if (this.entries.length > 0) {
@@ -100,13 +100,17 @@ export class ChunkedZipProcessor {
 
     // Generate the ZIP with memory monitoring
     const generateOptions = {
-      type: 'blob' as const,
-      compression: this.options.compressionLevel !== undefined && this.options.compressionLevel > 0
-        ? 'DEFLATE' as const
-        : 'STORE' as const,
-      compressionOptions: this.options.compressionLevel !== undefined && this.options.compressionLevel > 0
-        ? { level: this.options.compressionLevel }
-        : undefined,
+      type: "blob" as const,
+      compression:
+        this.options.compressionLevel !== undefined &&
+        this.options.compressionLevel > 0
+          ? ("DEFLATE" as const)
+          : ("STORE" as const),
+      compressionOptions:
+        this.options.compressionLevel !== undefined &&
+        this.options.compressionLevel > 0
+          ? { level: this.options.compressionLevel }
+          : undefined,
       streamFiles: this.options.enableStreaming,
     };
 
@@ -115,25 +119,31 @@ export class ChunkedZipProcessor {
     const maxAllowedMemory = this.options.maxMemoryUsage!;
 
     try {
-      const zipBlob = await this.zip.generateAsync(generateOptions, (metadata: { percent: number }) => {
-        this.currentProgress.completedBytes = metadata.percent / 100 * this.currentProgress.totalBytes;
+      const zipBlob = await this.zip.generateAsync(
+        generateOptions,
+        (metadata: { percent: number }) => {
+          this.currentProgress.completedBytes =
+            (metadata.percent / 100) * this.currentProgress.totalBytes;
 
-        // Check memory pressure during generation
-        const currentMemory = memoryManager.getMemoryStats().totalMemoryUsed;
-        const memoryIncrease = currentMemory - memoryBefore;
+          // Check memory pressure during generation
+          const currentMemory = memoryManager.getMemoryStats().totalMemoryUsed;
+          const memoryIncrease = currentMemory - memoryBefore;
 
-        if (memoryIncrease > maxAllowedMemory * 0.8) {
-          memoryManager.forceCleanup();
-        }
-      });
+          if (memoryIncrease > maxAllowedMemory * 0.8) {
+            memoryManager.forceCleanup();
+          }
+        },
+      );
 
-      this.currentProgress.currentOperation = 'completed';
+      this.currentProgress.currentOperation = "completed";
       this.currentProgress.completedEntries = this.currentProgress.totalEntries;
       this.currentProgress.completedBytes = this.currentProgress.totalBytes;
 
       return zipBlob;
     } catch (error) {
-      throw new Error(`ZIP generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `ZIP generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -142,10 +152,10 @@ export class ChunkedZipProcessor {
    */
   async generateZipStream(): Promise<ReadableStream> {
     if (!this.options.enableStreaming) {
-      throw new Error('Streaming is not enabled in options');
+      throw new Error("Streaming is not enabled in options");
     }
 
-    this.currentProgress.currentOperation = 'finalizing';
+    this.currentProgress.currentOperation = "finalizing";
 
     // Process remaining entries
     if (this.entries.length > 0) {
@@ -167,14 +177,17 @@ export class ChunkedZipProcessor {
             offset += chunkSize;
 
             // Update progress
-            self.currentProgress.completedBytes = Math.min(offset, self.currentProgress.totalBytes);
+            self.currentProgress.completedBytes = Math.min(
+              offset,
+              self.currentProgress.totalBytes,
+            );
           }
 
           controller.close();
         } catch (error) {
           controller.error(error);
         }
-      }
+      },
     });
 
     return stream;
@@ -185,28 +198,29 @@ export class ChunkedZipProcessor {
    */
   async addStreamingDownload(
     download: StreamingDownload,
-    zipPath: string
+    zipPath: string,
   ): Promise<void> {
-    if (download.status !== 'completed') {
-      throw new Error('Download must be completed before adding to ZIP');
+    if (download.status !== "completed") {
+      throw new Error("Download must be completed before adding to ZIP");
     }
 
     // Combine all chunks into a single blob
     const chunks = download.chunks
-      .filter(chunk => chunk.downloaded && chunk.data)
+      .filter((chunk) => chunk.downloaded && chunk.data)
       .sort((a, b) => a.index - b.index);
 
     if (chunks.length === 0) {
-      throw new Error('No valid chunks found for download');
+      throw new Error("No valid chunks found for download");
     }
 
     // Create blob from all chunks
     const blobParts: ArrayBuffer[] = [];
     for (const chunk of chunks) {
       if (chunk.data) {
-        const arrayBuffer = chunk.data instanceof ArrayBuffer
-          ? chunk.data
-          : await (chunk.data as Blob).arrayBuffer();
+        const arrayBuffer =
+          chunk.data instanceof ArrayBuffer
+            ? chunk.data
+            : await (chunk.data as Blob).arrayBuffer();
         blobParts.push(arrayBuffer);
       }
     }
@@ -233,7 +247,7 @@ export class ChunkedZipProcessor {
    * Process current batch of entries
    */
   private async processCurrentBatch(): Promise<void> {
-    this.currentProgress.currentOperation = 'adding';
+    this.currentProgress.currentOperation = "adding";
 
     for (const entry of this.entries) {
       this.currentProgress.currentEntry = entry.path;
@@ -265,10 +279,14 @@ export class ChunkedZipProcessor {
    */
   private async addEntryToZip(entry: ZipEntry): Promise<void> {
     const zipOptions: JSZip.JSZipFileOptions = {
-      compression: entry.compress !== false && (this.options.compressionLevel || 6) > 0 ? 'DEFLATE' : 'STORE',
-      compressionOptions: entry.compress !== false && (this.options.compressionLevel || 6) > 0
-        ? { level: this.options.compressionLevel || 6 }
-        : undefined,
+      compression:
+        entry.compress !== false && (this.options.compressionLevel || 6) > 0
+          ? "DEFLATE"
+          : "STORE",
+      compressionOptions:
+        entry.compress !== false && (this.options.compressionLevel || 6) > 0
+          ? { level: this.options.compressionLevel || 6 }
+          : undefined,
       date: entry.lastModified ? new Date(entry.lastModified) : new Date(),
     };
 
@@ -279,7 +297,8 @@ export class ChunkedZipProcessor {
       data = entry.data;
     } else if (entry.data instanceof Blob) {
       // For large blobs, consider streaming
-      if (entry.data.size > 10 * 1024 * 1024) { // 10MB
+      if (entry.data.size > 10 * 1024 * 1024) {
+        // 10MB
         data = await entry.data.arrayBuffer();
       } else {
         data = entry.data;
@@ -295,8 +314,10 @@ export class ChunkedZipProcessor {
    * Check if we should process entries in chunks
    */
   private shouldProcessInChunks(): boolean {
-    return this.entries.length >= 50 || // Number of entries
-           this.currentProgress.totalBytes >= 50 * 1024 * 1024; // 50MB total
+    return (
+      this.entries.length >= 50 || // Number of entries
+      this.currentProgress.totalBytes >= 50 * 1024 * 1024
+    ); // 50MB total
   }
 
   /**
@@ -321,29 +342,32 @@ export class ChunkedZipProcessor {
     if (!mimeType) return false;
 
     const compressedTypes = [
-      'application/zip',
-      'application/gzip',
-      'application/x-gzip',
-      'application/x-7z-compressed',
-      'application/x-rar-compressed',
-      'application/x-bzip',
-      'application/x-bzip2',
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'video/mp4',
-      'video/webm',
-      'audio/mpeg',
-      'audio/ogg',
+      "application/zip",
+      "application/gzip",
+      "application/x-gzip",
+      "application/x-7z-compressed",
+      "application/x-rar-compressed",
+      "application/x-bzip",
+      "application/x-bzip2",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "video/mp4",
+      "video/webm",
+      "audio/mpeg",
+      "audio/ogg",
     ];
 
-    return compressedTypes.some(type => mimeType.includes(type));
+    return compressedTypes.some((type) => mimeType.includes(type));
   }
 
   /**
    * Generate a chunk of the ZIP for streaming
    */
-  private async generateZipChunk(offset: number, size: number): Promise<ArrayBuffer> {
+  private async generateZipChunk(
+    offset: number,
+    size: number,
+  ): Promise<ArrayBuffer> {
     // This is a simplified implementation
     // In a real implementation, you would use a streaming ZIP library
     // or implement ZIP format streaming manually
@@ -364,7 +388,7 @@ export class ChunkedZipProcessor {
  */
 export async function createZipFromDownloads(
   downloads: Array<{ download: StreamingDownload; path: string }>,
-  options: Partial<ChunkedZipOptions> = {}
+  options: Partial<ChunkedZipOptions> = {},
 ): Promise<Blob> {
   const processor = new ChunkedZipProcessor(options);
 

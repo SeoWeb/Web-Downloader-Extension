@@ -20,14 +20,12 @@ export async function addCssFiles(
   let skippedCount = 0;
   let completedCount = 0;
 
-
-
   // Enqueue all CSS files
   const requestPromises: Promise<string>[] = [];
-  
+
   for (let i = 0; i < count; i++) {
     const css = csss[i];
-    
+
     if (!css) {
       failCount++;
       continue;
@@ -35,12 +33,12 @@ export async function addCssFiles(
 
     // Resolve URL like Single File mode does - use origin for relative paths
     // This fixes issues where paths like 'catalog/view/...' get wrongly appended to page path
-    const tabOrigin = new URL(tabUrl).origin + '/';
+    const tabOrigin = new URL(tabUrl).origin + "/";
     let fullCssUrl: string;
-    if (css.startsWith('http')) {
+    if (css.startsWith("http")) {
       fullCssUrl = css;
-    } else if (css.startsWith('//')) {
-      fullCssUrl = 'https:' + css;
+    } else if (css.startsWith("//")) {
+      fullCssUrl = "https:" + css;
     } else {
       // All relative paths (both '/path' and 'path') use origin as base
       fullCssUrl = new URL(css, tabOrigin).href;
@@ -52,25 +50,29 @@ export async function addCssFiles(
         url: fullCssUrl,
         resourceType: ResourceType.CSS,
         priority: RequestPriority.HIGH, // CSS is high priority for rendering
-        domain: '', // Will be auto-extracted
+        domain: "", // Will be auto-extracted
         dependencies: [], // No dependencies for CSS files
         retryCount: 0,
         estimatedSize: 0, // Unknown size
         fetchOptions: {
           headers: {
-            'Accept': 'text/css,*/*;q=0.1',
-            'Cache-Control': 'max-age=0',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            Accept: "text/css,*/*;q=0.1",
+            "Cache-Control": "max-age=0",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           },
           retries: 5, // Increase retries for CSS files
           timeout: 45000, // Increase timeout for CSS files
         },
         onComplete: async (result) => {
           completedCount++;
-          sendMessage({ key: "status.cssProgress", options: { completed: completedCount, total: count } });
+          sendMessage({
+            key: "status.cssProgress",
+            options: { completed: completedCount, total: count },
+          });
           try {
             // Check for opaque response (CORS issue)
-            if (result.response.type === 'opaque') {
+            if (result.response.type === "opaque") {
               skippedCount++;
               resolve(css);
               return;
@@ -80,7 +82,9 @@ export async function addCssFiles(
             const cssContent = await result.response.text();
 
             // Check CSS content size against limits
-            if (cssContent.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
+            if (
+              cssContent.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE
+            ) {
               skippedCount++;
               resolve(css);
               return;
@@ -110,15 +114,19 @@ export async function addCssFiles(
             }
 
             // Strip "undefined" prefix from broken JS-generated URLs
-            if (filename.startsWith('undefined')) {
-              filename = filename.slice('undefined'.length) || filename;
+            if (filename.startsWith("undefined")) {
+              filename = filename.slice("undefined".length) || filename;
             }
             // Add .css extension for extensionless filenames
-            if (!filename.includes('.')) {
-              filename = filename + '.css';
+            if (!filename.includes(".")) {
+              filename = filename + ".css";
             }
 
-            await storage.addFile(`styles/${fixFilename(filename)}`, cssBlob, "text/css");
+            await storage.addFile(
+              `styles/${fixFilename(filename)}`,
+              cssBlob,
+              "text/css",
+            );
             successCount++;
             resolve(css);
           } catch (error) {
@@ -138,13 +146,18 @@ export async function addCssFiles(
 
   // Wait for all CSS files to be processed
   await Promise.allSettled(requestPromises);
-  
+
   // Failures handled inside the promise block
 
   if (failCount > 0 || skippedCount > 0) {
-    sendMessage(
-      { key: "status.cssSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
-    );
+    sendMessage({
+      key: "status.cssSummary",
+      options: {
+        succeeded: successCount,
+        failed: failCount,
+        skipped: skippedCount,
+      },
+    });
   }
 }
 
@@ -186,11 +199,9 @@ async function downloadBackgroundImages(
     // Log download tracking
   }
 
-
-
   // Enqueue all background image files
   const requestPromises: Promise<string>[] = [];
-  
+
   for (let i = 0; i < count; i++) {
     const imageUrl = imageUrls[i];
 
@@ -206,18 +217,21 @@ async function downloadBackgroundImages(
         url: fullImageUrl,
         resourceType: ResourceType.IMAGE,
         priority: RequestPriority.LOW, // Background images are low priority
-        domain: '', // Will be auto-extracted
+        domain: "", // Will be auto-extracted
         dependencies: [], // No dependencies for images
         retryCount: 0,
         estimatedSize: 0, // Unknown size
         fetchOptions: {
           headers: {
-            'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            Accept: "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
           },
         },
         onComplete: async (result) => {
           completedCount++;
-          sendMessage({ key: "status.bgImagesProgress", options: { completed: completedCount, total: count } });
+          sendMessage({
+            key: "status.bgImagesProgress",
+            options: { completed: completedCount, total: count },
+          });
           try {
             const blob = await result.response.blob();
             const filename = new URL(fullImageUrl).pathname.split("/").pop();
@@ -248,12 +262,17 @@ async function downloadBackgroundImages(
 
   // Wait for all background image files to be processed
   await Promise.allSettled(requestPromises);
-  
+
   // Failures handled inside the promise block
 
   if (failCount > 0 || skippedCount > 0) {
-    sendMessage(
-      { key: "status.bgImagesSummary", options: { succeeded: successCount, failed: failCount, skipped: skippedCount } },
-    );
+    sendMessage({
+      key: "status.bgImagesSummary",
+      options: {
+        succeeded: successCount,
+        failed: failCount,
+        skipped: skippedCount,
+      },
+    });
   }
 }

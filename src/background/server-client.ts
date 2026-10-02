@@ -17,11 +17,7 @@ export class ServerUnavailableError extends Error {
   public readonly statusCode?: number;
   public readonly originalCause?: unknown;
 
-  constructor(
-    message: string,
-    cause?: unknown,
-    statusCode?: number,
-  ) {
+  constructor(message: string, cause?: unknown, statusCode?: number) {
     super(message);
     this.name = "ServerUnavailableError";
     this.originalCause = cause ?? undefined;
@@ -165,9 +161,7 @@ const TEXT_MIME_PREFIXES = [
 ];
 
 function isTextMimeType(contentType: string): boolean {
-  return TEXT_MIME_PREFIXES.some(
-    (prefix) => contentType.startsWith(prefix),
-  );
+  return TEXT_MIME_PREFIXES.some((prefix) => contentType.startsWith(prefix));
 }
 
 // ---------------------------------------------------------------------------
@@ -186,7 +180,10 @@ const CONTROL_CALL_TIMEOUT_MS = 60 * 1000; // 60 seconds for API calls
  * Uses AbortSignal.any() when available (Chrome 116+), falls back to
  * manual AbortController + setTimeout for Chrome 110-115.
  */
-function withTimeout(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
+function withTimeout(
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+): AbortSignal {
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   if (signal) {
     if (typeof AbortSignal.any === "function") {
@@ -210,9 +207,11 @@ export class ServerClient {
   private registrationLock: Promise<string> | null = null;
 
   constructor() {
-    this.serverUrl = (
-      import.meta.env.VITE_SERVER_URL as string | undefined
-    )?.replace(/\/+$/, "") ?? "";
+    this.serverUrl =
+      (import.meta.env.VITE_SERVER_URL as string | undefined)?.replace(
+        /\/+$/,
+        "",
+      ) ?? "";
 
     if (this.serverUrl) {
       // S6 note: warn if using http:// with a non-loopback host
@@ -236,10 +235,7 @@ export class ServerClient {
   }
 
   /** (8.2) Create a new download session on the server. */
-  async createSession(
-    url: string,
-    options?: SessionOptions,
-  ): Promise<string> {
+  async createSession(url: string, options?: SessionOptions): Promise<string> {
     this.assertConfigured();
     const body: Record<string, unknown> = { url };
     if (options) {
@@ -477,9 +473,7 @@ export class ServerClient {
   }
 
   /** (8.8) Finalize a session — trigger assembly pipeline. */
-  async finalizeSession(
-    sessionId: string,
-  ): Promise<FinalizeResponse> {
+  async finalizeSession(sessionId: string): Promise<FinalizeResponse> {
     this.assertConfigured();
     return this.withRetry(async () => {
       const res = await this.authenticatedFetch(
@@ -512,9 +506,7 @@ export class ServerClient {
   }
 
   /** (8.9) Get the current status of a session. */
-  async getSessionStatus(
-    sessionId: string,
-  ): Promise<SessionStatusResponse> {
+  async getSessionStatus(sessionId: string): Promise<SessionStatusResponse> {
     this.assertConfigured();
     const res = await this.authenticatedFetch(
       `/api/v1/sessions/${sessionId}/status`,
@@ -556,10 +548,9 @@ export class ServerClient {
   /** Delete a session on the server. */
   async deleteSession(sessionId: string): Promise<void> {
     this.assertConfigured();
-    const res = await this.authenticatedFetch(
-      `/api/v1/sessions/${sessionId}`,
-      { method: "DELETE" },
-    );
+    const res = await this.authenticatedFetch(`/api/v1/sessions/${sessionId}`, {
+      method: "DELETE",
+    });
 
     if (!res.ok) {
       await this.throwForStatus(res, "deleteSession");
@@ -625,20 +616,15 @@ export class ServerClient {
         // Generate or retrieve extension instance ID for idempotent registration
         const instanceId = await this.getOrCreateInstanceId();
 
-        const res = await fetch(
-          `${this.serverUrl}/api/v1/auth/register`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ client_id: instanceId }),
-          },
-        );
+        const res = await fetch(`${this.serverUrl}/api/v1/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ client_id: instanceId }),
+        });
 
         if (!res.ok) {
           const errorBody = await res.text().catch(() => "");
-          throw new Error(
-            `Registration failed: ${res.status} ${errorBody}`,
-          );
+          throw new Error(`Registration failed: ${res.status} ${errorBody}`);
         }
 
         const data = (await res.json()) as {
@@ -650,8 +636,7 @@ export class ServerClient {
         await this.saveApiKeyToStorage(data.api_key);
         return this.apiKey;
       } catch (err) {
-        lastError =
-          err instanceof Error ? err : new Error(String(err));
+        lastError = err instanceof Error ? err : new Error(String(err));
 
         if (attempt < MAX_REGISTRATION_ATTEMPTS - 1) {
           const delay = Math.pow(2, attempt) * 1000; // 1s, 2s
@@ -684,14 +669,19 @@ export class ServerClient {
     headers.set("X-API-Key", apiKey);
 
     // Don't override Content-Type if already set (e.g. for FormData)
-    if (!headers.has("Content-Type") && init.body && typeof init.body === "string") {
+    if (
+      !headers.has("Content-Type") &&
+      init.body &&
+      typeof init.body === "string"
+    ) {
       headers.set("Content-Type", "application/json");
     }
 
     const url = `${this.serverUrl}${path}`;
     // Apply control-plane timeout when caller hasn't provided a signal
     // (uploadResource already sets its own 5-minute timeout)
-    const effectiveSignal = init.signal ?? AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS);
+    const effectiveSignal =
+      init.signal ?? AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS);
 
     let res: Response;
     try {
@@ -715,7 +705,11 @@ export class ServerClient {
       // Retry with the new key
       const retryHeaders = new Headers(init.headers);
       retryHeaders.set("X-API-Key", newKey);
-      if (!retryHeaders.has("Content-Type") && init.body && typeof init.body === "string") {
+      if (
+        !retryHeaders.has("Content-Type") &&
+        init.body &&
+        typeof init.body === "string"
+      ) {
         retryHeaders.set("Content-Type", "application/json");
       }
 
@@ -727,7 +721,11 @@ export class ServerClient {
         ? withTimeout(undefined, UPLOAD_TIMEOUT_MS)
         : AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS);
       try {
-        res = await fetch(url, { ...init, headers: retryHeaders, signal: retrySignal });
+        res = await fetch(url, {
+          ...init,
+          headers: retryHeaders,
+          signal: retrySignal,
+        });
       } catch (err) {
         if (err instanceof DOMException) throw err;
         throw new ServerUnavailableError(
@@ -784,7 +782,7 @@ export class ServerClient {
         const isRetryable =
           lastError instanceof ServerUnavailableError &&
           (lastError.statusCode === undefined || // network-level (no HTTP status)
-            lastError.statusCode >= 500);         // 5xx server error
+            lastError.statusCode >= 500); // 5xx server error
 
         // Non-retryable: 4xx client errors and other non-server errors
         if (!isRetryable) {
@@ -854,18 +852,11 @@ export class ServerClient {
           retryAfter = parsed;
         }
       }
-      throw new HttpError(
-        `${operation}: 429 — ${detail}`,
-        429,
-        retryAfter,
-      );
+      throw new HttpError(`${operation}: 429 — ${detail}`, 429, retryAfter);
     }
 
     // 4xx errors (except 401 and 429 handled above)
-    throw new HttpError(
-      `${operation}: ${status} — ${detail}`,
-      status,
-    );
+    throw new HttpError(`${operation}: ${status} — ${detail}`, status);
   }
 
   /**
@@ -902,7 +893,11 @@ export class ServerClient {
     extraHeaders: Record<string, string>,
     signal?: AbortSignal,
     onProgress?: (loaded: number, total: number) => void,
-  ): Promise<{ status: number; body: string; headers: Record<string, string> }> {
+  ): Promise<{
+    status: number;
+    body: string;
+    headers: Record<string, string>;
+  }> {
     const apiKey = await this.ensureApiKey();
     const url = `${this.serverUrl}${path}`;
 
@@ -950,12 +945,17 @@ export class ServerClient {
             for (const line of headerStr.split("\r\n")) {
               const idx = line.indexOf(": ");
               if (idx > 0) {
-                hdrs[line.substring(0, idx).toLowerCase()] =
-                  line.substring(idx + 2);
+                hdrs[line.substring(0, idx).toLowerCase()] = line.substring(
+                  idx + 2,
+                );
               }
             }
           }
-          resolve({ status: xhr.status, body: xhr.responseText, headers: hdrs });
+          resolve({
+            status: xhr.status,
+            body: xhr.responseText,
+            headers: hdrs,
+          });
         };
 
         xhr.onerror = () => {
@@ -1036,9 +1036,7 @@ export class ServerClient {
         return `ext-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       }
 
-      const result = await chrome.storage.local.get(
-        EXTENSION_INSTANCE_ID_KEY,
-      );
+      const result = await chrome.storage.local.get(EXTENSION_INSTANCE_ID_KEY);
       if (result[EXTENSION_INSTANCE_ID_KEY]) {
         return result[EXTENSION_INSTANCE_ID_KEY] as string;
       }
@@ -1065,8 +1063,8 @@ export class ServerClient {
         if (!isLoopback) {
           console.warn(
             `[ServerClient] WARNING: Server URL uses http:// with a non-loopback host (${url.hostname}). ` +
-            "Chrome blocks mixed-content downloads from HTTP remote origins. " +
-            "HTTPS is mandatory for non-localhost deployments.",
+              "Chrome blocks mixed-content downloads from HTTP remote origins. " +
+              "HTTPS is mandatory for non-localhost deployments.",
           );
         }
       }

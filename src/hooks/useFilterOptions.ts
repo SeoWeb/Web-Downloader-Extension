@@ -59,7 +59,7 @@ export function useFilterOptions() {
     setDownloadDocuments: (value: boolean) =>
       setFilterOption("downloadDocuments", value),
     setSingleFile: (value: boolean) => setFilterOption("singleFile", value),
-    
+
     // Full scraping options
     setDownloadLinksFullScraping: (value: boolean) =>
       setFilterOption("downloadLinksFullScraping", value),
@@ -98,7 +98,7 @@ export function useDownloadOptions() {
     downloadContentAsText: options.downloadContentAsText,
     downloadDocuments: options.downloadDocuments,
     singleFile: options.singleFile,
-    
+
     // Full scraping options
     downloadLinksFullScraping: options.downloadLinksFullScraping,
     linkedPagesMaxCount: options.linkedPagesMaxCount,

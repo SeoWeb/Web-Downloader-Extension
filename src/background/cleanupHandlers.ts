@@ -78,7 +78,9 @@ export function initializeCleanupHandlers(): void {
 async function performStartupCleanup(): Promise<void> {
   try {
     // Check if there was an interrupted download (SW restart detection via chrome.storage.local)
-    const { isDownloadInProgress } = await chrome.storage.local.get("isDownloadInProgress");
+    const { isDownloadInProgress } = await chrome.storage.local.get(
+      "isDownloadInProgress",
+    );
     if (isDownloadInProgress) {
       await handleInterruptedDownload();
     }

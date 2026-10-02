@@ -3,9 +3,7 @@ import {
   DEFAULT_FILTER_OPTIONS,
   FILTER_OPTIONS_STORAGE_KEY,
 } from "../../types/filterTypes";
-import {
-  hasStoragePermission,
-} from "../permissions";
+import { hasStoragePermission } from "../permissions";
 import {
   validateFilterOptions,
   safeStorageOperation,

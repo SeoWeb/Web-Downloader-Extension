@@ -8,18 +8,18 @@ import {
   ProgressPersistence,
   ChunkInfo,
   StreamingDownloadStatus,
-} from '../types/streaming';
+} from "../types/streaming";
 
-const DB_NAME = 'StreamingDownloadsDB';
+const DB_NAME = "StreamingDownloadsDB";
 const DB_VERSION = 1;
-const STORE_NAME = 'downloads';
+const STORE_NAME = "downloads";
 
 interface StoredChunkInfo extends ChunkInfo {
   /** Serialized data if needed */
   serializedData?: string;
 }
 
-interface StoredStreamingDownload extends Omit<StreamingDownload, 'chunks'> {
+interface StoredStreamingDownload extends Omit<StreamingDownload, "chunks"> {
   /** Serialized chunks */
   chunks: StoredChunkInfo[];
 }
@@ -52,12 +52,12 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
         const db = (event.target as IDBOpenDBRequest).result;
 
         if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
 
           // Create indexes for efficient querying
-          store.createIndex('status', 'status', { unique: false });
-          store.createIndex('updatedAt', 'updatedAt', { unique: false });
-          store.createIndex('url', 'url', { unique: false });
+          store.createIndex("status", "status", { unique: false });
+          store.createIndex("updatedAt", "updatedAt", { unique: false });
+          store.createIndex("url", "url", { unique: false });
         }
       };
     });
@@ -80,12 +80,12 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
     await this.ensureInitialized();
 
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error("Database not initialized");
     }
 
     try {
       // Prepare chunks for storage - we don't store actual data to save space
-      const storedChunks: StoredChunkInfo[] = download.chunks.map(chunk => ({
+      const storedChunks: StoredChunkInfo[] = download.chunks.map((chunk) => ({
         ...chunk,
         data: undefined, // Don't store actual chunk data in IndexedDB
         serializedData: undefined,
@@ -99,14 +99,16 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
       // Serialize complex objects if needed
       const serializedDownload = this.serializeForStorage(storedDownload);
 
-      const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+      const transaction = this.db.transaction([STORE_NAME], "readwrite");
       const store = transaction.objectStore(STORE_NAME);
 
       await new Promise<void>((resolve, reject) => {
         const request = store.put(serializedDownload);
 
         request.onerror = () => {
-          reject(new Error(`Failed to save progress: ${request.error?.message}`));
+          reject(
+            new Error(`Failed to save progress: ${request.error?.message}`),
+          );
         };
 
         request.onsuccess = () => {
@@ -128,25 +130,29 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
     await this.ensureInitialized();
 
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error("Database not initialized");
     }
 
     try {
-      const transaction = this.db.transaction([STORE_NAME], 'readonly');
+      const transaction = this.db.transaction([STORE_NAME], "readonly");
       const store = transaction.objectStore(STORE_NAME);
 
-      const storedDownload = await new Promise<StoredStreamingDownload | null>((resolve, reject) => {
-        const request = store.get(downloadId);
+      const storedDownload = await new Promise<StoredStreamingDownload | null>(
+        (resolve, reject) => {
+          const request = store.get(downloadId);
 
-        request.onerror = () => {
-          reject(new Error(`Failed to load progress: ${request.error?.message}`));
-        };
+          request.onerror = () => {
+            reject(
+              new Error(`Failed to load progress: ${request.error?.message}`),
+            );
+          };
 
-        request.onsuccess = () => {
-          const result = request.result;
-          resolve(result ? this.deserializeFromStorage(result) : null);
-        };
-      });
+          request.onsuccess = () => {
+            const result = request.result;
+            resolve(result ? this.deserializeFromStorage(result) : null);
+          };
+        },
+      );
 
       if (!storedDownload) {
         return null;
@@ -155,7 +161,7 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
       // Convert back to StreamingDownload format
       return {
         ...storedDownload,
-        chunks: storedDownload.chunks.map(chunk => ({
+        chunks: storedDownload.chunks.map((chunk) => ({
           ...chunk,
           data: undefined, // Data will be re-downloaded
         })),
@@ -172,18 +178,20 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
     await this.ensureInitialized();
 
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error("Database not initialized");
     }
 
     try {
-      const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+      const transaction = this.db.transaction([STORE_NAME], "readwrite");
       const store = transaction.objectStore(STORE_NAME);
 
       await new Promise<void>((resolve, reject) => {
         const request = store.delete(downloadId);
 
         request.onerror = () => {
-          reject(new Error(`Failed to remove progress: ${request.error?.message}`));
+          reject(
+            new Error(`Failed to remove progress: ${request.error?.message}`),
+          );
         };
 
         request.onsuccess = () => {
@@ -202,18 +210,20 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
     await this.ensureInitialized();
 
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error("Database not initialized");
     }
 
     try {
-      const transaction = this.db.transaction([STORE_NAME], 'readonly');
+      const transaction = this.db.transaction([STORE_NAME], "readonly");
       const store = transaction.objectStore(STORE_NAME);
 
       const downloadIds = await new Promise<string[]>((resolve, reject) => {
         const request = store.getAllKeys();
 
         request.onerror = () => {
-          reject(new Error(`Failed to list downloads: ${request.error?.message}`));
+          reject(
+            new Error(`Failed to list downloads: ${request.error?.message}`),
+          );
         };
 
         request.onsuccess = () => {
@@ -230,42 +240,54 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
   /**
    * Clean up old downloads
    */
-  async cleanup(olderThan: number = 7 * 24 * 60 * 60 * 1000): Promise<void> { // 7 days default
+  async cleanup(olderThan: number = 7 * 24 * 60 * 60 * 1000): Promise<void> {
+    // 7 days default
     await this.ensureInitialized();
 
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error("Database not initialized");
     }
 
     try {
       const cutoffTime = Date.now() - olderThan;
-      const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+      const transaction = this.db.transaction([STORE_NAME], "readwrite");
       const store = transaction.objectStore(STORE_NAME);
 
       // Get all downloads to check their age
-      const downloads = await new Promise<StoredStreamingDownload[]>((resolve, reject) => {
-        const request = store.getAll();
+      const downloads = await new Promise<StoredStreamingDownload[]>(
+        (resolve, reject) => {
+          const request = store.getAll();
 
-        request.onerror = () => {
-          reject(new Error(`Failed to get downloads for cleanup: ${request.error?.message}`));
-        };
+          request.onerror = () => {
+            reject(
+              new Error(
+                `Failed to get downloads for cleanup: ${request.error?.message}`,
+              ),
+            );
+          };
 
-        request.onsuccess = () => {
-          resolve(request.result as StoredStreamingDownload[]);
-        };
-      });
+          request.onsuccess = () => {
+            resolve(request.result as StoredStreamingDownload[]);
+          };
+        },
+      );
 
       // Remove old completed or failed downloads
       for (const download of downloads) {
         const isOld = download.updatedAt < cutoffTime;
-        const isCompletable = download.status === 'completed' || download.status === 'failed';
+        const isCompletable =
+          download.status === "completed" || download.status === "failed";
 
         if (isOld && isCompletable) {
           await new Promise<void>((resolve, reject) => {
             const deleteRequest = store.delete(download.id);
 
             deleteRequest.onerror = () => {
-              reject(new Error(`Failed to delete old download: ${deleteRequest.error?.message}`));
+              reject(
+                new Error(
+                  `Failed to delete old download: ${deleteRequest.error?.message}`,
+                ),
+              );
             };
 
             deleteRequest.onsuccess = () => {
@@ -274,8 +296,7 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
           });
         }
       }
-    } catch {
-    }
+    } catch {}
   }
 
   /**
@@ -291,29 +312,36 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
     await this.ensureInitialized();
 
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error("Database not initialized");
     }
 
     try {
-      const downloads = await new Promise<StoredStreamingDownload[]>((resolve, reject) => {
-        const transaction = this.db!.transaction([STORE_NAME], 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.getAll();
+      const downloads = await new Promise<StoredStreamingDownload[]>(
+        (resolve, reject) => {
+          const transaction = this.db!.transaction([STORE_NAME], "readonly");
+          const store = transaction.objectStore(STORE_NAME);
+          const request = store.getAll();
 
-        request.onerror = () => {
-          reject(new Error(`Failed to get statistics: ${request.error?.message}`));
-        };
+          request.onerror = () => {
+            reject(
+              new Error(`Failed to get statistics: ${request.error?.message}`),
+            );
+          };
 
-        request.onsuccess = () => {
-          resolve(request.result as StoredStreamingDownload[]);
-        };
-      });
+          request.onsuccess = () => {
+            resolve(request.result as StoredStreamingDownload[]);
+          };
+        },
+      );
 
       const stats = {
         totalDownloads: downloads.length,
-        activeDownloads: downloads.filter(d => d.status === 'streaming' || d.status === 'paused').length,
-        completedDownloads: downloads.filter(d => d.status === 'completed').length,
-        failedDownloads: downloads.filter(d => d.status === 'failed').length,
+        activeDownloads: downloads.filter(
+          (d) => d.status === "streaming" || d.status === "paused",
+        ).length,
+        completedDownloads: downloads.filter((d) => d.status === "completed")
+          .length,
+        failedDownloads: downloads.filter((d) => d.status === "failed").length,
         totalSize: downloads.reduce((sum, d) => sum + d.totalSize, 0),
       };
 
@@ -336,30 +364,34 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
     await this.ensureInitialized();
 
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error("Database not initialized");
     }
 
     try {
-      const downloads = await new Promise<StoredStreamingDownload[]>((resolve, reject) => {
-        const transaction = this.db!.transaction([STORE_NAME], 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.getAll();
+      const downloads = await new Promise<StoredStreamingDownload[]>(
+        (resolve, reject) => {
+          const transaction = this.db!.transaction([STORE_NAME], "readonly");
+          const store = transaction.objectStore(STORE_NAME);
+          const request = store.getAll();
 
-        request.onerror = () => {
-          reject(new Error(`Failed to find downloads: ${request.error?.message}`));
-        };
+          request.onerror = () => {
+            reject(
+              new Error(`Failed to find downloads: ${request.error?.message}`),
+            );
+          };
 
-        request.onsuccess = () => {
-          resolve(request.result as StoredStreamingDownload[]);
-        };
-      });
+          request.onsuccess = () => {
+            resolve(request.result as StoredStreamingDownload[]);
+          };
+        },
+      );
 
-      const regex = new RegExp(urlPattern, 'i');
-      const matchingDownloads = downloads.filter(d => regex.test(d.url));
+      const regex = new RegExp(urlPattern, "i");
+      const matchingDownloads = downloads.filter((d) => regex.test(d.url));
 
-      return matchingDownloads.map(download => ({
+      return matchingDownloads.map((download) => ({
         ...download,
-        chunks: download.chunks.map(chunk => ({
+        chunks: download.chunks.map((chunk) => ({
           ...chunk,
           data: undefined,
         })),
@@ -375,7 +407,7 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
   async updateDownloadStatus(
     downloadId: string,
     status: StreamingDownloadStatus,
-    error?: string
+    error?: string,
   ): Promise<void> {
     await this.ensureInitialized();
 
@@ -478,17 +510,19 @@ class IndexedDBProgressPersistence implements ProgressPersistence {
     await this.ensureInitialized();
 
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error("Database not initialized");
     }
 
-    const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+    const transaction = this.db.transaction([STORE_NAME], "readwrite");
     const store = transaction.objectStore(STORE_NAME);
 
     await new Promise<void>((resolve, reject) => {
       const request = store.clear();
 
       request.onerror = () => {
-        reject(new Error(`Failed to clear database: ${request.error?.message}`));
+        reject(
+          new Error(`Failed to clear database: ${request.error?.message}`),
+        );
       };
 
       request.onsuccess = () => {
@@ -508,7 +542,7 @@ class MemoryProgressPersistence implements ProgressPersistence {
     // Create a copy without actual chunk data to save memory
     const sanitizedDownload = {
       ...download,
-      chunks: download.chunks.map(chunk => ({
+      chunks: download.chunks.map((chunk) => ({
         ...chunk,
         data: undefined,
       })),
@@ -535,7 +569,8 @@ class MemoryProgressPersistence implements ProgressPersistence {
 
     for (const [downloadId, download] of this.storage.entries()) {
       const isOld = download.updatedAt < cutoffTime;
-      const isCompletable = download.status === 'completed' || download.status === 'failed';
+      const isCompletable =
+        download.status === "completed" || download.status === "failed";
 
       if (isOld && isCompletable) {
         this.storage.delete(downloadId);
@@ -562,12 +597,12 @@ class MemoryProgressPersistence implements ProgressPersistence {
  * Factory function to create appropriate persistence implementation
  */
 export function createProgressPersistence(
-  type: 'indexeddb' | 'memory' = 'indexeddb'
+  type: "indexeddb" | "memory" = "indexeddb",
 ): ProgressPersistence {
   switch (type) {
-    case 'indexeddb':
+    case "indexeddb":
       return new IndexedDBProgressPersistence();
-    case 'memory':
+    case "memory":
       return new MemoryProgressPersistence();
     default:
       throw new Error(`Unknown persistence type: ${type}`);

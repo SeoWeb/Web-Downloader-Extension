@@ -11,7 +11,12 @@
 import { IStorageAdapter } from "./storage/server-storage-adapter";
 import { AssetRegistry } from "./asset-registry";
 import { getResources } from "./resources";
-import { addCssFiles, addJsFiles, addImageFiles, addDocumentFiles } from "./fileHandlers";
+import {
+  addCssFiles,
+  addJsFiles,
+  addImageFiles,
+  addDocumentFiles,
+} from "./fileHandlers";
 import { fixFilename } from "./urlUtils";
 import { serverClient, HttpError } from "./server-client";
 
@@ -78,7 +83,9 @@ export class LinkedPageScraper {
   }
   private assetRegistry: AssetRegistry;
   private originalTabUrl: string = "";
-  private options: Required<Omit<LinkedPageScraperOptions, 'serverSessionId'>> & { serverSessionId?: string };
+  private options: Required<
+    Omit<LinkedPageScraperOptions, "serverSessionId">
+  > & { serverSessionId?: string };
   private successCount: number = 0;
   private failCount: number = 0;
   private isPaused: boolean = false;
@@ -148,7 +155,8 @@ export class LinkedPageScraper {
     }
 
     // Check if we've reached the max page limit
-    const combinedLength = this.internalQueue.length + this.externalQueue.length;
+    const combinedLength =
+      this.internalQueue.length + this.externalQueue.length;
     if (combinedLength >= this.options.maxPages) {
       return;
     }
@@ -159,7 +167,10 @@ export class LinkedPageScraper {
     }
 
     // Check if URL is already in either queue
-    if (this.internalQueue.some((j) => j.url === job.url) || this.externalQueue.some((j) => j.url === job.url)) {
+    if (
+      this.internalQueue.some((j) => j.url === job.url) ||
+      this.externalQueue.some((j) => j.url === job.url)
+    ) {
       return;
     }
 
@@ -194,15 +205,50 @@ export class LinkedPageScraper {
       const pathname = new URL(url).pathname.toLowerCase();
       // List of extensions to exclude from page scraping
       const excludedExtensions = [
-        ".pdf", ".zip", ".rar", ".7z", ".tar", ".gz",
-        ".exe", ".dmg", ".iso", ".bin",
-        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".ico",
-        ".mp3", ".mp4", ".avi", ".mov", ".mkv", ".webm",
-        ".css", ".js", ".json", ".xml", ".txt", ".csv",
-        ".stl", ".obj", ".3mf", ".fbx", ".dae", ".step", ".stp", ".iges", ".igs", ".dxf", ".dwg", ".gcode"
+        ".pdf",
+        ".zip",
+        ".rar",
+        ".7z",
+        ".tar",
+        ".gz",
+        ".exe",
+        ".dmg",
+        ".iso",
+        ".bin",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".webp",
+        ".svg",
+        ".ico",
+        ".mp3",
+        ".mp4",
+        ".avi",
+        ".mov",
+        ".mkv",
+        ".webm",
+        ".css",
+        ".js",
+        ".json",
+        ".xml",
+        ".txt",
+        ".csv",
+        ".stl",
+        ".obj",
+        ".3mf",
+        ".fbx",
+        ".dae",
+        ".step",
+        ".stp",
+        ".iges",
+        ".igs",
+        ".dxf",
+        ".dwg",
+        ".gcode",
       ];
 
-      return excludedExtensions.some(ext => pathname.endsWith(ext));
+      return excludedExtensions.some((ext) => pathname.endsWith(ext));
     } catch (e) {
       return false;
     }
@@ -251,7 +297,12 @@ export class LinkedPageScraper {
 
       sendMessage({
         key: "status.linkedPageProgress",
-        options: { current: i + 1, total: totalInternal, isPaused: this.isPaused, phase: "internal" },
+        options: {
+          current: i + 1,
+          total: totalInternal,
+          isPaused: this.isPaused,
+          phase: "internal",
+        },
       });
 
       try {
@@ -303,7 +354,8 @@ export class LinkedPageScraper {
       } catch (error) {
         // If this is a 413 session-full error, stop the scraper loop
         // immediately — further pages would also exceed the limit.
-        const isSessionFull = error instanceof HttpError && error.statusCode === 413;
+        const isSessionFull =
+          error instanceof HttpError && error.statusCode === 413;
         if (isSessionFull) {
           job.status = "failed";
           this.failCount++;
@@ -316,7 +368,10 @@ export class LinkedPageScraper {
       }
 
       // Add delay between pages to avoid rate limiting
-      if (i < this.internalQueue.length - 1 && this.options.delayBetweenPages > 0) {
+      if (
+        i < this.internalQueue.length - 1 &&
+        this.options.delayBetweenPages > 0
+      ) {
         await this.delay(this.options.delayBetweenPages);
       }
     }
@@ -341,7 +396,12 @@ export class LinkedPageScraper {
 
         sendMessage({
           key: "status.linkedPageProgress",
-          options: { current: i + 1, total: totalExternal, isPaused: this.isPaused, phase: "external" },
+          options: {
+            current: i + 1,
+            total: totalExternal,
+            isPaused: this.isPaused,
+            phase: "external",
+          },
         });
 
         try {
@@ -384,7 +444,8 @@ export class LinkedPageScraper {
             accumulatedText += `\n--- ${scrapedData.finalUrl} ---\n${scrapedData.text}`;
           }
         } catch (error) {
-          const isSessionFull = error instanceof HttpError && error.statusCode === 413;
+          const isSessionFull =
+            error instanceof HttpError && error.statusCode === 413;
           if (isSessionFull) {
             job.status = "failed";
             this.failCount++;
@@ -396,7 +457,10 @@ export class LinkedPageScraper {
           sendMessage(`Failed to scrape: ${job.url}`);
         }
 
-        if (i < this.externalQueue.length - 1 && this.options.delayBetweenPages > 0) {
+        if (
+          i < this.externalQueue.length - 1 &&
+          this.options.delayBetweenPages > 0
+        ) {
           await this.delay(this.options.delayBetweenPages);
         }
       }
@@ -432,7 +496,7 @@ export class LinkedPageScraper {
     // Capture the DOM in chunks to avoid holding the entire page outerHTML
     // as a single large string in extension memory.
     const htmlChunks = await this.capturePageDOMChunks(tabId);
-    const html = htmlChunks.join('');
+    const html = htmlChunks.join("");
 
     // Extract resources
     const resources = getResources(html);
@@ -440,7 +504,12 @@ export class LinkedPageScraper {
 
     // Download assets (checking registry first to avoid duplicates).
     // Returns the image filename map for this page's newly downloaded images.
-    const localImageMap = await this.downloadAssets(resources, storage, finalUrl, sendMessage);
+    const localImageMap = await this.downloadAssets(
+      resources,
+      storage,
+      finalUrl,
+      sendMessage,
+    );
 
     // Return raw HTML chunks (unconverted) — the server handles URL conversion.
     return {
@@ -462,14 +531,13 @@ export class LinkedPageScraper {
   /**
    * Navigate to a URL and wait for the page to load
    */
-  private async navigateAndWait(
-    tabId: number,
-    url: string,
-  ): Promise<string> {
+  private async navigateAndWait(tabId: number, url: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         cleanup();
-        reject(new Error(`Navigation timeout after ${this.options.pageTimeout}ms`));
+        reject(
+          new Error(`Navigation timeout after ${this.options.pageTimeout}ms`),
+        );
       }, this.options.pageTimeout);
 
       const listener = (
@@ -511,10 +579,7 @@ export class LinkedPageScraper {
         func: () => document.documentElement.outerHTML,
       }),
       new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("DOM capture timeout")),
-          timeout,
-        )
+        setTimeout(() => reject(new Error("DOM capture timeout")), timeout),
       ),
     ]);
 
@@ -552,17 +617,25 @@ export class LinkedPageScraper {
       chrome.scripting.executeScript({
         target: { tabId },
         func: () => {
-          const skeleton = document.documentElement.outerHTML
-            .replace(/<body[^>]*>[\s\S]*<\/body>/i, '<body></body>');
+          const skeleton = document.documentElement.outerHTML.replace(
+            /<body[^>]*>[\s\S]*<\/body>/i,
+            "<body></body>",
+          );
           const children: string[] = [];
           for (const child of Array.from(document.body.children)) {
             children.push((child as Element).outerHTML);
           }
-          return { skeleton, bodyChildren: children } as { skeleton: string; bodyChildren: string[] };
+          return { skeleton, bodyChildren: children } as {
+            skeleton: string;
+            bodyChildren: string[];
+          };
         },
       }),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("DOM chunk capture timeout")), timeout)
+        setTimeout(
+          () => reject(new Error("DOM chunk capture timeout")),
+          timeout,
+        ),
       ),
     ]);
 
@@ -586,16 +659,23 @@ export class LinkedPageScraper {
 
     // Extract the body open tag from the skeleton so we can reconstruct each chunk
     const bodyOpenMatch = skeleton.match(/<body[^>]*>/i);
-    const bodyOpen = bodyOpenMatch ? bodyOpenMatch[0] : '<body>';
+    const bodyOpen = bodyOpenMatch ? bodyOpenMatch[0] : "<body>";
     const skeletonBeforeBody = skeleton.slice(0, skeleton.indexOf(bodyOpen));
-    const skeletonAfterBody = '</body>' + skeleton.slice(skeleton.indexOf('</body>') + '</body>'.length);
+    const skeletonAfterBody =
+      "</body>" +
+      skeleton.slice(skeleton.indexOf("</body>") + "</body>".length);
 
     for (const child of bodyChildren) {
       currentChildren.push(child);
       currentSize += child.length;
 
       if (currentSize >= targetChunkBytes) {
-        chunks.push(skeletonBeforeBody + bodyOpen + currentChildren.join('') + skeletonAfterBody);
+        chunks.push(
+          skeletonBeforeBody +
+            bodyOpen +
+            currentChildren.join("") +
+            skeletonAfterBody,
+        );
         currentChildren = [];
         currentSize = 0;
       }
@@ -603,7 +683,12 @@ export class LinkedPageScraper {
 
     // Flush the last batch
     if (currentChildren.length > 0) {
-      chunks.push(skeletonBeforeBody + bodyOpen + currentChildren.join('') + skeletonAfterBody);
+      chunks.push(
+        skeletonBeforeBody +
+          bodyOpen +
+          currentChildren.join("") +
+          skeletonAfterBody,
+      );
     }
 
     return chunks.length > 0 ? chunks : [skeleton];
@@ -632,7 +717,8 @@ export class LinkedPageScraper {
         target: { tabId },
         func: async (budgetMs: number) => {
           const startTime = Date.now();
-          const remaining = () => Math.max(0, budgetMs - (Date.now() - startTime));
+          const remaining = () =>
+            Math.max(0, budgetMs - (Date.now() - startTime));
 
           const viewportHeight = window.innerHeight;
           const buffer = 100; // 100px buffer for "at bottom" detection
@@ -663,7 +749,8 @@ export class LinkedPageScraper {
               }
 
               // Check if at bottom
-              const isAtBottom = currentScrollY + viewportHeight >= currentScrollHeight - buffer;
+              const isAtBottom =
+                currentScrollY + viewportHeight >= currentScrollHeight - buffer;
               if (isAtBottom) {
                 stableCount++;
                 if (stableCount >= stabilityThreshold) break;
@@ -676,7 +763,9 @@ export class LinkedPageScraper {
                 top: currentScrollY + viewportHeight,
                 behavior: "smooth",
               });
-              await new Promise((resolve) => setTimeout(resolve, Math.min(300, remaining())));
+              await new Promise((resolve) =>
+                setTimeout(resolve, Math.min(300, remaining())),
+              );
               iterations++;
             }
           }
@@ -746,7 +835,12 @@ export class LinkedPageScraper {
     }
 
     if (newImages.length > 0) {
-      const downloadedMap = await addImageFiles(newImages, storage, pageUrl, sendMessage);
+      const downloadedMap = await addImageFiles(
+        newImages,
+        storage,
+        pageUrl,
+        sendMessage,
+      );
       // Merge into local and global maps
       for (const [key, value] of downloadedMap) {
         localImageFilenameMap.set(key, value);
@@ -783,7 +877,11 @@ export class LinkedPageScraper {
     for (const url of resources.documents) {
       const fullUrl = new URL(url, pageUrl).href;
       if (!this.assetRegistry.has(fullUrl)) {
-        this.assetRegistry.register(fullUrl, `documents/${fixFilename(url)}`, 0);
+        this.assetRegistry.register(
+          fullUrl,
+          `documents/${fixFilename(url)}`,
+          0,
+        );
       }
     }
 

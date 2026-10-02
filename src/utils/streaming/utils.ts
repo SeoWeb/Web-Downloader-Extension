@@ -1,5 +1,4 @@
-
-import { StreamingDownload } from '../../types/streaming';
+import { StreamingDownload } from "../../types/streaming";
 
 /**
  * Generate a unique download ID
@@ -18,7 +17,7 @@ export function simpleHash(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
   return Math.abs(hash).toString(36);
@@ -36,7 +35,10 @@ export function calculateDownloadSpeed(download: StreamingDownload): number {
 /**
  * Calculate estimated time remaining (ETA) in seconds
  */
-export function calculateETA(download: StreamingDownload, speed: number): number {
+export function calculateETA(
+  download: StreamingDownload,
+  speed: number,
+): number {
   if (speed === 0 || download.totalSize === 0) return 0;
   const remainingBytes = download.totalSize - download.downloadedSize;
   return remainingBytes / speed;
@@ -45,10 +47,12 @@ export function calculateETA(download: StreamingDownload, speed: number): number
 /**
  * Check if a promise is settled
  */
-export async function isPromiseSettled(promise: Promise<any>): Promise<boolean> {
+export async function isPromiseSettled(
+  promise: Promise<any>,
+): Promise<boolean> {
   try {
-    await Promise.race([promise, Promise.resolve('pending')]);
-    return promise !== Promise.resolve('pending');
+    await Promise.race([promise, Promise.resolve("pending")]);
+    return promise !== Promise.resolve("pending");
   } catch {
     return true;
   }

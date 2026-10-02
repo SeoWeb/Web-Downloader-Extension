@@ -45,13 +45,13 @@ export class AdaptiveMemoryManager {
   getMemoryStats(): MemoryStats {
     // Chrome specific API
     const performanceMemory = (performance as any).memory;
-    
+
     if (performanceMemory) {
       const jsHeapSizeLimit = performanceMemory.jsHeapSizeLimit;
       const totalJSHeapSize = performanceMemory.totalJSHeapSize;
       const usedJSHeapSize = performanceMemory.usedJSHeapSize;
       const availableMemory = jsHeapSizeLimit - usedJSHeapSize;
-      
+
       const memoryUsageRatio = usedJSHeapSize / jsHeapSizeLimit;
       let memoryPressureLevel: MemoryPressureLevel;
 
@@ -89,11 +89,13 @@ export class AdaptiveMemoryManager {
    */
   calculateSafeHtmlLimit(): number {
     const stats = this.getMemoryStats();
-    const safeLimit = Math.floor(stats.availableMemory * this.config.SAFETY_FACTOR);
-    
+    const safeLimit = Math.floor(
+      stats.availableMemory * this.config.SAFETY_FACTOR,
+    );
+
     return Math.max(
       this.config.MIN_LIMIT,
-      Math.min(safeLimit, this.config.MAX_LIMIT)
+      Math.min(safeLimit, this.config.MAX_LIMIT),
     );
   }
 
@@ -103,10 +105,10 @@ export class AdaptiveMemoryManager {
   calculateSafeChunkSize(): number {
     const stats = this.getMemoryStats();
     const htmlLimit = this.calculateSafeHtmlLimit();
-    
+
     // For high memory pressure, use smaller chunks
     let chunkSize = this.config.CHUNK_SIZE_LIMIT;
-    
+
     switch (stats.memoryPressureLevel) {
       case MemoryPressureLevel.HIGH:
         chunkSize = Math.floor(this.config.CHUNK_SIZE_LIMIT * 0.5);
@@ -127,10 +129,11 @@ export class AdaptiveMemoryManager {
   checkMemoryAvailability(requiredBytes: number): boolean {
     const stats = this.getMemoryStats();
     const safeLimit = this.calculateSafeHtmlLimit();
-    
+
     // Check if we have enough available memory with safety factor
-    const availableForOperation = stats.availableMemory * this.config.SAFETY_FACTOR;
-    
+    const availableForOperation =
+      stats.availableMemory * this.config.SAFETY_FACTOR;
+
     return availableForOperation >= requiredBytes && requiredBytes <= safeLimit;
   }
 
@@ -146,7 +149,10 @@ export class AdaptiveMemoryManager {
    */
   shouldTriggerCleanup(): boolean {
     const level = this.getMemoryPressureLevel();
-    return level === MemoryPressureLevel.HIGH || level === MemoryPressureLevel.CRITICAL;
+    return (
+      level === MemoryPressureLevel.HIGH ||
+      level === MemoryPressureLevel.CRITICAL
+    );
   }
 
   /**
@@ -160,40 +166,40 @@ export class AdaptiveMemoryManager {
    * Get recommended action based on current memory pressure
    */
   getRecommendedAction(): {
-    action: 'continue' | 'cleanup' | 'pause' | 'stop';
+    action: "continue" | "cleanup" | "pause" | "stop";
     reason: string;
   } {
     const stats = this.getMemoryStats();
-    
+
     switch (stats.memoryPressureLevel) {
       case MemoryPressureLevel.LOW:
         return {
-          action: 'continue',
-          reason: 'Memory usage is low, operations can continue normally',
+          action: "continue",
+          reason: "Memory usage is low, operations can continue normally",
         };
-      
+
       case MemoryPressureLevel.MEDIUM:
         return {
-          action: 'continue',
-          reason: 'Memory usage is moderate, consider monitoring',
+          action: "continue",
+          reason: "Memory usage is moderate, consider monitoring",
         };
-      
+
       case MemoryPressureLevel.HIGH:
         return {
-          action: 'cleanup',
-          reason: 'Memory usage is high, cleanup recommended',
+          action: "cleanup",
+          reason: "Memory usage is high, cleanup recommended",
         };
-      
+
       case MemoryPressureLevel.CRITICAL:
         return {
-          action: 'pause',
-          reason: 'Memory usage is critical, operations should be paused',
+          action: "pause",
+          reason: "Memory usage is critical, operations should be paused",
         };
-      
+
       default:
         return {
-          action: 'continue',
-          reason: 'Unknown memory state, proceeding with caution',
+          action: "continue",
+          reason: "Unknown memory state, proceeding with caution",
         };
     }
   }
@@ -221,7 +227,7 @@ export class AdaptiveMemoryManager {
     const stats = this.getMemoryStats();
     const htmlLimit = this.calculateSafeHtmlLimit();
     const chunkSize = this.calculateSafeChunkSize();
-    
+
     return `Memory: ${this.formatBytes(stats.usedJSHeapSize)}/${this.formatBytes(stats.jsHeapSizeLimit)} (${Math.round((stats.usedJSHeapSize / stats.jsHeapSizeLimit) * 100)}%), Pressure: ${stats.memoryPressureLevel}, HTML Limit: ${this.formatBytes(htmlLimit)}, Chunk Size: ${this.formatBytes(chunkSize)}`;
   }
 }

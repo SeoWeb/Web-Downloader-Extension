@@ -2,7 +2,10 @@ import { LinkedPageScraper } from "./linked-page-scraper";
 
 const scrapers = new Map<number, LinkedPageScraper>();
 
-export function setCurrentScraper(tabId: number, scraper: LinkedPageScraper | null) {
+export function setCurrentScraper(
+  tabId: number,
+  scraper: LinkedPageScraper | null,
+) {
   if (scraper === null) {
     scrapers.delete(tabId);
   } else {

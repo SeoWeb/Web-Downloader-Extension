@@ -3,7 +3,7 @@
  * Implements per-domain request rate limiting to avoid overwhelming servers
  */
 
-import { DomainLimiter as IDomainLimiter } from '../types/queue';
+import { DomainLimiter as IDomainLimiter } from "../types/queue";
 
 export class DomainLimiter implements IDomainLimiter {
   public readonly domain: string;
@@ -24,7 +24,7 @@ export class DomainLimiter implements IDomainLimiter {
   constructor(domain: string, maxRequestsPerSecond: number = 8) {
     this.domain = domain;
     this.maxRequestsPerSecond = maxRequestsPerSecond;
-    
+
     // Initialize robots.txt crawl delay
     this.initializeCrawlDelay();
   }
@@ -34,15 +34,15 @@ export class DomainLimiter implements IDomainLimiter {
    */
   public canMakeRequest(): boolean {
     const now = Date.now();
-    
+
     // Clean up old timestamps (older than 1 second)
     this.cleanupOldTimestamps(now);
-    
+
     // Check if we're at the rate limit
     if (this.requestTimestamps.length >= this.maxRequestsPerSecond) {
       return false;
     }
-    
+
     // Check crawl delay from robots.txt
     if (this.respectRobotsTxt && this.crawlDelay > 0) {
       const timeSinceLastRequest = now - this.lastRequestTime;
@@ -50,12 +50,12 @@ export class DomainLimiter implements IDomainLimiter {
         return false;
       }
     }
-    
+
     // Check connection pool availability
     if (this.activeConnections >= this.connectionPoolSize) {
       return false;
     }
-    
+
     return true;
   }
 
@@ -83,22 +83,22 @@ export class DomainLimiter implements IDomainLimiter {
    */
   public getWaitTime(): number {
     const now = Date.now();
-    
+
     // Clean up old timestamps
     this.cleanupOldTimestamps(now);
-    
+
     // If we're at the rate limit, calculate wait time
     if (this.requestTimestamps.length >= this.maxRequestsPerSecond) {
       const oldestRequest = this.requestTimestamps[0];
       return Math.max(0, 1000 - (now - oldestRequest));
     }
-    
+
     // Check crawl delay
     if (this.respectRobotsTxt && this.crawlDelay > 0) {
       const timeSinceLastRequest = now - this.lastRequestTime;
       return Math.max(0, this.crawlDelay - timeSinceLastRequest);
     }
-    
+
     return 0;
   }
 
@@ -113,21 +113,30 @@ export class DomainLimiter implements IDomainLimiter {
         this.maxRequestsPerSecond = Math.max(1, Math.floor(1000 / retryAfter));
       } else {
         // Reduce rate limit by 50%
-        this.maxRequestsPerSecond = Math.max(1, Math.floor(this.maxRequestsPerSecond * 0.5));
+        this.maxRequestsPerSecond = Math.max(
+          1,
+          Math.floor(this.maxRequestsPerSecond * 0.5),
+        );
       }
     }
-    
+
     // If we get 5xx errors, reduce rate limit
     else if (responseStatus >= 500 && responseStatus < 600) {
-      this.maxRequestsPerSecond = Math.max(1, Math.floor(this.maxRequestsPerSecond * 0.8));
+      this.maxRequestsPerSecond = Math.max(
+        1,
+        Math.floor(this.maxRequestsPerSecond * 0.8),
+      );
     }
-    
+
     // If we get successful responses, we can gradually increase
     else if (responseStatus >= 200 && responseStatus < 300) {
       // Gradually increase rate limit back to default
       const defaultRate = 2; // Default rate
       if (this.maxRequestsPerSecond < defaultRate) {
-        this.maxRequestsPerSecond = Math.min(defaultRate, this.maxRequestsPerSecond + 1);
+        this.maxRequestsPerSecond = Math.min(
+          defaultRate,
+          this.maxRequestsPerSecond + 1,
+        );
       }
     }
   }
@@ -146,14 +155,15 @@ export class DomainLimiter implements IDomainLimiter {
   } {
     const now = Date.now();
     this.cleanupOldTimestamps(now);
-    
+
     return {
       domain: this.domain,
       currentRate: this.requestTimestamps.length,
       maxRate: this.maxRequestsPerSecond,
       activeRequests: this.activeRequests,
       activeConnections: this.activeConnections,
-      connectionPoolUtilization: this.activeConnections / this.connectionPoolSize,
+      connectionPoolUtilization:
+        this.activeConnections / this.connectionPoolSize,
       crawlDelay: this.crawlDelay,
     };
   }
@@ -179,9 +189,9 @@ export class DomainLimiter implements IDomainLimiter {
 
     const now = Date.now();
     const cachedTime = this.robotsTxtCacheTime.get(this.domain);
-    
+
     // Check if we have a fresh cache
-    if (cachedTime && (now - cachedTime) < this.ROBOTS_CACHE_TTL) {
+    if (cachedTime && now - cachedTime < this.ROBOTS_CACHE_TTL) {
       const cachedDelay = this.robotsTxtCache.get(this.domain);
       if (cachedDelay !== undefined) {
         this.crawlDelay = cachedDelay;
@@ -201,14 +211,14 @@ export class DomainLimiter implements IDomainLimiter {
       // Fetch robots.txt with shorter timeout
       const robotsUrl = `https://${this.domain}/robots.txt`;
       const response = await fetch(robotsUrl, {
-        method: 'GET',
+        method: "GET",
         signal: AbortSignal.timeout(2000), // Reduced from 5 seconds to 2 seconds
       });
 
       if (response.ok) {
         const robotsText = await response.text();
         const crawlDelay = this.parseCrawlDelay(robotsText);
-        
+
         this.crawlDelay = crawlDelay;
         this.robotsTxtCache.set(this.domain, crawlDelay);
         this.robotsTxtCacheTime.set(this.domain, Date.now());
@@ -222,23 +232,23 @@ export class DomainLimiter implements IDomainLimiter {
    * Parse crawl delay from robots.txt content
    */
   private parseCrawlDelay(robotsText: string): number {
-    const lines = robotsText.split('\n');
-    
+    const lines = robotsText.split("\n");
+
     for (const line of lines) {
       const trimmedLine = line.trim().toLowerCase();
-      
+
       // Look for "Crawl-delay:" directive
-      if (trimmedLine.startsWith('crawl-delay:')) {
-        const delayStr = trimmedLine.substring('crawl-delay:'.length).trim();
+      if (trimmedLine.startsWith("crawl-delay:")) {
+        const delayStr = trimmedLine.substring("crawl-delay:".length).trim();
         const delay = parseFloat(delayStr);
-        
+
         if (!isNaN(delay)) {
           // Convert to milliseconds
           return Math.floor(delay * 1000);
         }
       }
     }
-    
+
     return 0;
   }
 
@@ -248,7 +258,7 @@ export class DomainLimiter implements IDomainLimiter {
   private cleanupOldTimestamps(now: number): void {
     const oneSecondAgo = now - 1000;
     this.requestTimestamps = this.requestTimestamps.filter(
-      timestamp => timestamp > oneSecondAgo
+      (timestamp) => timestamp > oneSecondAgo,
     );
   }
 }
@@ -263,15 +273,18 @@ export class DomainLimiterFactory {
   /**
    * Get or create a domain limiter for the given domain
    */
-  public static getLimiter(domain: string, customRateLimit?: number): DomainLimiter {
+  public static getLimiter(
+    domain: string,
+    customRateLimit?: number,
+  ): DomainLimiter {
     const rateLimit = customRateLimit || this.defaultRateLimit;
-    
+
     let limiter = this.limiters.get(domain);
     if (!limiter) {
       limiter = new DomainLimiter(domain, rateLimit);
       this.limiters.set(domain, limiter);
     }
-    
+
     return limiter;
   }
 }

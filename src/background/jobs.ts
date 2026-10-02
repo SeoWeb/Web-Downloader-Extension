@@ -27,5 +27,12 @@ export async function startDownload(
   addMessage: (message: string | { key: string; options?: any }) => void,
   tabId?: number,
 ) {
-  return await downloadResources(html, tabUrl, downloadOptions, addMessage, undefined, tabId);
+  return await downloadResources(
+    html,
+    tabUrl,
+    downloadOptions,
+    addMessage,
+    undefined,
+    tabId,
+  );
 }

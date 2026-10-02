@@ -28,9 +28,9 @@ export function PagePocketAuth() {
       }
     } catch (err) {
       if (err instanceof PagePocketAuthError) {
-        setError(err.message || t('filter.cloudAuthError'));
+        setError(err.message || t("filter.cloudAuthError"));
       } else {
-        setError(t('filter.cloudAuthError'));
+        setError(t("filter.cloudAuthError"));
       }
     }
   };
@@ -45,9 +45,7 @@ export function PagePocketAuth() {
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
         <Cloud className="w-6 h-6 text-indigo-500" />
-        <h2 className="text-lg font-semibold text-slate-900">
-          PagePocket
-        </h2>
+        <h2 className="text-lg font-semibold text-slate-900">PagePocket</h2>
       </div>
 
       {/* Tab selector */}
@@ -60,7 +58,7 @@ export function PagePocketAuth() {
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
-          {t('filter.cloudLogin')}
+          {t("filter.cloudLogin")}
         </button>
         <button
           onClick={() => switchTab("register")}
@@ -70,7 +68,7 @@ export function PagePocketAuth() {
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
-          {t('filter.cloudRegister')}
+          {t("filter.cloudRegister")}
         </button>
       </div>
 
@@ -91,7 +89,7 @@ export function PagePocketAuth() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={t('filter.cloudName')}
+              placeholder={t("filter.cloudName")}
               required
               className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
@@ -104,7 +102,7 @@ export function PagePocketAuth() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder={t('filter.cloudEmail')}
+            placeholder={t("filter.cloudEmail")}
             required
             className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
@@ -116,7 +114,7 @@ export function PagePocketAuth() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={t('filter.cloudPassword')}
+            placeholder={t("filter.cloudPassword")}
             required
             minLength={8}
             className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -128,21 +126,21 @@ export function PagePocketAuth() {
           disabled={isAuthLoading}
           className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
-          {isAuthLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : null}
-          {tab === "login" ? t('filter.cloudLogin') : t('filter.cloudRegister')}
+          {isAuthLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {tab === "login" ? t("filter.cloudLogin") : t("filter.cloudRegister")}
         </button>
       </form>
 
       {/* Switch tab link */}
       <p className="text-xs text-center text-slate-500">
-        {tab === "login" ? t('filter.cloudNoAccount') : t('filter.cloudHasAccount')}{" "}
+        {tab === "login"
+          ? t("filter.cloudNoAccount")
+          : t("filter.cloudHasAccount")}{" "}
         <button
           onClick={() => switchTab(tab === "login" ? "register" : "login")}
           className="text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
         >
-          {tab === "login" ? t('filter.cloudRegister') : t('filter.cloudLogin')}
+          {tab === "login" ? t("filter.cloudRegister") : t("filter.cloudLogin")}
         </button>
       </p>
     </div>

@@ -49,7 +49,7 @@ export async function fetchUrl(
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
       // Extract origin for Referer header
-      const urlOrigin = new URL(fullUrl).origin + '/';
+      const urlOrigin = new URL(fullUrl).origin + "/";
 
       const response = await fetch(fullUrl, {
         signal: controller.signal,
@@ -60,8 +60,8 @@ export async function fetchUrl(
           Accept:
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.5",
-          "Referer": urlOrigin,
-          "Origin": urlOrigin.replace(/\/$/, ''),
+          Referer: urlOrigin,
+          Origin: urlOrigin.replace(/\/$/, ""),
         },
       });
 
@@ -69,12 +69,15 @@ export async function fetchUrl(
 
       if (response.status >= 400) {
         // Don't retry permanent 4xx errors (except 408 timeout and 429 rate limit)
-        const isPermanentError = response.status >= 400 && response.status < 500 && 
-                                 response.status !== 408 && response.status !== 429;
+        const isPermanentError =
+          response.status >= 400 &&
+          response.status < 500 &&
+          response.status !== 408 &&
+          response.status !== 429;
         if (isPermanentError) {
           return null; // Don't waste time retrying
         }
-        
+
         if (i === retries - 1) return null;
         await new Promise((res) => setTimeout(res, delay * (i + 1))); // Exponential backoff
         continue;
@@ -130,20 +133,23 @@ export async function fetchUrl(
       if (i < retries - 1) {
         try {
           // For CSS files, try no-cors mode first
-          const isCssFile = fullUrl.toLowerCase().includes('.css');
+          const isCssFile = fullUrl.toLowerCase().includes(".css");
           const response = await fetch(fullUrl, {
             method: "GET",
             mode: isCssFile ? "no-cors" : "cors",
             cache: "no-cache",
             credentials: "omit",
-            headers: isCssFile ? {
-              'Accept': 'text/css,*/*;q=0.1',
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            } : undefined,
+            headers: isCssFile
+              ? {
+                  Accept: "text/css,*/*;q=0.1",
+                  "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                }
+              : undefined,
           });
 
           // For no-cors responses, we need to handle them differently
-          if (response.type === 'opaque') {
+          if (response.type === "opaque") {
             // For CSS files, opaque responses usually mean the fetch succeeded but we can't access the content
             // This is better than failing completely, so we'll try to use it
             return response;
@@ -338,8 +344,7 @@ export function fixFilename(filename: string) {
         .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-")
         .replace(/-+/g, "-")
         .replace(/^-+|-+$/g, "")
-        .slice(0, 100) ||
-      "file";
+        .slice(0, 100) || "file";
 
     const cleanExtension = extension.toLowerCase();
     return queryHash
@@ -354,12 +359,9 @@ export function fixFilename(filename: string) {
       .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-+|-+$/g, "")
-      .slice(0, 100) ||
-    "file";
+      .slice(0, 100) || "file";
 
-  return queryHash
-    ? `${cleanName}_${queryHash}.bin`
-    : `${cleanName}.bin`;
+  return queryHash ? `${cleanName}_${queryHash}.bin` : `${cleanName}.bin`;
 }
 
 /**
@@ -437,8 +439,14 @@ export function generateImageFilename(
   // Try to extract pathname from URL
   let pathname: string;
   try {
-    if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://") || cleanUrl.startsWith("//")) {
-      pathname = new URL(cleanUrl.startsWith("//") ? "https:" + cleanUrl : cleanUrl).pathname;
+    if (
+      cleanUrl.startsWith("http://") ||
+      cleanUrl.startsWith("https://") ||
+      cleanUrl.startsWith("//")
+    ) {
+      pathname = new URL(
+        cleanUrl.startsWith("//") ? "https:" + cleanUrl : cleanUrl,
+      ).pathname;
     } else {
       pathname = cleanUrl;
     }
@@ -448,11 +456,23 @@ export function generateImageFilename(
 
   // Get the last path segment
   const segments = pathname.split("/").filter((s) => s.length > 0);
-  const lastSegment = segments.length > 0 ? segments[segments.length - 1] : "image";
+  const lastSegment =
+    segments.length > 0 ? segments[segments.length - 1] : "image";
 
   // Check if the last segment has a valid image extension
   const imageExtensions = [
-    "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "avif", "heic", "tiff", "tif",
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "webp",
+    "svg",
+    "bmp",
+    "ico",
+    "avif",
+    "heic",
+    "tiff",
+    "tif",
   ];
   const dotIndex = lastSegment.lastIndexOf(".");
   const hasImageExtension =
@@ -487,8 +507,7 @@ export function generateImageFilename(
       .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-+|-+$/g, "")
-      .slice(0, 120) ||
-    "image";
+      .slice(0, 120) || "image";
 
   // Determine extension from Content-Type if available, otherwise .bin
   let extension = "bin";

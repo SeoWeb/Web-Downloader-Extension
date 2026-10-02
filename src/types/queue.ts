@@ -4,32 +4,32 @@
  */
 
 export enum RequestPriority {
-  CRITICAL = 1,    // HTML, critical CSS
-  HIGH = 2,        // JS, fonts
-  NORMAL = 3,      // Images, documents
-  LOW = 4          // Optional resources
+  CRITICAL = 1, // HTML, critical CSS
+  HIGH = 2, // JS, fonts
+  NORMAL = 3, // Images, documents
+  LOW = 4, // Optional resources
 }
 
 export enum ResourceType {
-  HTML = 'HTML',
-  CSS = 'CSS',
-  JS = 'JS',
-  IMAGE = 'IMAGE',
-  FONT = 'FONT',
-  DOCUMENT = 'DOCUMENT',
-  VIDEO = 'VIDEO',
-  AUDIO = 'AUDIO',
-  OTHER = 'OTHER'
+  HTML = "HTML",
+  CSS = "CSS",
+  JS = "JS",
+  IMAGE = "IMAGE",
+  FONT = "FONT",
+  DOCUMENT = "DOCUMENT",
+  VIDEO = "VIDEO",
+  AUDIO = "AUDIO",
+  OTHER = "OTHER",
 }
 
 export enum RequestStatus {
-  QUEUED = 'queued',
-  PENDING = 'pending',
-  DOWNLOADING = 'downloading',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-  RETRYING = 'retrying',
-  CANCELLED = 'cancelled'
+  QUEUED = "queued",
+  PENDING = "pending",
+  DOWNLOADING = "downloading",
+  COMPLETED = "completed",
+  FAILED = "failed",
+  RETRYING = "retrying",
+  CANCELLED = "cancelled",
 }
 
 export interface QueuedRequest {
@@ -181,7 +181,7 @@ export interface ThrottlingConfig {
 
 export interface NetworkCondition {
   /** Current network quality */
-  quality: 'slow' | 'fast' | 'unknown';
+  quality: "slow" | "fast" | "unknown";
   /** Estimated bandwidth in bytes per second */
   bandwidth: number;
   /** Current latency in milliseconds */
@@ -208,7 +208,7 @@ export interface QueueEventListeners {
   /** Called when queue is empty */
   onEmpty?: () => void;
   /** Called when memory pressure changes */
-  onMemoryPressure?: (level: 'low' | 'medium' | 'high' | 'critical') => void;
+  onMemoryPressure?: (level: "low" | "medium" | "high" | "critical") => void;
   /** Called when network conditions change */
   onNetworkChange?: (condition: NetworkCondition) => void;
 }
@@ -251,88 +251,90 @@ export const DEFAULT_QUEUE_OPTIONS: RequestQueueOptions = {
 
 // Utility functions
 export function getResourceTypeFromUrl(url: string): ResourceType {
-  const extension = url.split('.').pop()?.toLowerCase();
-  
+  const extension = url.split(".").pop()?.toLowerCase();
+
   switch (extension) {
-    case 'html':
-    case 'htm':
-    case 'xhtml':
+    case "html":
+    case "htm":
+    case "xhtml":
       return ResourceType.HTML;
-    
-    case 'css':
+
+    case "css":
       return ResourceType.CSS;
-    
-    case 'js':
-    case 'mjs':
-    case 'jsx':
-    case 'ts':
-    case 'tsx':
+
+    case "js":
+    case "mjs":
+    case "jsx":
+    case "ts":
+    case "tsx":
       return ResourceType.JS;
-    
-    case 'jpg':
-    case 'jpeg':
-    case 'png':
-    case 'gif':
-    case 'webp':
-    case 'svg':
-    case 'bmp':
-    case 'ico':
+
+    case "jpg":
+    case "jpeg":
+    case "png":
+    case "gif":
+    case "webp":
+    case "svg":
+    case "bmp":
+    case "ico":
       return ResourceType.IMAGE;
-    
-    case 'woff':
-    case 'woff2':
-    case 'ttf':
-    case 'otf':
-    case 'eot':
+
+    case "woff":
+    case "woff2":
+    case "ttf":
+    case "otf":
+    case "eot":
       return ResourceType.FONT;
-    
-    case 'pdf':
-    case 'doc':
-    case 'docx':
-    case 'xls':
-    case 'xlsx':
-    case 'ppt':
-    case 'pptx':
+
+    case "pdf":
+    case "doc":
+    case "docx":
+    case "xls":
+    case "xlsx":
+    case "ppt":
+    case "pptx":
       return ResourceType.DOCUMENT;
-    
-    case 'mp4':
-    case 'webm':
-    case 'avi':
-    case 'mov':
-    case 'mkv':
+
+    case "mp4":
+    case "webm":
+    case "avi":
+    case "mov":
+    case "mkv":
       return ResourceType.VIDEO;
-    
-    case 'mp3':
-    case 'wav':
-    case 'ogg':
-    case 'flac':
-    case 'aac':
+
+    case "mp3":
+    case "wav":
+    case "ogg":
+    case "flac":
+    case "aac":
       return ResourceType.AUDIO;
-    
+
     default:
       return ResourceType.OTHER;
   }
 }
 
-export function getPriorityForResourceType(type: ResourceType): RequestPriority {
+export function getPriorityForResourceType(
+  type: ResourceType,
+): RequestPriority {
   switch (type) {
     case ResourceType.HTML:
       return RequestPriority.CRITICAL;
-    
+
     case ResourceType.CSS:
     case ResourceType.JS:
     case ResourceType.FONT:
       return RequestPriority.HIGH;
-    
+
     case ResourceType.IMAGE:
     case ResourceType.DOCUMENT:
       return RequestPriority.NORMAL;
-    
+
     case ResourceType.VIDEO:
     case ResourceType.AUDIO:
     case ResourceType.OTHER:
       return RequestPriority.LOW;
-    
+
     default:
       return RequestPriority.NORMAL;
   }
@@ -343,6 +345,6 @@ export function extractDomain(url: string): string {
     const urlObj = new URL(url);
     return urlObj.hostname;
   } catch {
-    return 'unknown';
+    return "unknown";
   }
 }

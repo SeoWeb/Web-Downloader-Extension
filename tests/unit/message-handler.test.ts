@@ -12,7 +12,6 @@
 import { messageWorker } from "../../src/background/message";
 import { messageActions } from "../../src/common/message";
 import { serverClient } from "../../src/background/server-client";
-import { startDownload } from "../../src/background/jobs";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -346,35 +345,6 @@ describe("messageWorker — server-mode message actions", () => {
     });
   });
 
-  // -----------------------------------------------------------------------
-  // 13.1 — SERVER_LOCAL_FALLBACK
-  // -----------------------------------------------------------------------
-  describe("SERVER_LOCAL_FALLBACK", () => {
-    it("clears active session and restarts download in local mode", async () => {
-
-      const result = await messageWorker(
-        messageActions.SERVER_LOCAL_FALLBACK,
-        {
-          html: "<p>page html</p>",
-          tabUrl: "https://example.com",
-          downloadOptions: { singleFile: false },
-          tabId: 42,
-        },
-        addMessage,
-      );
-
-      // startDownload should have been called with _forceLocal: true
-      expect(startDownload).toHaveBeenCalledWith(
-        "<p>page html</p>",
-        "https://example.com",
-        expect.objectContaining({ _forceLocal: true }),
-        expect.any(Function),
-        42,
-      );
-    });
-  });
-
-  // -----------------------------------------------------------------------
   // 13.4 — Error handling consistency
   // -----------------------------------------------------------------------
   describe("error handling consistency", () => {

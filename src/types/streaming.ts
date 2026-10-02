@@ -60,14 +60,14 @@ export interface StreamingDownload {
 }
 
 export type StreamingDownloadStatus =
-  | 'pending'
-  | 'starting'
-  | 'streaming'
-  | 'paused'
-  | 'completed'
-  | 'failed'
-  | 'aborted'
-  | 'resuming';
+  | "pending"
+  | "starting"
+  | "streaming"
+  | "paused"
+  | "completed"
+  | "failed"
+  | "aborted"
+  | "resuming";
 
 export interface StreamingOptions {
   /** Size of each chunk in bytes (default: 1MB) */
@@ -139,7 +139,7 @@ export interface ProgressPersistence {
 
 export interface MemoryPressureInfo {
   /** Current memory usage level */
-  level: 'low' | 'medium' | 'high' | 'critical';
+  level: "low" | "medium" | "high" | "critical";
   /** Total memory used in bytes */
   bytesUsed: number;
   /** Memory limit in bytes */
@@ -173,7 +173,10 @@ export interface StreamingEventListeners {
 
 export interface StreamProcessor {
   /** Process a chunk of data */
-  processChunk(chunk: ArrayBuffer, context: ProcessingContext): Promise<ArrayBuffer>;
+  processChunk(
+    chunk: ArrayBuffer,
+    context: ProcessingContext,
+  ): Promise<ArrayBuffer>;
   /** Get processor metadata */
   getMetadata(): ProcessorMetadata;
 }
@@ -252,8 +255,8 @@ export const DEFAULT_CHUNKED_ZIP_OPTIONS: ChunkedZipOptions = {
 };
 
 export const MEMORY_THRESHOLDS = {
-  LOW: 0.6,      // 60%
-  MEDIUM: 0.75,  // 75%
-  HIGH: 0.85,    // 85%
+  LOW: 0.6, // 60%
+  MEDIUM: 0.75, // 75%
+  HIGH: 0.85, // 85%
   CRITICAL: 0.95, // 95%
 } as const;

@@ -11,7 +11,7 @@ export default function Heading() {
           <div className="relative">
             <img
               src="/icons/128x128.png"
-              alt={t('app.iconAlt')}
+              alt={t("app.iconAlt")}
               className="size-12"
             />
           </div>
@@ -19,7 +19,7 @@ export default function Heading() {
         <LanguageSwitcher />
       </div>
       <h1 className="mt-2 text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-brand to-slate-800">
-        {t('app.title')}
+        {t("app.title")}
       </h1>
     </div>
   );

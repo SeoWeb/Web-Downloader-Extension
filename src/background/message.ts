@@ -59,7 +59,10 @@ async function createServerSession(
  * Set the active server session ID for HTML chunk uploads during scrolling.
  * Called by download-core.ts when a server session is created.
  */
-export function setActiveServerSession(tabId: number, sessionId: string | null): void {
+export function setActiveServerSession(
+  tabId: number,
+  sessionId: string | null,
+): void {
   const state = getServerSessionState(tabId);
   state.sessionId = sessionId;
   state.scrollIndex = 0;
@@ -83,7 +86,9 @@ export function getActiveServerSessionId(tabId: number): string | null {
  */
 export function hasStreamedHtmlChunks(tabId: number): boolean {
   const state = serverSessionStates.get(tabId);
-  return state !== undefined && state.sessionId !== null && state.scrollIndex > 0;
+  return (
+    state !== undefined && state.sessionId !== null && state.scrollIndex > 0
+  );
 }
 
 export async function sendMessageToPanel(
@@ -139,10 +144,14 @@ export async function messageWorker(
       const assemblyJobId = `assembly-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       try {
         if (data.tabUrl) {
-          const result = await createServerSession(data.tabUrl, {
-            singleFile: data.downloadOptions?.singleFile ?? false,
-            retentionDays: 1,
-          }, data.tabId);
+          const result = await createServerSession(
+            data.tabUrl,
+            {
+              singleFile: data.downloadOptions?.singleFile ?? false,
+              retentionDays: 1,
+            },
+            data.tabId,
+          );
           if (!result.success) {
             return { success: false, error: result.error };
           }
@@ -271,14 +280,21 @@ export async function messageWorker(
       // for a new download).
       // Delegates to shared createServerSession helper (unified with
       // INITIALIZE_DIFFERENTIAL_SCRAPING session creation).
-      return await createServerSession(data.url, data.options, data.tabId, data.setActive ?? true);
+      return await createServerSession(
+        data.url,
+        data.options,
+        data.tabId,
+        data.setActive ?? true,
+      );
 
     case messageActions.SERVER_UPLOAD_HTML_CHUNK:
       // Upload an HTML chunk to the active server session.
       // Used by the sidepanel to stream HTML during scrolling (task 13.3)
       // instead of accumulating chunks in downloadResponse.
       try {
-        const state = data.tabId ? getServerSessionState(data.tabId) : undefined;
+        const state = data.tabId
+          ? getServerSessionState(data.tabId)
+          : undefined;
         const targetSessionId = data.sessionId || state?.sessionId;
         if (!targetSessionId) {
           return {
@@ -306,7 +322,8 @@ export async function messageWorker(
       // Signal that all HTML chunks have been uploaded.
       // Transitions the server session from "scraping" to "uploading".
       try {
-        const scSessionId = data.sessionId || getActiveServerSessionId(data.tabId);
+        const scSessionId =
+          data.sessionId || getActiveServerSessionId(data.tabId);
         if (!scSessionId) {
           return {
             success: false,
@@ -330,7 +347,8 @@ export async function messageWorker(
       // Used for ad-hoc resource uploads from the UI layer when
       // ServerStorageAdapter is not in play (e.g., retry scenarios).
       try {
-        const urSessionId = data.sessionId || getActiveServerSessionId(data.tabId);
+        const urSessionId =
+          data.sessionId || getActiveServerSessionId(data.tabId);
         if (!urSessionId) {
           return {
             success: false,
@@ -355,17 +373,15 @@ export async function messageWorker(
     case messageActions.SERVER_UPLOAD_CONTENT:
       // Upload text content for content.txt inclusion in the ZIP.
       try {
-        const ucSessionId = data.sessionId || getActiveServerSessionId(data.tabId);
+        const ucSessionId =
+          data.sessionId || getActiveServerSessionId(data.tabId);
         if (!ucSessionId) {
           return {
             success: false,
             error: "No active server session",
           };
         }
-        const result = await serverClient.uploadContent(
-          ucSessionId,
-          data.text,
-        );
+        const result = await serverClient.uploadContent(ucSessionId, data.text);
         return { success: true, result };
       } catch (error) {
         return {
@@ -378,7 +394,8 @@ export async function messageWorker(
       // Finalize a server session — trigger assembly pipeline.
       // The session must be in "uploading" status.
       try {
-        const fsSessionId = data.sessionId || getActiveServerSessionId(data.tabId);
+        const fsSessionId =
+          data.sessionId || getActiveServerSessionId(data.tabId);
         if (!fsSessionId) {
           return {
             success: false,
@@ -398,7 +415,8 @@ export async function messageWorker(
       // Get the current status of a server session.
       // Used for polling assembly progress from the UI.
       try {
-        const ssSessionId = data.sessionId || getActiveServerSessionId(data.tabId);
+        const ssSessionId =
+          data.sessionId || getActiveServerSessionId(data.tabId);
         if (!ssSessionId) {
           return {
             success: false,

@@ -8,30 +8,35 @@ import {
   NetworkCondition,
   QueueEventListeners,
   DEFAULT_THROTTLING_CONFIG,
-} from '../types/queue';
-import { memoryManager } from './MemoryManager';
+} from "../types/queue";
+import { memoryManager } from "./MemoryManager";
 
 export class ThrottlingManager {
   private config: ThrottlingConfig;
   private eventListeners: QueueEventListeners = {};
   private networkCondition: NetworkCondition = {
-    quality: 'unknown',
+    quality: "unknown",
     bandwidth: 0,
     latency: 0,
     congested: false,
     measuredAt: 0,
   };
-  private memoryPressureLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
+  private memoryPressureLevel: "low" | "medium" | "high" | "critical" = "low";
   private adaptiveConcurrency: number = 10;
   private networkMonitorInterval: NodeJS.Timeout | null = null;
   private memoryMonitorInterval: NodeJS.Timeout | null = null;
-  private requestHistory: Array<{ timestamp: number; duration: number; success: boolean }> = [];
-  private deduplicationCache: Map<string, { timestamp: number; result: any }> = new Map();
+  private requestHistory: Array<{
+    timestamp: number;
+    duration: number;
+    success: boolean;
+  }> = [];
+  private deduplicationCache: Map<string, { timestamp: number; result: any }> =
+    new Map();
 
   constructor(config?: Partial<ThrottlingConfig>) {
     this.config = { ...DEFAULT_THROTTLING_CONFIG, ...config };
     this.adaptiveConcurrency = this.config.maxConcurrentRequests;
-    
+
     this.startMonitoring();
   }
 
@@ -47,7 +52,7 @@ export class ThrottlingManager {
    */
   public shouldThrottleRequest(): boolean {
     // Check memory pressure
-    if (this.memoryPressureLevel === 'critical') {
+    if (this.memoryPressureLevel === "critical") {
       return true;
     }
 
@@ -67,13 +72,13 @@ export class ThrottlingManager {
 
     // Add delay based on memory pressure (reduced delays)
     switch (this.memoryPressureLevel) {
-      case 'critical':
+      case "critical":
         delay += 200; // Reduced from 1000ms to 200ms
         break;
-      case 'high':
+      case "high":
         delay += 100; // Reduced from 500ms to 100ms
         break;
-      case 'medium':
+      case "medium":
         delay += 50; // Reduced from 100ms to 50ms
         break;
     }
@@ -127,7 +132,7 @@ export class ThrottlingManager {
 
     const now = Date.now();
     const age = now - cached.timestamp;
-    
+
     return age < this.config.deduplicationCacheTtl;
   }
 
@@ -163,7 +168,7 @@ export class ThrottlingManager {
 
     const now = Date.now();
     const age = now - cached.timestamp;
-    
+
     if (age < this.config.deduplicationCacheTtl) {
       return cached.result;
     }
@@ -183,7 +188,7 @@ export class ThrottlingManager {
   /**
    * Get current memory pressure level
    */
-  public getMemoryPressureLevel(): 'low' | 'medium' | 'high' | 'critical' {
+  public getMemoryPressureLevel(): "low" | "medium" | "high" | "critical" {
     return this.memoryPressureLevel;
   }
 
@@ -213,10 +218,13 @@ export class ThrottlingManager {
    */
   public updateConfig(config: Partial<ThrottlingConfig>): void {
     this.config = { ...this.config, ...config };
-    
+
     // Update adaptive concurrency if max concurrent requests changed
     if (config.maxConcurrentRequests) {
-      this.adaptiveConcurrency = Math.min(this.adaptiveConcurrency, config.maxConcurrentRequests);
+      this.adaptiveConcurrency = Math.min(
+        this.adaptiveConcurrency,
+        config.maxConcurrentRequests,
+      );
     }
   }
 
@@ -292,17 +300,17 @@ export class ThrottlingManager {
   private async measureNetworkCondition(): Promise<void> {
     try {
       const startTime = Date.now();
-      
+
       // Simple network test - fetch a small resource
-      await fetch('https://www.google.com/favicon.ico', {
-        method: 'HEAD',
-        cache: 'no-cache',
+      await fetch("https://www.google.com/favicon.ico", {
+        method: "HEAD",
+        cache: "no-cache",
         signal: AbortSignal.timeout(5000),
       });
 
       const endTime = Date.now();
       const latency = endTime - startTime;
-      
+
       // Update network condition
       this.networkCondition = {
         quality: this.determineNetworkQuality(latency),
@@ -319,7 +327,7 @@ export class ThrottlingManager {
     } catch (error) {
       // Network measurement failed, assume poor conditions
       this.networkCondition = {
-        quality: 'slow',
+        quality: "slow",
         bandwidth: 0,
         latency: 5000,
         congested: true,
@@ -333,28 +341,29 @@ export class ThrottlingManager {
    */
   private checkMemoryPressure(): void {
     const memoryStats = memoryManager.getMemoryStats();
-    const usageRatio = memoryStats.totalMemoryUsed / memoryStats.totalMemoryLimit;
-    
-    let newLevel: 'low' | 'medium' | 'high' | 'critical';
-    
+    const usageRatio =
+      memoryStats.totalMemoryUsed / memoryStats.totalMemoryLimit;
+
+    let newLevel: "low" | "medium" | "high" | "critical";
+
     if (usageRatio >= 0.95) {
-      newLevel = 'critical';
+      newLevel = "critical";
     } else if (usageRatio >= 0.85) {
-      newLevel = 'high';
+      newLevel = "high";
     } else if (usageRatio >= 0.7) {
-      newLevel = 'medium';
+      newLevel = "medium";
     } else {
-      newLevel = 'low';
+      newLevel = "low";
     }
 
     if (newLevel !== this.memoryPressureLevel) {
       this.memoryPressureLevel = newLevel;
-      
+
       // Notify listeners
       if (this.eventListeners.onMemoryPressure) {
         this.eventListeners.onMemoryPressure(newLevel);
       }
-      
+
       // Adjust concurrency based on memory pressure
       this.adjustConcurrencyForMemoryPressure();
     }
@@ -369,29 +378,40 @@ export class ThrottlingManager {
       return; // Not enough data
     }
 
-    const avgDuration = recentRequests.reduce((sum, req) => sum + req.duration, 0) / recentRequests.length;
+    const avgDuration =
+      recentRequests.reduce((sum, req) => sum + req.duration, 0) /
+      recentRequests.length;
     const failureRate = this.getRecentFailureRate();
-    
+
     let targetConcurrency = this.adaptiveConcurrency;
-    
+
     // If requests are slow, reduce concurrency
-    if (avgDuration > 10000) { // 10 seconds
+    if (avgDuration > 10000) {
+      // 10 seconds
       targetConcurrency = Math.max(1, Math.floor(targetConcurrency * 0.8));
     }
-    
+
     // If failure rate is high, reduce concurrency
-    if (failureRate > 0.2) { // 20% failure rate
+    if (failureRate > 0.2) {
+      // 20% failure rate
       targetConcurrency = Math.max(1, Math.floor(targetConcurrency * 0.7));
     }
-    
+
     // If requests are fast and reliable, increase concurrency
-    if (avgDuration < 2000 && failureRate < 0.05) { // 2 seconds, 5% failure rate
-      targetConcurrency = Math.min(this.config.maxConcurrentRequests, targetConcurrency + 1);
+    if (avgDuration < 2000 && failureRate < 0.05) {
+      // 2 seconds, 5% failure rate
+      targetConcurrency = Math.min(
+        this.config.maxConcurrentRequests,
+        targetConcurrency + 1,
+      );
     }
-    
+
     // Apply memory pressure limits
-    targetConcurrency = Math.min(targetConcurrency, this.getMaxConcurrencyForMemoryPressure());
-    
+    targetConcurrency = Math.min(
+      targetConcurrency,
+      this.getMaxConcurrencyForMemoryPressure(),
+    );
+
     if (targetConcurrency !== this.adaptiveConcurrency) {
       this.adaptiveConcurrency = targetConcurrency;
     }
@@ -402,7 +422,10 @@ export class ThrottlingManager {
    */
   private adjustConcurrencyForMemoryPressure(): void {
     const maxConcurrency = this.getMaxConcurrencyForMemoryPressure();
-    this.adaptiveConcurrency = Math.min(this.adaptiveConcurrency, maxConcurrency);
+    this.adaptiveConcurrency = Math.min(
+      this.adaptiveConcurrency,
+      maxConcurrency,
+    );
   }
 
   /**
@@ -410,12 +433,15 @@ export class ThrottlingManager {
    */
   private getMaxConcurrencyForMemoryPressure(): number {
     switch (this.memoryPressureLevel) {
-      case 'critical':
+      case "critical":
         return Math.max(1, Math.floor(this.config.maxConcurrentRequests * 0.2));
-      case 'high':
+      case "high":
         return Math.max(2, Math.floor(this.config.maxConcurrentRequests * 0.5));
-      case 'medium':
-        return Math.max(3, Math.floor(this.config.maxConcurrentRequests * 0.75));
+      case "medium":
+        return Math.max(
+          3,
+          Math.floor(this.config.maxConcurrentRequests * 0.75),
+        );
       default:
         return this.config.maxConcurrentRequests;
     }
@@ -424,13 +450,15 @@ export class ThrottlingManager {
   /**
    * Determine network quality from latency
    */
-  private determineNetworkQuality(latency: number): 'slow' | 'fast' | 'unknown' {
+  private determineNetworkQuality(
+    latency: number,
+  ): "slow" | "fast" | "unknown" {
     if (latency < 200) {
-      return 'fast';
+      return "fast";
     } else if (latency < 1000) {
-      return 'fast';
+      return "fast";
     } else {
-      return 'slow';
+      return "slow";
     }
   }
 
@@ -452,9 +480,11 @@ export class ThrottlingManager {
       return false;
     }
 
-    const avgDuration = recentRequests.reduce((sum, req) => sum + req.duration, 0) / recentRequests.length;
+    const avgDuration =
+      recentRequests.reduce((sum, req) => sum + req.duration, 0) /
+      recentRequests.length;
     const failureRate = this.getRecentFailureRate();
-    
+
     // Consider congested if requests are slow or failure rate is high
     return avgDuration > 15000 || failureRate > 0.3;
   }
@@ -462,10 +492,14 @@ export class ThrottlingManager {
   /**
    * Get recent requests
    */
-  private getRecentRequests(count: number): Array<{ timestamp: number; duration: number; success: boolean }> {
+  private getRecentRequests(
+    count: number,
+  ): Array<{ timestamp: number; duration: number; success: boolean }> {
     const now = Date.now();
-    const recent = this.requestHistory.filter(req => now - req.timestamp < 60000); // Last minute
-    
+    const recent = this.requestHistory.filter(
+      (req) => now - req.timestamp < 60000,
+    ); // Last minute
+
     return recent.slice(-count);
   }
 
@@ -478,7 +512,7 @@ export class ThrottlingManager {
       return 0;
     }
 
-    const failures = recentRequests.filter(req => !req.success).length;
+    const failures = recentRequests.filter((req) => !req.success).length;
     return failures / recentRequests.length;
   }
 
@@ -491,7 +525,10 @@ export class ThrottlingManager {
       return 0;
     }
 
-    const totalDuration = recentRequests.reduce((sum, req) => sum + req.duration, 0);
+    const totalDuration = recentRequests.reduce(
+      (sum, req) => sum + req.duration,
+      0,
+    );
     return totalDuration / recentRequests.length;
   }
 
@@ -501,13 +538,13 @@ export class ThrottlingManager {
   private cleanupDeduplicationCache(): void {
     const now = Date.now();
     const toDelete: string[] = [];
-    
+
     for (const [url, entry] of this.deduplicationCache.entries()) {
       if (now - entry.timestamp > this.config.deduplicationCacheTtl) {
         toDelete.push(url);
       }
     }
-    
+
     for (const url of toDelete) {
       this.deduplicationCache.delete(url);
     }

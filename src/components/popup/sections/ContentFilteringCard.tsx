@@ -41,13 +41,18 @@ export default function ContentFilteringCard({
       containerClassName={containerClassName}
     >
       <div>
-        <div className={`flex justify-start gap-4 items-center mb-3 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
+        <div
+          className={`flex justify-start gap-4 items-center mb-3 ${direction === "rtl" ? "flex-row-reverse" : ""}`}
+        >
           {" "}
           <div className="flex items-center">
             {" "}
             <FileType className="h-4 w-4 mr-2 text-slate-500" />
-            <Label className={`text-sm font-medium text-slate-700 flex items-center ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
-              {getTranslation("filtering_label")}<span>:</span>
+            <Label
+              className={`text-sm font-medium text-slate-700 flex items-center ${direction === "rtl" ? "flex-row-reverse" : ""}`}
+            >
+              {getTranslation("filtering_label")}
+              <span>:</span>
             </Label>
           </div>
           <RadioGroup
@@ -55,13 +60,17 @@ export default function ContentFilteringCard({
             onValueChange={(value) => setFilterMode(value as FilterMode)}
             className="flex gap-4"
           >
-            <div className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
+            <div
+              className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}
+            >
               <RadioGroupItem value="type" id="filter-type" />
               <Label htmlFor="filter-type" className="cursor-pointer">
                 {getTranslation("filtering_by_type")}
               </Label>
             </div>
-            <div className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
+            <div
+              className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}
+            >
               <RadioGroupItem value="extension" id="filter-extension" />
               <Label htmlFor="filter-extension" className="cursor-pointer">
                 {getTranslation("filtering_by_extension")}

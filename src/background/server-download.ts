@@ -49,7 +49,11 @@ export type AssemblyStatusCallback = (
 
 /** Callback type for offering local fallback to the user. */
 export type LocalFallbackCallback = (
-  reason: "server_unavailable" | "assembly_timeout" | "assembly_failed" | "auth_failed",
+  reason:
+    | "server_unavailable"
+    | "assembly_timeout"
+    | "assembly_failed"
+    | "auth_failed",
   errorMessage: string,
 ) => Promise<boolean>; // returns true if user chose local fallback
 
@@ -69,10 +73,10 @@ const ASSEMBLY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 /** Adaptive polling interval: fast for quick assemblies, slower for long ones. */
 function getPollInterval(elapsedMs: number): number {
-  if (elapsedMs < 6000) return 1000;  // 1s for first 6s
+  if (elapsedMs < 6000) return 1000; // 1s for first 6s
   if (elapsedMs < 30000) return 2000; // 2s for 6-30s
   if (elapsedMs < 60000) return 3000; // 3s for 30-60s
-  return 5000;                         // 5s after 60s
+  return 5000; // 5s after 60s
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +132,10 @@ export class ServerDownloadHandler {
       while (true) {
         // Check for cancellation
         if (signal.aborted) {
-          throw new DOMException("Assembly polling was cancelled", "AbortError");
+          throw new DOMException(
+            "Assembly polling was cancelled",
+            "AbortError",
+          );
         }
 
         // Check for timeout
@@ -136,7 +143,7 @@ export class ServerDownloadHandler {
         if (elapsed >= ASSEMBLY_TIMEOUT_MS) {
           throw new AssemblyTimeoutError(
             `Server assembly did not complete within ${ASSEMBLY_TIMEOUT_MS / 1000} seconds. ` +
-            "You can try again or download locally.",
+              "You can try again or download locally.",
           );
         }
 
@@ -172,7 +179,9 @@ export class ServerDownloadHandler {
         }
 
         if (status.status === "failed") {
-          const errorMsg = status.error_message ?? "Server assembly failed with no error message";
+          const errorMsg =
+            status.error_message ??
+            "Server assembly failed with no error message";
           throw new AssemblyFailedError(`Assembly failed: ${errorMsg}`);
         }
 
@@ -226,7 +235,9 @@ export class ServerDownloadHandler {
               ),
             );
           } else if (id === undefined) {
-            reject(new Error("chrome.downloads.download returned undefined ID"));
+            reject(
+              new Error("chrome.downloads.download returned undefined ID"),
+            );
           } else {
             resolve(id);
           }
@@ -347,7 +358,11 @@ export class ServerDownloadHandler {
       );
     } catch (err) {
       // Categorize the error and offer local fallback
-      let reason: "server_unavailable" | "assembly_timeout" | "assembly_failed" | "auth_failed";
+      let reason:
+        | "server_unavailable"
+        | "assembly_timeout"
+        | "assembly_failed"
+        | "auth_failed";
       let errorMessage: string;
 
       if (err instanceof AssemblyTimeoutError) {
@@ -368,7 +383,9 @@ export class ServerDownloadHandler {
       } else {
         reason = "assembly_failed";
         errorMessage =
-          err instanceof Error ? err.message : "An unknown error occurred during server download.";
+          err instanceof Error
+            ? err.message
+            : "An unknown error occurred during server download.";
       }
 
       // Offer the user a local fallback option
@@ -417,8 +434,8 @@ export class ServerDownloadHandler {
         if (!isLoopback) {
           console.warn(
             `[ServerDownloadHandler] WARNING: Download URL uses http:// with ` +
-            `non-loopback host (${url.hostname}). ` +
-            "Chrome may block this download. HTTPS is mandatory for non-localhost deployments.",
+              `non-loopback host (${url.hostname}). ` +
+              "Chrome may block this download. HTTPS is mandatory for non-localhost deployments.",
           );
         }
       }

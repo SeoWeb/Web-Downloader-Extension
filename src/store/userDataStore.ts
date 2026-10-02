@@ -1,7 +1,7 @@
 // src/store/userDataStore.ts
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { chromeStorage } from '../common/chrome/storage';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { chromeStorage } from "../common/chrome/storage";
 
 interface UserDataState {
   user_id: number | null;
@@ -23,7 +23,7 @@ export const useUserDataStore = create<UserDataState>()(
       setConnectionId: (id) => set({ connection_id: id }),
     }),
     {
-      name: 'user-data-storage', // unique name
+      name: "user-data-storage", // unique name
       storage: createJSONStorage(() => chromeStorage), // Use chrome.storage.local
     },
   ),

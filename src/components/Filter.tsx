@@ -96,7 +96,14 @@ export default function Filter({
   const handleDownloadHTMLChange = (checked: CheckedState) => {
     const isChecked = !!checked;
 
-    if (!isChecked && !options.downloadImages && !options.downloadLinks && !options.downloadAssets && !options.downloadContentAsText && !options.downloadDocuments) {
+    if (
+      !isChecked &&
+      !options.downloadImages &&
+      !options.downloadLinks &&
+      !options.downloadAssets &&
+      !options.downloadContentAsText &&
+      !options.downloadDocuments
+    ) {
       setDownloadContentAsText(true);
     }
 
@@ -175,7 +182,7 @@ export default function Filter({
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
             <span className="text-sm text-amber-800">
-              {t('filter.permissionWarning')}
+              {t("filter.permissionWarning")}
             </span>
           </div>
         )}
@@ -188,13 +195,13 @@ export default function Filter({
           className="btn-primary w-full flex items-center justify-center gap-3 text-lg py-4 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transform hover:-translate-y-0.5 transition-all cursor-pointer"
         >
           <Download className="w-6 h-6" />
-          <span>{t('filter.startDownload')}</span>
+          <span>{t("filter.startDownload")}</span>
         </button>
 
         <p className="text-center text-xs text-slate-500 mt-3">
           {options.singleFile
-            ? t('filter.singleFileDescription')
-            : t('filter.zipDescription')}
+            ? t("filter.singleFileDescription")
+            : t("filter.zipDescription")}
         </p>
       </div>
 
@@ -206,17 +213,22 @@ export default function Filter({
         >
           <div className="flex items-center gap-2">
             <Settings className="w-4 h-4 text-slate-500" />
-            <span>{t('filter.configuration')}</span>
+            <span>{t("filter.configuration")}</span>
           </div>
-          {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          {showAdvanced ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
         </button>
 
-        <div className={cn(
-          "transition-all duration-300 ease-in-out",
-          showAdvanced ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
-        )}>
+        <div
+          className={cn(
+            "transition-all duration-300 ease-in-out",
+            showAdvanced ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0",
+          )}
+        >
           <div className="p-4 space-y-4 bg-white">
-
             {/* Cloud Storage Toggle */}
             {IS_PAGEPOCKET_AVAILABLE && <PagePocketToggle />}
 
@@ -225,12 +237,20 @@ export default function Filter({
               <div className="flex items-center gap-3">
                 <Checkbox
                   id="fullWebsite"
-                  checked={!!(options.downloadLinks && options.downloadLinksFullScraping)}
+                  checked={
+                    !!(
+                      options.downloadLinks && options.downloadLinksFullScraping
+                    )
+                  }
                   onCheckedChange={handleFullWebsiteChange}
                 />
                 <label htmlFor="fullWebsite" className="flex-1 cursor-pointer">
-                  <div className="font-medium text-slate-900">{t('filter.fullWebsite')}</div>
-                  <div className="text-xs text-slate-500">{t('filter.fullWebsiteDescription')}</div>
+                  <div className="font-medium text-slate-900">
+                    {t("filter.fullWebsite")}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {t("filter.fullWebsiteDescription")}
+                  </div>
                 </label>
                 <Globe className="w-5 h-5 text-slate-400" />
               </div>
@@ -245,8 +265,12 @@ export default function Filter({
                   onCheckedChange={handleSingleFileChange}
                 />
                 <label htmlFor="singleFile" className="flex-1 cursor-pointer">
-                  <div className="font-medium text-slate-900">{t('filter.singleFile')}</div>
-                  <div className="text-xs text-slate-500">{t('filter.singleFileDescription')}</div>
+                  <div className="font-medium text-slate-900">
+                    {t("filter.singleFile")}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {t("filter.singleFileDescription")}
+                  </div>
                 </label>
                 <File className="w-5 h-5 text-slate-400" />
               </div>
@@ -256,19 +280,24 @@ export default function Filter({
               id="alwaysAskWhereToSave"
               checked={options.alwaysAskWhereToSave ?? true}
               onChange={(c: any) => setAlwaysAskWhereToSave(!!c)}
-              label={t('filter.alwaysAskWhereToSave')}
+              label={t("filter.alwaysAskWhereToSave")}
               icon={<Settings className="w-4 h-4" />}
             />
 
             <div className="border-t border-slate-100 my-2" />
 
             {/* Granular Options */}
-            <div className={cn("space-y-3", options.singleFile && "opacity-50 pointer-events-none")}>
+            <div
+              className={cn(
+                "space-y-3",
+                options.singleFile && "opacity-50 pointer-events-none",
+              )}
+            >
               <OptionItem
                 id="downloadHTML"
                 checked={options.downloadHTML}
                 onChange={handleDownloadHTMLChange}
-                label={t('filter.downloadHTML')}
+                label={t("filter.downloadHTML")}
                 icon={<Layout className="w-4 h-4" />}
               />
 
@@ -276,7 +305,7 @@ export default function Filter({
                 id="downloadImages"
                 checked={options.downloadImages}
                 onChange={(c: any) => setDownloadImages(!!c)}
-                label={t('filter.downloadImages')}
+                label={t("filter.downloadImages")}
                 icon={<ImageIcon className="w-4 h-4" />}
               />
 
@@ -284,7 +313,7 @@ export default function Filter({
                 id="downloadAssets"
                 checked={options.downloadAssets}
                 onChange={(c: any) => setDownloadAssets(!!c)}
-                label={t('filter.downloadAssets')}
+                label={t("filter.downloadAssets")}
                 icon={<FileCode className="w-4 h-4" />}
               />
 
@@ -292,7 +321,7 @@ export default function Filter({
                 id="downloadDocuments"
                 checked={options.downloadDocuments}
                 onChange={(c: any) => setDownloadDocuments(!!c)}
-                label={t('filter.downloadDocuments')}
+                label={t("filter.downloadDocuments")}
                 icon={<File className="w-4 h-4" />}
               />
 
@@ -300,7 +329,7 @@ export default function Filter({
                 id="downloadContentAsText"
                 checked={options.downloadContentAsText}
                 onChange={(c: any) => setDownloadContentAsText(!!c)}
-                label={t('filter.downloadContentAsText')}
+                label={t("filter.downloadContentAsText")}
                 icon={<FileText className="w-4 h-4" />}
               />
 
@@ -308,7 +337,7 @@ export default function Filter({
                 id="singleFile"
                 checked={options.singleFile}
                 onChange={(c: any) => setSingleFile(!!c)}
-                label={t('filter.singleFile')}
+                label={t("filter.singleFile")}
                 icon={<FileText className="w-4 h-4" />}
               />
 
@@ -317,7 +346,7 @@ export default function Filter({
                   id="downloadLinks"
                   checked={options.downloadLinks}
                   onChange={handleDownloadLinksChange}
-                  label={t('filter.downloadLinks')}
+                  label={t("filter.downloadLinks")}
                   icon={<LinkIcon className="w-4 h-4" />}
                 />
 
@@ -329,15 +358,20 @@ export default function Filter({
                         <Checkbox
                           id="downloadLinksFullScraping"
                           checked={options.downloadLinksFullScraping || false}
-                          onCheckedChange={(c: any) => setDownloadLinksFullScraping(!!c)}
+                          onCheckedChange={(c: any) =>
+                            setDownloadLinksFullScraping(!!c)
+                          }
                         />
                         <div className="flex-1">
-                          <label htmlFor="downloadLinksFullScraping" className="cursor-pointer">
+                          <label
+                            htmlFor="downloadLinksFullScraping"
+                            className="cursor-pointer"
+                          >
                             <div className="text-sm font-medium text-blue-900">
-                              {t('filter.fullScraping')}
+                              {t("filter.fullScraping")}
                             </div>
                             <div className="text-xs text-blue-600 mt-1">
-                              {t('filter.fullScrapingInfo')}
+                              {t("filter.fullScrapingInfo")}
                             </div>
                           </label>
                         </div>
@@ -349,7 +383,8 @@ export default function Filter({
                           {/* Max Pages */}
                           <div>
                             <label className="text-xs font-medium text-blue-900 block mb-1">
-                              {t('filter.maxPages')}: {options.linkedPagesMaxCount || 500}
+                              {t("filter.maxPages")}:{" "}
+                              {options.linkedPagesMaxCount || 500}
                             </label>
                             <input
                               type="range"
@@ -357,7 +392,9 @@ export default function Filter({
                               max="500"
                               step="10"
                               value={options.linkedPagesMaxCount || 200}
-                              onChange={(e) => setLinkedPagesMaxCount(parseInt(e.target.value))}
+                              onChange={(e) =>
+                                setLinkedPagesMaxCount(parseInt(e.target.value))
+                              }
                               className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
                             />
                           </div>
@@ -365,7 +402,8 @@ export default function Filter({
                           {/* Delay Between Pages */}
                           <div>
                             <label className="text-xs font-medium text-blue-900 block mb-1">
-                              {t('filter.pageDelay')}: {options.linkedPagesDelay || 500}ms
+                              {t("filter.pageDelay")}:{" "}
+                              {options.linkedPagesDelay || 500}ms
                             </label>
                             <input
                               type="range"
@@ -373,7 +411,9 @@ export default function Filter({
                               max="2000"
                               step="100"
                               value={options.linkedPagesDelay || 500}
-                              onChange={(e) => setLinkedPagesDelay(parseInt(e.target.value))}
+                              onChange={(e) =>
+                                setLinkedPagesDelay(parseInt(e.target.value))
+                              }
                               className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
                             />
                           </div>
@@ -382,11 +422,18 @@ export default function Filter({
                           <div className="flex items-center gap-2">
                             <Checkbox
                               id="linkedPagesIncludeExternal"
-                              checked={options.linkedPagesIncludeExternal || false}
-                              onCheckedChange={(c: any) => setLinkedPagesIncludeExternal(!!c)}
+                              checked={
+                                options.linkedPagesIncludeExternal || false
+                              }
+                              onCheckedChange={(c: any) =>
+                                setLinkedPagesIncludeExternal(!!c)
+                              }
                             />
-                            <label htmlFor="linkedPagesIncludeExternal" className="text-xs text-blue-900 cursor-pointer">
-                              {t('filter.includeExternal')}
+                            <label
+                              htmlFor="linkedPagesIncludeExternal"
+                              className="text-xs text-blue-900 cursor-pointer"
+                            >
+                              {t("filter.includeExternal")}
                             </label>
                           </div>
                         </div>
@@ -397,7 +444,7 @@ export default function Filter({
                     {!options.downloadLinksFullScraping && (
                       <div className="p-3 bg-red-50 text-red-600 text-xs rounded border border-red-100 flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                        <span>{t('filter.linksWarning')}</span>
+                        <span>{t("filter.linksWarning")}</span>
                       </div>
                     )}
                   </div>
@@ -414,14 +461,17 @@ export default function Filter({
 function OptionItem({ id, checked, onChange, label, icon }: any) {
   return (
     <div className="flex items-center gap-3 group">
-      <Checkbox
-        id={id}
-        checked={checked}
-        onCheckedChange={onChange}
-      />
-      <label htmlFor={id} className="flex-1 flex items-center gap-2 cursor-pointer select-none">
-        <span className="text-slate-400 group-hover:text-brand transition-colors">{icon}</span>
-        <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">{label}</span>
+      <Checkbox id={id} checked={checked} onCheckedChange={onChange} />
+      <label
+        htmlFor={id}
+        className="flex-1 flex items-center gap-2 cursor-pointer select-none"
+      >
+        <span className="text-slate-400 group-hover:text-brand transition-colors">
+          {icon}
+        </span>
+        <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+          {label}
+        </span>
       </label>
     </div>
   );

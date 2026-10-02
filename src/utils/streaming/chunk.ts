@@ -1,20 +1,25 @@
-
-import { ChunkInfo, StreamingDownload, StreamingOptions } from '../../types/streaming';
-import { calculateChecksum } from './utils';
+import {
+  ChunkInfo,
+  StreamingDownload,
+  StreamingOptions,
+} from "../../types/streaming";
+import { calculateChecksum } from "./utils";
 
 /**
  * Calculate optimal chunk size based on file size and memory constraints
  */
 export function calculateOptimalChunkSize(
   fileSize: number,
-  options: StreamingOptions
+  options: StreamingOptions,
 ): number {
   const baseChunkSize = options.chunkSize!;
 
   // Adjust based on file size
-  if (fileSize > 100 * 1024 * 1024) { // > 100MB
+  if (fileSize > 100 * 1024 * 1024) {
+    // > 100MB
     return Math.min(baseChunkSize * 2, 5 * 1024 * 1024); // Max 5MB
-  } else if (fileSize > 10 * 1024 * 1024) { // > 10MB
+  } else if (fileSize > 10 * 1024 * 1024) {
+    // > 10MB
     return baseChunkSize;
   } else {
     return Math.max(baseChunkSize / 2, 256 * 1024); // Min 256KB
@@ -25,8 +30,8 @@ export function calculateOptimalChunkSize(
  * Generate chunks for a new download
  */
 export function generateChunks(
-  totalSize: number, 
-  chunkSize: number
+  totalSize: number,
+  chunkSize: number,
 ): ChunkInfo[] {
   const totalChunks = Math.ceil(totalSize / chunkSize);
 
@@ -50,12 +55,15 @@ export function generateChunks(
 /**
  * Validate chunk checksum
  */
-export async function validateChunkChecksum(chunk: ChunkInfo): Promise<boolean> {
+export async function validateChunkChecksum(
+  chunk: ChunkInfo,
+): Promise<boolean> {
   if (!chunk.data || !chunk.checksum) return false;
 
   const calculatedChecksum = await calculateChecksum(
-    chunk.data instanceof ArrayBuffer ? chunk.data :
-    await (chunk.data as Blob).arrayBuffer()
+    chunk.data instanceof ArrayBuffer
+      ? chunk.data
+      : await (chunk.data as Blob).arrayBuffer(),
   );
 
   return calculatedChecksum === chunk.checksum;
@@ -66,7 +74,7 @@ export async function validateChunkChecksum(chunk: ChunkInfo): Promise<boolean> 
  */
 export async function validateExistingChunks(
   download: StreamingDownload,
-  options: StreamingOptions
+  options: StreamingOptions,
 ): Promise<ChunkInfo[]> {
   const validChunks: ChunkInfo[] = [];
 

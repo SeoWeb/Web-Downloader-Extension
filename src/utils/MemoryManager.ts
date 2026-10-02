@@ -219,9 +219,7 @@ export class MemoryManager {
    */
   public async forceCleanup(): Promise<void> {
     // Run all cleanup callbacks
-    const cleanupPromises = this.cleanupCallbacks.map((callback) =>
-      callback(),
-    );
+    const cleanupPromises = this.cleanupCallbacks.map((callback) => callback());
 
     await Promise.allSettled(cleanupPromises);
 

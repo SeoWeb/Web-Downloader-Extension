@@ -14,7 +14,9 @@ export function usePagePocket() {
     initializeFromStorage,
   } = usePagePocketStore();
 
-  const isInitialized = usePagePocketStore((s) => s.isAuthenticated !== undefined);
+  const isInitialized = usePagePocketStore(
+    (s) => s.isAuthenticated !== undefined,
+  );
 
   useEffect(() => {
     initializeFromStorage();

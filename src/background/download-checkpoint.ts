@@ -25,7 +25,9 @@ export interface DownloadCheckpoint {
 }
 
 /** Persist a checkpoint to session storage. */
-export async function writeCheckpoint(data: Omit<DownloadCheckpoint, "downloadInterrupted" | "timestamp">): Promise<void> {
+export async function writeCheckpoint(
+  data: Omit<DownloadCheckpoint, "downloadInterrupted" | "timestamp">,
+): Promise<void> {
   const checkpoint: DownloadCheckpoint = {
     ...data,
     downloadInterrupted: true,
@@ -53,12 +55,16 @@ export async function readCheckpoint(): Promise<DownloadCheckpoint | null> {
 }
 
 /** Update the resourceUrls field of an existing checkpoint. No-op if none exists. */
-export async function updateCheckpointResourceUrls(resourceUrls: ResourceUrlEntry[]): Promise<void> {
+export async function updateCheckpointResourceUrls(
+  resourceUrls: ResourceUrlEntry[],
+): Promise<void> {
   const existing = await readCheckpoint();
   if (existing) {
     existing.resourceUrls = resourceUrls;
     await chrome.storage?.session?.set({ [STORAGE_KEY]: existing });
-    console.log(`[Checkpoint] Resource URLs updated: ${resourceUrls.length} entries`);
+    console.log(
+      `[Checkpoint] Resource URLs updated: ${resourceUrls.length} entries`,
+    );
   }
 }
 

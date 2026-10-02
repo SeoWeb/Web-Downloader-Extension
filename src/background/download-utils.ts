@@ -1,4 +1,3 @@
-
 import { memoryManager } from "../utils/MemoryManager";
 import { MemoryPressureLevel } from "../utils/memoryLimits";
 
@@ -17,7 +16,6 @@ export function formatBytes(bytes: number): string {
 
   return `${size.toFixed(1)}${units[unitIndex]}`;
 }
-
 
 /**
  * Perform memory cleanup at the start of download

@@ -7,7 +7,10 @@ import { useTranslation } from "react-i18next";
 import { MessageAction, messageActions } from "./common/message";
 import { Message } from "./components/Actions";
 import { MainContent } from "./sidepanel/components/MainContent";
-import { DownloadStatus, InterruptData } from "./sidepanel/components/DownloadStatus";
+import {
+  DownloadStatus,
+  InterruptData,
+} from "./sidepanel/components/DownloadStatus";
 import { DownloadComplete } from "./sidepanel/components/DownloadComplete";
 import { useActiveTabInfo } from "./sidepanel/hooks/useActiveTabInfo"; // Added hook import
 import { useMessageListener } from "./sidepanel/hooks/useMessageListener"; // Added hook import
@@ -50,13 +53,13 @@ function ErrorFallback({
 
   return (
     <div role="alert" className="p-4 bg-red-100 rounded">
-      <p className="font-bold text-red-800">{t('app.error')}</p>
+      <p className="font-bold text-red-800">{t("app.error")}</p>
       <pre className="text-red-600">{error.message}</pre>
       <button
         onClick={resetErrorBoundary}
         className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
       >
-        {t('app.tryAgain')}
+        {t("app.tryAgain")}
       </button>
     </div>
   );
@@ -66,21 +69,29 @@ export default function SidePanel() {
   const { t } = useTranslation();
   const [tabId, setTabId] = useState<number>(0);
   const [tabUrl, setTabUrl] = useState<string>("");
-  const [messages, setMessages] = useState<Message[]>([{ key: "status.waiting" }]);
+  const [messages, setMessages] = useState<Message[]>([
+    { key: "status.waiting" },
+  ]);
   const [action, setAction] = useState<MessageAction | null>(null);
   const actionRef = useRef<MessageAction | null>(null);
   actionRef.current = action;
   const [links, setLinks] = useState<string[]>([]);
   const [isScraping, setIsScraping] = useState<boolean>(false);
-  const [isScrapingLinkedPages, setIsScrapingLinkedPages] = useState<boolean>(false);
+  const [isScrapingLinkedPages, setIsScrapingLinkedPages] =
+    useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   // (15.1–15.7) Server-mode UI state
-  const [serverModeState, setServerModeState] = useState<ServerModeState>(initialServerModeState);
+  const [serverModeState, setServerModeState] = useState<ServerModeState>(
+    initialServerModeState,
+  );
   // Interrupt state: shown when the service worker was killed during a download
-  const [interruptData, setInterruptData] = useState<InterruptData | null>(null);
+  const [interruptData, setInterruptData] = useState<InterruptData | null>(
+    null,
+  );
   // PagePocket cloud upload state
-  const [cloudUploadState, setCloudUploadState] = useState<CloudUploadState | null>(null);
+  const [cloudUploadState, setCloudUploadState] =
+    useState<CloudUploadState | null>(null);
   // PagePocket auth/cloud state
   const { cloudStorageEnabled, isAuthenticated } = usePagePocket();
   // downloadResponse and scrollAttempts are now managed by useScrapingDownloader hook
@@ -107,15 +118,19 @@ export default function SidePanel() {
   useActiveTabInfo({ setTabId, setTabUrl, setMessages });
 
   // Initialize useScrapingDownloader hook early so setDownloadResponse is available
-  const { downloadResponse, setDownloadResponse, setScrollAttempts, stopScraping } =
-    useScrapingDownloader({
-      tabId,
-      tabUrl,
-      isScraping,
-      setIsScraping,
-      downloadOptions,
-      setMessages,
-    });
+  const {
+    downloadResponse,
+    setDownloadResponse,
+    setScrollAttempts,
+    stopScraping,
+  } = useScrapingDownloader({
+    tabId,
+    tabUrl,
+    isScraping,
+    setIsScraping,
+    downloadOptions,
+    setMessages,
+  });
 
   // Memoize messageWorker to stabilize useMessageListener dependency
   const messageWorker = useCallback(
@@ -151,7 +166,9 @@ export default function SidePanel() {
             const { loaded = 0, total = 1 } = data.message?.options ?? {};
             const pct = total > 0 ? (loaded / total) * 100 : 0;
             setCloudUploadState((prev) =>
-              prev ? { ...prev, progress: pct } : { status: "uploading", progress: pct },
+              prev
+                ? { ...prev, progress: pct }
+                : { status: "uploading", progress: pct },
             );
           } else if (ppKey === "status.pagepocketUploadComplete") {
             setCloudUploadState({
@@ -228,7 +245,9 @@ export default function SidePanel() {
           // Download actually completed - file was saved
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
-          setServerModeState((prev) => prev ? { ...prev, phase: 'ready' } : prev);
+          setServerModeState((prev) =>
+            prev ? { ...prev, phase: "ready" } : prev,
+          );
           setMessages((prev) => [...prev, { key: "status.creating" }]);
           setMessages((prev) => [...prev, { key: "status.complete" }]);
           // Store download ID for "Show in folder" functionality
@@ -248,7 +267,10 @@ export default function SidePanel() {
           // Reset messages to connected status with error message
           setMessages([
             { key: "status.connected" },
-            { key: "status.failedWithError", options: { error: data.error || t("app.unknownError") } },
+            {
+              key: "status.failedWithError",
+              options: { error: data.error || t("app.unknownError") },
+            },
           ]);
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
@@ -282,7 +304,10 @@ export default function SidePanel() {
           setDownloadResponse(null);
           setMessages([
             { key: "status.connected" },
-            { key: "status.downloadInterrupted", options: { phase: data.phase || "scraping" } },
+            {
+              key: "status.downloadInterrupted",
+              options: { phase: data.phase || "scraping" },
+            },
           ]);
           break;
 
@@ -301,7 +326,10 @@ export default function SidePanel() {
   useEffect(() => {
     (async () => {
       try {
-        const result = await sendMessageToBackground(messageActions.CHECK_INTERRUPTED_DOWNLOAD, {});
+        const result = await sendMessageToBackground(
+          messageActions.CHECK_INTERRUPTED_DOWNLOAD,
+          {},
+        );
         if (result && result.downloadInterrupted) {
           setInterruptData({
             phase: result.phase || "scraping",
@@ -314,7 +342,10 @@ export default function SidePanel() {
           setIsScrapingLinkedPages(false);
           setMessages([
             { key: "status.connected" },
-            { key: "status.downloadInterrupted", options: { phase: result.phase || "scraping" } },
+            {
+              key: "status.downloadInterrupted",
+              options: { phase: result.phase || "scraping" },
+            },
           ]);
         }
       } catch {
@@ -330,21 +361,32 @@ export default function SidePanel() {
       return;
     }
 
-    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string,
+    ) => {
       if (areaName === "local" && changes.downloadComplete) {
         const downloadComplete = changes.downloadComplete.newValue;
-        if (downloadComplete && downloadComplete.tabId !== undefined && downloadComplete.tabId === tabId) {
+        if (
+          downloadComplete &&
+          downloadComplete.tabId !== undefined &&
+          downloadComplete.tabId === tabId
+        ) {
           // Guard: skip if already handled via DOWNLOAD_COMPLETE message
           if (actionRef.current === messageActions.DOWNLOAD_DONE) {
             chrome.storage.local.remove("downloadComplete");
             return;
           }
           if (downloadComplete.downloadId) {
-            chrome.storage.local.set({ lastDownloadId: downloadComplete.downloadId });
+            chrome.storage.local.set({
+              lastDownloadId: downloadComplete.downloadId,
+            });
           }
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
-          setServerModeState((prev) => prev ? { ...prev, phase: 'ready' } : prev);
+          setServerModeState((prev) =>
+            prev ? { ...prev, phase: "ready" } : prev,
+          );
           setMessages((prev) => [...prev, { key: "status.creating" }]);
           setMessages((prev) => [...prev, { key: "status.complete" }]);
 
@@ -366,7 +408,13 @@ export default function SidePanel() {
     return () => {
       chrome.storage.onChanged.removeListener(handleStorageChange);
     };
-  }, [hasPermission, setMessages, setAction, setDownloadResponse, setIsScraping]);
+  }, [
+    hasPermission,
+    setMessages,
+    setAction,
+    setDownloadResponse,
+    setIsScraping,
+  ]);
 
   // Memoize reset function
   const reset = useCallback(
@@ -396,7 +444,11 @@ export default function SidePanel() {
     setDownloadOptions(options);
     setMessages((prev) => [...prev, { key: "status.scraping" }]);
     // (15.7) Track singleFile option in server-mode state
-    setServerModeState((prev) => ({ ...prev, phase: 'scraping', isSingleFile: options.singleFile }));
+    setServerModeState((prev) => ({
+      ...prev,
+      phase: "scraping",
+      isSingleFile: options.singleFile,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Keep dependencies minimal
 
@@ -433,7 +485,7 @@ export default function SidePanel() {
   if (permissionsLoading) {
     return (
       <div className="p-6 text-center">
-        <div className="text-lg">{t('app.loading')}</div>
+        <div className="text-lg">{t("app.loading")}</div>
       </div>
     );
   }
@@ -471,12 +523,17 @@ export default function SidePanel() {
             setScrollAttempts(0);
             setIsScraping(true);
             setMessages((prev) => [...prev, { key: "status.scraping" }]);
-            setServerModeState((prev) => ({ ...prev, phase: 'scraping', serverError: null }));
+            setServerModeState((prev) => ({
+              ...prev,
+              phase: "scraping",
+              serverError: null,
+            }));
           }
         }}
         onDownloadFromServer={async () => {
           if (serverModeState.serverDownloadUrl) {
-            const { loadFilterOptions } = await import("./common/storage/filterStorage");
+            const { loadFilterOptions } =
+              await import("./common/storage/filterStorage");
             const opts = await loadFilterOptions();
             chrome.downloads.download({
               url: serverModeState.serverDownloadUrl,
@@ -490,15 +547,25 @@ export default function SidePanel() {
           // If we have a server session ID, attempt resume
           if (interruptData?.serverSessionId) {
             setIsScraping(true);
-            setMessages((prev) => [...prev, { key: "status.reconnectingServer" }]);
-            setServerModeState((prev) => ({ ...prev, phase: 'uploading', serverError: null }));
+            setMessages((prev) => [
+              ...prev,
+              { key: "status.reconnectingServer" },
+            ]);
+            setServerModeState((prev) => ({
+              ...prev,
+              phase: "uploading",
+              serverError: null,
+            }));
             try {
-              const result = await sendMessageToBackground(messageActions.RESUME_SERVER_DOWNLOAD, {
-                serverSessionId: interruptData.serverSessionId,
-                tabUrl: interruptData.tabUrl,
-                phase: interruptData.phase,
-                resourceUrls: interruptData.resourceUrls,
-              });
+              const result = await sendMessageToBackground(
+                messageActions.RESUME_SERVER_DOWNLOAD,
+                {
+                  serverSessionId: interruptData.serverSessionId,
+                  tabUrl: interruptData.tabUrl,
+                  phase: interruptData.phase,
+                  resourceUrls: interruptData.resourceUrls,
+                },
+              );
               if (result?.fallback) {
                 // Resume failed — fall through to full restart
                 throw new Error(result.error || "Resume failed");
@@ -512,21 +579,32 @@ export default function SidePanel() {
                 setIsScraping(true);
                 setDownloadOptions(downloadOptions);
                 setMessages((prev) => [...prev, { key: "status.scraping" }]);
-                setServerModeState((prev) => ({ ...prev, phase: 'scraping', serverError: null }));
+                setServerModeState((prev) => ({
+                  ...prev,
+                  phase: "scraping",
+                  serverError: null,
+                }));
               }
             }
           } else if (downloadOptions) {
             setIsScraping(true);
             setDownloadOptions(downloadOptions);
             setMessages((prev) => [...prev, { key: "status.scraping" }]);
-            setServerModeState((prev) => ({ ...prev, phase: 'scraping', serverError: null }));
+            setServerModeState((prev) => ({
+              ...prev,
+              phase: "scraping",
+              serverError: null,
+            }));
           }
         }}
         onDismissInterrupt={() => {
           setInterruptData(null);
           setMessages([{ key: "status.connected" }]);
           // Clear the checkpoint so re-opening the panel doesn't show stale state
-          sendMessageToBackground(messageActions.DISMISS_INTERRUPTED_DOWNLOAD, {});
+          sendMessageToBackground(
+            messageActions.DISMISS_INTERRUPTED_DOWNLOAD,
+            {},
+          );
         }}
         cloudUploadState={cloudUploadState}
         onRetryCloudUpload={() => {

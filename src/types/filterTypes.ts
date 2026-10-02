@@ -9,7 +9,7 @@ export interface FilterOptions {
   downloadContentAsText: boolean;
   downloadDocuments: boolean;
   singleFile: boolean;
-  
+
   // Full scraping options for linked pages
   downloadLinksFullScraping?: boolean; // Enable full scraping (default: false)
   linkedPagesMaxCount?: number; // Default: 200, Max: 500
@@ -19,7 +19,6 @@ export interface FilterOptions {
 
   alwaysAskWhereToSave?: boolean; // Default: true
 }
-
 
 /**
  * Default filter options matching current hardcoded values

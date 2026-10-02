@@ -1,4 +1,3 @@
-
 /// <reference types="chrome" />
 import { initializeCleanupHandlers } from "./cleanupHandlers";
 import { requestQueue } from "../utils/RequestQueue";
@@ -6,7 +5,12 @@ import { memoryManager } from "../utils/MemoryManager";
 import { MemoryPressureLevel } from "../utils/memoryLimits";
 import { initializeDownloadListener } from "./download-listener";
 import { downloadResources } from "./download-core";
-import { setTabDownloadActive, setTabDownloadComplete, isAnyDownloadInProgress, isTabDownloadInProgress } from "./download-state";
+import {
+  setTabDownloadActive,
+  setTabDownloadComplete,
+  isAnyDownloadInProgress,
+  isTabDownloadInProgress,
+} from "./download-state";
 
 // Initialize cleanup handlers when this module loads
 initializeCleanupHandlers();
@@ -16,14 +20,10 @@ initializeDownloadListener();
 
 // Initialize queue system
 requestQueue.setEventListeners({
-  onStart: () => {
-  },
-  onComplete: () => {
-  },
-  onError: () => {
-  },
-  onRetry: () => {
-  }
+  onStart: () => {},
+  onComplete: () => {},
+  onError: () => {},
+  onRetry: () => {},
 });
 
 // Register cleanup callbacks with memory manager

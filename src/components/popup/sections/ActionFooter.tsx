@@ -64,7 +64,9 @@ export default function ActionFooter({
       <div
         className={`flex items-center justify-between ${direction === "rtl" ? "flex-row-reverse" : ""}`}
       >
-        <div className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
+        <div
+          className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}
+        >
           <Button
             variant="outline"
             size="sm"
@@ -73,7 +75,9 @@ export default function ActionFooter({
             <Settings className="h-4 w-4" /> {getTranslation("button_options")}
           </Button>
         </div>
-        <div className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}>
+        <div
+          className={`flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}
+        >
           <ScrollModeSwitch
             scrollMode={scrollMode}
             onCheckedChange={(checked) => {

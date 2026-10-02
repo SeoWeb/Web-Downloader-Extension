@@ -13,19 +13,20 @@
  * @throws If the active tab cannot be found or accessed, or if the script execution fails.
  */
 export async function executeScript<Args extends unknown[], Result>(options: {
-  tab: Partial<chrome.tabs.Tab>,
+  tab: Partial<chrome.tabs.Tab>;
   func: (...args: Args) => Result; // Function can return Result or Promise<Result>
   args?: Args;
 }): Promise<chrome.scripting.InjectionResult<globalThis.Awaited<Result>>[]> {
-
   if (!options?.tab?.id) {
-    throw new Error('Could not get active tab ID.');
+    throw new Error("Could not get active tab ID.");
   }
 
   // Check if the scripting API is available (permission granted?)
-  if (typeof chrome.scripting === 'undefined') {
-    console.error('Error: chrome.scripting API is not available. Ensure the "scripting" permission is declared in manifest.json and granted by the user.');
-    throw new Error('Scripting permission is required but not available.');
+  if (typeof chrome.scripting === "undefined") {
+    console.error(
+      'Error: chrome.scripting API is not available. Ensure the "scripting" permission is declared in manifest.json and granted by the user.',
+    );
+    throw new Error("Scripting permission is required but not available.");
   }
 
   try {
@@ -39,9 +40,16 @@ export async function executeScript<Args extends unknown[], Result>(options: {
     });
 
     // Explicitly cast the result to the expected return type
-    return results as chrome.scripting.InjectionResult<globalThis.Awaited<Result>>[];
+    return results as chrome.scripting.InjectionResult<
+      globalThis.Awaited<Result>
+    >[];
   } catch (error) {
-    console.error('Error executing script in tab:', options?.tab?.id, 'Error:', error);
+    console.error(
+      "Error executing script in tab:",
+      options?.tab?.id,
+      "Error:",
+      error,
+    );
     // Re-throw or handle as needed
     throw error;
   }

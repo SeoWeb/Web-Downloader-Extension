@@ -19,5 +19,3 @@ export async function requestStoragePermission(): Promise<boolean> {
     return false;
   }
 }
-
-

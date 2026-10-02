@@ -53,11 +53,10 @@ export function MainContent({
               </ErrorBoundary>
             ) : (
               <ErrorBoundary name="Filter">
-                <React.Suspense fallback={<div className="p-4">{t('filter.loading')}</div>}>
-                  <Filter
-                    download={onClickStartDownload}
-                    tabUrl={tabUrl}
-                  />
+                <React.Suspense
+                  fallback={<div className="p-4">{t("filter.loading")}</div>}
+                >
+                  <Filter download={onClickStartDownload} tabUrl={tabUrl} />
                 </React.Suspense>
               </ErrorBoundary>
             )}

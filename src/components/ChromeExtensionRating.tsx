@@ -21,7 +21,7 @@ const ChromeExtensionRating = () => {
           key={index}
           onClick={() => handleStarClick(index + 1)}
           className="focus:outline-none transition-transform hover:scale-125 cursor-pointer"
-          aria-label={t('rating.ariaLabel', { count: index + 1 })}
+          aria-label={t("rating.ariaLabel", { count: index + 1 })}
         >
           <Star className="w-8 h-8 text-yellow-400 fill-current" />
         </button>

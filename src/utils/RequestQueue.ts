@@ -15,11 +15,11 @@ import {
   extractDomain,
   getResourceTypeFromUrl,
   getPriorityForResourceType,
-} from '../types/queue';
-import { RequestScheduler } from './RequestScheduler';
-import { DomainLimiterFactory } from './DomainLimiter';
-import { ThrottlingManager } from './ThrottlingManager';
-import { memoryManager } from './MemoryManager';
+} from "../types/queue";
+import { RequestScheduler } from "./RequestScheduler";
+import { DomainLimiterFactory } from "./DomainLimiter";
+import { ThrottlingManager } from "./ThrottlingManager";
+import { memoryManager } from "./MemoryManager";
 
 export class RequestQueue {
   private options: RequestQueueOptions;
@@ -32,14 +32,14 @@ export class RequestQueue {
 
   constructor(options?: Partial<RequestQueueOptions>) {
     this.options = { ...DEFAULT_QUEUE_OPTIONS, ...options };
-    
+
     // Initialize components
     this.scheduler = new RequestScheduler(this.options.eventListeners);
     this.throttlingManager = new ThrottlingManager(this.options.throttling);
-    
+
     // Set up event listeners
     this.setupEventListeners();
-    
+
     // Start processing
     this.startProcessing();
   }
@@ -47,19 +47,23 @@ export class RequestQueue {
   /**
    * Add a request to the queue
    */
-  public async enqueue(request: Omit<QueuedRequest, 'id' | 'status' | 'queuedAt'>): Promise<string> {
+  public async enqueue(
+    request: Omit<QueuedRequest, "id" | "status" | "queuedAt">,
+  ): Promise<string> {
     // Generate unique ID
     const id = this.generateRequestId();
-    
+
     // Extract domain
     const domain = extractDomain(request.url);
-    
+
     // Determine resource type if not provided
-    const resourceType = request.resourceType || getResourceTypeFromUrl(request.url);
-    
+    const resourceType =
+      request.resourceType || getResourceTypeFromUrl(request.url);
+
     // Determine priority if not provided
-    const priority = request.priority || getPriorityForResourceType(resourceType);
-    
+    const priority =
+      request.priority || getPriorityForResourceType(resourceType);
+
     // Check for duplicates
     if (this.throttlingManager.isDuplicateRequest(request.url)) {
       const cachedResult = this.throttlingManager.getCachedResult(request.url);
@@ -218,7 +222,7 @@ export class RequestQueue {
    */
   public updateConfig(options: Partial<RequestQueueOptions>): void {
     this.options = { ...this.options, ...options };
-    
+
     if (options.throttling) {
       this.throttlingManager.updateConfig(options.throttling);
     }
@@ -230,37 +234,38 @@ export class RequestQueue {
   private setupEventListeners(): void {
     // Override scheduler event listeners to integrate with queue
     const originalListeners = this.options.eventListeners || {};
-    
+
     const wrappedListeners: QueueEventListeners = {
       ...originalListeners,
-      
+
       onQueued: (request) => {
         if (originalListeners.onQueued) {
           originalListeners.onQueued(request);
         }
         this.scheduleProcessing();
       },
-      
+
       onStart: (request) => {
         if (originalListeners.onStart) {
           originalListeners.onStart(request);
         }
       },
-      
+
       onComplete: (result) => {
         // Cache successful results
         this.throttlingManager.cacheRequestResult(result.url, result);
-        
+
         if (originalListeners.onComplete) {
           originalListeners.onComplete(result);
         }
       },
-      
+
       onError: (request, error) => {
         // Handle retries - only retry transient errors, not permanent ones
-        const shouldRetry = request.retryCount < (this.options.throttling?.maxRetries || 3) && 
-                           this.isRetryableError(error);
-        
+        const shouldRetry =
+          request.retryCount < (this.options.throttling?.maxRetries || 3) &&
+          this.isRetryableError(error);
+
         if (shouldRetry) {
           this.retryRequest(request);
         } else {
@@ -269,14 +274,14 @@ export class RequestQueue {
           }
         }
       },
-      
+
       onEmpty: () => {
         if (originalListeners.onEmpty) {
           originalListeners.onEmpty();
         }
       },
     };
-    
+
     this.options.eventListeners = wrappedListeners;
   }
 
@@ -314,13 +319,13 @@ export class RequestQueue {
       // Get adaptive concurrency limit
       const maxConcurrency = this.throttlingManager.getAdaptiveConcurrency();
       const currentActiveRequests = this.activeRequests.size;
-      
+
       // Process multiple requests in parallel up to concurrency limit
       const requestsToStart: QueuedRequest[] = [];
-      
+
       while (currentActiveRequests + requestsToStart.length < maxConcurrency) {
         const request = this.scheduler.getNextRequest();
-        
+
         if (!request) {
           break; // No more requests to process
         }
@@ -356,7 +361,7 @@ export class RequestQueue {
 
     // Schedule next processing only if we have more items and not paused
     if (this.isProcessing && !this.scheduler.isEmpty()) {
-       this.scheduleProcessing();
+      this.scheduleProcessing();
     }
   }
 
@@ -366,7 +371,7 @@ export class RequestQueue {
   private async startRequest(request: QueuedRequest): Promise<void> {
     const startTime = Date.now();
     const controller = new AbortController();
-    
+
     // Create active request
     const activeRequest: ActiveRequest = {
       request,
@@ -381,22 +386,22 @@ export class RequestQueue {
         eta: 0,
       },
     };
-    
+
     this.activeRequests.set(request.id, activeRequest);
-    
+
     // Update domain limiter
     const domainLimiter = DomainLimiterFactory.getLimiter(request.domain);
     domainLimiter.startRequest();
-    
+
     // Track memory allocation
     memoryManager.queueResource({
       id: request.id,
       url: request.url,
       type: request.resourceType,
       size: request.estimatedSize,
-      status: 'downloading',
+      status: "downloading",
     });
-    
+
     try {
       // Notify start
       if (this.options.eventListeners?.onStart) {
@@ -406,34 +411,33 @@ export class RequestQueue {
       // Apply throttle delay if needed
       const throttleDelay = this.throttlingManager.getThrottleDelay();
       if (throttleDelay > 0) {
-        await new Promise(resolve => setTimeout(resolve, throttleDelay));
+        await new Promise((resolve) => setTimeout(resolve, throttleDelay));
       }
 
       // Apply domain rate limit delay if needed
       const domainDelay = domainLimiter.getWaitTime();
       if (domainDelay > 0) {
-        await new Promise(resolve => setTimeout(resolve, domainDelay));
+        await new Promise((resolve) => setTimeout(resolve, domainDelay));
       }
 
       // Execute the request
       const result = await this.executeRequest(request, controller);
-      
+
       // Record success
       const duration = Date.now() - startTime;
       this.throttlingManager.recordRequest(duration, true);
       domainLimiter.adjustRateLimit(result.response.status);
-      
+
       // Update memory tracking
       memoryManager.trackResourceAllocation(request.id, result.size);
-      
+
       // Complete the request
       this.completeRequest(request.id, result);
-      
     } catch (error) {
       // Record failure
       const duration = Date.now() - startTime;
       this.throttlingManager.recordRequest(duration, false);
-      
+
       // Get status code if available
       let statusCode = 0;
       if (error instanceof Error) {
@@ -442,9 +446,9 @@ export class RequestQueue {
           statusCode = parseInt(statusMatch[1]);
         }
       }
-      
+
       domainLimiter.adjustRateLimit(statusCode);
-      
+
       // Fail the request
       this.failRequest(request.id, error as Error);
     }
@@ -453,34 +457,38 @@ export class RequestQueue {
   /**
    * Execute a request with fallback strategies for CORS-blocked resources
    */
-  private async executeRequest(request: QueuedRequest, controller: AbortController): Promise<RequestResult> {
+  private async executeRequest(
+    request: QueuedRequest,
+    controller: AbortController,
+  ): Promise<RequestResult> {
     const startTime = Date.now();
-    
+
     // Extract origin from request URL for Referer header
-    let referer = '';
+    let referer = "";
     try {
       const urlObj = new URL(request.url);
-      referer = urlObj.origin + '/';
+      referer = urlObj.origin + "/";
     } catch (e) {
       // If URL parsing fails, skip referer
     }
-    
+
     // Prepare fetch options
     const fetchOptions: RequestInit = {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': this.getAcceptHeader(request.resourceType),
-        'Cache-Control': 'no-cache',
-        'Referer': referer,
-        'Origin': referer ? referer.replace(/\/$/, '') : '',
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: this.getAcceptHeader(request.resourceType),
+        "Cache-Control": "no-cache",
+        Referer: referer,
+        Origin: referer ? referer.replace(/\/$/, "") : "",
         ...request.fetchOptions?.headers,
       },
       ...request.fetchOptions,
     };
 
     let response: Response | undefined;
-    
+
     try {
       // Make the request
       response = await fetch(request.url, fetchOptions);
@@ -494,10 +502,11 @@ export class RequestQueue {
       // then navigate mode as last resort.
       // For Documents: skip no-cors (opaque responses can't be read — .blob()
       // throws) and go directly to navigate mode which returns readable responses.
-      const needsFallback = request.resourceType === ResourceType.CSS
-        || request.resourceType === ResourceType.JS
-        || request.resourceType === ResourceType.IMAGE
-        || request.resourceType === ResourceType.DOCUMENT;
+      const needsFallback =
+        request.resourceType === ResourceType.CSS ||
+        request.resourceType === ResourceType.JS ||
+        request.resourceType === ResourceType.IMAGE ||
+        request.resourceType === ResourceType.DOCUMENT;
 
       if (needsFallback) {
         // For documents, skip no-cors and go straight to navigate mode
@@ -505,19 +514,20 @@ export class RequestQueue {
         if (request.resourceType !== ResourceType.DOCUMENT) {
           try {
             response = await fetch(request.url, {
-              method: 'GET',
-              mode: 'no-cors',
-              cache: 'no-cache',
-              credentials: 'omit',
+              method: "GET",
+              mode: "no-cors",
+              cache: "no-cache",
+              credentials: "omit",
               signal: controller.signal,
               headers: {
-                'Accept': this.getAcceptHeader(request.resourceType),
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                Accept: this.getAcceptHeader(request.resourceType),
+                "User-Agent":
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
               },
             });
 
             // no-cors mode will return opaque responses, which is expected
-            if (response.type === 'opaque') {
+            if (response.type === "opaque") {
             }
           } catch (fallbackError) {
             // If no-cors fails, fall through to navigate mode below
@@ -526,13 +536,17 @@ export class RequestQueue {
 
         // If we still don't have a usable response (or resource type is DOCUMENT),
         // try navigate mode which bypasses CORS and returns readable responses.
-        if (response === undefined || (response.type === 'opaque' && request.resourceType === ResourceType.DOCUMENT)) {
+        if (
+          response === undefined ||
+          (response.type === "opaque" &&
+            request.resourceType === ResourceType.DOCUMENT)
+        ) {
           try {
             response = await fetch(request.url, {
-              method: 'GET',
-              mode: 'navigate',
-              cache: 'force-cache',
-              redirect: 'follow',
+              method: "GET",
+              mode: "navigate",
+              cache: "force-cache",
+              redirect: "follow",
               signal: controller.signal,
             });
           } catch (navigateError) {
@@ -548,13 +562,15 @@ export class RequestQueue {
 
     // If all fetch strategies failed, throw the error
     if (!response) {
-      throw new Error(`Failed to fetch ${request.url}: all strategies exhausted`);
+      throw new Error(
+        `Failed to fetch ${request.url}: all strategies exhausted`,
+      );
     }
 
     // Get response size
-    const contentLength = response.headers.get('Content-Length');
+    const contentLength = response.headers.get("Content-Length");
     const size = contentLength ? parseInt(contentLength) : 0;
-    
+
     // Create result
     const result: RequestResult = {
       requestId: request.id,
@@ -578,18 +594,20 @@ export class RequestQueue {
     }
 
     // Update domain limiter
-    const domainLimiter = DomainLimiterFactory.getLimiter(activeRequest.request.domain);
+    const domainLimiter = DomainLimiterFactory.getLimiter(
+      activeRequest.request.domain,
+    );
     domainLimiter.completeRequest();
-    
+
     // Release memory
     memoryManager.releaseResource(requestId);
-    
+
     // Remove from active requests
     this.activeRequests.delete(requestId);
-    
+
     // Complete in scheduler
     this.scheduler.completeRequest(requestId, result);
-    
+
     // Call completion callback
     if (activeRequest.request.onComplete) {
       activeRequest.request.onComplete(result);
@@ -609,18 +627,20 @@ export class RequestQueue {
     }
 
     // Update domain limiter
-    const domainLimiter = DomainLimiterFactory.getLimiter(activeRequest.request.domain);
+    const domainLimiter = DomainLimiterFactory.getLimiter(
+      activeRequest.request.domain,
+    );
     domainLimiter.completeRequest();
-    
+
     // Release memory
     memoryManager.releaseResource(requestId);
-    
+
     // Remove from active requests
     this.activeRequests.delete(requestId);
-    
+
     // Fail in scheduler
     this.scheduler.failRequest(requestId, error);
-    
+
     // Call error callback
     if (activeRequest.request.onError) {
       activeRequest.request.onError(error);
@@ -636,12 +656,12 @@ export class RequestQueue {
    */
   private isRetryableError(error: Error): boolean {
     const message = error.message;
-    
+
     // Check for HTTP status codes in the error message
     const httpMatch = message.match(/HTTP (\d+)/);
     if (httpMatch) {
       const statusCode = parseInt(httpMatch[1]);
-      
+
       // 4xx Client Errors - generally not retryable (resource doesn't exist or access denied)
       // Exceptions:
       // - 408 Request Timeout - retryable
@@ -652,13 +672,13 @@ export class RequestQueue {
         }
         return false; // Other 4xx errors are permanent
       }
-      
+
       // 5xx Server Errors - generally retryable (server issues may be temporary)
       if (statusCode >= 500) {
         return true;
       }
     }
-    
+
     // Network errors, timeouts, and other transient issues are retryable
     // These typically don't have HTTP status codes
     return true;
@@ -670,17 +690,20 @@ export class RequestQueue {
   private retryRequest(request: QueuedRequest): void {
     // Increment retry count
     request.retryCount++;
-    
+
     // Calculate backoff delay
     const baseDelay = this.options.throttling?.backoffBase || 1000;
     const maxDelay = this.options.throttling?.maxBackoffDelay || 10000;
-    const delay = Math.min(baseDelay * Math.pow(2, request.retryCount - 1), maxDelay);
-    
+    const delay = Math.min(
+      baseDelay * Math.pow(2, request.retryCount - 1),
+      maxDelay,
+    );
+
     // Schedule retry
     setTimeout(() => {
       // Re-queue the request
       this.scheduler.enqueue(request);
-      
+
       // Notify retry
       if (this.options.eventListeners?.onRetry) {
         this.options.eventListeners.onRetry(request, request.retryCount);
@@ -701,25 +724,25 @@ export class RequestQueue {
   private getAcceptHeader(resourceType: ResourceType): string {
     switch (resourceType) {
       case ResourceType.HTML:
-        return 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
-      
+        return "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+
       case ResourceType.CSS:
-        return 'text/css,*/*;q=0.1';
-      
+        return "text/css,*/*;q=0.1";
+
       case ResourceType.JS:
-        return 'application/javascript,text/javascript,*/*;q=0.1';
-      
+        return "application/javascript,text/javascript,*/*;q=0.1";
+
       case ResourceType.IMAGE:
-        return 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
-      
+        return "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8";
+
       case ResourceType.FONT:
-        return 'font/woff2,font/woff,font/ttf,font/otf,application/font-woff,*/*;q=0.1';
-      
+        return "font/woff2,font/woff,font/ttf,font/otf,application/font-woff,*/*;q=0.1";
+
       case ResourceType.DOCUMENT:
-        return 'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,*/*;q=0.5';
-      
+        return "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,*/*;q=0.5";
+
       default:
-        return '*/*';
+        return "*/*";
     }
   }
 }

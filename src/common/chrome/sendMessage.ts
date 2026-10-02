@@ -1,9 +1,7 @@
 import { Message, ResponseMessage } from "../../types/message";
 
 let i: any = null;
-export async function sendMessage(
-  message: Message,
-) {
+export async function sendMessage(message: Message) {
   if (i) {
     clearTimeout(i);
   }

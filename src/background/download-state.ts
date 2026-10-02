@@ -11,8 +11,12 @@ export const activeDownloads = new Map<number, DownloadInfo>();
  *  for that tab is aborted, causing the upload queue and download flow to cancel. */
 const downloadAbortControllers = new Map<number, AbortController>();
 
-export const getDownloadAbortController = (tabId: number) => downloadAbortControllers.get(tabId) ?? null;
-export const setDownloadAbortController = (controller: AbortController | null, tabId: number) => {
+export const getDownloadAbortController = (tabId: number) =>
+  downloadAbortControllers.get(tabId) ?? null;
+export const setDownloadAbortController = (
+  controller: AbortController | null,
+  tabId: number,
+) => {
   if (controller) {
     downloadAbortControllers.set(tabId, controller);
   } else {
@@ -32,8 +36,12 @@ export const abortActiveDownload = (tabId: number): boolean => {
 };
 
 const keepalivePorts = new Map<number, chrome.runtime.Port>();
-export const getKeepalivePort = (tabId: number) => keepalivePorts.get(tabId) ?? null;
-export const setKeepalivePort = (port: chrome.runtime.Port | null, tabId: number) => {
+export const getKeepalivePort = (tabId: number) =>
+  keepalivePorts.get(tabId) ?? null;
+export const setKeepalivePort = (
+  port: chrome.runtime.Port | null,
+  tabId: number,
+) => {
   if (port) {
     keepalivePorts.set(tabId, port);
   } else {
@@ -80,21 +88,24 @@ export const setTabDownloadActive = async (tabId: number) => {
 export const setTabDownloadComplete = async (tabId: number) => {
   activeDownloadTabIds.delete(tabId);
   if (chrome.storage && chrome.storage.local) {
-    await chrome.storage.local.set({ isDownloadInProgress: activeDownloadTabIds.size > 0 });
+    await chrome.storage.local.set({
+      isDownloadInProgress: activeDownloadTabIds.size > 0,
+    });
   }
 };
 
 export const isAnyDownloadInProgress = () => activeDownloadTabIds.size > 0;
-export const isTabDownloadInProgress = (tabId: number) => activeDownloadTabIds.has(tabId);
+export const isTabDownloadInProgress = (tabId: number) =>
+  activeDownloadTabIds.has(tabId);
 
 export const trackDownload = (id: number, filename: string, tabId?: number) => {
-    activeDownloads.set(id, {
-        tabId,
-        filename,
-    });
+  activeDownloads.set(id, {
+    tabId,
+    filename,
+  });
 
-    // Reuse or create keepalive port for this tab
-    if (tabId) createKeepalivePort(tabId);
+  // Reuse or create keepalive port for this tab
+  if (tabId) createKeepalivePort(tabId);
 };
 
 /** Remove all tracked chrome.downloads entries for a given tab. */

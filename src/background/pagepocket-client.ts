@@ -7,9 +7,7 @@
  */
 
 import type { PagePocketAuthState, PagePocketUser } from "../types/authTypes";
-import {
-  PAGEPOCKET_AUTH_STORAGE_KEY,
-} from "../types/authTypes";
+import { PAGEPOCKET_AUTH_STORAGE_KEY } from "../types/authTypes";
 import { PAGEPOCKET_URL } from "../common/pagepocket-mode";
 
 // ---------------------------------------------------------------------------
@@ -152,10 +150,7 @@ export class PagePocketClient {
     return this.saveAuth(data);
   }
 
-  async login(
-    email: string,
-    password: string,
-  ): Promise<PagePocketAuthState> {
+  async login(email: string, password: string): Promise<PagePocketAuthState> {
     const res = await this.unauthenticatedFetch("/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -334,11 +329,7 @@ export class PagePocketClient {
         throw new PagePocketQuotaError("Storage quota exceeded");
       }
       if (result.status >= 400) {
-        this.throwForErrorStatus(
-          result.status,
-          result.body,
-          "ingestPage",
-        );
+        this.throwForErrorStatus(result.status, result.body, "ingestPage");
       }
 
       return JSON.parse(result.body) as IngestResponse;
@@ -369,14 +360,11 @@ export class PagePocketClient {
       return (await res.json()) as IngestResponse;
     }
 
-    const res = await this.authenticatedFetch(
-      "/api/v1/archive/pages/ingest",
-      {
-        method: "POST",
-        body: formData,
-        signal: withTimeout(params.signal, UPLOAD_TIMEOUT_MS),
-      },
-    );
+    const res = await this.authenticatedFetch("/api/v1/archive/pages/ingest", {
+      method: "POST",
+      body: formData,
+      signal: withTimeout(params.signal, UPLOAD_TIMEOUT_MS),
+    });
 
     if (res.status === 402) {
       throw new PagePocketQuotaError("Storage quota exceeded");
@@ -476,9 +464,7 @@ export class PagePocketClient {
 
         xhr.onerror = () => {
           if (signal) signal.removeEventListener("abort", onAbort);
-          reject(
-            new PagePocketUploadError("Network error during upload"),
-          );
+          reject(new PagePocketUploadError("Network error during upload"));
         };
 
         xhr.onabort = () => {
@@ -589,7 +575,7 @@ export class PagePocketClient {
       const json = JSON.parse(bodyText);
       const d = json?.detail;
       detail =
-        (typeof d === "string" ? d : d?.message ?? d?.error ?? d?.detail) ??
+        (typeof d === "string" ? d : (d?.message ?? d?.error ?? d?.detail)) ??
         json?.message ??
         JSON.stringify(json);
     } catch {
@@ -657,8 +643,12 @@ export class PagePocketClient {
   private async loadAuthFromStorage(): Promise<PagePocketAuthState | null> {
     try {
       if (!chrome?.storage?.local) return null;
-      const result = await chrome.storage.local.get(PAGEPOCKET_AUTH_STORAGE_KEY);
-      return (result[PAGEPOCKET_AUTH_STORAGE_KEY] as PagePocketAuthState) ?? null;
+      const result = await chrome.storage.local.get(
+        PAGEPOCKET_AUTH_STORAGE_KEY,
+      );
+      return (
+        (result[PAGEPOCKET_AUTH_STORAGE_KEY] as PagePocketAuthState) ?? null
+      );
     } catch {
       return null;
     }

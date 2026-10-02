@@ -12,7 +12,14 @@
 
 export interface ServerModeState {
   /** Current server-mode phase. */
-  phase: 'scraping' | 'uploading' | 'assembling' | 'ready' | 'failed' | 'timeout' | null;
+  phase:
+    | "scraping"
+    | "uploading"
+    | "assembling"
+    | "ready"
+    | "failed"
+    | "timeout"
+    | null;
   /** Upload progress: completed count. */
   uploadCompleted: number;
   /** Upload progress: total count. */
@@ -60,42 +67,42 @@ export function applyServerModeMessage(
 ): ServerModeState {
   switch (msgKey) {
     // (15.7) Scraping → uploading transition
-    case 'status.sendingScrapeComplete':
-    case 'status.scrapeComplete':
-    case 'status.waitingForUploads':
-      return { ...prev, phase: 'uploading' };
+    case "status.sendingScrapeComplete":
+    case "status.scrapeComplete":
+    case "status.waitingForUploads":
+      return { ...prev, phase: "uploading" };
 
     // Assembling phase
-    case 'status.finalizingServer':
-    case 'status.assemblingServer':
-      return { ...prev, phase: 'assembling' };
+    case "status.finalizingServer":
+    case "status.assemblingServer":
+      return { ...prev, phase: "assembling" };
 
     // (15.2) Assembly progress updates
-    case 'status.assemblyProgress':
+    case "status.assemblyProgress":
       return {
         ...prev,
-        phase: 'assembling',
+        phase: "assembling",
         assemblyPhase: options?.phase ?? prev.assemblyPhase,
         assemblyProgressPct: options?.progressPct ?? prev.assemblyProgressPct,
       };
 
     // (15.1) Upload progress
-    case 'status.uploadProgress':
+    case "status.uploadProgress":
       return {
         ...prev,
-        phase: prev.phase || 'uploading',
+        phase: prev.phase || "uploading",
         uploadCompleted: options?.completed ?? prev.uploadCompleted,
         uploadTotal: options?.total ?? prev.uploadTotal,
       };
 
     // (15.5 + 15.6) Server error / timeout
-    case 'status.serverError': {
-      const reason = options?.reason ?? 'server_unavailable';
+    case "status.serverError": {
+      const reason = options?.reason ?? "server_unavailable";
       return {
         ...prev,
-        phase: reason === 'assembly_timeout' ? 'timeout' : 'failed',
+        phase: reason === "assembly_timeout" ? "timeout" : "failed",
         serverError: {
-          error: options?.error ?? 'Unknown error',
+          error: options?.error ?? "Unknown error",
           canFallback: options?.canFallback ?? false,
           reason,
         },
@@ -103,13 +110,13 @@ export function applyServerModeMessage(
     }
 
     // Server fallback offer (from download-core.ts local fallback handler)
-    case 'status.serverFallbackOffer': {
-      const reason = options?.reason ?? 'server_unavailable';
+    case "status.serverFallbackOffer": {
+      const reason = options?.reason ?? "server_unavailable";
       return {
         ...prev,
-        phase: reason === 'assembly_timeout' ? 'timeout' : 'failed',
+        phase: reason === "assembly_timeout" ? "timeout" : "failed",
         serverError: {
-          error: options?.errorMessage ?? '',
+          error: options?.errorMessage ?? "",
           canFallback: true,
           reason,
         },
@@ -119,16 +126,16 @@ export function applyServerModeMessage(
     // (15.3 + 15.4) Download ready — also accept download URL options
     // defensively so the UI is self-contained even if serverDownloadReady
     // was missed or processed out of order.
-    case 'status.complete':
+    case "status.complete":
       return {
         ...prev,
-        phase: 'ready',
+        phase: "ready",
         serverDownloadUrl: options?.downloadUrl ?? prev.serverDownloadUrl,
         isSingleFile: options?.isSingleFile ?? prev.isSingleFile,
       };
 
     // (15.3) Explicit download-ready signal with URL
-    case 'status.serverDownloadReady':
+    case "status.serverDownloadReady":
       return {
         ...prev,
         serverDownloadUrl: options?.downloadUrl ?? prev.serverDownloadUrl,
@@ -136,8 +143,8 @@ export function applyServerModeMessage(
       };
 
     // (15.7) Scraping phase
-    case 'status.scraping':
-      return { ...prev, phase: 'scraping' };
+    case "status.scraping":
+      return { ...prev, phase: "scraping" };
 
     // Unrecognised message — no state change
     default:

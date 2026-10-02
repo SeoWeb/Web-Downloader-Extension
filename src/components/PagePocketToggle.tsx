@@ -31,25 +31,31 @@ export function PagePocketToggle() {
           onCheckedChange={handleCheckedChange}
         />
         <label htmlFor="cloudStorage" className="flex-1 cursor-pointer">
-          <div className="font-medium text-slate-900">{t('filter.cloudStorage')}</div>
-          <div className="text-xs text-slate-500">{t('filter.cloudStorageDescription')}</div>
+          <div className="font-medium text-slate-900">
+            {t("filter.cloudStorage")}
+          </div>
+          <div className="text-xs text-slate-500">
+            {t("filter.cloudStorageDescription")}
+          </div>
         </label>
         <Cloud className="w-5 h-5 text-indigo-400" />
       </div>
 
       {cloudStorageEnabled && (
-        <div className={cn(
-          "mt-2 pt-2 border-t border-indigo-200 flex items-center justify-between text-xs",
-        )}>
+        <div
+          className={cn(
+            "mt-2 pt-2 border-t border-indigo-200 flex items-center justify-between text-xs",
+          )}
+        >
           {isAuthenticated && authUser ? (
             <span className="text-green-700 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-              {t('filter.cloudLoggedInAs', { email: authUser.email })}
+              {t("filter.cloudLoggedInAs", { email: authUser.email })}
             </span>
           ) : (
             <span className="text-amber-700 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-              {t('filter.cloudLoginRequired')}
+              {t("filter.cloudLoginRequired")}
             </span>
           )}
           {isAuthenticated && (
@@ -58,7 +64,7 @@ export function PagePocketToggle() {
               className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
             >
               <LogOut className="w-3 h-3" />
-              {t('filter.cloudLogout')}
+              {t("filter.cloudLogout")}
             </button>
           )}
         </div>

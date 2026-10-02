@@ -93,8 +93,8 @@ export function getResources(html: string): {
   links: string[];
   text: string;
 } {
-  if (!html || typeof html !== 'string') {
-    return { css: [], js: [], documents: [], images: [], links: [], text: '' };
+  if (!html || typeof html !== "string") {
+    return { css: [], js: [], documents: [], images: [], links: [], text: "" };
   }
 
   const $ = cheerio.load(html);
@@ -117,28 +117,28 @@ export function getResources(html: string): {
   // Next.js (and many modern sites) load JS chunks, CSS, and fonts this way
   // rather than via <script src> / <link rel="stylesheet">, so without this
   // they are never downloaded (and 404 in the archived preview).
-  const preloadLinks = $("link")
-    ?.filter((_i, el) => {
-      const rel = ($(el).attr("rel") || "").toLowerCase();
-      return (
-        (rel.includes("preload") ||
-          rel.includes("modulepreload") ||
-          rel.includes("prefetch")) &&
-        !!$(el).attr("href")
-      );
-    })
-    ?.toArray()
-    ?.map((el) => ({
-      href: $(el).attr("href") || "",
-      as: ($(el).attr("as") || "").toLowerCase(),
-    }))
-    ?.filter(
-      (item) =>
-        !!item.href?.length &&
-        !item.href.startsWith("#") &&
-        !item.href.startsWith("data:"),
-    )
-    || [];
+  const preloadLinks =
+    $("link")
+      ?.filter((_i, el) => {
+        const rel = ($(el).attr("rel") || "").toLowerCase();
+        return (
+          (rel.includes("preload") ||
+            rel.includes("modulepreload") ||
+            rel.includes("prefetch")) &&
+          !!$(el).attr("href")
+        );
+      })
+      ?.toArray()
+      ?.map((el) => ({
+        href: $(el).attr("href") || "",
+        as: ($(el).attr("as") || "").toLowerCase(),
+      }))
+      ?.filter(
+        (item) =>
+          !!item.href?.length &&
+          !item.href.startsWith("#") &&
+          !item.href.startsWith("data:"),
+      ) || [];
 
   const preloadJs = preloadLinks
     .filter((l) => l.as === "script")

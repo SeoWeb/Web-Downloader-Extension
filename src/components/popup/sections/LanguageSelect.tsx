@@ -29,8 +29,9 @@ export default function LanguageSelect() {
         <Globe className="h-4 w-4" />
         <SelectValue>
           <span>
-            {langConstants[`LANG_${currentLanguage.toUpperCase()}` as keyof typeof langConstants] ||
-              `lang_${currentLanguage}`}
+            {langConstants[
+              `LANG_${currentLanguage.toUpperCase()}` as keyof typeof langConstants
+            ] || `lang_${currentLanguage}`}
           </span>
         </SelectValue>
       </SelectTrigger>
@@ -46,8 +47,9 @@ export default function LanguageSelect() {
             className="text-gray-900 hover:bg-gray-100 py-1"
           >
             {getTranslation(
-              langConstants[`LANG_${code.toUpperCase()}` as keyof typeof langConstants] ||
-                `lang_${code}`
+              langConstants[
+                `LANG_${code.toUpperCase()}` as keyof typeof langConstants
+              ] || `lang_${code}`,
             )}
           </SelectItem>
         ))}

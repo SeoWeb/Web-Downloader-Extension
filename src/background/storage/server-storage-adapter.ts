@@ -19,7 +19,12 @@ import { UploadQueue } from "../upload-queue";
  * Adapter that can write to either JSZip (legacy) or IndexedDB (new)
  */
 export interface IStorageAdapter {
-  addFile(path: string, content: Blob | string | ArrayBuffer, mimeType?: string, originalUrl?: string): Promise<void>;
+  addFile(
+    path: string,
+    content: Blob | string | ArrayBuffer,
+    mimeType?: string,
+    originalUrl?: string,
+  ): Promise<void>;
   getFile(path: string): Promise<Blob | null>;
   getAllFiles(): Promise<Array<{ path: string; size: number }>>;
   clear(): Promise<void>;
@@ -207,7 +212,10 @@ export class ServerStorageAdapter implements IStorageAdapter {
    * Convert various content types to Blob for upload.
    * Mirrors FileStore.toBlob() in file-store.ts.
    */
-  private toBlob(content: Blob | string | ArrayBuffer, mimeType?: string): Blob {
+  private toBlob(
+    content: Blob | string | ArrayBuffer,
+    mimeType?: string,
+  ): Blob {
     if (content instanceof Blob) {
       return content;
     }
@@ -215,8 +223,12 @@ export class ServerStorageAdapter implements IStorageAdapter {
       return new Blob([content], { type: mimeType || "text/plain" });
     }
     if (content instanceof ArrayBuffer) {
-      return new Blob([content], { type: mimeType || "application/octet-stream" });
+      return new Blob([content], {
+        type: mimeType || "application/octet-stream",
+      });
     }
-    throw new Error("Unsupported content type for ServerStorageAdapter.addFile()");
+    throw new Error(
+      "Unsupported content type for ServerStorageAdapter.addFile()",
+    );
   }
 }

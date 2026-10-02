@@ -1,5 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { Cloud, CheckCircle2, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
+import {
+  Cloud,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
 import { PAGEPOCKET_URL } from "../common/pagepocket-mode";
 
 export interface CloudUploadState {
@@ -23,7 +29,7 @@ export function CloudUploadStatus({ state, onRetry }: CloudUploadStatusProps) {
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-sm text-indigo-600">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span>{t('status.pagepocketUploading')}</span>
+          <span>{t("status.pagepocketUploading")}</span>
         </div>
         <div className="w-full bg-indigo-100 rounded-full h-2">
           <div
@@ -32,7 +38,9 @@ export function CloudUploadStatus({ state, onRetry }: CloudUploadStatusProps) {
           />
         </div>
         <p className="text-xs text-slate-500">
-          {t('status.pagepocketUploadProgress', { progress: Math.round(state.progress) })}
+          {t("status.pagepocketUploadProgress", {
+            progress: Math.round(state.progress),
+          })}
         </p>
       </div>
     );
@@ -47,7 +55,7 @@ export function CloudUploadStatus({ state, onRetry }: CloudUploadStatusProps) {
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-sm text-green-700">
           <CheckCircle2 className="w-5 h-5" />
-          <span>{t('status.pagepocketUploadComplete')}</span>
+          <span>{t("status.pagepocketUploadComplete")}</span>
         </div>
         {state.pageId && viewUrl && (
           <a
@@ -57,7 +65,7 @@ export function CloudUploadStatus({ state, onRetry }: CloudUploadStatusProps) {
             className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
           >
             <Cloud className="w-3 h-3" />
-            {t('status.pagepocketViewPage')}
+            {t("status.pagepocketViewPage")}
           </a>
         )}
       </div>
@@ -72,8 +80,8 @@ export function CloudUploadStatus({ state, onRetry }: CloudUploadStatusProps) {
         <div>
           <span>
             {state.isQuotaError
-              ? t('status.pagepocketQuotaExceeded')
-              : state.errorMessage || t('status.pagepocketUploadError')}
+              ? t("status.pagepocketQuotaExceeded")
+              : state.errorMessage || t("status.pagepocketUploadError")}
           </span>
         </div>
       </div>
@@ -83,7 +91,7 @@ export function CloudUploadStatus({ state, onRetry }: CloudUploadStatusProps) {
           className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
         >
           <RefreshCw className="w-3 h-3" />
-          {t('status.pagepocketUploadRetry')}
+          {t("status.pagepocketUploadRetry")}
         </button>
       )}
     </div>

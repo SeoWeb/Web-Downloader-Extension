@@ -3,7 +3,7 @@
  * Defines limits and thresholds for memory usage to prevent browser crashes
  */
 
-import { adaptiveMemoryManager } from './AdaptiveMemoryManager';
+import { adaptiveMemoryManager } from "./AdaptiveMemoryManager";
 
 export interface MemoryLimitsConfig {
   // Maximum total memory usage for the extension (in bytes)

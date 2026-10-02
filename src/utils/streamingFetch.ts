@@ -3,10 +3,8 @@
  * Provides streaming fetch capabilities with range requests and error handling
  */
 
-import {
-  MemoryPressureInfo,
-} from '../types/streaming';
-import { memoryManager } from './MemoryManager';
+import { MemoryPressureInfo } from "../types/streaming";
+import { memoryManager } from "./MemoryManager";
 
 export interface StreamingFetchOptions {
   /** Size of chunks for streaming */
@@ -45,7 +43,9 @@ export interface StreamingFetchResponse {
   /** Readable stream for content */
   body?: ReadableStream<Uint8Array>;
   /** Create a chunk iterator */
-  createChunkIterator: (chunkSize?: number) => AsyncGenerator<ArrayBuffer, void, unknown>;
+  createChunkIterator: (
+    chunkSize?: number,
+  ) => AsyncGenerator<ArrayBuffer, void, unknown>;
   /** Get file metadata without downloading */
   getMetadata: () => Promise<FileMetadata>;
 }
@@ -92,7 +92,7 @@ export class StreamingFetcher {
    */
   async fetchStreaming(
     url: string,
-    options: Partial<StreamingFetchOptions> = {}
+    options: Partial<StreamingFetchOptions> = {},
   ): Promise<StreamingFetchResponse> {
     const fetchOptions = { ...this.defaultOptions, ...options };
     const requestId = this.generateRequestId(url);
@@ -104,10 +104,24 @@ export class StreamingFetcher {
       // Check if we should use streaming
       const useStreaming = this.shouldUseStreaming(metadata.size, fetchOptions);
 
-      if (useStreaming && fetchOptions.enableRangeRequests && metadata.supportsRangeRequests) {
-        return this.createStreamingResponse(url, metadata, fetchOptions, requestId);
+      if (
+        useStreaming &&
+        fetchOptions.enableRangeRequests &&
+        metadata.supportsRangeRequests
+      ) {
+        return this.createStreamingResponse(
+          url,
+          metadata,
+          fetchOptions,
+          requestId,
+        );
       } else {
-        return this.createRegularResponse(url, metadata, fetchOptions, requestId);
+        return this.createRegularResponse(
+          url,
+          metadata,
+          fetchOptions,
+          requestId,
+        );
       }
     } catch (error) {
       this.cleanupRequest(requestId);
@@ -120,7 +134,7 @@ export class StreamingFetcher {
    */
   async downloadChunked(
     url: string,
-    options: Partial<StreamingFetchOptions> = {}
+    options: Partial<StreamingFetchOptions> = {},
   ): Promise<ChunkedDownloadResult> {
     const response = await this.fetchStreaming(url, options);
     const metadata = await response.getMetadata();
@@ -143,7 +157,7 @@ export class StreamingFetcher {
       // Check memory pressure
       if (options.onMemoryPressure) {
         const pressure = this.getMemoryPressure();
-        if (pressure.level !== 'low') {
+        if (pressure.level !== "low") {
           options.onMemoryPressure(pressure);
         }
       }
@@ -161,17 +175,17 @@ export class StreamingFetcher {
    */
   async getMetadata(
     url: string,
-    options: Partial<StreamingFetchOptions> = {}
+    options: Partial<StreamingFetchOptions> = {},
   ): Promise<FileMetadata> {
     const fetchOptions = { ...this.defaultOptions, ...options };
     const controller = new AbortController();
 
     try {
       const response = await fetch(url, {
-        method: 'HEAD',
+        method: "HEAD",
         signal: controller.signal,
         headers: {
-          'User-Agent': fetchOptions.userAgent!,
+          "User-Agent": fetchOptions.userAgent!,
           ...fetchOptions.headers,
         },
       });
@@ -180,25 +194,27 @@ export class StreamingFetcher {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const contentLength = response.headers.get('Content-Length');
-      const lastModified = response.headers.get('Last-Modified');
-      const etag = response.headers.get('ETag');
-      const contentType = response.headers.get('Content-Type');
-      const acceptRanges = response.headers.get('Accept-Ranges');
-      const contentDisposition = response.headers.get('Content-Disposition');
+      const contentLength = response.headers.get("Content-Length");
+      const lastModified = response.headers.get("Last-Modified");
+      const etag = response.headers.get("ETag");
+      const contentType = response.headers.get("Content-Type");
+      const acceptRanges = response.headers.get("Accept-Ranges");
+      const contentDisposition = response.headers.get("Content-Disposition");
 
       let filename: string | undefined;
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        const filenameMatch = contentDisposition.match(
+          /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/,
+        );
         if (filenameMatch) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
+          filename = filenameMatch[1].replace(/['"]/g, "");
         }
       }
 
       if (!filename) {
         // Extract filename from URL
         const urlParts = new URL(url);
-        filename = urlParts.pathname.split('/').pop() || 'download';
+        filename = urlParts.pathname.split("/").pop() || "download";
       }
 
       return {
@@ -206,7 +222,7 @@ export class StreamingFetcher {
         contentType,
         lastModified,
         etag,
-        supportsRangeRequests: acceptRanges === 'bytes',
+        supportsRangeRequests: acceptRanges === "bytes",
         filename,
       };
     } catch (error) {
@@ -222,13 +238,13 @@ export class StreamingFetcher {
     url: string,
     metadata: FileMetadata,
     options: StreamingFetchOptions,
-    requestId: string
+    requestId: string,
   ): Promise<StreamingFetchResponse> {
     const controller = new AbortController();
     this.activeRequests.set(requestId, controller);
 
     const createChunkIterator = async function* (
-      chunkSize: number = options.chunkSize!
+      chunkSize: number = options.chunkSize!,
     ): AsyncGenerator<ArrayBuffer, void, unknown> {
       if (metadata.size === 0) {
         return;
@@ -246,8 +262,8 @@ export class StreamingFetcher {
           try {
             const response = await fetch(url, {
               headers: {
-                'Range': `bytes=${offset}-${end}`,
-                'User-Agent': options.userAgent!,
+                Range: `bytes=${offset}-${end}`,
+                "User-Agent": options.userAgent!,
                 ...options.headers,
               },
               signal: controller.signal,
@@ -260,14 +276,16 @@ export class StreamingFetcher {
               const fullResponse = await response.arrayBuffer();
               chunk = fullResponse.slice(offset, end + 1);
             } else {
-              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              throw new Error(
+                `HTTP ${response.status}: ${response.statusText}`,
+              );
             }
           } catch (error) {
             retries++;
             if (retries <= maxRetries) {
               // Exponential backoff
               const delay = Math.min(1000 * Math.pow(2, retries), 10000);
-              await new Promise(resolve => setTimeout(resolve, delay));
+              await new Promise((resolve) => setTimeout(resolve, delay));
             } else {
               throw error;
             }
@@ -322,18 +340,18 @@ export class StreamingFetcher {
     url: string,
     metadata: FileMetadata,
     options: StreamingFetchOptions,
-    requestId: string
+    requestId: string,
   ): Promise<StreamingFetchResponse> {
     const controller = new AbortController();
     this.activeRequests.set(requestId, controller);
 
     const createChunkIterator = async function* (
-      chunkSize: number = options.chunkSize!
+      chunkSize: number = options.chunkSize!,
     ): AsyncGenerator<ArrayBuffer, void, unknown> {
       const response = await fetch(url, {
         signal: controller.signal,
         headers: {
-          'User-Agent': options.userAgent!,
+          "User-Agent": options.userAgent!,
           ...options.headers,
         },
       });
@@ -344,7 +362,7 @@ export class StreamingFetcher {
 
       const reader = response.body?.getReader();
       if (!reader) {
-        throw new Error('Response body is not readable');
+        throw new Error("Response body is not readable");
       }
 
       const buffer = new Uint8Array(chunkSize);
@@ -396,7 +414,10 @@ export class StreamingFetcher {
   /**
    * Determine if streaming should be used
    */
-  private shouldUseStreaming(fileSize: number, options: StreamingFetchOptions): boolean {
+  private shouldUseStreaming(
+    fileSize: number,
+    options: StreamingFetchOptions,
+  ): boolean {
     const streamingThreshold = 10 * 1024 * 1024; // 10MB
 
     // Always stream for large files
@@ -440,17 +461,22 @@ export class StreamingFetcher {
    */
   private getMemoryPressure(): MemoryPressureInfo {
     const memoryStats = memoryManager.getMemoryStats();
-    const percentageUsed = memoryStats.memoryPressureLevel === 'critical' ? 1 :
-                          memoryStats.memoryPressureLevel === 'high' ? 0.9 :
-                          memoryStats.memoryPressureLevel === 'medium' ? 0.8 : 0.6;
+    const percentageUsed =
+      memoryStats.memoryPressureLevel === "critical"
+        ? 1
+        : memoryStats.memoryPressureLevel === "high"
+          ? 0.9
+          : memoryStats.memoryPressureLevel === "medium"
+            ? 0.8
+            : 0.6;
 
-    let level: 'low' | 'medium' | 'high' | 'critical' = 'low';
+    let level: "low" | "medium" | "high" | "critical" = "low";
     if (percentageUsed >= 0.95) {
-      level = 'critical';
+      level = "critical";
     } else if (percentageUsed >= 0.85) {
-      level = 'high';
+      level = "high";
     } else if (percentageUsed >= 0.75) {
-      level = 'medium';
+      level = "medium";
     }
 
     return {
@@ -458,8 +484,8 @@ export class StreamingFetcher {
       bytesUsed: memoryStats.totalMemoryUsed,
       bytesLimit: memoryStats.totalMemoryLimit,
       percentageUsed,
-      shouldPause: level === 'critical',
-      shouldReduceParallelism: level === 'high' || level === 'critical',
+      shouldPause: level === "critical",
+      shouldReduceParallelism: level === "high" || level === "critical",
     };
   }
 

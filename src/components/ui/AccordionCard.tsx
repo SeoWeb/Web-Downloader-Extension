@@ -28,13 +28,13 @@ export default function AccordionCard({
     <div
       className={cn(
         "bg-white rounded-sm shadow-lg border border-slate-200 overflow-hidden transition-all hover:shadow-md",
-        containerClassName
+        containerClassName,
       )}
     >
       <div
         className={cn(
           "bg-gradient-to-r from-blue-600 to-indigo-700 p-2 border-b border-slate-200 cursor-pointer flex justify-between items-center",
-          headerClassName
+          headerClassName,
         )}
         onClick={toggleAccordion}
       >
@@ -42,7 +42,9 @@ export default function AccordionCard({
           {icon} {/* Render the passed icon */}
           {title}
         </h2>
-        <div className={`transform transition-transform text-white ${isOpen ? "rotate-180" : ""}`}>
+        <div
+          className={`transform transition-transform text-white ${isOpen ? "rotate-180" : ""}`}
+        >
           {/* Using Lucide ChevronDown directly */}
           <ChevronDown className="h-5 w-5 mr-2" />
         </div>
@@ -52,7 +54,7 @@ export default function AccordionCard({
         className={cn(
           `transition-all duration-300 overflow-hidden`,
           isOpen ? "max-h-[1000px] p-4" : "max-h-0 p-0 opacity-0", // Keep padding inside content for better transition
-          contentClassName
+          contentClassName,
         )}
       >
         {/* Render children only when open or during transition for smoother animation */}

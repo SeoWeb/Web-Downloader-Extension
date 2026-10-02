@@ -21,7 +21,7 @@ export interface ScrollResult {
 }
 
 export interface DifferentialScrapeResult {
-  type: 'skeleton' | 'chunk' | 'complete' | 'error';
+  type: "skeleton" | "chunk" | "complete" | "error";
   data: string;
   containerSelector?: string;
   scrollPosition?: number;

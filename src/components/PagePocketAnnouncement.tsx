@@ -85,10 +85,7 @@ export function PagePocketAnnouncement() {
 
         {/* Footer */}
         <div className="px-5 pb-5 flex flex-col gap-2">
-          <Button
-            onClick={handleGetStarted}
-            className="w-full"
-          >
+          <Button onClick={handleGetStarted} className="w-full">
             <Cloud className="h-4 w-4 mr-2" />
             {t("pagepocketAnnouncement.getStarted")}
           </Button>

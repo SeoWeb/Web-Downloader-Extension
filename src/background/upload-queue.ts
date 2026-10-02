@@ -256,7 +256,10 @@ export class UploadQueue {
    * resume can re-upload resources that the server may not have received
    * (the server deduplicates by URL hash, so re-uploading is harmless).
    */
-  private readonly resourceUrlMap: Map<string, { url: string; path: string; contentType: string }> = new Map();
+  private readonly resourceUrlMap: Map<
+    string,
+    { url: string; path: string; contentType: string }
+  > = new Map();
 
   getResourceUrls(): Array<{ url: string; path: string; contentType: string }> {
     return Array.from(this.resourceUrlMap.values());
@@ -294,10 +297,7 @@ export class UploadQueue {
    *  Also returns true when the queue is empty (0 tasks) — there's
    *  nothing to wait for. */
   isDone(): boolean {
-    return (
-      this.pending.length === 0 &&
-      this.active.size === 0
-    );
+    return this.pending.length === 0 && this.active.size === 0;
   }
 
   /**
@@ -323,10 +323,12 @@ export class UploadQueue {
           const idx = this.doneWaiters.indexOf(waiter);
           if (idx >= 0) this.doneWaiters.splice(idx, 1);
           const p = this.getProgress();
-          reject(new Error(
-            `UploadQueue.waitForAll timed out after ${timeoutMs / 1000}s. ` +
-            `Completed: ${p.completedCount}/${p.totalCount}`,
-          ));
+          reject(
+            new Error(
+              `UploadQueue.waitForAll timed out after ${timeoutMs / 1000}s. ` +
+                `Completed: ${p.completedCount}/${p.totalCount}`,
+            ),
+          );
         }, timeoutMs);
 
         const originalResolve = waiter.resolve;
@@ -400,9 +402,9 @@ export class UploadQueue {
       // worker fallback, no progress events). The callback is always passed
       // so that when XHR is available, progress events flow through.
       const onUploadProgress = (loaded: number, _total: number): void => {
-          task.bytesSent = loaded;
-          this.notifyProgress();
-        };
+        task.bytesSent = loaded;
+        this.notifyProgress();
+      };
 
       // Delegate to ServerClient for the actual upload.
       // ServerClient handles gzip compression, auth, and 401 re-registration.
@@ -451,10 +453,7 @@ export class UploadQueue {
    * - AuthenticationError → no retry (ServerClient handles re-registration)
    * - AbortError → no retry (user cancelled)
    */
-  private async handleTaskError(
-    task: UploadTask,
-    err: unknown,
-  ): Promise<void> {
+  private async handleTaskError(task: UploadTask, err: unknown): Promise<void> {
     // Check for abort (user cancellation)
     if (isAbortError(err) || task.abortController.signal.aborted) {
       task.status = "failed";
@@ -574,7 +573,7 @@ export class UploadQueue {
 
     console.error(
       `[UploadQueue] Upload failed permanently: path=${task.path} retries=${task.retries} ` +
-      `error=${err instanceof Error ? err.message : err}`,
+        `error=${err instanceof Error ? err.message : err}`,
     );
 
     // Continue processing if there are pending tasks

@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  hasStoragePermission,
-} from "../permissions";
+import { hasStoragePermission } from "../permissions";
 
 export interface UsePermissionsReturn {
   hasPermission: boolean;
@@ -25,7 +23,7 @@ export function usePermissions(): UsePermissionsReturn {
     try {
       setLoading(true);
       setError(null);
-      
+
       // We primarily check for storage permission to determine if we show the main app
 
       const storage = await hasStoragePermission();
@@ -44,11 +42,11 @@ export function usePermissions(): UsePermissionsReturn {
 
       // Request storage permission
       // We check for storage permission to determine if we show the main app
-      
-      const granted = await chrome.permissions.request({ 
-        permissions: ["storage"] 
+
+      const granted = await chrome.permissions.request({
+        permissions: ["storage"],
       });
-      
+
       if (granted) {
         await checkPermissions();
       } else {

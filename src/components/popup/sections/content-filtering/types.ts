@@ -1,7 +1,21 @@
 // src/components/popup/sections/content-filtering/types.ts
 import React from "react";
 
-export type GroupId = 'image' | 'script' | 'stylesheet' | 'font' | 'markup' | 'document' | 'xml' | 'audio' | 'video' | 'json' | 'archive' | 'spreadsheet' | 'executable' | 'other';
+export type GroupId =
+  | "image"
+  | "script"
+  | "stylesheet"
+  | "font"
+  | "markup"
+  | "document"
+  | "xml"
+  | "audio"
+  | "video"
+  | "json"
+  | "archive"
+  | "spreadsheet"
+  | "executable"
+  | "other";
 
 export interface GroupItem {
   id: string;

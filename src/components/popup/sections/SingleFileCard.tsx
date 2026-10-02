@@ -22,11 +22,16 @@ export default function SingleFileCard({
       isLast={isLast}
       containerClassName={containerClassName}
     >
-      <div className={`space-y-4 p-1 ${direction === "rtl" ? "text-right" : ""}`}>
+      <div
+        className={`space-y-4 p-1 ${direction === "rtl" ? "text-right" : ""}`}
+      >
         <h3 className="text-lg font-medium">
           {getTranslation("single_file_download_intro")}
         </h3>
-        <ul dir={direction} className={`list-disc list-inside space-y-2 text-sm ${direction === "rtl" ? "text-right" : ""}`}>
+        <ul
+          dir={direction}
+          className={`list-disc list-inside space-y-2 text-sm ${direction === "rtl" ? "text-right" : ""}`}
+        >
           <li>
             <span className="font-bold">
               {getTranslation("single_file_format_mhtml_title")}

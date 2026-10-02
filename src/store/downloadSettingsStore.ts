@@ -1,7 +1,7 @@
 // src/store/downloadSettingsStore.ts
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { chromeStorage } from '../common/chrome/storage';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { chromeStorage } from "../common/chrome/storage";
 
 export type FilterMode = "type" | "extension";
 export type DownloadMode = "single_file" | "single" | "website";
@@ -69,7 +69,7 @@ export const useDownloadSettingsStore = create<DownloadSettingsState>()(
       setIsSidePanelOpen: (is) => set({ isSidePanelOpen: is }),
     }),
     {
-      name: 'download-settings-storage', // unique name
+      name: "download-settings-storage", // unique name
       storage: createJSONStorage(() => chromeStorage), // Use chrome.storage.local
     },
   ),

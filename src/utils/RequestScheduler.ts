@@ -10,7 +10,7 @@ import {
   QueueEventListeners,
   RequestResult,
   getPriorityForResourceType,
-} from '../types/queue';
+} from "../types/queue";
 
 export class RequestScheduler {
   private queue: QueuedRequest[] = [];
@@ -46,7 +46,7 @@ export class RequestScheduler {
 
     // Add to queue
     this.queue.push(request);
-    
+
     // Sort queue by priority and dependencies
     this.sortQueue();
 
@@ -70,14 +70,14 @@ export class RequestScheduler {
     // Find the first request that can be processed
     for (let i = 0; i < this.queue.length; i++) {
       const request = this.queue[i];
-      
+
       if (this.canProcessRequest(request)) {
         // Remove from queue and mark as active
         this.queue.splice(i, 1);
         request.status = RequestStatus.PENDING;
         request.startedAt = Date.now();
         this.activeRequests.set(request.id, request);
-        
+
         return request;
       }
     }
@@ -99,7 +99,8 @@ export class RequestScheduler {
     request.completedAt = Date.now();
 
     // Update statistics
-    const duration = request.completedAt - (request.startedAt || request.queuedAt);
+    const duration =
+      request.completedAt - (request.startedAt || request.queuedAt);
     this.totalProcessed++;
     this.totalDuration += duration;
 
@@ -166,7 +167,7 @@ export class RequestScheduler {
    */
   public cancelRequest(requestId: string): boolean {
     // Check if request is in queue
-    const queueIndex = this.queue.findIndex(req => req.id === requestId);
+    const queueIndex = this.queue.findIndex((req) => req.id === requestId);
     if (queueIndex !== -1) {
       const request = this.queue.splice(queueIndex, 1)[0];
       request.status = RequestStatus.CANCELLED;
@@ -202,7 +203,8 @@ export class RequestScheduler {
       completed: this.completedRequests.size,
       failed: this.failedRequests.size,
       totalProcessed: this.totalProcessed,
-      averageDuration: this.totalProcessed > 0 ? this.totalDuration / this.totalProcessed : 0,
+      averageDuration:
+        this.totalProcessed > 0 ? this.totalDuration / this.totalProcessed : 0,
       processingRate: this.calculateProcessingRate(),
     };
   }
@@ -265,12 +267,12 @@ export class RequestScheduler {
    */
   public shutdown(): void {
     this.clear();
-    
+
     if (this.processingTimer) {
       clearTimeout(this.processingTimer);
       this.processingTimer = null;
     }
-    
+
     this.isProcessing = false;
   }
 
@@ -285,8 +287,9 @@ export class RequestScheduler {
       }
 
       // Then by resource type priority
-      const typePriority = this.getResourceTypePriority(a.resourceType) - 
-                         this.getResourceTypePriority(b.resourceType);
+      const typePriority =
+        this.getResourceTypePriority(a.resourceType) -
+        this.getResourceTypePriority(b.resourceType);
       if (typePriority !== 0) {
         return typePriority;
       }
@@ -346,7 +349,7 @@ export class RequestScheduler {
   private calculateProcessingRate(): number {
     const now = Date.now();
     const timeSinceLastProcess = now - this.lastProcessTime;
-    
+
     if (timeSinceLastProcess === 0) {
       return 0;
     }
@@ -354,7 +357,7 @@ export class RequestScheduler {
     // Calculate requests per second over the last time window
     const timeWindow = 5000; // 5 seconds
     const recentRequests = this.getRecentCompletedRequests(timeWindow);
-    
+
     return recentRequests / (timeWindow / 1000);
   }
 

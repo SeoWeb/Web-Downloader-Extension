@@ -68,9 +68,7 @@ export async function executeAndProcessScrollScript(
   }
 }
 
-export async function scrollLoop(
-  tab: Partial<chrome.tabs.Tab>,
-): Promise<void> {
+export async function scrollLoop(tab: Partial<chrome.tabs.Tab>): Promise<void> {
   let lastScrollTop = -1;
   let currentScrollTop = 0;
   let currentHtml = "";
@@ -78,7 +76,8 @@ export async function scrollLoop(
   let iterations = 0;
   let is_last_scroll: boolean = false;
 
-  const wait = async (): Promise<void> => await new Promise((resolve) => setTimeout(resolve, 500));
+  const wait = async (): Promise<void> =>
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
   const isScollDone = async (): Promise<boolean> => {
     if (currentScrollTop <= lastScrollTop + 1) {
@@ -93,19 +92,19 @@ export async function scrollLoop(
 
     is_last_scroll = false;
     return false;
-  }
+  };
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
 
     if (!(await isDownloading())) {
-        console.log('not downloading');
+      console.log("not downloading");
       break;
     }
 
     const scrollResult = await executeAndProcessScrollScript(tab);
     if (!scrollResult) {
-        console.log('no results');
+      console.log("no results");
       break;
     }
 
@@ -116,7 +115,7 @@ export async function scrollLoop(
     const socketResponse = await sendHtmlToServer(currentHtml);
     if (!socketResponse.success) {
       // TODO: clean up server
-      console.log(socketResponse.message || '!success');
+      console.log(socketResponse.message || "!success");
       break;
     }
 

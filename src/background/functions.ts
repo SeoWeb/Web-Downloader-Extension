@@ -1,4 +1,4 @@
-import { actionClickedListener } from './listeners/actionClickedListener';
+import { actionClickedListener } from "./listeners/actionClickedListener";
 import { installedListener } from "./listeners/installedListener";
 import { startupListener } from "./listeners/startupListener";
 import { storageListener } from "./listeners/storageListener";

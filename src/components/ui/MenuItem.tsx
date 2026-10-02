@@ -10,7 +10,12 @@ interface MenuItemProps {
   onClick: () => void;
 }
 
-export default function MenuItem({ icon, label, isActive, onClick }: MenuItemProps) {
+export default function MenuItem({
+  icon,
+  label,
+  isActive,
+  onClick,
+}: MenuItemProps) {
   const { direction } = useLanguageStore();
 
   return (
@@ -22,7 +27,7 @@ export default function MenuItem({ icon, label, isActive, onClick }: MenuItemPro
           "bg-blue-50 text-blue-700 font-medium": isActive,
           "hover:bg-slate-100 text-slate-700": !isActive,
         },
-        direction === "rtl" ? "flex-row-reverse" : "flex-row"
+        direction === "rtl" ? "flex-row-reverse" : "flex-row",
       )}
     >
       {icon}

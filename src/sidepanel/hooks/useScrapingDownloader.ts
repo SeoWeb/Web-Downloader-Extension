@@ -70,7 +70,8 @@ export function useScrapingDownloader({
   // (we still need it for the download phase, but we don't accumulate ALL chunks)
   const lastHtmlRef = useRef<string>("");
   // Flag: scrolling is done and HTML has been fully streamed to the server
-  const [serverStreamingDone, setServerStreamingDone] = useState<boolean>(false);
+  const [serverStreamingDone, setServerStreamingDone] =
+    useState<boolean>(false);
 
   const startScrolling = useCallback(async (): Promise<
     ScrollingResponse | undefined
@@ -100,9 +101,15 @@ export function useScrapingDownloader({
   }, [tabId, setIsScraping]);
 
   const scrape = useCallback(async () => {
-  if (!tabId) {
+    if (!tabId) {
       setIsScraping(false);
-      setMessages((prev) => [...prev, { key: "status.failedWithError", options: { error: t("app.invalidTabId") } }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          key: "status.failedWithError",
+          options: { error: t("app.invalidTabId") },
+        },
+      ]);
       return;
     }
 
@@ -127,7 +134,13 @@ export function useScrapingDownloader({
           serverSessionCreatedRef.current = true;
         } else if (result?.error) {
           // Failed to create server session — show error only for real failures
-          setMessages((prev) => [...prev, { key: "status.serverSessionFailed", options: { error: result.error } }]);
+          setMessages((prev) => [
+            ...prev,
+            {
+              key: "status.serverSessionFailed",
+              options: { error: result.error },
+            },
+          ]);
         }
       } catch {
         // Failed to create server session — fall back to local accumulation
@@ -166,7 +179,11 @@ export function useScrapingDownloader({
         // (13.3) In server mode, don't accumulate HTML — only track scroll metadata.
         // The HTML has already been streamed to the server.
         const data = serverSessionIdRef.current
-          ? { top: response.top, height: response.height, viewportHeight: response.viewportHeight }
+          ? {
+              top: response.top,
+              height: response.height,
+              viewportHeight: response.viewportHeight,
+            }
           : mergeDownloadResponse(prev, response);
 
         // Check if we've reached the bottom of the page
@@ -174,11 +191,11 @@ export function useScrapingDownloader({
         const currentTop = response.top || 0;
         const currentHeight = response.height || 0;
         const heightChanged = response.heightChanged ?? false;
-        
+
         // Calculate if we're at the bottom: scrollTop + viewport height >= total page height
         const viewportHeight = response.viewportHeight || 1000;
         const isAtBottom = currentTop + viewportHeight >= currentHeight - 100; // 100px buffer
-        
+
         const scrollPositionChanged = Math.abs(currentTop - prevTop) > 10; // More than 10px change
 
         // Page-growth awareness: if height increased, don't stop even if at bottom
@@ -198,16 +215,23 @@ export function useScrapingDownloader({
         } else {
           settleCountRef.current = 0;
         }
-        
+
         // Stop scrolling if:
         // 1. At bottom AND page hasn't grown AND position unchanged AND settle count >= 1, OR
         // 2. Position hasn't changed (stuck), OR
         // 3. We've exceeded the safety limit
-        if (isAtBottom && !pageGrew && !heightChanged && !scrollPositionChanged && settleCountRef.current >= 1) {
+        if (
+          isAtBottom &&
+          !pageGrew &&
+          !heightChanged &&
+          !scrollPositionChanged &&
+          settleCountRef.current >= 1
+        ) {
           setIsScraping(false);
         } else if (prev && !scrollPositionChanged && !pageGrew) {
           setIsScraping(false);
-        } else if (scrollAttempts >= 500) { // Increased safety limit for very long pages
+        } else if (scrollAttempts >= 500) {
+          // Increased safety limit for very long pages
           setIsScraping(false);
           setMessages((prev) => [...prev, { key: "app.maxScrollAttempts" }]);
         } else {
@@ -221,7 +245,15 @@ export function useScrapingDownloader({
       setIsScraping(false);
       setMessages((prev) => [...prev, { key: "status.failed" }]);
     }
-  }, [tabId, tabUrl, startScrolling, setIsScraping, setMessages, scrollAttempts, downloadOptions?.singleFile]);
+  }, [
+    tabId,
+    tabUrl,
+    startScrolling,
+    setIsScraping,
+    setMessages,
+    scrollAttempts,
+    downloadOptions?.singleFile,
+  ]);
 
   useEffect(() => {
     if (isScraping) {
@@ -236,17 +268,27 @@ export function useScrapingDownloader({
           : downloadResponse?.html;
 
         if (htmlForStopDownload) {
-          const stopOptions = { ...downloadOptions, downloadLinks: false, downloadLinksFullScraping: false };
-          handleStartDownload(tabId, htmlForStopDownload, tabUrl, stopOptions, (msg) =>
-            setMessages((prev) => [...prev, msg]),
-          ).then(() => {
-            if (serverSessionIdRef.current) {
-              setServerStreamingDone(true);
-            }
-          }).catch(() => {
-            setMessages((prev) => [...prev, { key: "status.failed" }]);
-            setDownloadResponse(null);
-          });
+          const stopOptions = {
+            ...downloadOptions,
+            downloadLinks: false,
+            downloadLinksFullScraping: false,
+          };
+          handleStartDownload(
+            tabId,
+            htmlForStopDownload,
+            tabUrl,
+            stopOptions,
+            (msg) => setMessages((prev) => [...prev, msg]),
+          )
+            .then(() => {
+              if (serverSessionIdRef.current) {
+                setServerStreamingDone(true);
+              }
+            })
+            .catch(() => {
+              setMessages((prev) => [...prev, { key: "status.failed" }]);
+              setDownloadResponse(null);
+            });
         }
         return;
       }
@@ -291,7 +333,9 @@ export function useScrapingDownloader({
     lastHtml: lastHtmlRef.current,
     scrollAttempts,
     stopScraping,
-    setDownloadResponse: (value: React.SetStateAction<ScrollingResponse | null>) => {
+    setDownloadResponse: (
+      value: React.SetStateAction<ScrollingResponse | null>,
+    ) => {
       setDownloadResponse(value);
       // (13.3) Reset server streaming state when downloadResponse is cleared
       // (e.g., when a new download starts or the current one completes/cancels)
