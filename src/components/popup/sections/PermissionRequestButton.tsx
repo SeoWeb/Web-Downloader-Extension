@@ -14,7 +14,9 @@ export default function PermissionRequestButton({
 
   return (
     <PrimaryButton onClick={requestPermissions} disabled={isRequesting}>
-      {isRequesting ? getTranslation("requesting_permissions") : getTranslation("grant_permissions")}
+      {isRequesting
+        ? getTranslation("requesting_permissions")
+        : getTranslation("grant_permissions")}
     </PrimaryButton>
   );
 }

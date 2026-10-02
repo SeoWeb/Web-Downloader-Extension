@@ -5,5 +5,5 @@ export async function openOptions(): Promise<ResponseMessage> {
   return {
     success: true,
     message: "done",
-  }
+  };
 }

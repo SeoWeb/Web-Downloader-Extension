@@ -1,3 +1,5 @@
-onlyBuiltDependencies:
-  - '@swc/core'
-  - esbuild
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
+  puppeteer: true
+  unrs-resolver: true

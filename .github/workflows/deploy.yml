@@ -1,0 +1,99 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # Determine which components changed so we only deploy what is necessary.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      extension: ${{ steps.filter.outputs.extension }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.event.before }}
+          filters: |
+            extension:
+              - 'src/**'
+              - 'background.js'
+              - 'public/**'
+              - 'vite.config.ts'
+              - 'package.json'
+              - 'tsconfig.json'
+              - 'jest.config.cjs'
+              - '*.cjs'
+              - 'tests/**'
+            frontend:
+              - 'pagepocket/frontend/**'
+            backend:
+              - 'pagepocket/services/**'
+              - 'pagepocket/shared/**'
+              - 'pagepocket/proto/**'
+
+  # ---------------------------------------------------------------------------
+  # Extension: build the .zip artifact for manual store publishing.
+  # ---------------------------------------------------------------------------
+  extension-artifact:
+    needs: changes
+    if: needs.changes.outputs.extension == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: zip/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Backend: deploy to Contabo via SSH (git pull + docker compose rebuild).
+  # ---------------------------------------------------------------------------
+  deploy-backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy backend to Contabo
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.CONTABO_HOST }}
+          username: ${{ secrets.CONTABO_USER }}
+          key: ${{ secrets.CONTABO_SSH_KEY }}
+          script: bash scripts/deploy-contabo.sh backend
+
+  # ---------------------------------------------------------------------------
+  # Frontend: deploy to Contabo via SSH (git pull + pnpm build + pm2 restart).
+  # ---------------------------------------------------------------------------
+  deploy-frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy frontend to Contabo
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.CONTABO_HOST }}
+          username: ${{ secrets.CONTABO_USER }}
+          key: ${{ secrets.CONTABO_SSH_KEY }}
+          script: bash scripts/deploy-contabo.sh frontend

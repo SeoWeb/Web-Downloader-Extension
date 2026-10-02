@@ -1,7 +1,635 @@
-import React from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import SidePanel from "./components/sidepanel";
-import "./styles.css";
+import "./popup.css";
+import "./styles/rtl.css"; // RTL support styles
+import "./i18n/config"; // Initialize i18n
+import { useTranslation } from "react-i18next";
+import { MessageAction, messageActions } from "./common/message";
+import { Message } from "./components/Actions";
+import { MainContent } from "./sidepanel/components/MainContent";
+import {
+  DownloadStatus,
+  InterruptData,
+} from "./sidepanel/components/DownloadStatus";
+import { DownloadComplete } from "./sidepanel/components/DownloadComplete";
+import { useActiveTabInfo } from "./sidepanel/hooks/useActiveTabInfo"; // Added hook import
+import { useMessageListener } from "./sidepanel/hooks/useMessageListener"; // Added hook import
+import { useScrapingDownloader } from "./sidepanel/hooks/useScrapingDownloader"; // Added hook import
+import { usePermissions } from "./common/hooks/usePermissions";
+import { GlobalPermissionRequest } from "./common/components/GlobalPermissionRequest";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { sendMessageToBackground } from "./client/message";
+import {
+  ServerModeState,
+  initialServerModeState,
+  applyServerModeMessage,
+} from "./sidepanel/server-mode-state";
+import { usePagePocket } from "./hooks/usePagePocket";
+import { CloudUploadState } from "./components/CloudUploadStatus";
+import { PagePocketAnnouncement } from "./components/PagePocketAnnouncement";
+
+// ServerModeState type and transition logic are imported from
+// server-mode-state.ts to avoid duplication and enable unit testing.
+
+interface Options {
+  downloadHTML: boolean;
+  downloadImages: boolean;
+  downloadLinks: boolean;
+  downloadAssets: boolean;
+  downloadContentAsText: boolean;
+  downloadDocuments: boolean;
+  singleFile: boolean;
+  alwaysAskWhereToSave?: boolean;
+}
+
+function ErrorFallback({
+  error,
+  resetErrorBoundary,
+}: {
+  error: Error;
+  resetErrorBoundary: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div role="alert" className="p-4 bg-red-100 rounded">
+      <p className="font-bold text-red-800">{t("app.error")}</p>
+      <pre className="text-red-600">{error.message}</pre>
+      <button
+        onClick={resetErrorBoundary}
+        className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+      >
+        {t("app.tryAgain")}
+      </button>
+    </div>
+  );
+}
+
+export default function SidePanel() {
+  const { t } = useTranslation();
+  const [tabId, setTabId] = useState<number>(0);
+  const [tabUrl, setTabUrl] = useState<string>("");
+  const [messages, setMessages] = useState<Message[]>([
+    { key: "status.waiting" },
+  ]);
+  const [action, setAction] = useState<MessageAction | null>(null);
+  const actionRef = useRef<MessageAction | null>(null);
+  actionRef.current = action;
+  const [links, setLinks] = useState<string[]>([]);
+  const [isScraping, setIsScraping] = useState<boolean>(false);
+  const [isScrapingLinkedPages, setIsScrapingLinkedPages] =
+    useState<boolean>(false);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+  // (15.1–15.7) Server-mode UI state
+  const [serverModeState, setServerModeState] = useState<ServerModeState>(
+    initialServerModeState,
+  );
+  // Interrupt state: shown when the service worker was killed during a download
+  const [interruptData, setInterruptData] = useState<InterruptData | null>(
+    null,
+  );
+  // PagePocket cloud upload state
+  const [cloudUploadState, setCloudUploadState] =
+    useState<CloudUploadState | null>(null);
+  // PagePocket auth/cloud state
+  const { cloudStorageEnabled, isAuthenticated } = usePagePocket();
+  // downloadResponse and scrollAttempts are now managed by useScrapingDownloader hook
+  const [downloadOptions, setDownloadOptions] = useState<{
+    downloadHTML: boolean;
+    downloadImages: boolean;
+    downloadLinks: boolean;
+    downloadAssets: boolean;
+    downloadContentAsText: boolean;
+    downloadDocuments: boolean;
+    singleFile: boolean;
+  } | null>(null);
+
+  // Use the permissions hook
+  const {
+    hasPermission,
+    permissionRequesting,
+    requestPermission,
+    loading: permissionsLoading,
+    error: permissionsError,
+  } = usePermissions();
+
+  // Use the custom hooks
+  useActiveTabInfo({ setTabId, setTabUrl, setMessages });
+
+  // Initialize useScrapingDownloader hook early so setDownloadResponse is available
+  const {
+    downloadResponse,
+    setDownloadResponse,
+    setScrollAttempts,
+    stopScraping,
+  } = useScrapingDownloader({
+    tabId,
+    tabUrl,
+    isScraping,
+    setIsScraping,
+    downloadOptions,
+    setMessages,
+  });
+
+  // Memoize messageWorker to stabilize useMessageListener dependency
+  const messageWorker = useCallback(
+    async (action: MessageAction, data: any): Promise<any> => {
+      switch (action) {
+        case messageActions.PANEL_PING:
+          // Service worker is checking if we're alive
+          return "PONG";
+
+        case messageActions.PANEL_MESSAGE:
+          // Ignore messages from other tabs
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          setMessages((prev) => [...prev, data.message]);
+          if (data.message?.options?.isPaused !== undefined) {
+            setIsPaused(data.message.options.isPaused);
+          }
+          // Track linked page scraping state based on message keys
+          if (data.message?.key === "status.scrapingLinkedPages") {
+            setIsScrapingLinkedPages(true);
+          } else if (data.message?.key === "status.creatingPackage") {
+            setIsScrapingLinkedPages(false);
+          }
+
+          // PagePocket cloud upload state (via PANEL_MESSAGE from
+          // download-core.ts executeDownloadServerMode — cloud result
+          // detected via server status response).
+          // The download pipeline sends these as regular PANEL_MESSAGEs,
+          // not as dedicated PAGEPOCKET_UPLOAD_* actions.
+          const ppKey = data.message?.key;
+          if (ppKey === "status.pagepocketUploading") {
+            setCloudUploadState({ status: "uploading", progress: 0 });
+          } else if (ppKey === "status.pagepocketUploadProgress") {
+            const { loaded = 0, total = 1 } = data.message?.options ?? {};
+            const pct = total > 0 ? (loaded / total) * 100 : 0;
+            setCloudUploadState((prev) =>
+              prev
+                ? { ...prev, progress: pct }
+                : { status: "uploading", progress: pct },
+            );
+          } else if (ppKey === "status.pagepocketUploadComplete") {
+            setCloudUploadState({
+              status: "success",
+              progress: 100,
+              pageId: data.message?.options?.pageId,
+            });
+            setAction(messageActions.DOWNLOAD_DONE);
+            setIsScraping(false);
+            setIsScrapingLinkedPages(false);
+            setDownloadResponse(null);
+          } else if (ppKey === "status.pagepocketUploadError") {
+            const opts = data.message?.options ?? {};
+            setCloudUploadState({
+              status: "error",
+              progress: 0,
+              errorMessage: opts.error,
+              isQuotaError: opts.quotaExceeded ?? false,
+            });
+            setIsScraping(false);
+            setIsScrapingLinkedPages(false);
+          }
+
+          // (15.7) Track server-mode phase transitions from messages.
+          // Delegates to applyServerModeMessage() pure function (testable).
+          const msgKey = data.message?.key;
+          if (msgKey) {
+            setServerModeState((prev) =>
+              applyServerModeMessage(prev, msgKey, data.message?.options),
+            );
+          }
+          break;
+
+        // PagePocket cloud upload message handling
+        case messageActions.PAGEPOCKET_UPLOAD_START:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          setCloudUploadState({ status: "uploading", progress: 0 });
+          break;
+
+        case messageActions.PAGEPOCKET_UPLOAD_PROGRESS:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          setCloudUploadState((prev) =>
+            prev ? { ...prev, progress: data.progress ?? prev.progress } : prev,
+          );
+          break;
+
+        case messageActions.PAGEPOCKET_UPLOAD_COMPLETE:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          setCloudUploadState({
+            status: "success",
+            progress: 100,
+            pageId: data.pageId,
+          });
+          setAction(messageActions.DOWNLOAD_DONE);
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
+          setDownloadResponse(null);
+          break;
+
+        case messageActions.PAGEPOCKET_UPLOAD_ERROR:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          setCloudUploadState({
+            status: "error",
+            progress: 0,
+            errorMessage: data.error,
+            isQuotaError: data.isQuotaError ?? false,
+          });
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
+          break;
+
+        case messageActions.DOWNLOAD_COMPLETE:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          // Download actually completed - file was saved
+          setMessages((prev) => [...prev, { key: "status.scraped" }]);
+          setAction(messageActions.DOWNLOAD_DONE);
+          setServerModeState((prev) =>
+            prev ? { ...prev, phase: "ready" } : prev,
+          );
+          setMessages((prev) => [...prev, { key: "status.creating" }]);
+          setMessages((prev) => [...prev, { key: "status.complete" }]);
+          // Store download ID for "Show in folder" functionality
+          if (data.downloadId) {
+            chrome.storage.local.set({ lastDownloadId: data.downloadId });
+          }
+          // Reset downloadResponse to allow filter to show again
+          setDownloadResponse(null);
+          // Stop scraping state to show completion UI
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
+          break;
+
+        case messageActions.DOWNLOAD_FAILED:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          // Download failed or was interrupted
+          // Reset messages to connected status with error message
+          setMessages([
+            { key: "status.connected" },
+            {
+              key: "status.failedWithError",
+              options: { error: data.error || t("app.unknownError") },
+            },
+          ]);
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
+          setAction(null);
+          // Reset downloadResponse to allow filter to show again
+          setDownloadResponse(null);
+          break;
+
+        case messageActions.DOWNLOAD_CANCELLED:
+          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          // User cancelled the download
+          setMessages([{ key: "status.connected" }]);
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
+          setAction(null);
+          setDownloadResponse(null);
+          break;
+
+        case messageActions.DOWNLOAD_INTERRUPTED:
+          // Service worker was killed during an active download
+          setInterruptData({
+            phase: data.phase || "scraping",
+            tabUrl: data.tabUrl || "",
+            timestamp: data.timestamp || Date.now(),
+            serverSessionId: data.serverSessionId,
+            resourceUrls: data.resourceUrls,
+          });
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
+          setAction(null);
+          setDownloadResponse(null);
+          setMessages([
+            { key: "status.connected" },
+            {
+              key: "status.downloadInterrupted",
+              options: { phase: data.phase || "scraping" },
+            },
+          ]);
+          break;
+
+        default:
+          break;
+      }
+      return null;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [setDownloadResponse],
+  ); // Add setDownloadResponse to dependencies
+
+  useMessageListener({ messageWorker });
+
+  // Check for interrupted downloads on panel open
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await sendMessageToBackground(
+          messageActions.CHECK_INTERRUPTED_DOWNLOAD,
+          {},
+        );
+        if (result && result.downloadInterrupted) {
+          setInterruptData({
+            phase: result.phase || "scraping",
+            tabUrl: result.tabUrl || "",
+            timestamp: result.timestamp || Date.now(),
+            serverSessionId: result.serverSessionId,
+            resourceUrls: result.resourceUrls,
+          });
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
+          setMessages([
+            { key: "status.connected" },
+            {
+              key: "status.downloadInterrupted",
+              options: { phase: result.phase || "scraping" },
+            },
+          ]);
+        }
+      } catch {
+        // Background not ready yet — ignore
+      }
+    })();
+  }, []); // Run once on mount
+
+  // Listen for download completion via chrome.storage
+  useEffect(() => {
+    // Only set up listener if we have storage permission
+    if (!hasPermission) {
+      return;
+    }
+
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string,
+    ) => {
+      if (areaName === "local" && changes.downloadComplete) {
+        const downloadComplete = changes.downloadComplete.newValue;
+        if (
+          downloadComplete &&
+          downloadComplete.tabId !== undefined &&
+          downloadComplete.tabId === tabId
+        ) {
+          // Guard: skip if already handled via DOWNLOAD_COMPLETE message
+          if (actionRef.current === messageActions.DOWNLOAD_DONE) {
+            chrome.storage.local.remove("downloadComplete");
+            return;
+          }
+          if (downloadComplete.downloadId) {
+            chrome.storage.local.set({
+              lastDownloadId: downloadComplete.downloadId,
+            });
+          }
+          setMessages((prev) => [...prev, { key: "status.scraped" }]);
+          setAction(messageActions.DOWNLOAD_DONE);
+          setServerModeState((prev) =>
+            prev ? { ...prev, phase: "ready" } : prev,
+          );
+          setMessages((prev) => [...prev, { key: "status.creating" }]);
+          setMessages((prev) => [...prev, { key: "status.complete" }]);
+
+          // Reset downloadResponse to allow filter to show again
+          setDownloadResponse(null);
+
+          // Stop scraping state to show completion UI
+          setIsScraping(false);
+          setIsScrapingLinkedPages(false);
+
+          // Clear the downloadComplete flag
+          chrome.storage.local.remove("downloadComplete");
+        }
+      }
+    };
+
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, [
+    hasPermission,
+    setMessages,
+    setAction,
+    setDownloadResponse,
+    setIsScraping,
+  ]);
+
+  // Memoize reset function
+  const reset = useCallback(
+    (newTabUrl: string) => {
+      setTabUrl(newTabUrl);
+      setMessages([{ key: "status.waiting" }, { key: "status.connected" }]);
+      setAction(null);
+      setLinks([]);
+      setIsScraping(false);
+      setIsScrapingLinkedPages(false);
+      setDownloadResponse(null); // Use setter from hook
+      setScrollAttempts(0); // Use setter from hook
+      setDownloadOptions(null);
+      setServerModeState(initialServerModeState); // Reset server-mode state
+      setCloudUploadState(null); // Reset cloud upload state
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [setDownloadResponse, setScrollAttempts],
+  ); // Add setters from hook to dependencies
+
+  // Memoize onClickStartDownload
+  const onClickStartDownload = useCallback(async (options: Options) => {
+    setAction(null);
+    setInterruptData(null);
+    setCloudUploadState(null);
+    setIsScraping(true);
+    setDownloadOptions(options);
+    setMessages((prev) => [...prev, { key: "status.scraping" }]);
+    // (15.7) Track singleFile option in server-mode state
+    setServerModeState((prev) => ({
+      ...prev,
+      phase: "scraping",
+      isSingleFile: options.singleFile,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Keep dependencies minimal
+
+  const resetError = useCallback(() => {
+    setError(null);
+    reset(tabUrl);
+  }, [reset, tabUrl]);
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <ErrorFallback error={error} resetErrorBoundary={resetError} />
+      </div>
+    );
+  }
+
+  // Show permission request if user doesn't have storage permission
+  if (!hasPermission && !permissionsLoading) {
+    return (
+      <div className="p-6">
+        <div className="mb-4 flex justify-end">
+          <LanguageSwitcher />
+        </div>
+        <GlobalPermissionRequest
+          onRequestPermission={requestPermission}
+          requesting={permissionRequesting}
+          error={permissionsError}
+        />
+      </div>
+    );
+  }
+
+  // Show loading state while checking permissions
+  if (permissionsLoading) {
+    return (
+      <div className="p-6 text-center">
+        <div className="text-lg">{t("app.loading")}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <PagePocketAnnouncement />
+      <MainContent
+        messages={messages}
+        tabId={tabId}
+        isScraping={isScraping}
+        isScrapingLinkedPages={isScrapingLinkedPages}
+        action={action}
+        downloadResponse={downloadResponse}
+        onClickStartDownload={onClickStartDownload}
+        tabUrl={tabUrl}
+        // Don't interrupt a running download with the auth form
+        showAuthForm={cloudStorageEnabled && !isAuthenticated && !isScraping}
+      />
+      <DownloadStatus
+        tabId={tabId}
+        isScraping={isScraping}
+        isScrapingLinkedPages={isScrapingLinkedPages}
+        isPaused={isPaused}
+        action={action}
+        downloadResponse={downloadResponse}
+        onStopScraping={stopScraping}
+        setIsPaused={setIsPaused}
+        serverModeState={serverModeState}
+        onRetryServer={() => {
+          // Re-trigger download with same options — reset all server
+          // session refs so a fresh session is created on retry.
+          if (downloadOptions) {
+            setDownloadResponse(null);
+            setScrollAttempts(0);
+            setIsScraping(true);
+            setMessages((prev) => [...prev, { key: "status.scraping" }]);
+            setServerModeState((prev) => ({
+              ...prev,
+              phase: "scraping",
+              serverError: null,
+            }));
+          }
+        }}
+        onDownloadFromServer={async () => {
+          if (serverModeState.serverDownloadUrl) {
+            const { loadFilterOptions } =
+              await import("./common/storage/filterStorage");
+            const opts = await loadFilterOptions();
+            chrome.downloads.download({
+              url: serverModeState.serverDownloadUrl,
+              saveAs: opts.alwaysAskWhereToSave ?? true,
+            });
+          }
+        }}
+        interruptData={interruptData}
+        onRestartDownload={async () => {
+          setInterruptData(null);
+          // If we have a server session ID, attempt resume
+          if (interruptData?.serverSessionId) {
+            setIsScraping(true);
+            setMessages((prev) => [
+              ...prev,
+              { key: "status.reconnectingServer" },
+            ]);
+            setServerModeState((prev) => ({
+              ...prev,
+              phase: "uploading",
+              serverError: null,
+            }));
+            try {
+              const result = await sendMessageToBackground(
+                messageActions.RESUME_SERVER_DOWNLOAD,
+                {
+                  serverSessionId: interruptData.serverSessionId,
+                  tabUrl: interruptData.tabUrl,
+                  phase: interruptData.phase,
+                  resourceUrls: interruptData.resourceUrls,
+                },
+              );
+              if (result?.fallback) {
+                // Resume failed — fall through to full restart
+                throw new Error(result.error || "Resume failed");
+              }
+              // Resume succeeded — update state
+              setIsScraping(false);
+              setAction(messageActions.DOWNLOAD_DONE);
+            } catch {
+              // Resume failed — fall back to full restart
+              if (downloadOptions) {
+                setIsScraping(true);
+                setDownloadOptions(downloadOptions);
+                setMessages((prev) => [...prev, { key: "status.scraping" }]);
+                setServerModeState((prev) => ({
+                  ...prev,
+                  phase: "scraping",
+                  serverError: null,
+                }));
+              }
+            }
+          } else if (downloadOptions) {
+            setIsScraping(true);
+            setDownloadOptions(downloadOptions);
+            setMessages((prev) => [...prev, { key: "status.scraping" }]);
+            setServerModeState((prev) => ({
+              ...prev,
+              phase: "scraping",
+              serverError: null,
+            }));
+          }
+        }}
+        onDismissInterrupt={() => {
+          setInterruptData(null);
+          setMessages([{ key: "status.connected" }]);
+          // Clear the checkpoint so re-opening the panel doesn't show stale state
+          sendMessageToBackground(
+            messageActions.DISMISS_INTERRUPTED_DOWNLOAD,
+            {},
+          );
+        }}
+        cloudUploadState={cloudUploadState}
+        onRetryCloudUpload={() => {
+          if (downloadOptions) {
+            setCloudUploadState(null);
+            setIsScraping(true);
+            setMessages((prev) => [...prev, { key: "status.scraping" }]);
+          }
+        }}
+      />
+      <DownloadComplete
+        tabId={tabId}
+        tabUrl={tabUrl}
+        links={links}
+        action={action}
+        reset={reset}
+        serverDownloadUrl={serverModeState.serverDownloadUrl}
+        isSingleFile={serverModeState.isSingleFile}
+        cloudUploadState={cloudUploadState}
+      />
+    </div>
+  );
+}
+
+// mergeDownloadResponse function removed (moved to utils)
 
 const root = createRoot(document.getElementById("root")!);
 

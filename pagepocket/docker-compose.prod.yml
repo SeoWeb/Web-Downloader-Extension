@@ -1,0 +1,101 @@
+version: "3.9"
+
+services:
+  mysql:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    ports: !override []
+
+  auth-service:
+    restart: always
+    environment:
+      MTLS_ENABLED: "true"
+      CA_CERT: /certs/ca.pem
+      SERVER_KEY: /certs/auth-service-key.pem
+      SERVER_CERT: /certs/auth-service.pem
+    volumes:
+      - ./certs:/certs:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports: !override []
+
+  archive-service:
+    restart: always
+    environment:
+      MTLS_ENABLED: "true"
+      CA_CERT: /certs/ca.pem
+      SERVER_KEY: /certs/archive-service-key.pem
+      SERVER_CERT: /certs/archive-service.pem
+    volumes:
+      - ./certs:/certs:ro
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    ports: !override []
+
+  library-service:
+    restart: always
+    environment:
+      MTLS_ENABLED: "true"
+      CA_CERT: /certs/ca.pem
+      SERVER_KEY: /certs/library-service-key.pem
+      SERVER_CERT: /certs/library-service.pem
+    volumes:
+      - ./certs:/certs:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports: !override []
+
+  search-service:
+    restart: always
+    environment:
+      MTLS_ENABLED: "true"
+      CA_CERT: /certs/ca.pem
+      SERVER_KEY: /certs/search-service-key.pem
+      SERVER_CERT: /certs/search-service.pem
+    volumes:
+      - ./certs:/certs:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports: !override []
+
+  share-service:
+    restart: always
+    environment:
+      MTLS_ENABLED: "true"
+      CA_CERT: /certs/ca.pem
+      SERVER_KEY: /certs/share-service-key.pem
+      SERVER_CERT: /certs/share-service.pem
+    volumes:
+      - ./certs:/certs:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports: !override []
+
+  api-gateway:
+    restart: always
+    environment:
+      MTLS_ENABLED: "true"
+      CA_CERT: /certs/ca.pem
+      CLIENT_KEY: /certs/api-gateway-key.pem
+      CLIENT_CERT: /certs/api-gateway.pem
+    volumes:
+      - ./certs:/certs:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports:
+      - "8090:8090"

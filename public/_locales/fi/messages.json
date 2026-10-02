@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Verkkosivujen lataaja",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Verkkosivujen lataaja mahdollistaa kokonaisten verkkosivujen, mukaan lukien linkitetyt resurssit, lataamisen ja tallentamisen offline-katselua varten.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Verkkosivujen lataaja",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

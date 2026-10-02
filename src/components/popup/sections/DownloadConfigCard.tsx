@@ -47,7 +47,7 @@ export default function DownloadConfigCard({
       onBack={onBack}
       isFirst={isFirst}
       isLast={isLast}
-      containerClassName={containerClassName} 
+      containerClassName={containerClassName}
     >
       {downloadMode === "website" && (
         <div className="space-y-2">
@@ -63,7 +63,7 @@ export default function DownloadConfigCard({
             </span>
           </div>
           <Slider
-            defaultValue={[depthValue]} 
+            defaultValue={[depthValue]}
             min={1}
             max={10}
             step={1}

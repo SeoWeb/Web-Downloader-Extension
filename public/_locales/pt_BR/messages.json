@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Baixador de Páginas da Web",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "O Baixador de Páginas da Web permite baixar e salvar páginas da web inteiras, incluindo recursos vinculados, para visualização offline.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Baixador de Páginas da Web",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

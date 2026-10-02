@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Λήψη Ιστοσελίδας",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Το \"Λήψη Ιστοσελίδας\" σας επιτρέπει να κατεβάζετε και να αποθηκεύετε ολόκληρες ιστοσελίδες, συμπεριλαμβανομένων των συνδεδεμένων πόρων, για προβολή εκτός σύνδεσης.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Λήψη Ιστοσελίδας",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

@@ -15,7 +15,10 @@ export const installedListener = (details: chrome.runtime.InstalledDetails) => {
     case "install":
       break;
     case "update":
-      if (details.previousVersion && details.previousVersion < chrome.runtime.getManifest().version) {
+      if (
+        details.previousVersion &&
+        details.previousVersion < chrome.runtime.getManifest().version
+      ) {
         // TODO:
       }
       break;

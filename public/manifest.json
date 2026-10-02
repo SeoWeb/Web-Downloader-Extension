@@ -1,28 +1,34 @@
 {
   "manifest_version": 3,
-  "name": "__MSG_title__",
-  "description": "__MSG_description__",
-  "version": "3.0",
-  "action": {
-    "default_icon": "./icons/128x128.png",
-    "default_title": "__MSG_title__",
-    "default_popup": "popup.html"
-  },
+  "name": "__MSG_extensionName__",
+  "description": "__MSG_extensionDescription__",
+  "version": "5.0.0.5",
   "default_locale": "en",
-  "permissions": ["sidePanel"],
-  "optional_permissions": ["activeTab", "storage", "scripting", "downloads"],
-  "optional_host_permissions": ["<all_urls>"],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApTyUPl8CfSZdoX1Pi5q+MoARgDSL8dO6BuoFX+wuAxsi+tA89OhxnsH4NvdcYJGyOhbzMFdhbJ7EXsVDIhZz5i5SVSlq23iA/vXJcJfm/eJh+B/4fm3jB8ziOASZ0XshzwV8VFgXMTeOVTyV8SCs12tP2HO8yCx+4ldcqBzf7aqtJX+YtULuYsvQIvj8b58pLJwu6KsM1j9A7DFjAYNVjAZmJMzyygQSXQ/fGM9wMbqnaFtW3uKGFYJ8q3REKXZhFDiOjH9HJGvpvAfz30BFBSV9vl4IQZW9Vn+D7678mh5xsIBej05+ygS7jMNVyTRtuhsK2p3tXUz2LlQKqj9/WQIDAQAB",
+  "action": {
+    "default_icon": "icons/128x128.png",
+    "default_title": "__MSG_extensionActionTitle__"
+  },
+  "permissions": ["activeTab", "tabs", "scripting", "sidePanel", "downloads"],
+  "optional_permissions": ["storage"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "type": "module",
     "service_worker": "background.js"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["locales/*.json"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "icons": {
-    "16": "./icons/16x16.png",
-    "32": "./icons/32x32.png",
-    "48": "./icons/48x48.png",
-    "64": "./icons/64x64.png",
-    "96": "./icons/96x96.png",
-    "128": "./icons/128x128.png",
-    "256": "./icons/256x256.png"
+    "16": "icons/16x16.png",
+    "32": "icons/32x32.png",
+    "48": "icons/48x48.png",
+    "64": "icons/64x64.png",
+    "96": "icons/96x96.png",
+    "128": "icons/128x128.png",
+    "256": "icons/256x256.png"
   }
 }

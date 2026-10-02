@@ -10,10 +10,10 @@ export default function WebsiteCard({
   isLast,
   containerClassName,
 }: ContentFilteringCardProps) {
-    const { direction, getTranslation } = useLanguageStore();
-      
-    return (
-        <StaticCard
+  const { direction, getTranslation } = useLanguageStore();
+
+  return (
+    <StaticCard
       title={getTranslation("filtering_title")}
       icon={<FileStack className="h-4 w-4" />}
       onNext={onNext}
@@ -22,7 +22,9 @@ export default function WebsiteCard({
       isLast={isLast}
       containerClassName={containerClassName}
     >
-      <div className={`flex flex-col items-center justify-center p-6 space-y-3 ${direction === "rtl" ? "text-right" : "text-center"}`}>
+      <div
+        className={`flex flex-col items-center justify-center p-6 space-y-3 ${direction === "rtl" ? "text-right" : "text-center"}`}
+      >
         <Construction className="h-12 w-12 text-blue-500" />
         <h3 className="text-xl font-semibold">
           {getTranslation("full_web_page_download_title_v2_coming_soon")}
@@ -32,5 +34,5 @@ export default function WebsiteCard({
         </p>
       </div>
     </StaticCard>
-    );
-};
+  );
+}

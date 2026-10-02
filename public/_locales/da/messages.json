@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Webside Downloader",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Webside Downloader giver dig mulighed for at downloade og gemme hele websider, inklusive tilknyttede ressourcer, til offline visning.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Webside Downloader",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

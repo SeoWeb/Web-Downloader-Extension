@@ -53,13 +53,15 @@ export const handleNewConnection = (port: chrome.runtime.Port) => {
   }
 };
 
-export const handlePortSpecificInitialization = async (port: chrome.runtime.Port) => {
-    if (port.name === MESSAGE_SIDEPANEL) {
-        await askSidePanelStoreUpdate(port);
-    } else if (port.name === MESSAGE_POPUP) {
-        await askPopupStoreUpdate(port);
-    }
-}
+export const handlePortSpecificInitialization = async (
+  port: chrome.runtime.Port,
+) => {
+  if (port.name === MESSAGE_SIDEPANEL) {
+    await askSidePanelStoreUpdate(port);
+  } else if (port.name === MESSAGE_POPUP) {
+    await askPopupStoreUpdate(port);
+  }
+};
 
 export const initializePortListeners = (port: chrome.runtime.Port) => {
   port.onMessage.addListener(portOnMessageListener);

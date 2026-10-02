@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Prenosnik spletnih strani",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Prenosnik spletnih strani vam omogoča prenos in shranjevanje celotnih spletnih strani, vključno s povezanimi viri, za ogled brez povezave.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Prenosnik spletnih strani",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

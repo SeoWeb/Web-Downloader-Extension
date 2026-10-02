@@ -1,12 +1,12 @@
 // src/components/popup/sections/PreviewCard.tsx
-import { useEffect } from 'react'; // Added
+import { useEffect } from "react"; // Added
 import { Checkbox } from "../../ui/checkbox";
 import { Label } from "../../ui/label";
 import { Switch } from "../../ui/switch";
 import { CheckSquare } from "lucide-react";
 import StaticCard from "../../ui/StaticCard";
 // import { sendMessage } from '../../../common/chrome/sendMessage'; // Added
-import { Message, MESSAGE_SEND_SOCKET_MESSAGE } from '../../../types/message'; // Added - Assuming structure
+import { Message, MESSAGE_SEND_SOCKET_MESSAGE } from "../../../types/message"; // Added - Assuming structure
 
 // Define the props interface including navigation props
 interface PreviewCardProps {
@@ -22,11 +22,11 @@ async function sendStringAsStream(dataString: string, chunkSize: number = 100) {
     const chunk = dataString.substring(i, i + chunkSize);
     const message: Message = {
       action: MESSAGE_SEND_SOCKET_MESSAGE,
-      target: 'background', // Send to the background script
-      sender: 'popup',
+      target: "background", // Send to the background script
+      sender: "popup",
       data: {
-        action: 'submitHtml',
-        data: chunk
+        action: "submitHtml",
+        data: chunk,
       },
     };
     // socket.emit('stream-chunk', chunk);
@@ -35,15 +35,15 @@ async function sendStringAsStream(dataString: string, chunkSize: number = 100) {
   }
   const message: Message = {
     action: MESSAGE_SEND_SOCKET_MESSAGE,
-    target: 'background', // Send to the background script
-    sender: 'popup',
+    target: "background", // Send to the background script
+    sender: "popup",
     data: {
-      action: 'submitHtml',
-      data: null
+      action: "submitHtml",
+      data: null,
     },
   };
   // socket.emit('stream-end');
-  console.log('String sent as stream!');
+  console.log("String sent as stream!");
 }
 
 export default function PreviewCard({
@@ -54,7 +54,6 @@ export default function PreviewCard({
   isLast,
   containerClassName, // Destructure containerClassName
 }: PreviewCardProps) {
-
   // Send sample HTML when the component mounts
   useEffect(() => {
     const sampleHtml = `
@@ -76,7 +75,6 @@ export default function PreviewCard({
     // sendMessage(message).catch(console.error); // Send message to background script
 
     // TODO ! use port message
-
   }, []); // Empty dependency array ensures this runs only once on mount
 
   return (
@@ -97,24 +95,39 @@ export default function PreviewCard({
           {/* List items remain unchanged */}
           <li className="flex items-center p-3 hover:bg-slate-100 transition-colors">
             <Checkbox id="page1" className="mr-3 text-blue-600" />
-            <Label htmlFor="page1" className="text-sm text-slate-700 cursor-pointer flex-1">
+            <Label
+              htmlFor="page1"
+              className="text-sm text-slate-700 cursor-pointer flex-1"
+            >
               index.html
             </Label>
-            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">HTML</span>
+            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+              HTML
+            </span>
           </li>
           <li className="flex items-center p-3 hover:bg-slate-100 transition-colors">
             <Checkbox id="page2" className="mr-3 text-blue-600" />
-            <Label htmlFor="page2" className="text-sm text-slate-700 cursor-pointer flex-1">
+            <Label
+              htmlFor="page2"
+              className="text-sm text-slate-700 cursor-pointer flex-1"
+            >
               /about
             </Label>
-            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">HTML</span>
+            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+              HTML
+            </span>
           </li>
           <li className="flex items-center p-3 hover:bg-slate-100 transition-colors">
             <Checkbox id="style.css" className="mr-3 text-blue-600" />
-            <Label htmlFor="style.css" className="text-sm text-slate-700 cursor-pointer flex-1">
+            <Label
+              htmlFor="style.css"
+              className="text-sm text-slate-700 cursor-pointer flex-1"
+            >
               css/style.css
             </Label>
-            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">CSS</span>
+            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+              CSS
+            </span>
           </li>
         </ul>
       </div>

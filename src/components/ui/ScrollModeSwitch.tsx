@@ -24,7 +24,12 @@ export default function ScrollModeSwitch({
   const isAutoMode = scrollMode === "auto";
 
   return (
-    <div className={cn("flex items-center space-x-2", direction === "rtl" ? "space-x-reverse" : "")}>
+    <div
+      className={cn(
+        "flex items-center space-x-2",
+        direction === "rtl" ? "space-x-reverse" : "",
+      )}
+    >
       <Switch
         id="scroll-mode-toggle"
         checked={isAutoMode}
@@ -35,10 +40,13 @@ export default function ScrollModeSwitch({
           "relative inline-flex flex-shrink-0 cursor-pointer",
           "rounded-full border-2 border-transparent",
           "transition-colors duration-200 ease-in-out",
-          "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
         )}
       />
-      <Label htmlFor="scroll-mode-toggle" className="text-sm text-slate-600 cursor-pointer">
+      <Label
+        htmlFor="scroll-mode-toggle"
+        className="text-sm text-slate-600 cursor-pointer"
+      >
         {isAutoMode ? autoModeText : manualModeText}
       </Label>
       <InfoTooltip text={tooltipText} side="top" />

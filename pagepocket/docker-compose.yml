@@ -1,0 +1,174 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-pagepocket}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    environment:
+      DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/auth_db
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      REDIS_URL: redis://redis:6379/0
+      MTLS_ENABLED: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "50051:50051"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50051)); s.close()"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  archive-service:
+    build:
+      context: .
+      dockerfile: services/archive-service/Dockerfile
+    environment:
+      DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/archive_db
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      R2_ENDPOINT_URL: ${R2_ENDPOINT_URL:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-pagepocket-pages}
+      SEARCH_SERVICE_ADDR: search-service:50054
+      LIBRARY_SERVICE_ADDR: library-service:50053
+      REDIS_URL: redis://redis:6379/1
+      MTLS_ENABLED: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "50052:50052"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50052)); s.close()"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  library-service:
+    build:
+      context: .
+      dockerfile: services/library-service/Dockerfile
+    environment:
+      DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/library_db
+      REDIS_URL: redis://redis:6379/2
+      MTLS_ENABLED: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "50053:50053"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50053)); s.close()"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  search-service:
+    build:
+      context: .
+      dockerfile: services/search-service/Dockerfile
+    environment:
+      DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/search_db
+      REDIS_URL: redis://redis:6379/3
+      MTLS_ENABLED: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "50054:50054"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50054)); s.close()"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  share-service:
+    build:
+      context: .
+      dockerfile: services/share-service/Dockerfile
+    environment:
+      DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/share_db
+      BASE_URL: ${BASE_URL:-http://localhost:8090}
+      REDIS_URL: redis://redis:6379/4
+      MTLS_ENABLED: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "50055:50055"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50055)); s.close()"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      AUTH_SERVICE_ADDR: auth-service:50051
+      ARCHIVE_SERVICE_ADDR: archive-service:50052
+      LIBRARY_SERVICE_ADDR: library-service:50053
+      SEARCH_SERVICE_ADDR: search-service:50054
+      SHARE_SERVICE_ADDR: share-service:50055
+      MTLS_ENABLED: "false"
+    ports:
+      - "8090:8090"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      archive-service:
+        condition: service_healthy
+      library-service:
+        condition: service_healthy
+      search-service:
+        condition: service_healthy
+      share-service:
+        condition: service_healthy
+
+networks:
+  default:
+    name: pagepocket_default
+    external: true
+
+volumes:
+  mysql_data:

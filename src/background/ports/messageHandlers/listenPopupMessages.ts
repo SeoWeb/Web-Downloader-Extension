@@ -1,7 +1,10 @@
 import { Message, MESSAGE_POPUP } from "../../../types/message";
 import { getPopupPort, pushPopupMessageQueue } from "../portManager";
 
-export const listenPopupMessages = async (message: Message, _port: chrome.runtime.Port) => {
+export const listenPopupMessages = async (
+  message: Message,
+  _port: chrome.runtime.Port,
+) => {
   if (message.target === MESSAGE_POPUP) {
     const popupPort = getPopupPort();
     if (popupPort) {
@@ -10,4 +13,4 @@ export const listenPopupMessages = async (message: Message, _port: chrome.runtim
       pushPopupMessageQueue(message);
     }
   }
-}
+};

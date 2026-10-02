@@ -1,0 +1,604 @@
+"""Archive service unit tests - page processor, quota, servicer RPCs."""
+
+import os
+import sys
+import unittest
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared", "proto_generated"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+# Stub out boto3/botocore before servicer imports them
+sys.modules["boto3"] = MagicMock()
+sys.modules["botocore"] = MagicMock()
+sys.modules["botocore.config"] = MagicMock()
+
+import archive_pb2
+from page_processor import sanitise_and_rewrite
+
+# ---------------------------------------------------------------------------
+# Page processor tests
+# ---------------------------------------------------------------------------
+
+class TestPageProcessor(unittest.TestCase):
+    def test_rewrite_asset_refs(self):
+        html = b'<html><img src="photo.jpg"><link href="style.css"></html>'
+        asset_map = {"photo.jpg": "assets/photo.jpg", "style.css": "assets/style.css"}
+        rewritten, _preview, _body = sanitise_and_rewrite(html, asset_map)
+        self.assertIn(b"assets/photo.jpg", rewritten)
+        self.assertIn(b"assets/style.css", rewritten)
+
+    def test_preview_text_extraction(self):
+        html = b"<html><body><p>Hello World</p></body></html>"
+        _, preview, body = sanitise_and_rewrite(html, {})
+        self.assertIn("Hello World", body)
+        self.assertTrue(len(preview) <= 500)
+
+    def test_empty_html(self):
+        html = b""
+        rewritten, _preview, _body = sanitise_and_rewrite(html, {})
+        self.assertIsNotNone(rewritten)
+
+    def test_no_matching_assets(self):
+        html = b'<html><img src="other.png"></html>'
+        asset_map = {"photo.jpg": "assets/photo.jpg"}
+        rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
+        self.assertIn(b"other.png", rewritten)
+        self.assertNotIn(b"assets/photo.jpg", rewritten)
+
+    def test_rewrite_mixed_asset_refs(self):
+        """HTML with img, link, source, video, audio referencing assets."""
+        html = (
+            b'<html><head>'
+            b'<link href="styles.css">'
+            b'</head><body>'
+            b'<img src="photo.jpg">'
+            b'<source src="video.mp4">'
+            b'<video src="clip.webm"></video>'
+            b'<audio src="sound.mp3"></audio>'
+            b'<img data-src="lazy.png">'
+            b'</body></html>'
+        )
+        asset_map = {
+            "styles.css": "assets/styles.css",
+            "photo.jpg": "assets/photo.jpg",
+            "video.mp4": "assets/video.mp4",
+            "clip.webm": "assets/clip.webm",
+            "sound.mp3": "assets/sound.mp3",
+            "lazy.png": "assets/lazy.png",
+        }
+        rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
+        for orig, new in asset_map.items():
+            self.assertIn(new.encode(), rewritten, f"{orig} should be rewritten to {new}")
+        self.assertNotIn(b'src="photo.jpg"', rewritten)
+        self.assertNotIn(b'href="styles.css"', rewritten)
+        self.assertNotIn(b"<script", rewritten)
+
+    def test_asset_with_query_params(self):
+        html = b'<html><img src="photo.jpg?v=1&w=200"></html>'
+        asset_map = {"photo.jpg": "assets/photo.jpg"}
+        rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
+        self.assertIn(b"assets/photo.jpg", rewritten)
+
+    def test_rewrite_nested_asset_paths(self):
+        """Full path matching for nested local paths like images/foo.jpg."""
+        html = b'<html><img src="./images/photo.jpg"><link href="./styles/main.css"></html>'
+        asset_map = {
+            "images/photo.jpg": "assets/images/photo.jpg",
+            "styles/main.css": "assets/styles/main.css",
+        }
+        rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
+        self.assertIn(b"assets/images/photo.jpg", rewritten)
+        self.assertIn(b"assets/styles/main.css", rewritten)
+        self.assertNotIn(b"./images/photo.jpg", rewritten)
+
+    def test_rewrite_root_absolute_asset_refs(self):
+        """Root-absolute references (e.g. Next.js /_next/...) must be rewritten
+        to archive-relative paths so they resolve inside the archive folder
+        rather than the host origin (which would 404). Script tags are stripped
+        entirely (they can never run in the sandboxed viewer)."""
+        html = (
+            b'<html><head>'
+            b'<script src="/_next/static/chunks/app.js"></script>'
+            b'<link href="/_next/static/css/main.css">'
+            b'</head><body>'
+            b'<img src="/images/photo.jpg">'
+            b'</body></html>'
+        )
+        asset_map = {
+            "app.js": "assets/app.js",
+            "main.css": "assets/main.css",
+            "photo.jpg": "assets/photo.jpg",
+        }
+        rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
+        # Script tags are removed outright.
+        self.assertNotIn(b"<script", rewritten)
+        self.assertNotIn(b"app.js", rewritten)
+        # Mapped assets resolve to the archive-relative path.
+        self.assertIn(b"assets/main.css", rewritten)
+        self.assertIn(b"assets/photo.jpg", rewritten)
+        # No host-root absolute paths remain.
+        self.assertNotIn(b'href="/_next', rewritten)
+        self.assertNotIn(b'src="/images', rewritten)
+
+    def test_rewrite_unmapped_root_absolute_stays_in_archive(self):
+        """An unmapped root-absolute asset is made archive-relative (no leading
+        slash) so the request stays within the archive namespace, not the host."""
+        html = b'<html><img src="/_next/static/chunks/missing.js"></html>'
+        rewritten, _, _ = sanitise_and_rewrite(html, {})
+        self.assertIn(b'src="_next/static/chunks/missing.js"', rewritten)
+        self.assertNotIn(b'src="/_next', rewritten)
+
+    def test_external_and_anchor_urls_left_untouched(self):
+        html = (
+            b'<html><img src="https://cdn.example.com/a.png">'
+            b'<a href="#section">x</a>'
+            b'<img src="//cdn.example.com/b.png">'
+            b'</html>'
+        )
+        rewritten, _, _ = sanitise_and_rewrite(html, {})
+        self.assertIn(b"https://cdn.example.com/a.png", rewritten)
+        self.assertIn(b'href="#section"', rewritten)
+        self.assertIn(b"//cdn.example.com/b.png", rewritten)
+
+    def test_removes_base_tags(self):
+        """Base tags must be removed to prevent overriding relative paths."""
+        html = b'<html><head><base href="https://example.com/"></head><body><img src="images/photo.jpg"></body></html>'
+        asset_map = {"images/photo.jpg": "assets/images/photo.jpg"}
+        rewritten, _, _ = sanitise_and_rewrite(html, asset_map)
+        self.assertNotIn(b"<base", rewritten)
+        self.assertIn(b"assets/images/photo.jpg", rewritten)
+
+    def test_strips_script_tags(self):
+        """All <script> tags (inline, external, JSON-LD) must be removed from stored HTML."""
+        html = (
+            b'<html><head><script src="app.js"></script>'
+            b'<script type="application/ld+json">{"a":1}</script></head>'
+            b'<body><p>Hi</p><script>alert(1)</script><img src="photo.jpg"></body></html>'
+        )
+        rewritten, _, body = sanitise_and_rewrite(html, {"photo.jpg": "assets/photo.jpg"})
+        self.assertNotIn(b"<script", rewritten)
+        self.assertNotIn(b"alert(1)", rewritten)
+        self.assertNotIn(b"app.js", rewritten)
+        self.assertIn(b"assets/photo.jpg", rewritten)
+        self.assertIn("Hi", body)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for quota and servicer tests
+# ---------------------------------------------------------------------------
+
+def _make_quota_dict(user_id="u1", pages=0, total_bytes=0, reset_at=None):
+    """Return a plain dict-like mock that quota.check_and_reserve can use."""
+    q = MagicMock()
+    q.user_id = user_id
+    q.pages_this_month = pages
+    q.total_bytes = total_bytes
+    q.quota_reset_at = reset_at or datetime.now(timezone.utc) + timedelta(days=30)
+    return q
+
+
+def _make_page(page_id="p1", user_id="u1", url="https://example.com",
+               title="Test", preview_text="preview", r2_key="u1/p1/index.html",
+               size_bytes=1000, extension_job_id="job1",
+               archived_at=None):
+    page = MagicMock()
+    page.id = page_id
+    page.user_id = user_id
+    page.url = url
+    page.title = title
+    page.preview_text = preview_text
+    page.r2_key = r2_key
+    page.size_bytes = size_bytes
+    page.extension_job_id = extension_job_id
+    page.archived_at = archived_at or datetime.now(timezone.utc)
+    return page
+
+
+class _FakeContext:
+    def __init__(self):
+        self._code = None
+        self._details = None
+
+    def set_code(self, code):
+        self._code = code
+
+    def set_details(self, details):
+        self._details = details
+
+
+# ---------------------------------------------------------------------------
+# Quota tests
+# ---------------------------------------------------------------------------
+
+class TestQuota(unittest.TestCase):
+    def test_under_quota_returns_none(self):
+        from quota import check_and_reserve
+        mock_session = MagicMock()
+        quota = _make_quota_dict(pages=10, total_bytes=100)
+        mock_session.execute.return_value.scalar_one_or_none.return_value = quota
+        result = check_and_reserve(mock_session, "u1", "free", 1000)
+        self.assertIsNone(result)
+
+    def test_page_limit_exceeded(self):
+        from models import PLAN_LIMITS
+        from quota import check_and_reserve
+        mock_session = MagicMock()
+        quota = _make_quota_dict(pages=PLAN_LIMITS["free"]["pages_per_month"])
+        mock_session.execute.return_value.scalar_one_or_none.return_value = quota
+        result = check_and_reserve(mock_session, "u1", "free", 1000)
+        self.assertEqual(result, "Monthly page limit reached")
+
+    def test_byte_limit_exceeded(self):
+        from models import PLAN_LIMITS
+        from quota import check_and_reserve
+        mock_session = MagicMock()
+        quota = _make_quota_dict(total_bytes=PLAN_LIMITS["free"]["max_bytes"])
+        mock_session.execute.return_value.scalar_one_or_none.return_value = quota
+        result = check_and_reserve(mock_session, "u1", "free", 1)
+        self.assertEqual(result, "Storage limit reached")
+
+    def test_pro_plan_higher_limits(self):
+        from models import PLAN_LIMITS
+        from quota import check_and_reserve
+        mock_session = MagicMock()
+        quota = _make_quota_dict(pages=PLAN_LIMITS["free"]["pages_per_month"])
+        mock_session.execute.return_value.scalar_one_or_none.return_value = quota
+        result = check_and_reserve(mock_session, "u1", "pro", 1000)
+        self.assertIsNone(result)
+
+    def test_monthly_rollover(self):
+        from quota import check_and_reserve
+        mock_session = MagicMock()
+        quota = _make_quota_dict(
+            pages=50,
+            reset_at=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+        mock_session.execute.return_value.scalar_one_or_none.return_value = quota
+        result = check_and_reserve(mock_session, "u1", "free", 1000)
+        self.assertIsNone(result)
+        self.assertEqual(quota.pages_this_month, 0)
+
+    def test_new_user_creates_quota(self):
+        from quota import check_and_reserve
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+        result = check_and_reserve(mock_session, "new_user", "free", 1000)
+        self.assertIsNone(result)
+        mock_session.add.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Servicer tests
+# ---------------------------------------------------------------------------
+
+def _build_ingest_request(**overrides):
+    defaults = {
+        "user_id": "u1", "url": "https://example.com", "title": "Test",
+        "html_content": b"<html><body>Hello</body></html>",
+        "assets": [], "extension_job_id": "job1", "plan": "free",
+    }
+    defaults.update(overrides)
+    return archive_pb2.IngestPageRequest(**defaults)
+
+
+class TestIngestPage(unittest.TestCase):
+    @patch("servicer._get_search_stub", return_value=None)
+    @patch("servicer.R2Client")
+    @patch("servicer.check_and_reserve", return_value=None)
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_ingest_success(self, mock_engine, mock_db_session, mock_quota,
+                            mock_r2, mock_search):
+        from servicer import ArchiveServicer
+        mock_session = MagicMock()
+        # First execute: idempotency check -> None (new page)
+        # Second execute: quota increment -> quota_row
+        quota_row = _make_quota_dict()
+        call_count = [0]
+        def fake_execute(stmt):
+            call_count[0] += 1
+            result = MagicMock()
+            result.scalar_one_or_none.return_value = None if call_count[0] == 1 else quota_row
+            return result
+        mock_session.execute = fake_execute
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+        mock_r2.return_value.upload = MagicMock()
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        req = _build_ingest_request(assets=[
+            archive_pb2.Asset(filename="photo.jpg", content_type="image/jpeg", data=b"\xff\xd8\xff"),
+        ])
+        resp = svc.IngestPage(req, ctx)
+
+        self.assertTrue(resp.success)
+        self.assertTrue(resp.page_id)
+        # 1 asset + index.html + meta.json = 3 uploads
+        self.assertEqual(mock_r2.return_value.upload.call_count, 3)
+
+    @patch("servicer._get_search_stub", return_value=None)
+    @patch("servicer.R2Client")
+    @patch("servicer.check_and_reserve", return_value=None)
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_idempotent_replay(self, mock_engine, mock_db_session, mock_quota,
+                               mock_r2, mock_search):
+        """Second IngestPage with same extension_job_id returns existing page_id."""
+        from servicer import ArchiveServicer
+        existing_page = _make_page(page_id="existing-id")
+
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = existing_page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        resp = svc.IngestPage(_build_ingest_request(extension_job_id="job1"), ctx)
+
+        self.assertTrue(resp.success)
+        self.assertEqual(resp.page_id, "existing-id")
+        mock_r2.return_value.upload.assert_not_called()
+
+    @patch("servicer._get_search_stub", return_value=None)
+    @patch("servicer.R2Client")
+    @patch("servicer.check_and_reserve", return_value="Monthly page limit reached")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_quota_exceeded_no_r2_write(self, mock_engine, mock_db_session,
+                                         mock_quota, mock_r2, mock_search):
+        """When quota is exceeded, no R2 upload happens."""
+        import grpc
+        from servicer import ArchiveServicer
+
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        resp = svc.IngestPage(_build_ingest_request(), ctx)
+
+        self.assertFalse(resp.success)
+        self.assertEqual(ctx._code, grpc.StatusCode.RESOURCE_EXHAUSTED)
+        mock_r2.return_value.upload.assert_not_called()
+
+
+class TestCrossUserIsolation(unittest.TestCase):
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_get_page_wrong_user(self, mock_engine, mock_db_session, mock_r2):
+        import grpc
+        from servicer import ArchiveServicer
+
+        page = _make_page(page_id="p1", user_id="owner-u1")
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        req = archive_pb2.GetPageRequest(page_id="p1", user_id="attacker-u2")
+        svc.GetPage(req, ctx)
+
+        self.assertEqual(ctx._code, grpc.StatusCode.NOT_FOUND)
+
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_get_page_content_wrong_user(self, mock_engine, mock_db_session, mock_r2):
+        import grpc
+        from servicer import ArchiveServicer
+
+        page = _make_page(page_id="p1", user_id="owner-u1")
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        req = archive_pb2.GetPageContentRequest(page_id="p1", user_id="attacker-u2")
+        svc.GetPageContent(req, ctx)
+
+        self.assertEqual(ctx._code, grpc.StatusCode.NOT_FOUND)
+        mock_r2.return_value.presign.assert_not_called()
+
+    @patch("servicer._get_search_stub", return_value=None)
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_delete_page_wrong_user(self, mock_engine, mock_db_session, mock_r2, mock_search):
+        from servicer import ArchiveServicer
+
+        page = _make_page(page_id="p1", user_id="owner-u1")
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        req = archive_pb2.DeletePageRequest(page_id="p1", user_id="attacker-u2")
+        resp = svc.DeletePage(req, ctx)
+
+        self.assertFalse(resp.success)
+        self.assertEqual(resp.message, "not found")
+        mock_r2.return_value.delete_prefix.assert_not_called()
+
+
+class TestDeletePage(unittest.TestCase):
+    @patch("servicer._get_search_stub")
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_delete_cleans_r2_and_quota(self, mock_engine, mock_db_session,
+                                         mock_r2, mock_search):
+        from servicer import ArchiveServicer
+
+        page = _make_page(page_id="p1", user_id="u1", size_bytes=5000)
+        quota_row = _make_quota_dict(user_id="u1", total_bytes=10000)
+
+        mock_session = MagicMock()
+        call_count = [0]
+
+        def fake_execute(stmt):
+            call_count[0] += 1
+            result = MagicMock()
+            if call_count[0] == 1:
+                result.scalar_one_or_none.return_value = page
+            else:
+                result.scalar_one_or_none.return_value = quota_row
+            return result
+
+        mock_session.execute = fake_execute
+        mock_session.delete = MagicMock()
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        mock_search_stub = MagicMock()
+        mock_search.return_value = mock_search_stub
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        req = archive_pb2.DeletePageRequest(page_id="p1", user_id="u1")
+        resp = svc.DeletePage(req, ctx)
+
+        self.assertTrue(resp.success)
+
+        # R2 prefix deleted
+        mock_r2.return_value.delete_prefix.assert_called_once_with("u1/p1")
+
+        # Thumbnail deleted
+        mock_r2.return_value.delete.assert_called_once_with("u1/p1.webp")
+
+        # Page row deleted
+        mock_session.delete.assert_called_once_with(page)
+
+        # Quota decremented
+        self.assertEqual(quota_row.total_bytes, 5000)
+
+        # Search removal called
+        mock_search_stub.RemovePage.assert_called_once()
+
+
+class TestGetArchiveFile(unittest.TestCase):
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_fetch_file_success(self, mock_engine, mock_db_session, mock_r2_cls):
+        from servicer import ArchiveServicer
+
+        page = _make_page(page_id="p1", user_id="u1")
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        mock_r2 = MagicMock()
+        mock_r2.bucket = "test-bucket"
+        body = MagicMock()
+        body.read.return_value = b"<html>data</html>"
+        mock_r2.client.get_object.return_value = {
+            "Body": body,
+            "ContentType": "text/html; charset=utf-8",
+        }
+        mock_r2_cls.return_value = mock_r2
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        req = archive_pb2.GetArchiveFileRequest(
+            page_id="p1", user_id="", file_path="index.html",
+        )
+        resp = svc.GetArchiveFile(req, ctx)
+
+        self.assertEqual(resp.data, b"<html>data</html>")
+        self.assertEqual(resp.content_type, "text/html; charset=utf-8")
+        mock_r2.client.get_object.assert_called_once_with(
+            Bucket="test-bucket", Key="u1/p1/index.html",
+        )
+
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_path_traversal_rejected(self, mock_engine, mock_db_session, mock_r2_cls):
+        import grpc
+        from servicer import ArchiveServicer
+
+        mock_r2_cls.return_value = MagicMock()
+        svc = ArchiveServicer()
+
+        # Reject paths with /.. traversal
+        ctx = _FakeContext()
+        req = archive_pb2.GetArchiveFileRequest(
+            page_id="p1", user_id="", file_path="foo/../../../etc/passwd",
+        )
+        svc.GetArchiveFile(req, ctx)
+        self.assertEqual(ctx._code, grpc.StatusCode.INVALID_ARGUMENT)
+
+        # Reject absolute paths
+        ctx2 = _FakeContext()
+        req2 = archive_pb2.GetArchiveFileRequest(
+            page_id="p1", user_id="", file_path="/etc/passwd",
+        )
+        svc.GetArchiveFile(req2, ctx2)
+        self.assertEqual(ctx2._code, grpc.StatusCode.INVALID_ARGUMENT)
+
+        # Allow filenames containing ".." without a slash (edge case)
+        ctx3 = _FakeContext()
+        req3 = archive_pb2.GetArchiveFileRequest(
+            page_id="p1", user_id="", file_path="assets/image..thumb.jpg",
+        )
+        mock_session = MagicMock()
+        page = _make_page(page_id="p1", user_id="u1")
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+        mock_r2 = MagicMock()
+        mock_r2.bucket = "test-bucket"
+        body = MagicMock()
+        body.read.return_value = b"\xff\xd8\xff"
+        mock_r2.client.get_object.return_value = {"Body": body, "ContentType": "image/jpeg"}
+        svc.r2 = mock_r2
+
+        svc.GetArchiveFile(req3, ctx3)
+        self.assertIsNone(ctx3._code)  # No error set
+
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_file_not_found_in_r2(self, mock_engine, mock_db_session, mock_r2_cls):
+        import grpc
+        from servicer import ArchiveServicer
+
+        page = _make_page(page_id="p1", user_id="u1")
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        mock_r2 = MagicMock()
+        mock_r2.bucket = "test-bucket"
+        mock_r2.client.get_object.side_effect = Exception("NoSuchKey")
+        mock_r2_cls.return_value = mock_r2
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        req = archive_pb2.GetArchiveFileRequest(
+            page_id="p1", user_id="", file_path="assets/missing.jpg",
+        )
+        resp = svc.GetArchiveFile(req, ctx)
+
+        self.assertEqual(ctx._code, grpc.StatusCode.NOT_FOUND)
+        self.assertEqual(resp.data, b"")
+
+
+if __name__ == "__main__":
+    unittest.main()

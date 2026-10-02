@@ -7,7 +7,7 @@ import {
   MESSAGE_DOWNLOAD_DONE,
   MESSAGE_DOWNLOAD_ASSETS,
   MESSAGE_SIMULATE_DOWNLOAD_DONE, // Added for the new button
-  AssetData
+  AssetData,
 } from "../../types/message";
 import useSendPortMessage from "../../hooks/useSendPortMessage";
 import PrimaryButton from "../ui/PrimaryButton";
@@ -39,28 +39,39 @@ export default function SidePanel() {
   const isGroupSelected = (groupName: string): boolean | "indeterminate" => {
     if (!assetGroups || !assetGroups[groupName]) return false;
     const groupAssets = assetGroups[groupName];
-    const selectedGroupAssets = groupAssets.filter(asset => selectedAssets.includes(asset));
+    const selectedGroupAssets = groupAssets.filter((asset) =>
+      selectedAssets.includes(asset),
+    );
     if (selectedGroupAssets.length === 0) return false;
     if (selectedGroupAssets.length === groupAssets.length) return true;
     return "indeterminate";
   };
 
   // Checkbox Event Handlers
-  const handleGroupChange = (groupName: string, isChecked: boolean | "indeterminate") => {
+  const handleGroupChange = (
+    groupName: string,
+    isChecked: boolean | "indeterminate",
+  ) => {
     if (!assetGroups || !assetGroups[groupName]) return;
     const groupAssets = assetGroups[groupName];
     if (isChecked === true) {
-      setSelectedAssets(prev => [...new Set([...prev, ...groupAssets])]);
-    } else { // false or indeterminate, interpreted as deselect all for the group
-      setSelectedAssets(prev => prev.filter(asset => !groupAssets.includes(asset)));
+      setSelectedAssets((prev) => [...new Set([...prev, ...groupAssets])]);
+    } else {
+      // false or indeterminate, interpreted as deselect all for the group
+      setSelectedAssets((prev) =>
+        prev.filter((asset) => !groupAssets.includes(asset)),
+      );
     }
   };
 
-  const handleAssetChange = (assetUrl: string, isChecked: boolean | "indeterminate") => {
+  const handleAssetChange = (
+    assetUrl: string,
+    isChecked: boolean | "indeterminate",
+  ) => {
     if (isChecked === true) {
-      setSelectedAssets(prev => [...new Set([...prev, assetUrl])]);
+      setSelectedAssets((prev) => [...new Set([...prev, assetUrl])]);
     } else {
-      setSelectedAssets(prev => prev.filter(asset => asset !== assetUrl));
+      setSelectedAssets((prev) => prev.filter((asset) => asset !== assetUrl));
     }
   };
 
@@ -83,15 +94,15 @@ export default function SidePanel() {
 
   const handleStopButtonClick = () => {
     setIsDownloading(false);
-  }
+  };
 
   useEffect(() => {
     if (isDownloading && activeTabId && downloadMode) {
-      if (downloadMode === 'single') {
+      if (downloadMode === "single") {
         sendPortMessage(MESSAGE_SCROLL_PAGE_DOWN).then(() => {
-          console.log('sidepanel scroll start');
+          console.log("sidepanel scroll start");
         });
-      } else if (downloadMode === 'single_file') {
+      } else if (downloadMode === "single_file") {
         // TODO: not working, use scroll instead and then createMhtmlWithPuppeteer
         // chrome.pageCapture.saveAsMHTML(
         //   {
@@ -111,23 +122,27 @@ export default function SidePanel() {
         //     setIsDownloading(false);
         //   }
         // )
-      } else if (downloadMode === 'website') {
+      } else if (downloadMode === "website") {
         //
       }
     }
   }, [isDownloading, downloadMode, activeTabId]);
 
   if (isDownloading) {
-    return <div className="p-4">
-      <p className="mb-2">Downloading ...</p>
-      <PrimaryButton onClick={handleStopButtonClick}>
-        Stop
-      </PrimaryButton>
-    </div>
+    return (
+      <div className="p-4">
+        <p className="mb-2">Downloading ...</p>
+        <PrimaryButton onClick={handleStopButtonClick}>Stop</PrimaryButton>
+      </div>
+    );
   }
 
   if (!assetGroups) {
-    return <div className="p-4"><h1>Sidepanel - No assets loaded yet.</h1></div>;
+    return (
+      <div className="p-4">
+        <h1>Sidepanel - No assets loaded yet.</h1>
+      </div>
+    );
   }
 
   const totalAssetsCount = getAllAssetUrls().length;
@@ -136,7 +151,9 @@ export default function SidePanel() {
     <div className="p-4 space-y-4">
       <div>
         <PrimaryButton onClick={handleSelectAllToggle} className="mb-2">
-          {selectedAssets.length === totalAssetsCount && totalAssetsCount > 0 ? "Deselect All" : "Select All"}
+          {selectedAssets.length === totalAssetsCount && totalAssetsCount > 0
+            ? "Deselect All"
+            : "Select All"}
         </PrimaryButton>
       </div>
 
@@ -146,9 +163,16 @@ export default function SidePanel() {
             <Checkbox
               id={`group-${groupName}`}
               checked={isGroupSelected(groupName)}
-              onCheckedChange={(checked) => handleGroupChange(groupName, checked)}
+              onCheckedChange={(checked) =>
+                handleGroupChange(groupName, checked)
+              }
             />
-            <Label htmlFor={`group-${groupName}`} className="font-semibold text-lg">{groupName} ({assets.length})</Label>
+            <Label
+              htmlFor={`group-${groupName}`}
+              className="font-semibold text-lg"
+            >
+              {groupName} ({assets.length})
+            </Label>
           </div>
           <div className="pl-6 space-y-1">
             {assets.map((assetUrl) => (
@@ -156,10 +180,18 @@ export default function SidePanel() {
                 <Checkbox
                   id={assetUrl}
                   checked={selectedAssets.includes(assetUrl)}
-                  onCheckedChange={(checked) => handleAssetChange(assetUrl, checked)}
+                  onCheckedChange={(checked) =>
+                    handleAssetChange(assetUrl, checked)
+                  }
                 />
                 {/* Using a span for asset URLs as they can be long and Label might have specific styling */}
-                <span title={assetUrl} className="text-sm truncate" style={{maxWidth: '250px'}}>{assetUrl}</span>
+                <span
+                  title={assetUrl}
+                  className="text-sm truncate"
+                  style={{ maxWidth: "250px" }}
+                >
+                  {assetUrl}
+                </span>
               </div>
             ))}
           </div>

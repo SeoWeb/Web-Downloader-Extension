@@ -25,9 +25,13 @@ export default function FilterGroup<T extends FilterItem>({
   hasFooter,
 }: FilterGroupProps<T>) {
   return (
-    <div className={`space-y-1 pl-2 border-l-2 border-blue-200 ml-1 ${hasFooter ? 'h-[325px]' : 'h-[375px]'} overflow-auto`}>
+    <div
+      className={`space-y-1 pl-2 border-l-2 border-blue-200 ml-1 ${hasFooter ? "h-[325px]" : "h-[375px]"} overflow-auto`}
+    >
       {groupLabel && (
-         <Label className="text-sm text-slate-600 mb-1 block">{groupLabel}</Label>
+        <Label className="text-sm text-slate-600 mb-1 block">
+          {groupLabel}
+        </Label>
       )}
       {items.map((item) => (
         <FilterOption

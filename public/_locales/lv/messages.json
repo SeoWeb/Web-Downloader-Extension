@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "Tīmekļa lapu lejupielādētājs",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Tīmekļa lapu lejupielādētājs ļauj lejupielādēt un saglabāt veselas tīmekļa lapas, tostarp saistītos resursus, lai tās varētu skatīt bezsaistē.",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "Tīmekļa lapu lejupielādētājs",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

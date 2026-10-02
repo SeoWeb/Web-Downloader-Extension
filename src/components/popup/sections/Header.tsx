@@ -5,8 +5,7 @@ import { useLanguageStore } from "../../../store/languageStore";
 import LanguageSelect from "./LanguageSelect";
 
 export default function Header() {
-  const { direction, getTranslation } =
-    useLanguageStore();
+  const { direction, getTranslation } = useLanguageStore();
 
   return (
     <header className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-1 shadow-md">

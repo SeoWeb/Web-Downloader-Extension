@@ -14,10 +14,11 @@ export const MESSAGE_UPDATE_STORE: MessageAction = "updateStore";
 export const MESSAGE_SEND_SOCKET_MESSAGE: MessageAction = "sendSocketMessage";
 export const MESSAGE_START_DOWNLOAD: MessageAction = "startDownload";
 export const MESSAGE_SCROLL_PAGE_DOWN: MessageAction = "scrollPageDown";
-export const MESSAGE_DONE_SCROLLING_DOWN: MessageAction = 'doneScrollingDown';
+export const MESSAGE_DONE_SCROLLING_DOWN: MessageAction = "doneScrollingDown";
 export const MESSAGE_DOWNLOAD_DONE: MessageAction = "downloadDone";
 export const MESSAGE_DOWNLOAD_ASSETS: MessageAction = "downloadAssets";
-export const MESSAGE_SIMULATE_DOWNLOAD_DONE: MessageAction = "simulateDownloadDone";
+export const MESSAGE_SIMULATE_DOWNLOAD_DONE: MessageAction =
+  "simulateDownloadDone";
 
 export const MESSAGE_BACKGROUND: MessageSender = "background";
 export const MESSAGE_SIDEPANEL: MessageSender = "sidepanel";

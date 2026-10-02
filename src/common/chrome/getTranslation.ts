@@ -17,16 +17,16 @@ export const languages: Record<string, string> = {
   fil: "Filipino",
   nl: "Dutch",
   he: "Hebrew",
-  pnb: 'pnb',
-  ja: 'ja',
-  ar: 'ar',
-  mr: 'mr',
-  te: 'te',
-  ta: 'ta',
-  ko: 'ko',
-  fa: 'fa',
-  gu: 'gu',
-  th: 'th'
+  pnb: "pnb",
+  ja: "ja",
+  ar: "ar",
+  mr: "mr",
+  te: "te",
+  ta: "ta",
+  ko: "ko",
+  fa: "fa",
+  gu: "gu",
+  th: "th",
 };
 
 export type LanguageCode = keyof typeof languages;

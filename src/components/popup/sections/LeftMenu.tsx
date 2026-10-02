@@ -9,9 +9,13 @@ export default function LeftMenu() {
   const { direction, getTranslation } = useLanguageStore();
 
   return (
-    <div className={`w-56 bg-white ${direction === 'rtl' ? 'border-l' : 'border-r'} border-slate-200 shadow-sm flex flex-col fixed h-screen z-10`}>
+    <div
+      className={`w-56 bg-white ${direction === "rtl" ? "border-l" : "border-r"} border-slate-200 shadow-sm flex flex-col fixed h-screen z-10`}
+    >
       <div className="p-2 border-b border-slate-200 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-        <h2 className={`font-bold text-lg flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}> 
+        <h2
+          className={`font-bold text-lg flex items-center gap-2 ${direction === "rtl" ? "flex-row-reverse" : ""}`}
+        >
           <Download className="h-5 w-5" />
           {getTranslation("download_mode")}
         </h2>
@@ -39,11 +43,13 @@ export default function LeftMenu() {
       </div>
 
       <div className="p-2 border-t border-slate-200">
-        <div className={`text-xs text-slate-500 min-h-9 flex items-center ${direction === "rtl" ? "text-right" : ""}`}>
+        <div
+          className={`text-xs text-slate-500 min-h-9 flex items-center ${direction === "rtl" ? "text-right" : ""}`}
+        >
           {downloadMode === "single" ? (
-            <p>{getTranslation('single_download_description')}</p>
+            <p>{getTranslation("single_download_description")}</p>
           ) : (
-            <p>{getTranslation('site_download_description')}</p>
+            <p>{getTranslation("site_download_description")}</p>
           )}
         </div>
       </div>

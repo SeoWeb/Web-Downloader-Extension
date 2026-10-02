@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "网页下载器",
+    "description": "Name of the extension"
+  },
+  "extensionDescription": {
+    "message": "网页下载器允许您下载并保存整个网页（包括链接的资源），以便离线查看。",
+    "description": "Description of the extension"
+  },
+  "extensionActionTitle": {
+    "message": "网页下载器",
+    "description": "Title shown when hovering over the extension icon"
+  }
+}

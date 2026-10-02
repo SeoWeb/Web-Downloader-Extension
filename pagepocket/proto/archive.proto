@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package archive;
+
+service ArchiveService {
+  rpc IngestPage(IngestPageRequest) returns (IngestPageResponse);
+  rpc GetPage(GetPageRequest) returns (PageResponse);
+  rpc ListPages(ListPagesRequest) returns (ListPagesResponse);
+  rpc DeletePage(DeletePageRequest) returns (StatusResponse);
+  rpc GetPageContent(GetPageContentRequest) returns (PageContentResponse);
+  rpc GetArchiveFile(GetArchiveFileRequest) returns (ArchiveFileResponse);
+}
+
+message Asset {
+  string filename = 1;
+  string content_type = 2;
+  bytes data = 3;
+}
+
+message IngestPageRequest {
+  string user_id = 1;
+  string url = 2;
+  string title = 3;
+  bytes html_content = 4;
+  repeated Asset assets = 5;
+  string extension_job_id = 6;
+  string plan = 7; // "free", "pro", or "team"
+}
+
+message IngestPageResponse {
+  bool success = 1;
+  string page_id = 2;
+  string message = 3;
+}
+
+message GetPageRequest {
+  string page_id = 1;
+  string user_id = 2;
+}
+
+message PageResponse {
+  string id = 1;
+  string user_id = 2;
+  string url = 3;
+  string title = 4;
+  string preview_text = 5;
+  string r2_key = 6;
+  int64 size_bytes = 7;
+  string extension_job_id = 8;
+  string archived_at = 9;
+}
+
+message ListPagesRequest {
+  string user_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  string sort_by = 4; // "archived_at" or "title"
+  string collection_id = 5; // optional: filter to pages in this collection
+}
+
+message ListPagesResponse {
+  repeated PageResponse pages = 1;
+  int32 total = 2;
+}
+
+message DeletePageRequest {
+  string page_id = 1;
+  string user_id = 2;
+}
+
+message GetPageContentRequest {
+  string page_id = 1;
+  string user_id = 2;
+}
+
+message PageContentResponse {
+  string signed_url = 1;
+  int64 expires_at = 2;
+}
+
+message StatusResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetArchiveFileRequest {
+  string page_id = 1;
+  string user_id = 2;   // optional: empty for share-token access
+  string file_path = 3; // e.g. "index.html" or "assets/images/foo.jpg"
+}
+
+message ArchiveFileResponse {
+  bytes data = 1;
+  string content_type = 2;
+}

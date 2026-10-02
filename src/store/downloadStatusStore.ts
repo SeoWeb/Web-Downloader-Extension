@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { chromeStorage } from '../common/chrome/storage';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { chromeStorage } from "../common/chrome/storage";
 
 interface DownloadStatusState {
   isDownloading: boolean;
@@ -40,7 +40,7 @@ export const useDownloadStatusStore = create<DownloadStatusState>()(
       reset: () => set(initialState),
     }),
     {
-      name: 'download-status-storage', // unique name
+      name: "download-status-storage", // unique name
       storage: createJSONStorage(() => chromeStorage), // Use chrome.storage.local
     },
   ),

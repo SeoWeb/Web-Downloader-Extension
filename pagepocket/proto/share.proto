@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package share;
+
+service ShareService {
+  rpc CreateShareLink(CreateShareLinkRequest) returns (ShareLinkResponse);
+  rpc GetShareLink(GetShareLinkRequest) returns (ShareLinkResponse);
+  rpc GetShareLinkByPage(GetShareLinkByPageRequest) returns (ShareLinkResponse);
+  rpc RevokeShareLink(RevokeShareLinkRequest) returns (StatusResponse);
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateShareResponse);
+}
+
+message CreateShareLinkRequest {
+  string user_id = 1;
+  string page_id = 2;
+  bool is_public = 3;
+  int64 expires_at = 4; // 0 = never
+}
+
+message GetShareLinkRequest {
+  string token = 1;
+}
+
+message GetShareLinkByPageRequest {
+  string user_id = 1;
+  string page_id = 2;
+}
+
+message RevokeShareLinkRequest {
+  string token = 1;
+  string user_id = 2;
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ShareLinkResponse {
+  string token = 1;
+  string short_url = 2;
+  bool is_public = 3;
+  int64 expires_at = 4;
+  int32 view_count = 5;
+  string page_id = 6;
+  string user_id = 7;
+  string created_at = 8;
+  string revoked_at = 9;
+}
+
+message ValidateShareResponse {
+  bool valid = 1;
+  string page_id = 2;
+}
+
+message StatusResponse {
+  bool success = 1;
+  string message = 2;
+}

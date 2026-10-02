@@ -1,8 +1,12 @@
 // src/store/languageStore.ts
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { chromeStorage } from '../common/chrome/storage';
-import { getUiLanguage, LanguageCode, loadMessages } from '../common/chrome/getTranslation';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { chromeStorage } from "../common/chrome/storage";
+import {
+  getUiLanguage,
+  LanguageCode,
+  loadMessages,
+} from "../common/chrome/getTranslation";
 
 export type LanguageDirection = "ltr" | "rtl";
 export type Translation = {
@@ -20,12 +24,17 @@ interface LanguageState {
 
 const getDirection = (langCode: LanguageCode): LanguageDirection => {
   // Add more RTL languages here if needed
-  if (langCode === "ur" || langCode === "he" || langCode === 'ar' || langCode === 'fa' || langCode === 'pnb') {
+  if (
+    langCode === "ur" ||
+    langCode === "he" ||
+    langCode === "ar" ||
+    langCode === "fa" ||
+    langCode === "pnb"
+  ) {
     return "rtl";
   }
   return "ltr";
 };
-
 
 const defaultLanguage = getUiLanguage();
 const defaultDirection = getDirection(defaultLanguage);
@@ -45,8 +54,7 @@ export const useLanguageStore = create<LanguageState>()(
           if (translations) {
             set({ translations });
           }
-        }
-        );
+        });
       },
       getTranslation: (key, substitutions) => {
         const { translations } = get();
@@ -63,10 +71,10 @@ export const useLanguageStore = create<LanguageState>()(
         } else {
           return key; // Fallback to the key itself if translation is not found
         }
-      }
+      },
     }),
     {
-      name: 'language-settings-storage', // unique name
+      name: "language-settings-storage", // unique name
       storage: createJSONStorage(() => chromeStorage), // Use chrome.storage.local
     },
   ),
