@@ -143,6 +143,16 @@ export class RequestQueue {
   /** Suppresses prompt re-scheduling while deferred requests are re-queued. */
   private isRequeueingDeferred: boolean = false;
   private requestCounter: number = 0;
+  /**
+   * Pending detached retries (requestId → timer + request). Tracked so a
+   * scoped (`clearDownload`) or full (`clear`) teardown can cancel retry
+   * bookkeeping that would otherwise re-enqueue a request after its download
+   * has finished — an orphan fetch whose result is never uploaded.
+   */
+  private retryTimers: Map<
+    string,
+    { timer: NodeJS.Timeout; request: QueuedRequest }
+  > = new Map();
 
   constructor(options?: Partial<RequestQueueOptions>) {
     this.options = { ...DEFAULT_QUEUE_OPTIONS, ...options };
@@ -292,17 +302,81 @@ export class RequestQueue {
   }
 
   /**
-   * Clear all requests
+   * Clear all requests (global teardown).
+   *
+   * ONLY safe when no other download is active — callers gate this on the
+   * active-downloads tracking (see download-core's finally). It aborts every
+   * in-flight request and drops every queued request of ALL downloads.
    */
   public clear(): void {
+    // Cancel pending detached retries first — a cleared request must never
+    // re-enqueue itself after teardown (orphan fetch).
+    for (const entry of this.retryTimers.values()) {
+      clearTimeout(entry.timer);
+    }
+    this.retryTimers.clear();
+
     // Cancel all active requests
     for (const activeRequest of this.activeRequests.values()) {
       activeRequest.controller.abort();
     }
     this.activeRequests.clear();
 
-    // Clear scheduler
-    this.scheduler.clear();
+    // Clear scheduler; settle the dropped queued requests so awaiting
+    // handlers resolve instead of hanging on a promise that never settles.
+    const dropped = this.scheduler.clear();
+    for (const request of dropped) {
+      if (request.onError) {
+        request.onError(
+          new RequestQueueError("Request queue cleared", "cancelled"),
+        );
+      }
+    }
+  }
+
+  /**
+   * Scoped teardown for ONE download (concurrent-downloads spec / design D7).
+   *
+   * Purges ONLY the per-download state tagged with `downloadId`:
+   *  - pending detached retry timers,
+   *  - still-queued / deferred requests (their error callbacks settle),
+   *  - in-flight requests (aborted so they settle via their own error path).
+   *
+   * Global concerns — domain limiters, throttling/congestion signals,
+   * scheduler concurrency, and the URL-keyed dedup cache — are untouched, so
+   * a finishing download can never destroy another active download's state.
+   */
+  public clearDownload(downloadId: string): void {
+    if (!downloadId) {
+      return;
+    }
+
+    // 1. Cancel this download's pending detached retries.
+    for (const [requestId, entry] of this.retryTimers) {
+      if (entry.request.downloadId === downloadId) {
+        clearTimeout(entry.timer);
+        this.retryTimers.delete(requestId);
+      }
+    }
+
+    // 2. Abort this download's in-flight requests — each settles through the
+    //    normal cancellation path (fetch rejects → failRequest → release).
+    for (const activeRequest of this.activeRequests.values()) {
+      if (activeRequest.request.downloadId === downloadId) {
+        activeRequest.controller.abort();
+      }
+    }
+
+    // 3. Purge this download's still-queued requests, settling their error
+    //    callbacks so awaiting handlers resolve instead of hanging.
+    const purged = this.scheduler.removeQueuedForDownload(downloadId);
+    for (const request of purged) {
+      if (request.onError) {
+        request.onError(
+          new RequestQueueError("Download finished", "cancelled"),
+        );
+      }
+    }
   }
 
   /**
@@ -760,6 +834,14 @@ export class RequestQueue {
           throw abortError;
         }
 
+        // A definitive HTTP response (already retried cookieless on 4xx) is
+        // terminal: the no-cors fallback exists for network/CORS-type
+        // failures only, and re-requesting a 404/410/5xx would just add
+        // fetches the spec forbids ("one cookieless retry on 4xx").
+        if (error instanceof RequestQueueError && error.category === "http") {
+          throw error;
+        }
+
         // Network-level failure. Keep the no-cors fallback for images only
         // (cacheable/usable cases) — never for text or documents.
         if (request.resourceType !== ResourceType.IMAGE) {
@@ -899,6 +981,12 @@ export class RequestQueue {
         case "cancelled":
           // The download was stopped on purpose — never retry.
           return false;
+        case "timeout":
+          // A full requestTimeout already elapsed on the attempt and the
+          // download has moved on (the asset is recorded as failed). A
+          // detached retry would fire after finalization as an orphan fetch
+          // whose result is never uploaded — terminal, like cancellation.
+          return false;
         case "http": {
           const statusCode = error.status ?? 0;
 
@@ -954,8 +1042,10 @@ export class RequestQueue {
       maxDelay,
     );
 
-    // Schedule retry
-    setTimeout(() => {
+    // Schedule retry — tracked so a scoped/full clear can cancel it (an
+    // untracked timer would re-enqueue after the download finished).
+    const timer = setTimeout(() => {
+      this.retryTimers.delete(request.id);
       // Re-queue the request
       this.scheduler.enqueue(request);
 
@@ -964,6 +1054,7 @@ export class RequestQueue {
         this.options.eventListeners.onRetry(request, request.retryCount);
       }
     }, delay);
+    this.retryTimers.set(request.id, { timer, request });
   }
 
   /**

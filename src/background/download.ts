@@ -28,8 +28,14 @@ requestQueue.setEventListeners({
 
 // Register cleanup callbacks with memory manager
 memoryManager.registerCleanupCallback(async () => {
-  // Clear queue during cleanup
-  await requestQueue.clear();
+  // The full queue clear aborts in-flight fetches and drops the queued
+  // requests of EVERY download sharing the queue — it is only safe when no
+  // download is active (concurrent-downloads spec). During critical memory
+  // pressure with active downloads, the pause/resume callback below throttles
+  // instead; the last finishing download's teardown performs the full clear.
+  if (!isAnyDownloadInProgress()) {
+    await requestQueue.clear();
+  }
 });
 
 memoryManager.registerMemoryPressureCallback(async (level) => {

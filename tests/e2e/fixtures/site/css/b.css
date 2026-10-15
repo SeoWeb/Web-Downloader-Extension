@@ -1,0 +1,3 @@
+/* b.css — R4 @import chain, level 2 */
+@import "c.css";
+.b-rule { color: #0b0; }

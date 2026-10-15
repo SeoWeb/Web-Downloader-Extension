@@ -156,6 +156,22 @@ export const isAnyDownloadInProgress = () => activeDownloadTabIds.size > 0;
 export const isTabDownloadInProgress = (tabId: number) =>
   activeDownloadTabIds.has(tabId);
 
+/**
+ * True when a download OTHER than the given tab's is currently active.
+ *
+ * Used to scope teardown (concurrent-downloads spec / design D7): the
+ * finishing download may only run GLOBAL cleanup — `requestQueue.clear()`,
+ * `memoryManager.forceCleanup()` — when it is the last active download.
+ * While a peer download is still running, teardown must stay scoped so it
+ * cannot abort the peer's in-flight fetches or drop its queued requests.
+ */
+export const isOtherDownloadActive = (ownTabId?: number): boolean => {
+  for (const tabId of activeDownloadTabIds) {
+    if (tabId !== ownTabId) return true;
+  }
+  return false;
+};
+
 export const trackDownload = (id: number, filename: string, tabId?: number) => {
   activeDownloads.set(id, {
     tabId,

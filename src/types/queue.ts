@@ -59,7 +59,12 @@ export interface QueuedRequest {
   completedAt?: number;
   /** Error information if failed */
   error?: string;
-  /** Download ID for tracking */
+  /**
+   * Download ID for per-download scoping (concurrent-downloads / D7).
+   * Tags the request with the DownloadContext that enqueued it so scoped
+   * teardown (`RequestQueue.clearDownload`) purges exactly this download's
+   * queued/active/retry state without touching other downloads'.
+   */
   downloadId?: string;
   /** Base URL for resolving relative URLs */
   baseUrl?: string;

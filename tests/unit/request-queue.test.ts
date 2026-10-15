@@ -62,6 +62,7 @@ describe("RequestQueue", () => {
     queue: RequestQueue,
     url: string,
     resourceType: ResourceType = ResourceType.IMAGE,
+    downloadId?: string,
   ): {
     result: Promise<RequestResult>;
     failure: Promise<Error>;
@@ -84,6 +85,7 @@ describe("RequestQueue", () => {
       dependencies: [],
       retryCount: 0,
       estimatedSize: 0,
+      downloadId,
       onComplete: (completed) => resolveResult(completed),
       onError: (error) => resolveFailure(error),
     });
@@ -482,5 +484,222 @@ describe("RequestQueue", () => {
     expect(queue.getStats().completed).toBe(2);
 
     setTimeoutSpy.mockRestore();
+  });
+
+  // -------------------------------------------------------------------------
+  // Concurrent-downloads / D7 — per-download scoping of queue teardown
+  // -------------------------------------------------------------------------
+
+  const queuedIdsOf = (queue: RequestQueue): string[] =>
+    queue.getQueuedRequests().map((r) => r.id);
+
+  it("clearDownload purges only that download's pending and dedup-visible state", async () => {
+    const fetchMock = stubFetch(() => new Response("DATA", { status: 200 }));
+
+    const queue = createQueue();
+
+    // Download B completes one asset — its result lands in the dedup cache.
+    const cached = enqueueAsset(queue, "https://cache.test/x.png", ResourceType.IMAGE, "download-B");
+    await vi.advanceTimersByTimeAsync(50);
+    await cached.result;
+    const fetchesAfterCache = assetCallsOf(fetchMock).length;
+    expect(fetchesAfterCache).toBe(1);
+
+    // Both domains saturated → both downloads keep requests pending/deferred.
+    DomainLimiterFactory.getLimiter("dl-a.test", 1).startRequest();
+    DomainLimiterFactory.getLimiter("dl-b.test", 1).startRequest();
+
+    const a = enqueueAsset(queue, "https://dl-a.test/a.png", ResourceType.IMAGE, "download-A");
+    const b = enqueueAsset(queue, "https://dl-b.test/b.png", ResourceType.IMAGE, "download-B");
+    await a.id;
+    await b.id;
+    await vi.advanceTimersByTimeAsync(50);
+
+    // Simulated concurrency: A and B each hold queued state.
+    expect(queuedIdsOf(queue)).toContain(await a.id);
+    expect(queuedIdsOf(queue)).toContain(await b.id);
+
+    // Download A finishes while B is still running — scoped teardown only.
+    queue.clearDownload("download-A");
+
+    // A's queued request is purged and its awaiting handler SETTLES
+    // (a dropped-but-never-settled promise is what hung the peer tab in E2E).
+    const aError = await a.failure;
+    expect(aError).toBeInstanceOf(RequestQueueError);
+    expect((aError as RequestQueueError).category).toBe("cancelled");
+    expect(queuedIdsOf(queue)).not.toContain(await a.id);
+
+    // B's pending/deferred state survived the peer teardown...
+    expect(queuedIdsOf(queue)).toContain(await b.id);
+
+    // ...and B's dedup cache entry is still served without a new fetch.
+    const cachedAgain = enqueueAsset(queue, "https://cache.test/x.png", ResourceType.IMAGE, "download-B");
+    await cachedAgain.id;
+    const r2 = await cachedAgain.result;
+    await expect(r2.response.text()).resolves.toBe("DATA");
+    expect(assetCallsOf(fetchMock).length).toBe(fetchesAfterCache);
+
+    // B still completes normally once its cooldown expires.
+    await vi.advanceTimersByTimeAsync(1200);
+    const bResult = await b.result;
+    expect(bResult.snapshot.status).toBe(200);
+    expect(queuedIdsOf(queue)).not.toContain(await b.id);
+  });
+
+  it("clearDownload cancels that download's detached retry timers (no orphan fetch)", async () => {
+    const fetchedUrls: string[] = [];
+    stubFetch((url) => {
+      if (url.includes("/robots.txt")) {
+        return new Response(ROBOTS_OK, { status: 200 });
+      }
+      fetchedUrls.push(String(url));
+      if (String(url).includes("flaky")) {
+        return new Response("boom", { status: 500 });
+      }
+      return new Response("DATA", { status: 200 });
+    });
+
+    // Saturate B's domain so its request stays queued.
+    DomainLimiterFactory.getLimiter("dl-b.test", 1).startRequest();
+
+    const queue = createQueue({ maxRetries: 2 });
+    const a = enqueueAsset(queue, "https://flaky.test/a.png", ResourceType.IMAGE, "download-A");
+    const b = enqueueAsset(queue, "https://dl-b.test/b.png", ResourceType.IMAGE, "download-B");
+    await a.id;
+    await b.id;
+
+    // First attempt fails → a detached retry is scheduled (1s backoff).
+    await vi.advanceTimersByTimeAsync(100);
+    expect(fetchedUrls.filter((u) => u.includes("flaky"))).toHaveLength(1);
+
+    // Download A finishes before the retry fires.
+    queue.clearDownload("download-A");
+
+    // The retry timer was cancelled: no orphan re-fetch of A's request,
+    // even after sweeping every backoff window.
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(fetchedUrls.filter((u) => u.includes("flaky"))).toHaveLength(1);
+
+    // B's queued request was untouched and completes after its cooldown.
+    const bResult = await b.result;
+    expect(bResult.snapshot.status).toBe(200);
+  });
+
+  it("clear() (full teardown) cancels ALL pending detached retries", async () => {
+    let attempts = 0;
+    stubFetch((url) => {
+      if (url.includes("/robots.txt")) {
+        return new Response(ROBOTS_OK, { status: 200 });
+      }
+      attempts++;
+      return new Response("boom", { status: 500 });
+    });
+
+    const queue = createQueue({ maxRetries: 2 });
+    enqueueAsset(queue, "https://flaky.test/x.png");
+    await vi.advanceTimersByTimeAsync(100);
+    expect(attempts).toBe(1); // attempt 1 failed, retry armed at +1s
+
+    // Last download finishes → global teardown.
+    queue.clear();
+
+    await vi.advanceTimersByTimeAsync(15_000);
+    // The retry never re-enqueued after teardown.
+    expect(attempts).toBe(1);
+    expect(queue.getQueuedRequests()).toHaveLength(0);
+  });
+
+  it("clear() settles dropped queued requests instead of leaving them pending", async () => {
+    stubFetch(() => new Response("DATA", { status: 200 }));
+
+    // Saturate the domain so the request stays queued when cleared.
+    DomainLimiterFactory.getLimiter("dl-a.test", 1).startRequest();
+
+    const queue = createQueue();
+    const a = enqueueAsset(queue, "https://dl-a.test/a.png", ResourceType.IMAGE, "download-A");
+    await a.id;
+    await vi.advanceTimersByTimeAsync(50);
+    expect(queuedIdsOf(queue)).toContain(await a.id);
+
+    queue.clear();
+    // The awaiting handler resolves — no eternal hang (the tab-A E2E hang).
+    const aError = await a.failure;
+    expect((aError as RequestQueueError).category).toBe("cancelled");
+  });
+
+  // -------------------------------------------------------------------------
+  // Minor fix A — timeout failures are terminal (no detached retry)
+  // -------------------------------------------------------------------------
+
+  it("does not schedule a detached retry after a timeout failure", async () => {
+    const fetchMock = stubFetch(hungFetchHandler);
+
+    const queue = createQueue({ requestTimeout: 1000, maxRetries: 3 });
+    const { failure } = enqueueAsset(queue, "https://hung.test/slow.png");
+    await vi.advanceTimersByTimeAsync(50);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    const error = await failure;
+    expect(error).toBeInstanceOf(RequestQueueError);
+    expect((error as RequestQueueError).category).toBe("timeout");
+
+    // Sweep the entire backoff window: a timeout must not re-enqueue — the
+    // download has already finalized with the asset failed, and a late retry
+    // would be an orphan fetch whose result is never uploaded.
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(queue.getStats().failed).toBe(1);
+    expect(queue.getQueuedRequests()).toHaveLength(0);
+    expect(assetCallsOf(fetchMock)).toHaveLength(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // Minor fix B — definitive 4xx caps at credentialed + cookieless attempt
+  // -------------------------------------------------------------------------
+
+  it("caps a 404/410 image at 2 extension fetches (no no-cors fallback)", async () => {
+    const fetchMock = stubFetch((url, init) => {
+      if (url.includes("/robots.txt")) {
+        return new Response(ROBOTS_OK, { status: 200 });
+      }
+      if (String(url).includes("410")) {
+        return new Response("gone", { status: 410 });
+      }
+      return new Response("not found", { status: 404 });
+    });
+
+    const queue = createQueue({ maxRetries: 0 });
+    const notFound = enqueueAsset(queue, "https://missing.test/img404.png");
+    const gone = enqueueAsset(queue, "https://missing.test/img410.png");
+    await vi.advanceTimersByTimeAsync(50);
+
+    const err404 = await notFound.failure;
+    expect((err404 as RequestQueueError).category).toBe("http");
+    expect((err404 as RequestQueueError).status).toBe(404);
+
+    const err410 = await gone.failure;
+    expect((err410 as RequestQueueError).category).toBe("http");
+    expect((err410 as RequestQueueError).status).toBe(410);
+
+    // Exactly credentialed (include) → cookieless (omit) per URL — the third
+    // extension fetch (no-cors fallback) must NOT fire on definitive 4xx.
+    const calls = assetCallsOf(fetchMock);
+    expect(calls).toHaveLength(4);
+
+    const callsForUrl = (target: string) =>
+      calls.filter(([u]) => String(u) === target);
+    for (const target of [
+      "https://missing.test/img404.png",
+      "https://missing.test/img410.png",
+    ]) {
+      const perUrl = callsForUrl(target);
+      expect(perUrl).toHaveLength(2);
+      expect(perUrl[0][1].credentials).toBe("include");
+      expect(perUrl[1][1].credentials).toBe("omit");
+      expect(perUrl[0][1].mode).toBe("cors");
+      expect(perUrl[1][1].mode).toBe("cors");
+    }
+    expect(
+      fetchMock.mock.calls.filter((c) => (c[1] as RequestInit).mode === "no-cors"),
+    ).toHaveLength(0);
   });
 });

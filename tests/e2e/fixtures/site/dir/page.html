@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>E2E fixture — nested page (exercises M2-M5 pipeline scenarios)</title>
+  <!-- R5: favicon -->
+  <link rel="icon" href="/favicon.ico">
+  <!-- R1: relative resolution from a NON-ROOT document path -->
+  <link rel="stylesheet" href="../css/shared.css">
+  <!-- R2: same-basename collision pair -->
+  <link rel="stylesheet" href="/a/main.css">
+  <link rel="stylesheet" href="/b/main.css">
+  <!-- R3: Shift_JIS stylesheet with proper Content-Type charset -->
+  <link rel="stylesheet" href="/css/sjis.css">
+  <style>
+    /* R4: @import chain: a.css -> b.css -> c.css */
+    @import url("/css/a.css");
+    /* R6: SVG fragment reference must never be fetched */
+    .fragment-ref { background-image: url(#gradient); }
+  </style>
+</head>
+<body>
+  <h1>Nested fixture page (served from a non-root path)</h1>
+  <!-- R1: page-relative image -->
+  <p>Page-relative image: <img src="img/x.png" alt="relative x"></p>
+  <!-- R7: slow asset, only fetched by the extension (lazy attribute) -->
+  <p>Slow asset: <img data-src="/slow.png" alt="slow lazy"></p>
+  <!-- 404 asset: failure report without breaking the download -->
+  <p>Deliberate 404: <img src="/img404.png" alt="missing"></p>
+  <!-- R6: blob: URL created by page script -->
+  <p>Blob placeholder: <img id="blobimg" alt="blob placeholder"></p>
+  <!-- Linked-page bounding: PDF must not be uploaded as HTML -->
+  <p><a href="/doc.pdf">Linked PDF document</a></p>
+  <script>
+    // R7: cookie semantics — set a cookie asset fetches may carry.
+    document.cookie = "e2e=sentinel-cookie; path=/";
+    // R6: create a blob: URL image after load (the scraped DOM contains it;
+    // the extension must filter it, never fetch it).
+    (function () {
+      try {
+        var canvas = document.createElement("canvas");
+        canvas.width = 8;
+        canvas.height = 8;
+        canvas.getContext("2d").fillRect(0, 0, 8, 8);
+        if (canvas.toBlob) {
+          canvas.toBlob(function (blob) {
+            if (!blob) return;
+            document.getElementById("blobimg").src = URL.createObjectURL(blob);
+          }, "image/png");
+        }
+      } catch (e) { /* non-fatal */ }
+    })();
+  </script>
+</body>
+</html>

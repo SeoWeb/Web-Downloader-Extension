@@ -7,6 +7,7 @@ import {
   setTabDownloadActive,
   setTabDownloadComplete,
   isTabDownloadInProgress,
+  isOtherDownloadActive,
   setDownloadAbortController,
   getDownloadAbortController,
   createKeepalivePort,
@@ -393,7 +394,13 @@ export async function downloadResources(
     sendMessage(userFriendlyMessage);
 
     if (isMemoryError) {
-      await memoryManager.forceCleanup();
+      // forceCleanup runs the registered cleanup callbacks, which clear the
+      // SHARED request queue — while another download is active that would
+      // destroy its in-flight/queued state. Its own teardown will run the
+      // global cleanup once it is the last download.
+      if (!isOtherDownloadActive(tabId)) {
+        await memoryManager.forceCleanup();
+      }
       sendMessage({ key: "status.memoryCleanupPerformed" });
     }
   } finally {
@@ -402,9 +409,21 @@ export async function downloadResources(
     disconnectKeepalivePort(tabId!);
     await clearCheckpoint();
 
+    // (Concurrent-downloads spec / design D7) Teardown must never destroy
+    // another active download's state. The RequestQueue is a SHARED
+    // singleton: full-clearing it aborts the peer's in-flight fetches and
+    // drops its queued requests (leaving handler promises pending forever —
+    // the peer then never reaches scrape-complete/finalize). So only the
+    // LAST finishing download performs the global cleanup; everyone else
+    // purges just its own scoped state. `setTabDownloadComplete` above
+    // already removed this download from the active set.
     try {
-      await cleanupAfterDownload(context.downloadId);
-      await requestQueue.clear();
+      if (isOtherDownloadActive(tabId)) {
+        requestQueue.clearDownload(context.downloadId);
+      } else {
+        await cleanupAfterDownload(context.downloadId);
+        requestQueue.clear();
+      }
     } catch {
       // ignore
     }

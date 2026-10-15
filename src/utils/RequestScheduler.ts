@@ -238,11 +238,40 @@ export class RequestScheduler {
   }
 
   /**
-   * Clear the queue (cancel all requests)
+   * Remove still-queued requests belonging to ONE download (scoped clear,
+   * concurrent-downloads spec / design D7). Returns the removed requests so
+   * the caller can settle their callbacks — dropping a queued request without
+   * settling leaves the awaiting handler promise pending forever.
+   *
+   * Active requests are deliberately untouched: cancelling in-flight work is
+   * the queue's job via each request's abort controller, after which the
+   * normal failure path removes them from the active map.
    */
-  public clear(): void {
-    // Cancel all queued requests
+  public removeQueuedForDownload(downloadId: string): QueuedRequest[] {
+    const kept: QueuedRequest[] = [];
+    const removed: QueuedRequest[] = [];
     for (const request of this.queue) {
+      if (request.downloadId === downloadId) {
+        removed.push(request);
+      } else {
+        kept.push(request);
+      }
+    }
+    this.queue = kept;
+    for (const request of removed) {
+      request.status = RequestStatus.CANCELLED;
+    }
+    return removed;
+  }
+
+  /**
+   * Clear the queue (cancel all requests). Returns the removed queued
+   * requests so the caller can settle their callbacks.
+   */
+  public clear(): QueuedRequest[] {
+    // Cancel all queued requests
+    const removed = this.queue;
+    for (const request of removed) {
       request.status = RequestStatus.CANCELLED;
     }
     this.queue = [];
@@ -260,6 +289,8 @@ export class RequestScheduler {
     // Reset statistics
     this.totalProcessed = 0;
     this.totalDuration = 0;
+
+    return removed;
   }
 
   /**
