@@ -34,7 +34,9 @@ export const usePagePocketStore = create<PagePocketState>()(
 
     setCloudStorageEnabled: (enabled) => {
       set({ cloudStorageEnabled: enabled });
-      chrome.storage.local
+      // D11 / task 7.2: PagePocket state lives in chrome.storage.session
+      // (never on disk) — migrated from chrome.storage.local.
+      chrome.storage.session
         .set({ [PAGEPOCKET_CLOUD_ENABLED_KEY]: enabled })
         .catch((err) => {
           console.warn("Failed to persist cloud storage toggle:", err);
@@ -86,7 +88,9 @@ export const usePagePocketStore = create<PagePocketState>()(
 
     initializeFromStorage: async () => {
       try {
-        const result = await chrome.storage.local.get([
+        // D11 / task 7.2: read from chrome.storage.session (auth state and
+        // the cloud toggle are session-only — migrated from storage.local).
+        const result = await chrome.storage.session.get([
           PAGEPOCKET_CLOUD_ENABLED_KEY,
           PAGEPOCKET_AUTH_STORAGE_KEY,
         ]);
@@ -113,8 +117,8 @@ export const usePagePocketStore = create<PagePocketState>()(
             try {
               await pagepocketClient.refreshToken();
               authenticated = true;
-              // Re-read updated auth from storage after refresh
-              const updated = await chrome.storage.local.get(
+              // Re-read updated auth from session storage after refresh
+              const updated = await chrome.storage.session.get(
                 PAGEPOCKET_AUTH_STORAGE_KEY,
               );
               const updatedAuth = updated[PAGEPOCKET_AUTH_STORAGE_KEY] as {
@@ -144,7 +148,9 @@ export const usePagePocketStore = create<PagePocketState>()(
 // Cross-tab sync via chrome.storage.onChanged
 if (typeof chrome !== "undefined" && chrome.storage) {
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== "local") return;
+    // D11 / task 7.2: PagePocket state is session-scoped — accept the
+    // "session" area (was "local").
+    if (areaName !== "session") return;
 
     if (changes[PAGEPOCKET_CLOUD_ENABLED_KEY]) {
       const enabled = changes[PAGEPOCKET_CLOUD_ENABLED_KEY].newValue as boolean;

@@ -1,5 +1,63 @@
 export const downloadId = `download-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+import type { UploadQueue } from "./upload-queue";
+
+/**
+ * Per-download context (D7 / task 4.1).
+ *
+ * All mutable state shared across the processors, handlers, and the linked
+ * page scraper is scoped to a single download via this object instead of
+ * module-level globals, so concurrent tab downloads cannot corrupt each
+ * other's filename maps or dedup keys.
+ */
+export interface DownloadContext {
+  /** Unique id for this download (fresh per downloadResources call). */
+  downloadId: string;
+  /** The tab this download runs in (when known). */
+  tabId?: number;
+  /** The main page URL being downloaded. */
+  tabUrl: string;
+  /** Server session id this download uploads to (when in server mode). */
+  serverSessionId?: string;
+  /**
+   * Image filename map (original src → archive filename) shared between the
+   * main page and all linked pages of THIS download. Replaces the former
+   * module-global `globalImageFilenameMap`.
+   */
+  imageFilenameMap: Map<string, string>;
+  /** Absolute URLs already processed for this download (dedup keys). */
+  dedupKeys: Set<string>;
+  /** Download-level abort controller (user pressed Stop). */
+  abortController: AbortController;
+  /** Abort controller for assembly-status polling of this download. */
+  assemblyAbortController: AbortController;
+  /** The upload queue handle for this download (server mode). */
+  uploadQueue?: UploadQueue;
+}
+
+/** Create an empty per-download context. */
+export function createDownloadContext(params: {
+  tabId?: number;
+  tabUrl: string;
+  serverSessionId?: string;
+  abortController: AbortController;
+  uploadQueue?: UploadQueue;
+}): DownloadContext {
+  return {
+    downloadId: `download-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`,
+    tabId: params.tabId,
+    tabUrl: params.tabUrl,
+    serverSessionId: params.serverSessionId,
+    imageFilenameMap: new Map<string, string>(),
+    dedupKeys: new Set<string>(),
+    abortController: params.abortController,
+    assemblyAbortController: new AbortController(),
+    uploadQueue: params.uploadQueue,
+  };
+}
+
 export interface DownloadInfo {
   tabId?: number;
   filename: string;

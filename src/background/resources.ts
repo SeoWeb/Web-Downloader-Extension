@@ -1,4 +1,9 @@
 import * as cheerio from "cheerio";
+import {
+  extractCssImports,
+  extractCssUrls,
+  isFetchableResourceUrl,
+} from "./urlUtils";
 
 // Common lazy-load image attribute names used by various libraries
 // (LazyLoad, Lozad, lazysizes, WordPress, Shopify, etc.)
@@ -22,22 +27,26 @@ const LAZY_IMAGE_ATTRIBUTES = [
   "loading-src",
 ];
 
+/** Placeholder used to protect %2C from the srcset comma split. */
+const ENCODED_COMMA_PLACEHOLDER = "\u0000";
+
 // Helper function to parse srcset attribute and extract URLs
 // srcset format: "url descriptor, url descriptor, ..."
 // Example: "img-320w.jpg 320w, img-640w.jpg 640w, img-2x.jpg 2x"
+// Percent-encoded commas (%2C) belong to the URL, not the separator.
 function parseSrcset(srcset: string | undefined): string[] {
   if (!srcset) return [];
 
   const urls: string[] = [];
-  // Split by comma, then each entry is: URL [descriptor]
-  const entries = srcset.split(",");
+  // Protect encoded commas before splitting on real separators.
+  const normalized = srcset.replace(/%2C/gi, ENCODED_COMMA_PLACEHOLDER);
 
-  for (const entry of entries) {
-    const trimmed = entry.trim();
-    if (!trimmed) continue;
-    // The URL is the first token; descriptors follow (width like "320w" or pixel density like "2x")
-    const url = trimmed.split(/\s+/)[0];
-    if (url && !url.startsWith("data:") && url.length > 0) {
+  for (const entry of normalized.split(",")) {
+    const firstToken = entry.trim().split(/\s+/)[0];
+    if (!firstToken) continue;
+    // The URL is the first token; descriptors follow ("320w", "2x", ...)
+    const url = firstToken.replace(new RegExp(ENCODED_COMMA_PLACEHOLDER, "g"), "%2C");
+    if (isFetchableResourceUrl(url)) {
       urls.push(url);
     }
   }
@@ -45,44 +54,43 @@ function parseSrcset(srcset: string | undefined): string[] {
   return urls;
 }
 
-// Helper function to extract background images from CSS content
+// Helper function to extract background images from CSS content.
+// Uses the shared extractor whose regex keeps quoted URLs with parentheses
+// intact (url("foo(bar).png")). @import statements are stripped first —
+// their url("target") is an import (handled separately), not an image.
+// Filtering of data:/fragment references happens via isFetchableResourceUrl
+// on the final list.
 function extractBackgroundImagesFromCSS(cssContent: string): string[] {
-  const imageUrls: string[] = [];
-
-  // Regular expression to match url() patterns in CSS
-  const urlPattern = /url\(['"]?(.*?)['"]?\)/g;
-  let match;
-
-  while ((match = urlPattern.exec(cssContent)) !== null) {
-    const imageUrl = match[1].trim();
-    if (imageUrl && !imageUrl.startsWith("data:")) {
-      imageUrls.push(imageUrl);
-    }
-  }
-
-  return imageUrls;
+  return extractCssUrls(cssContent.replace(/@import[^;]*;/gi, ""));
 }
 
-// Helper function to extract background images from inline styles
+// Helper function to extract resource URLs from inline style attributes
 function extractBackgroundImagesFromInlineStyle(
   styleAttr: string | undefined,
 ): string[] {
   if (!styleAttr) return [];
+  return extractCssUrls(styleAttr);
+}
 
-  const imageUrls: string[] = [];
-
-  // Regular expression to match background-image: url(...) patterns
-  const bgImagePattern = /background-image\s*:\s*url\(['"]?(.*?)['"]?\)/gi;
-  let match;
-
-  while ((match = bgImagePattern.exec(styleAttr)) !== null) {
-    const imageUrl = match[1].trim();
-    if (imageUrl && !imageUrl.startsWith("data:")) {
-      imageUrls.push(imageUrl);
-    }
-  }
-
-  return imageUrls;
+// Helper to extract favicon URLs from <link rel="..."> elements.
+// Matches rel="icon", rel="shortcut icon" (token "icon"), and the
+// apple-touch-icon variants.
+function extractFaviconHrefs($: cheerio.CheerioAPI): string[] {
+  return (
+    $("link")
+      ?.toArray()
+      ?.flatMap((el) => {
+        const rel = ($(el).attr("rel") || "").toLowerCase();
+        const tokens = rel.split(/\s+/).filter(Boolean);
+        const isFavicon =
+          tokens.includes("icon") ||
+          tokens.includes("apple-touch-icon") ||
+          tokens.includes("apple-touch-icon-precomposed");
+        if (!isFavicon) return [];
+        const href = $(el).attr("href") || "";
+        return isFetchableResourceUrl(href) ? [href] : [];
+      }) ?? []
+  );
 }
 
 export function getResources(html: string): {
@@ -151,6 +159,10 @@ export function getResources(html: string): {
   const preloadFonts = preloadLinks
     .filter((l) => l.as === "font")
     .map((l) => l.href);
+
+  // Extract favicon declarations (rel="icon", "shortcut icon",
+  // "apple-touch-icon") so favicons are archived and rewritten like images.
+  const faviconImages = extractFaviconHrefs($);
 
   // Extract regular images from img tags (src attribute)
   const images = $("img")
@@ -254,6 +266,14 @@ export function getResources(html: string): {
     ?.flatMap((el) => extractBackgroundImagesFromCSS($(el).text()))
     ?.filter((el) => !!el?.length);
 
+  // Extract @import rules from style tags — imported stylesheets must be
+  // downloaded too (external-stylesheet @import chains are followed by the
+  // CSS file handler at download time, see css.ts / task 3.4).
+  const styleTagImports = $("style")
+    ?.toArray()
+    ?.flatMap((el) => extractCssImports($(el).text()))
+    ?.filter((href) => isFetchableResourceUrl(href));
+
   // CSS background images in external stylesheets are handled at download time
   // by the CSS file handler (see css.ts -> downloadBackgroundImages)
   const cssFileImages: string[] = [];
@@ -287,12 +307,20 @@ export function getResources(html: string): {
 
   const text = $("body").text();
 
+  // Non-downloadable references (data:, blob:, chrome-extension:,
+  // moz-extension:, fragment-only, javascript:, ...) are filtered from
+  // every list before anything is enqueued (task 3.6).
+  const fetchable = (values: string[]): string[] =>
+    values.filter((value) => isFetchableResourceUrl(value));
+
   return {
-    css: [...new Set([...css, ...preloadCss])],
-    js: [...new Set([...js, ...preloadJs])],
-    images: [...new Set([...allImages, ...preloadFonts])],
-    links: [...new Set(links)],
-    documents: [...new Set(documents)],
+    css: fetchable([...new Set([...css, ...preloadCss, ...styleTagImports])]),
+    js: fetchable([...new Set([...js, ...preloadJs])]),
+    images: fetchable([
+      ...new Set([...allImages, ...preloadFonts, ...faviconImages]),
+    ]),
+    links: fetchable([...new Set(links)]),
+    documents: fetchable([...new Set(documents)]),
     text,
   };
 }

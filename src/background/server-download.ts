@@ -95,9 +95,6 @@ function getPollInterval(elapsedMs: number): number {
 export class ServerDownloadHandler {
   private readonly serverClient: ServerClient;
 
-  /** AbortController for cancelling an in-progress polling loop. */
-  private pollingAbortController: AbortController | null = null;
-
   constructor(serverClient: ServerClient) {
     this.serverClient = serverClient;
   }
@@ -114,83 +111,82 @@ export class ServerDownloadHandler {
    * - status === "failed" → throws an error with the server's error message
    * - timeout (5 minutes) → throws AssemblyTimeoutError
    *
+   * Cancellation (D7 / task 4.2) is caller-scoped: pass an AbortSignal to
+   * cancel this polling loop only. There is no shared/singleton controller,
+   * so two concurrent downloads never cancel each other's polling.
+   *
    * @param sessionId The server session ID to poll
    * @param onStatusUpdate Optional callback for progress updates during polling
+   * @param signal Optional caller-supplied signal — aborting it cancels this
+   *   poll loop (rejects with AbortError) without affecting other polls
    * @returns The final session status when assembly is complete
    */
   async pollAssemblyStatus(
     sessionId: string,
     onStatusUpdate?: AssemblyStatusCallback,
+    signal?: AbortSignal,
   ): Promise<SessionStatusResponse> {
-    // Create a fresh AbortController for this polling session
-    this.pollingAbortController = new AbortController();
-    const signal = this.pollingAbortController.signal;
-
     const startTime = Date.now();
 
-    try {
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        // Check for cancellation
-        if (signal.aborted) {
-          throw new DOMException(
-            "Assembly polling was cancelled",
-            "AbortError",
-          );
-        }
-
-        // Check for timeout
-        const elapsed = Date.now() - startTime;
-        if (elapsed >= ASSEMBLY_TIMEOUT_MS) {
-          throw new AssemblyTimeoutError(
-            `Server assembly did not complete within ${ASSEMBLY_TIMEOUT_MS / 1000} seconds. ` +
-              "You can try again or download locally.",
-          );
-        }
-
-        // Poll server status
-        let status: SessionStatusResponse;
-        try {
-          status = await this.serverClient.getSessionStatus(sessionId);
-        } catch (err) {
-          // If the server is temporarily unreachable during polling,
-          // we don't immediately fail — we continue polling until timeout.
-          // This handles brief network blips gracefully.
-          if (err instanceof ServerUnavailableError) {
-            // Continue polling — the server may come back
-          } else {
-            // Non-transient errors (e.g. AuthenticationError) should propagate
-            throw err;
-          }
-
-          // Wait before next poll and continue
-          await sleep(getPollInterval(elapsed), signal);
-          continue;
-        }
-
-        // Notify caller of current status
-        onStatusUpdate?.(
-          status.status,
-          status.assembly_phase,
-          status.assembly_progress_pct,
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      // Check for cancellation
+      if (signal?.aborted) {
+        throw new DOMException(
+          "Assembly polling was cancelled",
+          "AbortError",
         );
-
-        if (status.status === "ready") {
-          return status;
-        }
-
-        if (status.status === "failed") {
-          const errorMsg =
-            status.error_message ??
-            "Server assembly failed with no error message";
-          throw new AssemblyFailedError(`Assembly failed: ${errorMsg}`);
-        }
-
-        // Status is still "assembling" (or transitional) — wait and poll again
-        await sleep(getPollInterval(elapsed), signal);
       }
-    } finally {
-      this.pollingAbortController = null;
+
+      // Check for timeout
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= ASSEMBLY_TIMEOUT_MS) {
+        throw new AssemblyTimeoutError(
+          `Server assembly did not complete within ${ASSEMBLY_TIMEOUT_MS / 1000} seconds. ` +
+            "You can try again or download locally.",
+        );
+      }
+
+      // Poll server status
+      let status: SessionStatusResponse;
+      try {
+        status = await this.serverClient.getSessionStatus(sessionId);
+      } catch (err) {
+        // If the server is temporarily unreachable during polling,
+        // we don't immediately fail — we continue polling until timeout.
+        // This handles brief network blips gracefully.
+        if (err instanceof ServerUnavailableError) {
+          // Continue polling — the server may come back
+        } else {
+          // Non-transient errors (e.g. AuthenticationError) should propagate
+          throw err;
+        }
+
+        // Wait before next poll and continue
+        await sleep(getPollInterval(elapsed), signal);
+        continue;
+      }
+
+      // Notify caller of current status
+      onStatusUpdate?.(
+        status.status,
+        status.assembly_phase,
+        status.assembly_progress_pct,
+      );
+
+      if (status.status === "ready") {
+        return status;
+      }
+
+      if (status.status === "failed") {
+        const errorMsg =
+          status.error_message ??
+          "Server assembly failed with no error message";
+        throw new AssemblyFailedError(`Assembly failed: ${errorMsg}`);
+      }
+
+      // Status is still "assembling" (or transitional) — wait and poll again
+      await sleep(getPollInterval(elapsed), signal);
     }
   }
 
@@ -266,6 +262,8 @@ export class ServerDownloadHandler {
    * @param isSingleFile Whether the output is a single HTML file (vs ZIP)
    * @param onStatusUpdate Optional callback for assembly progress updates
    * @param tabId Optional tab ID for download tracking
+   * @param saveAs Whether to prompt for a save location
+   * @param signal Optional caller-supplied abort signal forwarded to polling
    * @returns ServerDownloadResult with the download ID, URL, and filename
    */
   async waitForDownload(
@@ -275,9 +273,14 @@ export class ServerDownloadHandler {
     onStatusUpdate?: AssemblyStatusCallback,
     tabId?: number,
     saveAs: boolean = true,
+    signal?: AbortSignal,
   ): Promise<ServerDownloadResult> {
     // Poll until assembly is complete
-    const status = await this.pollAssemblyStatus(sessionId, onStatusUpdate);
+    const status = await this.pollAssemblyStatus(
+      sessionId,
+      onStatusUpdate,
+      signal,
+    );
 
     // Cloud mode: server pushed to PagePocket instead of creating a download
     if (status.cloud_page_id) {
@@ -338,6 +341,8 @@ export class ServerDownloadHandler {
    * @param onLocalFallback Callback to offer the user a local fallback option
    * @param onStatusUpdate Optional callback for assembly progress updates
    * @param tabId Optional tab ID for download tracking
+   * @param saveAs Whether to prompt for a save location
+   * @param signal Optional caller-supplied abort signal forwarded to polling
    * @returns ServerDownloadResult, or null if the user chose local fallback
    */
   async downloadWithFallback(
@@ -348,6 +353,7 @@ export class ServerDownloadHandler {
     onStatusUpdate?: AssemblyStatusCallback,
     tabId?: number,
     saveAs: boolean = true,
+    signal?: AbortSignal,
   ): Promise<ServerDownloadResult | null> {
     try {
       return await this.waitForDownload(
@@ -357,8 +363,15 @@ export class ServerDownloadHandler {
         onStatusUpdate,
         tabId,
         saveAs,
+        signal,
       );
     } catch (err) {
+      // A cancelled poll (user pressed Stop) must not trigger the fallback
+      // offer — the download is being torn down, not failed.
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw err;
+      }
+
       // Categorize the error and offer local fallback
       let reason:
         | "server_unavailable"
@@ -405,16 +418,10 @@ export class ServerDownloadHandler {
     }
   }
 
-  /**
-   * Cancel an in-progress assembly polling loop.
-   * Does not affect downloads that have already been triggered.
-   */
-  cancelPolling(): void {
-    if (this.pollingAbortController) {
-      this.pollingAbortController.abort();
-      this.pollingAbortController = null;
-    }
-  }
+  // NOTE (D7 / task 4.2): the former singleton `pollingAbortController`
+  // field and `cancelPolling()` were removed — polling cancellation is now
+  // caller-scoped via the AbortSignal passed to pollAssemblyStatus, so two
+  // concurrent downloads can poll and cancel independently.
 }
 
 /** Singleton instance for use throughout the extension background context. */

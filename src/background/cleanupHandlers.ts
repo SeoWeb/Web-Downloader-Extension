@@ -1,9 +1,16 @@
 /**
  * Cleanup Handlers for WebsiteDownloader Extension
  * Provides automatic cleanup for service worker restarts and download completion
+ *
+ * Lifecycle (D9 / task 4.3): all periodic work uses `chrome.alarms` —
+ * setInterval/setTimeout timers do not survive MV3 service-worker suspension.
+ * Listeners are registered exactly once per service-worker lifetime via the
+ * `handlersInitialized` guard (the module self-initializes on import; the
+ * former duplicate setTimeout(1000) registration path was removed).
  */
 
 import { memoryManager } from "../utils/MemoryManager";
+import { MemoryPressureLevel } from "../utils/memoryLimits";
 
 import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
 import { sendMessageToPanel, deleteServerSessionState } from "./message";
@@ -35,10 +42,35 @@ declare global {
 // Type assertion for self as ServiceWorkerGlobalScope
 declare const self: ServiceWorkerGlobalScope;
 
+// ---------------------------------------------------------------------------
+// Alarm names — re-created on every service worker start (module import)
+// ---------------------------------------------------------------------------
+
+const PERIODIC_CLEANUP_ALARM = "pagepocket-periodic-cleanup";
+const MEMORY_MONITOR_ALARM = "pagepocket-memory-monitor";
+
+const PERIODIC_CLEANUP_MINUTES = 10; // every 10 minutes
+const MEMORY_MONITOR_MINUTES = 1; // alarms clamp sub-minute periods to 1 min
+
+/** Guard: every chrome.* listener below is registered exactly once per SW
+ *  lifetime, no matter how many times initializeCleanupHandlers is called
+ *  (module import + download.ts). */
+let handlersInitialized = false;
+
+/** Last pressure level seen by the monitor — extra cleanup runs only on
+ *  real transitions (e.g. HIGH → CRITICAL), not on every alarm tick. */
+let lastMonitoredLevel: MemoryPressureLevel | null = null;
+
 /**
- * Initialize cleanup handlers for service worker lifecycle events
+ * Initialize cleanup handlers for service worker lifecycle events.
+ * Idempotent — safe to call multiple times; registration happens once.
  */
 export function initializeCleanupHandlers(): void {
+  if (handlersInitialized) {
+    return;
+  }
+  handlersInitialized = true;
+
   // Handle service worker startup
   if (typeof self !== "undefined" && "addEventListener" in self) {
     // Cleanup on service worker startup
@@ -62,14 +94,126 @@ export function initializeCleanupHandlers(): void {
     });
   }
 
-  // Setup periodic cleanup
-  setupPeriodicCleanup();
-
-  // Setup memory pressure monitoring
-  setupMemoryPressureMonitoring();
+  // (Task 4.3) Periodic cleanup + memory monitoring via chrome.alarms —
+  // survives service worker termination, unlike setInterval.
+  setupPeriodicCleanupAlarm();
+  setupMemoryPressureMonitorAlarm();
+  setupAlarmHandler();
 
   // Clean up per-tab state when a tab is closed
   setupTabLifecycleCleanup();
+}
+
+/**
+ * (Task 4.3) Single chrome.alarms.onAlarm handler dispatching both alarms.
+ * Registered once; the alarms themselves are (re-)created on every SW start
+ * by the setup functions below — chrome.alarms.create with a known name
+ * overwrites, so re-registration on SW restart is idempotent.
+ */
+function setupAlarmHandler(): void {
+  if (!chrome.alarms) {
+    console.warn(
+      "[Cleanup] chrome.alarms unavailable — add the 'alarms' permission to the manifest",
+    );
+    return;
+  }
+
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    // Fire-and-forget — cleanup must never keep the SW alive or throw
+    runAlarmCleanup(alarm.name).catch(() => {
+      // ignore
+    });
+  });
+}
+
+/** Dispatch an alarm to its cleanup routine. Exported for tests. */
+export async function runAlarmCleanup(alarmName: string): Promise<void> {
+  try {
+    if (alarmName === PERIODIC_CLEANUP_ALARM) {
+      await runPeriodicCleanup();
+    } else if (alarmName === MEMORY_MONITOR_ALARM) {
+      await runMemoryPressureCheck();
+    }
+  } catch {
+    // ignore — cleanup is best-effort
+  }
+}
+
+/**
+ * Re-create the periodic cleanup alarm. Called on every SW start (module
+ * import) so the alarm survives worker termination.
+ */
+function setupPeriodicCleanupAlarm(): void {
+  if (!chrome.alarms) {
+    console.warn(
+      "[Cleanup] chrome.alarms unavailable — periodic cleanup disabled",
+    );
+    return;
+  }
+
+  chrome.alarms.create(PERIODIC_CLEANUP_ALARM, {
+    periodInMinutes: PERIODIC_CLEANUP_MINUTES,
+  });
+}
+
+/**
+ * Re-create the memory-pressure monitor alarm (fires every minute).
+ */
+function setupMemoryPressureMonitorAlarm(): void {
+  if (!chrome.alarms) {
+    console.warn(
+      "[Cleanup] chrome.alarms unavailable — memory monitoring disabled",
+    );
+    return;
+  }
+
+  chrome.alarms.create(MEMORY_MONITOR_ALARM, {
+    periodInMinutes: MEMORY_MONITOR_MINUTES,
+  });
+}
+
+/**
+ * Periodic cleanup body — only frees memory when pressure is MEDIUM or
+ * higher. Comparisons use the NUMERIC enum rank (task 4.3): the previous
+ * `!== "low"` string comparison never matched the numeric enum, so this
+ * cleanup never ran.
+ */
+async function runPeriodicCleanup(): Promise<void> {
+  try {
+    const memoryStats = memoryManager.getMemoryStats();
+
+    // Only perform cleanup if memory pressure is medium or higher
+    if (memoryStats.memoryPressureLevel >= MemoryPressureLevel.MEDIUM) {
+      await memoryManager.forceCleanup();
+    }
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Memory pressure monitor body — the CRITICAL handler actually fires now
+ * (the previous `=== "critical"` string comparison was runtime-broken
+ * against the numeric enum). Extra cleanup runs only on a real transition
+ * into CRITICAL; sustained pressure is handled by the periodic cleanup.
+ */
+async function runMemoryPressureCheck(): Promise<void> {
+  try {
+    const memoryStats = memoryManager.getMemoryStats();
+    const level = memoryStats.memoryPressureLevel;
+    const previous = lastMonitoredLevel;
+    lastMonitoredLevel = level;
+
+    // Auto-response on transition into critical memory pressure
+    if (
+      level >= MemoryPressureLevel.CRITICAL &&
+      (previous === null || previous < MemoryPressureLevel.CRITICAL)
+    ) {
+      await handleCriticalMemoryPressure();
+    }
+  } catch {
+    // ignore
+  }
 }
 
 /**
@@ -158,46 +302,6 @@ async function performMaintenanceCleanup(): Promise<void> {
 }
 
 /**
- * Setup periodic cleanup to prevent memory accumulation
- */
-function setupPeriodicCleanup(): void {
-  const CLEANUP_INTERVAL = 10 * 60 * 1000; // 10 minutes
-
-  setInterval(async () => {
-    try {
-      const memoryStats = memoryManager.getMemoryStats();
-
-      // Only perform cleanup if memory pressure is medium or higher
-      if (memoryStats.memoryPressureLevel !== "low") {
-        await memoryManager.forceCleanup();
-      }
-    } catch {
-      // ignore
-    }
-  }, CLEANUP_INTERVAL);
-}
-
-/**
- * Setup memory pressure monitoring and automatic responses
- */
-function setupMemoryPressureMonitoring(): void {
-  const MONITORING_INTERVAL = 30 * 1000; // 30 seconds
-
-  setInterval(async () => {
-    try {
-      const memoryStats = memoryManager.getMemoryStats();
-
-      // Auto-response to critical memory pressure
-      if (memoryStats.memoryPressureLevel === "critical") {
-        await handleCriticalMemoryPressure();
-      }
-    } catch {
-      // ignore
-    }
-  }, MONITORING_INTERVAL);
-}
-
-/**
  * Handle critical memory pressure scenarios
  */
 async function handleCriticalMemoryPressure(): Promise<void> {
@@ -246,9 +350,10 @@ export async function cleanupAfterDownload(_downloadId: string): Promise<void> {
   }
 }
 
-// Initialize cleanup handlers when this module is imported
+// (Task 4.3) Initialize once at module import — every service worker start
+// re-runs this module, which both registers the listeners (guarded, once per
+// lifetime) and re-creates the cleanup alarms. The former duplicate
+// setTimeout(1000) registration path was removed.
 if (typeof self !== "undefined") {
-  setTimeout(() => {
-    initializeCleanupHandlers();
-  }, 1000);
+  initializeCleanupHandlers();
 }

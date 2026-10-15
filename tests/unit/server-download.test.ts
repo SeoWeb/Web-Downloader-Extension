@@ -334,22 +334,28 @@ describe("ServerDownloadHandler", () => {
       expect(result.status).toBe("ready");
     });
 
-    it("can be cancelled via cancelPolling()", async () => {
+    it("can be cancelled via a caller-supplied AbortSignal", async () => {
       const client = new ServerClient();
       const mockStatusFn = vi.spyOn(client, 'getSessionStatus');
       mockStatusFn.mockResolvedValue(mockStatus({ status: "assembling" }));
       const handlerCancel = new ServerDownloadHandler(client);
 
+      const controller = new AbortController();
+
       // Attach rejection handler BEFORE starting the poll
-      const pollPromise = handlerCancel.pollAssemblyStatus("test-session-id");
+      const pollPromise = handlerCancel.pollAssemblyStatus(
+        "test-session-id",
+        undefined,
+        controller.signal,
+      );
       const rejectionPromise = pollPromise.catch((err) => err);
 
       // Advance one poll cycle
       vi.setSystemTime(Date.now() + 2000);
       await vi.advanceTimersByTimeAsync(2000);
 
-      // Cancel
-      handlerCancel.cancelPolling();
+      // Cancel via the caller-owned signal
+      controller.abort();
 
       // Advance timers to trigger the sleep which will detect abort
       vi.setSystemTime(Date.now() + 2000);
@@ -360,6 +366,74 @@ describe("ServerDownloadHandler", () => {
       expect(error.name).toBe("AbortError");
 
       mockStatusFn.mockRestore();
+    });
+
+    it("cancelling one poll leaves a concurrent poll running (task 4.2)", async () => {
+      const client = new ServerClient();
+      const mockStatusFn = vi.spyOn(client, "getSessionStatus");
+      let pollACalls = 0;
+      let pollBCalls = 0;
+      mockStatusFn.mockImplementation(async () => {
+        // Both polls hit the same client; count calls per session id is not
+        // possible here, so we just count total calls and assert both sides
+        // keep polling via their own completion signals below.
+        pollACalls++;
+        pollBCalls++;
+        return mockStatus({ status: "assembling" });
+      });
+      const handler = new ServerDownloadHandler(client);
+
+      const controllerA = new AbortController();
+
+      // Poll A will be cancelled; poll B runs to completion.
+      const pollA = handler
+        .pollAssemblyStatus("session-A", undefined, controllerA.signal)
+        .catch((err) => err);
+      const pollBStatuses: string[] = [];
+      const pollB = handler.pollAssemblyStatus("session-B", (status) => {
+        pollBStatuses.push(status);
+      });
+
+      // Advance one poll cycle so both polls have fired at least once
+      vi.setSystemTime(Date.now() + 2000);
+      await vi.advanceTimersByTimeAsync(2000);
+
+      // Cancel ONLY poll A
+      controllerA.abort();
+      vi.setSystemTime(Date.now() + 2000);
+      await vi.advanceTimersByTimeAsync(2000);
+
+      const errorA = await pollA;
+      expect(errorA).toBeInstanceOf(DOMException);
+      expect(errorA.name).toBe("AbortError");
+
+      // Poll B is still running — flip the server to ready and let it finish
+      mockStatusFn.mockResolvedValue(
+        mockStatus({
+          status: "ready",
+          download_url: "http://localhost:8000/api/v1/sessions/session-B/download",
+        }),
+      );
+      vi.setSystemTime(Date.now() + 5000);
+      await vi.advanceTimersByTimeAsync(5000);
+
+      const resultB = await pollB;
+      expect(resultB.status).toBe("ready");
+      expect(pollBStatuses).toContain("assembling");
+      expect(pollBStatuses).toContain("ready");
+
+      // The shared mock served both polls before cancellation
+      expect(pollACalls).toBeGreaterThanOrEqual(2);
+
+      mockStatusFn.mockRestore();
+    });
+
+    it("does not expose a shared polling controller field (task 4.2)", () => {
+      const handler = new ServerDownloadHandler(new ServerClient());
+      // The singleton `pollingAbortController` field is gone — polling
+      // cancellation is caller-scoped via AbortSignal.
+      expect((handler as any).pollingAbortController).toBeUndefined();
+      expect((handler as any).cancelPolling).toBeUndefined();
     });
 
     it("calls onStatusUpdate with assembly phase and progress", async () => {

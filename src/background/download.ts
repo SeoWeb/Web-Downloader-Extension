@@ -1,5 +1,4 @@
 /// <reference types="chrome" />
-import { initializeCleanupHandlers } from "./cleanupHandlers";
 import { requestQueue } from "../utils/RequestQueue";
 import { memoryManager } from "../utils/MemoryManager";
 import { MemoryPressureLevel } from "../utils/memoryLimits";
@@ -12,8 +11,9 @@ import {
   isTabDownloadInProgress,
 } from "./download-state";
 
-// Initialize cleanup handlers when this module loads
-initializeCleanupHandlers();
+// NOTE (task 4.3): cleanup handlers self-initialize on module import
+// (cleanupHandlers.ts) — the explicit call that used to live here created a
+// duplicate-registration path and has been removed.
 
 // Initialize listeners
 initializeDownloadListener();

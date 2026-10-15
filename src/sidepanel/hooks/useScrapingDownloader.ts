@@ -160,8 +160,9 @@ export function useScrapingDownloader({
       // (13.3) Stream the HTML chunk to the server immediately
       // instead of accumulating it in downloadResponse.
       if (serverSessionIdRef.current) {
+        let chunkUploadFailed = false;
         try {
-          await sendMessageToBackground(
+          const result = await sendMessageToBackground(
             messageActions.SERVER_UPLOAD_HTML_CHUNK,
             {
               sessionId: serverSessionIdRef.current,
@@ -174,9 +175,44 @@ export function useScrapingDownloader({
               // a phantom linked page job with duplicated body content.
             },
           );
-        } catch {
-          // Upload failed — continue scrolling; the download phase will
-          // handle the error when it tries to finalize the session.
+          // (Task 4.5) The background returns {success:false, error} when a
+          // chunk exhausts its retries — surface it instead of silently
+          // continuing (which would leave a gap in the archived page).
+          if (result && result.success === false) {
+            chunkUploadFailed = true;
+            setMessages((prev) => [
+              ...prev,
+              {
+                key: "status.failedWithError",
+                options: {
+                  error:
+                    result.error || "HTML chunk upload failed after retries",
+                },
+              },
+            ]);
+          }
+        } catch (err) {
+          chunkUploadFailed = true;
+          setMessages((prev) => [
+            ...prev,
+            {
+              key: "status.failedWithError",
+              options: {
+                error:
+                  err instanceof Error
+                    ? err.message
+                    : "HTML chunk upload failed",
+              },
+            },
+          ]);
+        }
+        if (chunkUploadFailed) {
+          // Mark the session incomplete: stop scrolling and surface the
+          // error state. The partial content still finalizes so the user
+          // gets what was captured, and the completion report reflects
+          // the missing chunk.
+          setIsScraping(false);
+          return undefined;
         }
         // Keep only the last HTML for resource extraction (not accumulated)
         lastHtmlRef.current = response.html;

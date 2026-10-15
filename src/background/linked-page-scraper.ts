@@ -9,7 +9,7 @@
  */
 
 import { IStorageAdapter } from "./storage/server-storage-adapter";
-import { AssetRegistry } from "./asset-registry";
+import { AssetRegistry, buildArchivePath } from "./asset-registry";
 import { getResources } from "./resources";
 import {
   addCssFiles,
@@ -17,19 +17,9 @@ import {
   addImageFiles,
   addDocumentFiles,
 } from "./fileHandlers";
-import { fixFilename } from "./urlUtils";
 import { serverClient, HttpError } from "./server-client";
-
-// Global image filename map shared across main page and all linked pages
-let globalImageFilenameMap = new Map<string, string>();
-
-/**
- * Set the global image filename map (from main page download)
- * so linked pages can reference already-downloaded images with correct filenames.
- */
-export function setGlobalImageFilenameMap(map: Map<string, string>) {
-  globalImageFilenameMap = map;
-}
+import type { DownloadContext } from "./download-state";
+import type { HandlerOptions } from "./download-processors";
 
 export interface LinkedPageJob {
   url: string;
@@ -65,13 +55,29 @@ export interface ScrapedPageData {
 }
 
 export interface LinkedPageScraperOptions {
-  maxPages?: number; // Default: 50, Max: 200
+  /** Maximum pages to scrape. Accepts 1–500; values outside the range are
+   * clamped (default 50). The docstring previously claimed "Max: 200" while
+   * any value was accepted — now the clamp makes the limit real (task 4.7). */
+  maxPages?: number;
   delayBetweenPages?: number; // Default: 200ms
   includeExternal?: boolean; // Default: false
   pageTimeout?: number; // Default: 30000ms
   /** Server session ID — linked page HTML chunks are uploaded
    * to the server with pageType: "linked" and pageUrl metadata. */
   serverSessionId?: string;
+}
+
+/** Hard bounds for the maxPages option (task 4.7). */
+export const MIN_MAX_PAGES = 1;
+export const MAX_MAX_PAGES = 500;
+const DEFAULT_MAX_PAGES = 50;
+
+/** Clamp maxPages into [1, 500]; NaN/non-finite falls back to the default. */
+export function clampMaxPages(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return DEFAULT_MAX_PAGES;
+  }
+  return Math.min(Math.max(Math.floor(value), MIN_MAX_PAGES), MAX_MAX_PAGES);
 }
 
 export class LinkedPageScraper {
@@ -94,6 +100,10 @@ export class LinkedPageScraper {
   private resumeResolve: (() => void) | null = null;
   /** When true, extract and accumulate body text from linked pages. */
   private extractText: boolean = true;
+  /** Every URL this scraper intended to navigate to (dedup'd scrape set). */
+  private scrapeUrls: Set<string> = new Set();
+  /** The URL of the most recent navigation this scraper performed. */
+  private lastNavigatedUrl: string = "";
 
   constructor(
     assetRegistry: AssetRegistry,
@@ -101,7 +111,7 @@ export class LinkedPageScraper {
   ) {
     this.assetRegistry = assetRegistry;
     this.options = {
-      maxPages: options.maxPages ?? 50,
+      maxPages: clampMaxPages(options.maxPages),
       delayBetweenPages: options.delayBetweenPages ?? 200,
       includeExternal: options.includeExternal ?? false,
       pageTimeout: options.pageTimeout ?? 30000,
@@ -169,10 +179,15 @@ export class LinkedPageScraper {
     // Check if URL is already in either queue
     if (
       this.internalQueue.some((j) => j.url === job.url) ||
-      this.externalQueue.some((j) => j.url === job.url)
+      this.externalQueue.some((j) => j.url === job.url) ||
+      this.scrapeUrls.has(job.url)
     ) {
       return;
     }
+
+    // Track every accepted scrape target — restoreOriginalPage uses this set
+    // to decide whether the tab is still on scraper-controlled navigation.
+    this.scrapeUrls.add(job.url);
 
     if (isExternal) {
       this.externalQueue.push(job);
@@ -257,17 +272,25 @@ export class LinkedPageScraper {
   /**
    * Process all queued pages sequentially.
    * Returns accumulated body text from all linked pages, with page-URL delimiters.
+   *
+   * `context` (task 4.1) carries the per-download image filename map that
+   * replaces the former module-global map — concurrent downloads in other
+   * tabs can no longer corrupt each other's entries.
    */
   async processQueue(
     tabId: number,
     storage: IStorageAdapter,
     sendMessage: (message: string | { key: string; options?: any }) => void,
+    context?: DownloadContext,
   ): Promise<string> {
     const totalInternal = this.internalQueue.length;
     const totalExternal = this.externalQueue.length;
     if (totalInternal === 0 && totalExternal === 0) {
       return "";
     }
+
+    // Per-download shared map (main page + linked pages of THIS download)
+    const sharedImageFilenameMap = context?.imageFilenameMap ?? new Map<string, string>();
 
     let accumulatedText = "";
 
@@ -313,6 +336,7 @@ export class LinkedPageScraper {
           job.url,
           storage,
           sendMessage,
+          context,
         );
 
         // Upload HTML chunks with pageType "linked" and pageUrl metadata.
@@ -336,7 +360,7 @@ export class LinkedPageScraper {
         // discovered for this linked page.
         const deltaMap: Record<string, string> = {};
         for (const [key, value] of scrapedData.localImageMap ?? []) {
-          if (!globalImageFilenameMap.has(key)) {
+          if (!sharedImageFilenameMap.has(key)) {
             deltaMap[key] = value;
           }
         }
@@ -412,6 +436,7 @@ export class LinkedPageScraper {
             job.url,
             storage,
             sendMessage,
+            context,
           );
 
           const sessionId = this.options.serverSessionId!;
@@ -429,7 +454,7 @@ export class LinkedPageScraper {
 
           const deltaMap: Record<string, string> = {};
           for (const [key, value] of scrapedData.localImageMap ?? []) {
-            if (!globalImageFilenameMap.has(key)) {
+            if (!sharedImageFilenameMap.has(key)) {
               deltaMap[key] = value;
             }
           }
@@ -486,6 +511,7 @@ export class LinkedPageScraper {
     url: string,
     storage: IStorageAdapter,
     sendMessage: (message: string | { key: string; options?: any }) => void,
+    context?: DownloadContext,
   ): Promise<ScrapedPageData> {
     // Navigate to the page and wait for it to load
     const finalUrl = await this.navigateAndWait(tabId, url);
@@ -504,11 +530,13 @@ export class LinkedPageScraper {
 
     // Download assets (checking registry first to avoid duplicates).
     // Returns the image filename map for this page's newly downloaded images.
+    // The linked page's own URL is its document URL (D2 / task 1.5).
     const localImageMap = await this.downloadAssets(
       resources,
       storage,
       finalUrl,
       sendMessage,
+      context,
     );
 
     // Return raw HTML chunks (unconverted) — the server handles URL conversion.
@@ -532,6 +560,9 @@ export class LinkedPageScraper {
    * Navigate to a URL and wait for the page to load
    */
   private async navigateAndWait(tabId: number, url: string): Promise<string> {
+    // Remember the last URL we navigated to — restoreOriginalPage compares
+    // the tab's current URL against it to detect user navigation (task 4.7).
+    this.lastNavigatedUrl = url;
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         cleanup();
@@ -790,6 +821,10 @@ export class LinkedPageScraper {
   /**
    * Download assets for a linked page, checking registry first.
    * Returns the image filename map for this page's newly downloaded images.
+   *
+   * Dedup resolution (task 1.6): relative hrefs are resolved against
+   * `pageUrl` — the same document URL passed to the handlers — so the
+   * dedup filter and the fetchers agree on the absolute URL keys.
    */
   private async downloadAssets(
     resources: {
@@ -801,8 +836,10 @@ export class LinkedPageScraper {
     storage: IStorageAdapter,
     pageUrl: string,
     sendMessage: (message: string | { key: string; options?: any }) => void,
+    context?: DownloadContext,
   ): Promise<Map<string, string>> {
     const localImageFilenameMap = new Map<string, string>();
+    const handlerOptions: HandlerOptions = { documentUrl: pageUrl };
 
     // Filter out assets that are already downloaded
     const newCss = resources.css.filter((url) => {
@@ -827,11 +864,25 @@ export class LinkedPageScraper {
 
     // Download new assets
     if (newCss.length > 0) {
-      await addCssFiles(newCss, storage, pageUrl, sendMessage);
+      await addCssFiles(
+        newCss,
+        storage,
+        pageUrl,
+        sendMessage,
+        context?.downloadId,
+        handlerOptions,
+      );
     }
 
     if (newJs.length > 0) {
-      await addJsFiles(newJs, storage, pageUrl, sendMessage);
+      await addJsFiles(
+        newJs,
+        storage,
+        pageUrl,
+        sendMessage,
+        context?.downloadId,
+        handlerOptions,
+      );
     }
 
     if (newImages.length > 0) {
@@ -840,37 +891,59 @@ export class LinkedPageScraper {
         storage,
         pageUrl,
         sendMessage,
+        context?.downloadId,
+        handlerOptions,
       );
-      // Merge into local and global maps
+      // Merge into this page's local map and the per-download shared map
       for (const [key, value] of downloadedMap) {
         localImageFilenameMap.set(key, value);
-        globalImageFilenameMap.set(key, value);
+        context?.imageFilenameMap.set(key, value);
       }
     }
 
     if (newDocuments.length > 0) {
-      await addDocumentFiles(newDocuments, storage, pageUrl, sendMessage);
+      await addDocumentFiles(
+        newDocuments,
+        storage,
+        pageUrl,
+        sendMessage,
+        context?.downloadId,
+        handlerOptions,
+      );
     }
 
-    // Register all assets (including ones we skipped)
+    // Register all assets (including ones we skipped).
+    // Paths use the same buildArchivePath the upload handlers use (D5).
     for (const url of resources.css) {
       const fullUrl = new URL(url, pageUrl).href;
       if (!this.assetRegistry.has(fullUrl)) {
-        this.assetRegistry.register(fullUrl, `styles/${fixFilename(url)}`, 0);
+        this.assetRegistry.register(
+          fullUrl,
+          buildArchivePath(fullUrl, "styles"),
+          0,
+        );
       }
     }
 
     for (const url of resources.js) {
       const fullUrl = new URL(url, pageUrl).href;
       if (!this.assetRegistry.has(fullUrl)) {
-        this.assetRegistry.register(fullUrl, `scripts/${fixFilename(url)}`, 0);
+        this.assetRegistry.register(
+          fullUrl,
+          buildArchivePath(fullUrl, "scripts"),
+          0,
+        );
       }
     }
 
     for (const url of resources.images) {
       const fullUrl = new URL(url, pageUrl).href;
       if (!this.assetRegistry.has(fullUrl)) {
-        this.assetRegistry.register(fullUrl, `images/${fixFilename(url)}`, 0);
+        this.assetRegistry.register(
+          fullUrl,
+          buildArchivePath(fullUrl, "images"),
+          0,
+        );
       }
     }
 
@@ -879,7 +952,7 @@ export class LinkedPageScraper {
       if (!this.assetRegistry.has(fullUrl)) {
         this.assetRegistry.register(
           fullUrl,
-          `documents/${fixFilename(url)}`,
+          buildArchivePath(fullUrl, "documents"),
           0,
         );
       }
@@ -889,7 +962,12 @@ export class LinkedPageScraper {
   }
 
   /**
-   * Restore the original page after scraping
+   * Restore the original page after scraping.
+   *
+   * Guard (task 4.7): only navigate back when the tab is still on
+   * scraper-controlled navigation — i.e. its current URL is one of the
+   * scrape targets (or the last URL this scraper navigated to). If the user
+   * navigated elsewhere mid-scrape, their page is left untouched.
    */
   private async restoreOriginalPage(tabId: number): Promise<void> {
     if (!this.originalTabUrl) {
@@ -897,6 +975,26 @@ export class LinkedPageScraper {
     }
 
     try {
+      const tab = await chrome.tabs.get(tabId);
+      const currentUrl = tab.url || "";
+
+      // Already back on the original page — nothing to do
+      if (currentUrl === this.originalTabUrl) {
+        return;
+      }
+
+      // User navigated away from the scrape set — do not clobber their page
+      const onScrapeTarget =
+        this.scrapeUrls.has(currentUrl) ||
+        (this.lastNavigatedUrl !== "" && currentUrl === this.lastNavigatedUrl);
+      if (!onScrapeTarget) {
+        console.log(
+          "[LinkedPageScraper] Skipping restore — user navigated away from the scrape set:",
+          currentUrl,
+        );
+        return;
+      }
+
       await chrome.tabs.update(tabId, { url: this.originalTabUrl });
     } catch {
       // Non-critical error, continue anyway

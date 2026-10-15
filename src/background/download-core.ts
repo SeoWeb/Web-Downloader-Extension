@@ -4,7 +4,6 @@ import { requestQueue } from "../utils/RequestQueue";
 import { cleanupAfterDownload } from "./cleanupHandlers";
 import { FilterOptions } from "../types/filterTypes";
 import {
-  downloadId,
   setTabDownloadActive,
   setTabDownloadComplete,
   isTabDownloadInProgress,
@@ -12,6 +11,8 @@ import {
   getDownloadAbortController,
   createKeepalivePort,
   disconnectKeepalivePort,
+  createDownloadContext,
+  type DownloadContext,
 } from "./download-state";
 import {
   writeCheckpoint,
@@ -32,13 +33,15 @@ import {
   processAssets,
   processDocuments,
   processImages,
+  type HandlerOptions,
 } from "./download-processors";
-import { AssetRegistry } from "./asset-registry";
+import {
+  AssetRegistry,
+  buildArchivePath,
+} from "./asset-registry";
 import {
   LinkedPageScraper,
-  setGlobalImageFilenameMap,
 } from "./linked-page-scraper";
-import { fixFilename } from "./urlUtils";
 import { ServerStorageAdapter } from "./storage/server-storage-adapter";
 import {
   serverClient,
@@ -66,19 +69,30 @@ import {
 
 const EMPTY_MAP: Map<string, string> = new Map();
 
+/** Fetch timeout for non-full linked-page collection (task 3.7). Mirrors the
+ * RequestQueue's default `requestTimeout` so linked-page fetches obey the
+ * same bound as every other asset fetch. */
+const LINKED_PAGE_FETCH_TIMEOUT_MS = 30_000;
+
+/** Size cap for non-full linked-page HTML (task 3.7). Larger responses are
+ * skipped rather than uploaded as "linked" HTML. */
+const LINKED_PAGE_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+
 /**
  * Get the PagePocket user ID when cloud mode is enabled.
  *
  * Returns the user ID when ALL of the following hold:
- *  1. The PagePocket cloud toggle is ON (chrome.storage.local)
- *  2. Valid auth tokens exist in chrome.storage.local
+ *  1. The PagePocket cloud toggle is ON (chrome.storage.session — D11/task 7.2)
+ *  2. Valid auth tokens exist in chrome.storage.session
  *
  * Returns null otherwise — the server will create a normal (non-cloud) session.
  */
 async function getPagepocketUserId(): Promise<string | null> {
   try {
-    if (!chrome?.storage?.local) return null;
-    const result = await chrome.storage.local.get([
+    // D11: auth state and the cloud toggle live in chrome.storage.session
+    // (never on disk). Wave-1 hand-off — this previously read storage.local.
+    if (!chrome?.storage?.session) return null;
+    const result = await chrome.storage.session.get([
       PAGEPOCKET_CLOUD_ENABLED_KEY,
       PAGEPOCKET_AUTH_STORAGE_KEY,
     ]);
@@ -93,6 +107,156 @@ async function getPagepocketUserId(): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Best-effort lookup of a concrete fallback URL for a session that failed
+ * during assembly. If the server already produced a download URL, the panel
+ * can offer a direct local-fallback action with it (UX contract, task 5.2).
+ */
+async function lookupFallbackUrl(
+  sessionId: string,
+): Promise<string | undefined> {
+  try {
+    const status = await serverClient.getSessionStatus(sessionId);
+    return status?.download_url ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export interface LinkedPageFetchResult {
+  /** Links fetched and uploaded as "linked" HTML chunks. */
+  uploadedCount: number;
+  /** Links skipped: non-HTML, oversized, aborted, or failed. */
+  skippedCount: number;
+}
+
+/**
+ * Read a response body as UTF-8 text, capped at `maxBytes`.
+ * Returns null when the body exceeds the cap (the stream is cancelled).
+ */
+async function readBoundedText(
+  resp: Response,
+  maxBytes: number,
+): Promise<string | null> {
+  if (!resp.body) {
+    const text = await resp.text();
+    if (new TextEncoder().encode(text).length > maxBytes) return null;
+    return text;
+  }
+
+  const reader = resp.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    total += value.byteLength;
+    if (total > maxBytes) {
+      reader.cancel().catch(() => {});
+      return null;
+    }
+  }
+
+  const combined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder("utf-8").decode(combined);
+}
+
+/**
+ * Fetch linked pages and upload each as a "linked" HTML chunk — bounded
+ * (task 3.7). Unlike the previous bare `fetch()` + `text()` loop, this:
+ *  - verifies `Content-Type` and uploads ONLY `text/html` responses
+ *    (PDF/ZIP/media links count as skipped instead of becoming corrupt
+ *    "HTML" documents),
+ *  - enforces a size cap (default 5 MB) via Content-Length and a capped
+ *    stream read,
+ *  - bounds each fetch with the download's abort signal plus a per-request
+ *    timeout (mirrors the RequestQueue's 30s requestTimeout).
+ */
+export async function fetchAndUploadLinkedPages(options: {
+  links: string[];
+  baseUrl: string;
+  sessionId: string;
+  signal?: AbortSignal;
+  uploadChunk: (
+    html: string,
+    index: number,
+    pageUrl: string,
+  ) => Promise<unknown>;
+  maxBytes?: number;
+  timeoutMs?: number;
+}): Promise<LinkedPageFetchResult> {
+  const maxBytes = options.maxBytes ?? LINKED_PAGE_MAX_BYTES;
+  const timeoutMs = options.timeoutMs ?? LINKED_PAGE_FETCH_TIMEOUT_MS;
+  let uploadedCount = 0;
+  let skippedCount = 0;
+
+  for (let i = 0; i < options.links.length; i++) {
+    if (options.signal?.aborted) {
+      // Download cancelled — everything left counts as skipped
+      skippedCount += options.links.length - i;
+      break;
+    }
+
+    let linkUrl: string;
+    try {
+      linkUrl = new URL(options.links[i], options.baseUrl).href;
+    } catch {
+      skippedCount++;
+      continue;
+    }
+
+    try {
+      // Composite abort: user stop + per-request timeout
+      const timeoutSignal = AbortSignal.timeout(timeoutMs);
+      const signal =
+        options.signal && typeof AbortSignal.any === "function"
+          ? AbortSignal.any([options.signal, timeoutSignal])
+          : (options.signal ?? timeoutSignal);
+
+      const resp = await fetch(linkUrl, { signal });
+      const contentType = (
+        resp.headers.get("content-type") ?? ""
+      ).toLowerCase();
+
+      if (!resp.ok || !contentType.includes("text/html")) {
+        skippedCount++;
+        continue;
+      }
+
+      // Cheap Content-Length check before reading the body
+      const contentLength = parseInt(
+        resp.headers.get("content-length") ?? "",
+        10,
+      );
+      if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+        skippedCount++;
+        continue;
+      }
+
+      const html = await readBoundedText(resp, maxBytes);
+      if (html === null) {
+        // Body exceeded the cap mid-stream
+        skippedCount++;
+        continue;
+      }
+
+      await options.uploadChunk(html, i, linkUrl);
+      uploadedCount++;
+    } catch {
+      // Skip failed linked pages (network error, timeout, or abort)
+      skippedCount++;
+    }
+  }
+
+  return { uploadedCount, skippedCount };
 }
 
 export async function downloadResources(
@@ -132,6 +296,16 @@ export async function downloadResources(
 
   await setTabDownloadActive(tabId!);
 
+  // (D7 / task 4.1) Per-download context — replaces the module-global
+  // filename map and shared mutable state so concurrent tab downloads
+  // cannot corrupt each other. Declared before the try so the finally
+  // block can clean up with it.
+  const context = createDownloadContext({
+    tabId,
+    tabUrl,
+    abortController: new AbortController(),
+  });
+
   try {
     createKeepalivePort(tabId!);
 
@@ -153,6 +327,7 @@ export async function downloadResources(
       });
       setActiveServerSession(tabId!, serverSessionId);
     }
+    context.serverSessionId = serverSessionId;
 
     const storage = new ServerStorageAdapter(serverClient);
     storage.setSessionId(serverSessionId);
@@ -165,9 +340,8 @@ export async function downloadResources(
       tabUrl,
     });
 
-    // Create abort controller for this download session
-    const downloadAbort = new AbortController();
-    setDownloadAbortController(downloadAbort, tabId!);
+    // Register the download-level abort controller (user presses Stop)
+    setDownloadAbortController(context.abortController, tabId!);
 
     await performInitialCleanup();
     await executeDownloadServerMode(
@@ -178,6 +352,7 @@ export async function downloadResources(
       storage,
       serverSessionId,
       tabId,
+      context,
     );
   } catch (error) {
     const errorMessage =
@@ -233,7 +408,7 @@ export async function downloadResources(
     await clearCheckpoint();
 
     try {
-      await cleanupAfterDownload(downloadId);
+      await cleanupAfterDownload(context.downloadId);
       await requestQueue.clear();
     } catch {
       // ignore
@@ -262,14 +437,17 @@ async function executeDownloadServerMode(
   sendMessage: (message: string | { key: string; options?: any }) => void,
   storage: ServerStorageAdapter,
   sessionId: string,
-  tabId?: number,
+  tabId: number | undefined,
+  context: DownloadContext,
 ): Promise<void> {
   const uploadQueue = storage.getUploadQueue();
+  context.uploadQueue = uploadQueue;
+  context.serverSessionId = sessionId;
 
   // Link the download-level abort controller to the upload queue
   // so that pressing Stop aborts in-flight uploads.
-  const downloadAbort = getDownloadAbortController(tabId!);
-  if (downloadAbort) {
+  const downloadAbort = context.abortController;
+  {
     // If already aborted before we start, exit immediately
     if (downloadAbort.signal.aborted) {
       throw new DOMException("Download was cancelled", "AbortError");
@@ -338,17 +516,33 @@ async function executeDownloadServerMode(
     // Start all three asset categories concurrently. Use a single
     // Promise.allSettled so a failure in one category doesn't cancel the
     // others (the finally block's uploadQueue.cancel() only runs after all
-    // three settle).
+    // three settle). The main page's URL is the document URL for relative
+    // URL resolution (D2 / task 1.5).
+    const mainPageOptions: HandlerOptions = { documentUrl: tabUrl };
     const imagesPromise = downloadOptions.downloadImages
-      ? processImages(data.images, storage, tabUrl, sendMessage)
+      ? processImages(
+          data.images,
+          storage,
+          tabUrl,
+          sendMessage,
+          context,
+          mainPageOptions,
+        )
       : Promise.resolve(EMPTY_MAP);
 
     const assetsPromise = downloadOptions.downloadAssets
-      ? processAssets(data, storage, tabUrl, sendMessage)
+      ? processAssets(data, storage, tabUrl, sendMessage, context, mainPageOptions)
       : Promise.resolve();
 
     const docsPromise = downloadOptions.downloadDocuments
-      ? processDocuments(data.documents, storage, tabUrl, sendMessage)
+      ? processDocuments(
+          data.documents,
+          storage,
+          tabUrl,
+          sendMessage,
+          context,
+          mainPageOptions,
+        )
       : Promise.resolve();
 
     const [imagesResult, assetsResult, docsResult] = await Promise.allSettled([
@@ -376,6 +570,13 @@ async function executeDownloadServerMode(
       throw imagesResult.reason;
     }
     const imageFilenameMap = imagesResult.value;
+
+    // (D7 / task 4.1) Share the main page's image filename map with linked
+    // page processing via the per-download context (replaces the former
+    // module-global map).
+    for (const [key, value] of imageFilenameMap) {
+      context.imageFilenameMap.set(key, value);
+    }
 
     // Upload filename map (needed for HTML conversion during assembly).
     if (imageFilenameMap.size > 0) {
@@ -405,24 +606,27 @@ async function executeDownloadServerMode(
 
         const assetRegistry = new AssetRegistry();
 
-        // Register main page assets for deduplication
+        // Register main page assets for deduplication.
+        // (D5 / tasks 3.1 + 4.1) Paths are built with the same
+        // buildArchivePath(url, category) the handlers/upload paths use, so
+        // registry keys equal uploaded paths.
         for (const cssUrl of data.css) {
           const fullUrl = new URL(cssUrl, tabUrl).href;
-          assetRegistry.register(fullUrl, `styles/${fixFilename(cssUrl)}`, 0);
+          assetRegistry.register(fullUrl, buildArchivePath(fullUrl, "styles"), 0);
         }
         for (const jsUrl of data.js) {
           const fullUrl = new URL(jsUrl, tabUrl).href;
-          assetRegistry.register(fullUrl, `scripts/${fixFilename(jsUrl)}`, 0);
+          assetRegistry.register(fullUrl, buildArchivePath(fullUrl, "scripts"), 0);
         }
         for (const imgUrl of data.images) {
           const fullUrl = new URL(imgUrl, tabUrl).href;
-          assetRegistry.register(fullUrl, `images/${fixFilename(imgUrl)}`, 0);
+          assetRegistry.register(fullUrl, buildArchivePath(fullUrl, "images"), 0);
         }
         for (const docUrl of data.documents) {
           const fullUrl = new URL(docUrl, tabUrl).href;
           assetRegistry.register(
             fullUrl,
-            `documents/${fixFilename(docUrl)}`,
+            buildArchivePath(fullUrl, "documents"),
             0,
           );
         }
@@ -440,9 +644,6 @@ async function executeDownloadServerMode(
         linkedPageScraper.setExtractText(
           !!downloadOptions.downloadContentAsText,
         );
-
-        // Share main page image filename map
-        setGlobalImageFilenameMap(imageFilenameMap);
 
         // Queue all discovered links
         setCurrentScraper(tabId, linkedPageScraper);
@@ -463,11 +664,14 @@ async function executeDownloadServerMode(
         // Process the queue — in server mode this uploads HTML chunks
         // with pageType: "linked" and pageUrl, and uploads incremental
         // filename maps after each linked page (tasks 12.10, 12.11).
+        // The per-download context carries the shared image filename map
+        // (replaces the module-global map — task 4.1).
         try {
           const linkedPageText = await linkedPageScraper.processQueue(
             tabId,
             storage,
             sendMessage,
+            context,
           );
           // Upload linked page text content to the server.
           // ORDERING: This must happen BEFORE the main page text upload below
@@ -481,29 +685,31 @@ async function executeDownloadServerMode(
           setCurrentScraper(tabId, null);
         }
       } else {
-        // Non-full-scraping: fetch linked pages and upload to server
+        // Non-full-scraping: fetch linked pages and upload to server,
+        // bounded by content-type, size cap, and timeout (task 3.7).
         sendMessage({
           key: "status.downloadingLinks",
           options: { count: data.links.length },
         });
-        for (let i = 0; i < data.links.length; i++) {
-          try {
-            const linkUrl = new URL(data.links[i], tabUrl).href;
-            const resp = await fetch(linkUrl, {
-              signal: getDownloadAbortController(tabId!)?.signal,
-            });
-            const linkHtml = await resp.text();
-            await serverClient.uploadHtmlChunk(
-              sessionId,
-              linkHtml,
-              i,
-              "linked",
-              linkUrl,
-            );
-          } catch {
-            // skip failed linked pages
-          }
-        }
+        const { uploadedCount, skippedCount } =
+          await fetchAndUploadLinkedPages({
+            links: data.links,
+            baseUrl: tabUrl,
+            sessionId,
+            signal: context.abortController.signal,
+            uploadChunk: (html, index, pageUrl) =>
+              serverClient.uploadHtmlChunk(
+                sessionId,
+                html,
+                index,
+                "linked",
+                pageUrl,
+              ),
+          });
+        console.log(
+          `[ServerMode] Linked pages: ${uploadedCount} uploaded as HTML, ` +
+            `${skippedCount} skipped (non-HTML, oversized, or failed)`,
+        );
         sendMessage({ key: "status.linksDownloaded" });
       }
     }
@@ -614,9 +820,13 @@ async function executeDownloadServerMode(
       downloadOptions.singleFile,
       // Fallback callback — returns true if user chose an alternative (currently unused)
       async (reason, errorMessage) => {
+        // UX contract: include a concrete fallback URL when the server
+        // already produced one, so the panel's local-fallback action can
+        // use it directly.
+        const fallbackUrl = await lookupFallbackUrl(sessionId);
         sendMessage({
           key: "status.serverFallbackOffer",
-          options: { reason, errorMessage },
+          options: { reason, errorMessage, fallbackUrl },
         });
         // The UI layer (task 15.5) will show a dialog. For now, we
         // send the message and return false (don't fall back automatically).
@@ -631,6 +841,8 @@ async function executeDownloadServerMode(
       },
       tabId,
       downloadOptions.alwaysAskWhereToSave ?? true,
+      // Per-download polling signal (task 4.2) — no shared controller.
+      context.assemblyAbortController.signal,
     );
 
     // Cloud mode: server pushed to PagePocket, show cloud success
@@ -709,11 +921,15 @@ async function executeDownloadServerMode(
       // Server-related failure — notify the user with fallback option.
       // The UI (task 15.5) will display "Retry" and "Download locally" buttons.
       // The re-scrape warning is shown when the user chooses local fallback.
+      // (UX contract) A concrete fallback URL is included when the server
+      // already produced a download URL for the session.
+      const fallbackUrl = await lookupFallbackUrl(sessionId);
       sendMessage({
         key: "status.serverError",
         options: {
           error: errorMessage,
           canFallback: true,
+          fallbackUrl,
           reason:
             error instanceof ServerUnavailableError
               ? "server_unavailable"

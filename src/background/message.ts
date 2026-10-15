@@ -5,7 +5,7 @@ import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
 import { abortActiveDownload } from "./download-state";
 import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
 import { resumeServerDownload } from "./download-core";
-import { serverClient, ServerUnavailableError } from "./server-client";
+import { serverClient, ServerUnavailableError, AuthenticationError } from "./server-client";
 
 interface ServerSessionState {
   sessionId: string | null;
@@ -113,6 +113,25 @@ type Message = {
   data: any;
 };
 
+/**
+ * Decide whether a resume failure is DEFINITIVE (expired/invalid session —
+ * retrying can never succeed) as opposed to transient (network unavailable,
+ * server unreachable). D10 / task 4.6: the checkpoint is cleared only on
+ * definitive failure; transient failures keep it so recovery can be retried
+ * after the panel is closed and reopened.
+ */
+export function isDefinitiveResumeFailure(err: unknown): boolean {
+  // Invalid credentials / registration failures cannot recover by retrying
+  if (err instanceof AuthenticationError) return true;
+  if (!(err instanceof Error)) return false;
+  const msg = err.message;
+  return (
+    /cannot be resumed/i.test(msg) || // "Server session is failed/expired…"
+    /full restart required/i.test(msg) || // no session data to resume from
+    /No server session ID in checkpoint/i.test(msg)
+  );
+}
+
 export async function messageWorker(
   action: MessageAction,
   data: any,
@@ -216,11 +235,15 @@ export async function messageWorker(
     }
 
     case messageActions.RESUME_SERVER_DOWNLOAD: {
-      // Prefer checkpoint from storage; fall back to data sent by the sidepanel.
+      // (D10 / task 4.6) Read the checkpoint but DO NOT clear it before the
+      // resume outcome is known. The old flow cleared it up-front, so a
+      // transient failure (server unreachable) destroyed all recovery state.
+      // Now: clear only on success or definitive failure (expired/invalid
+      // session); keep on transient failure.
       let checkpoint = await readCheckpoint();
-      if (checkpoint) {
-        await clearCheckpoint();
-      } else if (data?.serverSessionId) {
+      const cameFromStorage = checkpoint !== null;
+
+      if (!checkpoint && data?.serverSessionId) {
         checkpoint = {
           downloadInterrupted: true,
           serverSessionId: data.serverSessionId,
@@ -240,8 +263,19 @@ export async function messageWorker(
               data: { message },
             });
           });
+          // Success — normal completion cleanup
+          if (cameFromStorage) {
+            await clearCheckpoint();
+          }
           return { success: true };
         } catch (err) {
+          // Definitive failure (expired/invalid session) — the checkpoint
+          // can never be used again; clear it so the panel offers Restart.
+          if (cameFromStorage && isDefinitiveResumeFailure(err)) {
+            await clearCheckpoint();
+          }
+          // Transient failure — the checkpoint stays in
+          // chrome.storage.session so the panel can offer Retry.
           return {
             success: false,
             fallback: true,

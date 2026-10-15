@@ -1,16 +1,59 @@
 import { IStorageAdapter } from "../storage/server-storage-adapter";
-import { fixFilename } from "../urlUtils";
+import {
+  buildArchivePath,
+  resolveResourceUrl,
+  toFailureCategory,
+} from "../urlUtils";
+import type {
+  FileHandlerFailureCategory,
+  FileHandlerOptions,
+} from "../urlUtils";
 import { requestQueue } from "../../utils/RequestQueue";
-import { RequestPriority, ResourceType } from "../../types/queue";
+import { RequestPriority, RequestResult, ResourceType } from "../../types/queue";
+import type { QueuedRequest } from "../../types/queue";
 
+/** Outcome of a queued fetch — either a result or the failure. */
+type QueueOutcome =
+  | { ok: true; result: RequestResult }
+  | { ok: false; error: unknown };
+
+type SendMessage = (message: string | { key: string; options?: any }) => void;
+
+/** Enqueue one fetch and settle to a plain outcome (never throws). */
+function enqueueRequest(
+  request: Omit<QueuedRequest, "id" | "status" | "queuedAt">,
+): Promise<QueueOutcome> {
+  return new Promise<QueueOutcome>((resolve) => {
+    requestQueue
+      .enqueue({
+        ...request,
+        onComplete: (result) => resolve({ ok: true, result }),
+        onError: (error) => resolve({ ok: false, error }),
+      })
+      .catch((error) => resolve({ ok: false, error }));
+  });
+}
+
+/**
+ * Download JS files for the archive.
+ *
+ * Relative URLs resolve against the document URL (design D2). Opaque
+ * (no-cors) responses are recorded as a categorized `cors` failure — their
+ * body is unreadable and must never be read (task 2.4).
+ */
 export async function addJsFiles(
   jss: string[],
   storage: IStorageAdapter,
   tabUrl: string,
-  sendMessage: (message: string | { key: string; options?: any }) => void,
+  sendMessage: SendMessage,
   downloadId?: string,
+  options?: FileHandlerOptions,
 ) {
   if (!jss?.length) return;
+
+  const documentUrl = options?.documentUrl;
+  // Legacy fallback base: the site origin (previous behavior).
+  const fallbackBase = new URL(tabUrl).origin + "/";
 
   // Using storage adapter directly
   const count = jss.length;
@@ -18,105 +61,85 @@ export async function addJsFiles(
   let failCount = 0;
   let skippedCount = 0;
   let completedCount = 0;
+  const failureCategories: Partial<Record<FileHandlerFailureCategory, number>> =
+    {};
 
   // Log download tracking if downloadId is provided
   if (downloadId) {
     // TODO: Log download tracking
   }
 
-  // Enqueue all JS files
-  const requestPromises: Promise<string>[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const js = jss[i];
-
+  const tasks = jss.map(async (js) => {
     if (!js) {
       failCount++;
-      continue;
+      return;
     }
 
-    // Resolve URL like Single File mode does - use origin for relative paths
-    // This fixes issues where paths like 'catalog/view/...' get wrongly appended to page path
-    const tabOrigin = new URL(tabUrl).origin + "/";
-    let fullJsUrl: string;
-    if (js.startsWith("http")) {
-      fullJsUrl = js;
-    } else if (js.startsWith("//")) {
-      fullJsUrl = "https:" + js;
-    } else {
-      // All relative paths (both '/path' and 'path') use origin as base
-      fullJsUrl = new URL(js, tabOrigin).href;
+    // D2: resolve relative references against the document URL.
+    const fullJsUrl = resolveResourceUrl(js, documentUrl, fallbackBase);
+    if (!fullJsUrl) {
+      // data:/blob:/fragment-only references are never fetched.
+      skippedCount++;
+      return;
     }
-    const u = new URL(fullJsUrl);
-    const baseUrl = u.origin;
 
-    // Create a promise that resolves when the JS is processed
-    const jsPromise = new Promise<string>(async (resolve, reject) => {
-      await requestQueue.enqueue({
-        url: fullJsUrl,
-        resourceType: ResourceType.JS,
-        priority: RequestPriority.NORMAL, // JS is normal priority
-        domain: "", // Will be auto-extracted
-        dependencies: [], // No dependencies for JS files
-        retryCount: 0,
-        estimatedSize: 0, // Unknown size
-        fetchOptions: {
-          headers: {
-            Accept: "application/javascript,text/javascript,*/*;q=0.1",
-          },
+    const outcome = await enqueueRequest({
+      url: fullJsUrl,
+      resourceType: ResourceType.JS,
+      priority: RequestPriority.NORMAL, // JS is normal priority
+      domain: "", // Will be auto-extracted
+      dependencies: [], // No dependencies for JS files
+      retryCount: 0,
+      estimatedSize: 0, // Unknown size
+      fetchOptions: {
+        headers: {
+          Accept: "application/javascript,text/javascript,*/*;q=0.1",
         },
-        onComplete: async (result) => {
-          completedCount++;
-          sendMessage({
-            key: "status.jsProgress",
-            options: { completed: completedCount, total: count },
-          });
-          try {
-            const blob = await result.response.blob();
-            let filename = new URL(fullJsUrl, baseUrl).pathname
-              .split("/")
-              .pop();
-            if (!filename) {
-              failCount++;
-              resolve(js);
-              return;
-            }
-
-            // Strip "undefined" prefix from broken JS-generated URLs
-            if (filename.startsWith("undefined")) {
-              filename = filename.slice("undefined".length) || filename;
-            }
-            // Add .js extension for extensionless filenames
-            if (!filename.includes(".")) {
-              filename = filename + ".js";
-            }
-
-            await storage.addFile(
-              `scripts/${fixFilename(filename)}`,
-              blob,
-              "application/javascript",
-            );
-            successCount++;
-            resolve(js);
-          } catch (error) {
-            failCount++;
-            reject(error);
-          }
-        },
-        onError: (error) => {
-          failCount++;
-          reject(error);
-        },
-      });
+      },
     });
 
-    requestPromises.push(jsPromise);
-  }
+    completedCount++;
+    sendMessage({
+      key: "status.jsProgress",
+      options: { completed: completedCount, total: count },
+    });
+
+    if (!outcome.ok) {
+      const category = toFailureCategory(outcome.error);
+      failureCategories[category] = (failureCategories[category] ?? 0) + 1;
+      failCount++;
+      return;
+    }
+
+    const { result } = outcome;
+
+    // Opaque (no-cors) bodies are unreadable — record a categorized cors
+    // failure and continue without ever reading the body (task 2.4).
+    if (result.type === "opaque" || result.snapshot.type === "opaque") {
+      failureCategories.cors = (failureCategories.cors ?? 0) + 1;
+      failCount++;
+      sendMessage(`Script CORS-blocked (opaque response): ${js}`);
+      return;
+    }
+
+    try {
+      const snapshotBytes = result.snapshot.bytes;
+      const bytes = snapshotBytes ? new Uint8Array(snapshotBytes) : new Uint8Array();
+      const blob = new Blob([bytes]);
+
+      // Collision-free archive path preserving the directory structure.
+      const archivePath = buildArchivePath(fullJsUrl, "scripts");
+      await storage.addFile(archivePath, blob, "application/javascript");
+      successCount++;
+    } catch (error) {
+      const category = toFailureCategory(error);
+      failureCategories[category] = (failureCategories[category] ?? 0) + 1;
+      failCount++;
+    }
+  });
 
   // Wait for all JS files to be processed
-  await Promise.allSettled(requestPromises);
-
-  // Count failures from rejected promises is handled inside the promise catch/onError.
+  await Promise.allSettled(tasks);
 
   if (failCount > 0 || skippedCount > 0) {
     sendMessage({
@@ -125,6 +148,9 @@ export async function addJsFiles(
         succeeded: successCount,
         failed: failCount,
         skipped: skippedCount,
+        failureCategories: Object.keys(failureCategories).length
+          ? failureCategories
+          : undefined,
       },
     });
   }

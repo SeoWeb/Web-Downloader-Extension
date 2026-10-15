@@ -3,40 +3,40 @@
 - [x] 1.1 Add unit tests for `MemoryManager` accounting (allocate/release round-trip, `forceCleanup` reset) that reproduce the stall: `queueResource`/`processQueue` mismatch and non-resetting `currentUsage` (`src/utils/MemoryManager.ts`)
 - [x] 1.2 Fix memory accounting: bind `trackResourceAllocation`/`releaseResource` to the actual `RequestQueue` item lifecycle (allocate on response, release in the request's `finally`); make `forceCleanup` recompute usage from live allocations
 - [x] 1.3 Add numeric rank to `MemoryPressureLevel` (`memoryLimits.ts`) and replace all lexicographic `>=` comparisons in `MemoryManager.ts` with rank comparisons; add tests (low never triggers, critical always triggers)
-- [ ] 1.4 Add `.catch`-style rejection to the `executeScript` wrapper (`src/common/chrome.ts`) and resolve `{success:false}` when all injection results are falsy; add tests for reject-path and all-falsy path
-- [ ] 1.5 Thread the document URL through `processImages`/`processAssets`/`processDocuments` into css/js/images/documents handlers and replace `origin + "/"` bases with the document URL (`src/background/fileHandlers/*`)
-- [ ] 1.6 Align the linked-page dedup filter (`linked-page-scraper.ts:809-825`) with the same document-URL resolution and add a regression test (nested page relative asset resolves to `/dir/...`)
+- [x] 1.4 Add `.catch`-style rejection to the `executeScript` wrapper (`src/common/chrome.ts`) and resolve `{success:false}` when all injection results are falsy; add tests for reject-path and all-falsy path
+- [x] 1.5 Thread the document URL through `processImages`/`processAssets`/`processDocuments` into css/js/images/documents handlers and replace `origin + "/"` bases with the document URL (`src/background/fileHandlers/*`)
+- [x] 1.6 Align the linked-page dedup filter (`linked-page-scraper.ts:809-825`) with the same document-URL resolution and add a regression test (nested page relative asset resolves to `/dir/...`)
 
 ## 2. Fetch pipeline hardening
 
 - [x] 2.1 Change `RequestResult` to store a snapshot (`{ok, status, headers, bytes|text, contentType}`) and hand each consumer an independently readable result; skip caching bodies > 5 MB (`src/utils/RequestQueue.ts`, `src/types/queue.ts`); add a two-consumer test
 - [x] 2.2 Enforce `requestTimeout` via a composite abort signal (external abort + timeout); classify aborts as `timeout`; add a fake-timer test proving a hung request releases its slot
 - [x] 2.3 Switch primary asset fetches to `credentials: "include"` with one cookieless retry on 4xx; add request-init assertions in tests
-- [ ] 2.4 Flag opaque responses in `executeRequest`; skip with categorized `cors` failure in `images.ts` and `js.ts`; treat opaque as failure in `css.ts`; add tests
+- [x] 2.4 Flag opaque responses in `executeRequest`; skip with categorized `cors` failure in `images.ts` and `js.ts`; treat opaque as failure in `css.ts`; add tests
 - [x] 2.5 Fix head-of-line blocking: scan past domain-limited heads and wait on nearest limiter availability instead of `break` + 10 ms spin; add a multi-domain scheduling test
 - [x] 2.6 Fix `DomainLimiter` recovery to the configured default, thread `retryAfter` into `adjustRateLimit` from `RequestQueue`, and parse `Crawl-delay` only from the `*` robots group; add tests
 - [x] 2.7 Remove the third-party congestion probe from `ThrottlingManager` (google.com ping); derive congestion from request outcomes; update its tests
 
 ## 3. Asset correctness
 
-- [ ] 3.1 Create `buildArchivePath(url, category)` preserving sanitized pathname segments with query-hash filenames; use it in all handlers, the asset registry, and the filename map (`src/background/fileHandlers/*`, `urlUtils.ts`)
-- [ ] 3.2 Add tests: two same-basename files from different directories produce distinct paths; registry keys equal uploaded paths; `server-storage-adapter` dedup no longer drops valid files
-- [ ] 3.3 Decode CSS/text with `Content-Type` charset, then `@charset`, then UTF-8 (`css.ts`); add a Shift_JIS decoding test
-- [ ] 3.4 Extract `@import` rules (url + string forms, depth cap 3, dedup) in `resources.ts`/`css.ts`; add cycle and nesting tests
-- [ ] 3.5 Add favicon extraction (`link rel=icon|shortcut icon|apple-touch-icon`) to the image resource list; add a test
-- [ ] 3.6 Filter `blob:`, `data:`, `chrome-extension:`, and fragment-only URLs from all resource lists before enqueueing; add tests (including `url(#svg)` not fetched)
-- [ ] 3.7 Bound non-full linked-page mode: verify content type before uploading `linked` HTML, skip non-HTML `href` targets, enforce size/timeout limits (`download-core.ts:489-507`); add tests for PDF-link and non-HTML skip
+- [x] 3.1 Create `buildArchivePath(url, category)` preserving sanitized pathname segments with query-hash filenames; use it in all handlers, the asset registry, and the filename map (`src/background/fileHandlers/*`, `urlUtils.ts`)
+- [x] 3.2 Add tests: two same-basename files from different directories produce distinct paths; registry keys equal uploaded paths; `server-storage-adapter` dedup no longer drops valid files
+- [x] 3.3 Decode CSS/text with `Content-Type` charset, then `@charset`, then UTF-8 (`css.ts`); add a Shift_JIS decoding test
+- [x] 3.4 Extract `@import` rules (url + string forms, depth cap 3, dedup) in `resources.ts`/`css.ts`; add cycle and nesting tests
+- [x] 3.5 Add favicon extraction (`link rel=icon|shortcut icon|apple-touch-icon`) to the image resource list; add a test
+- [x] 3.6 Filter `blob:`, `data:`, `chrome-extension:`, and fragment-only URLs from all resource lists before enqueueing; add tests (including `url(#svg)` not fetched)
+- [x] 3.7 Bound non-full linked-page mode: verify content type before uploading `linked` HTML, skip non-HTML `href` targets, enforce size/timeout limits (`download-core.ts:489-507`); add tests for PDF-link and non-HTML skip
 
 ## 4. Concurrency & lifecycle
 
-- [ ] 4.1 Introduce a `DownloadContext` (filename map, dedup keys, abort controller, upload queue handle) created per `downloadResources` call and threaded through processors, handlers, and the scraper; delete the module-global filename map (`linked-page-scraper.ts:24-32`, `download-core.ts:445`)
-- [ ] 4.2 Change `ServerDownloadHandler.pollAssemblyStatus` to accept a caller-supplied `AbortSignal` per session; remove the singleton `pollingAbortController` field; add a two-concurrent-download cancellation test
-- [ ] 4.3 Move periodic cleanup from `setInterval` to `chrome.alarms` (register `onAlarm`, re-register on SW start) and remove the duplicate `setTimeout` registration path (`cleanupHandlers.ts`, `background.js`)
-- [ ] 4.4 Route all background→panel messages through the enveloped `sendMessageToPanel` helper (fix `background.js:28-37` raw push) and `.catch` every `sendMessage` promise (progress callbacks in `message.ts`, `download-listener.ts`)
-- [ ] 4.5 Wrap `serverClient.uploadHtmlChunk` in `withRetry` and surface exhausted chunk failures to the panel instead of skipping (`server-client.ts:264-295`, `useScrapingDownloader.ts:170-173`)
-- [ ] 4.6 Reorder resume: read checkpoint → run `resumeServerDownload` → clear only on success or definitive (expired/invalid) failure (`message.ts:220-222`, `download-core.ts`); add tests for transient-failure-keeps-checkpoint and expired-clears
-- [ ] 4.7 Fix `LinkedPageScraper` `maxPages` clamping and `restoreOriginalPage` to not clobber user navigation away from the original tab
-- [ ] 4.8 Wire the install listener: register `chrome.runtime.onInstalled` in `background.js` so that on `"install"` (not `"update"`) it opens the built welcome page (`welcome.html`)
+- [x] 4.1 Introduce a `DownloadContext` (filename map, dedup keys, abort controller, upload queue handle) created per `downloadResources` call and threaded through processors, handlers, and the scraper; delete the module-global filename map (`linked-page-scraper.ts:24-32`, `download-core.ts:445`)
+- [x] 4.2 Change `ServerDownloadHandler.pollAssemblyStatus` to accept a caller-supplied `AbortSignal` per session; remove the singleton `pollingAbortController` field; add a two-concurrent-download cancellation test
+- [x] 4.3 Move periodic cleanup from `setInterval` to `chrome.alarms` (register `onAlarm`, re-register on SW start) and remove the duplicate `setTimeout` registration path (`cleanupHandlers.ts`, `background.js`)
+- [x] 4.4 Route all background→panel messages through the enveloped `sendMessageToPanel` helper (fix `background.js:28-37` raw push) and `.catch` every `sendMessage` promise (progress callbacks in `message.ts`, `download-listener.ts`)
+- [x] 4.5 Wrap `serverClient.uploadHtmlChunk` in `withRetry` and surface exhausted chunk failures to the panel instead of skipping (`server-client.ts:264-295`, `useScrapingDownloader.ts:170-173`)
+- [x] 4.6 Reorder resume: read checkpoint → run `resumeServerDownload` → clear only on success or definitive (expired/invalid) failure (`message.ts:220-222`, `download-core.ts`); add tests for transient-failure-keeps-checkpoint and expired-clears
+- [x] 4.7 Fix `LinkedPageScraper` `maxPages` clamping and `restoreOriginalPage` to not clobber user navigation away from the original tab
+- [x] 4.8 Wire the install listener: register `chrome.runtime.onInstalled` in `background.js` so that on `"install"` (not `"update"`) it opens the built welcome page (`welcome.html`)
 
 ## 5. UX feedback
 
@@ -68,7 +68,7 @@
 - [ ] 8.2 Remove the 8 phantom dependencies from `package.json` (`socket.io-client`, `tailwind-merge`, `@radix-ui/*` x6) and fix the remaining `tsc --noEmit` errors; add `tsc --noEmit` to the test script
 - [x] 8.3 Add ESLint (`@eslint/js` recommended + `eslint-plugin-react-hooks`) with an npm script, fix/suppress findings, restore `.husky/pre-commit` (prettier + eslint), delete `package-lock.json`
 - [x] 8.4 Make the e2e test terminate reliably in non-headless mode (remove the never-resolving `finally` await) and give TEST 4 real assertions
-- [ ] 8.5 Add unit tests for `RequestQueue` fairness/timeout/dedup (§2) and file-handler URL resolution (§1/§3) as part of each task; keep the 194 existing tests green
+- [x] 8.5 Add unit tests for `RequestQueue` fairness/timeout/dedup (§2) and file-handler URL resolution (§1/§3) as part of each task; keep the 194 existing tests green
 
 ## 9. Verification
 

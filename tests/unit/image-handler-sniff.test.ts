@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { IStorageAdapter } from "../../src/background/storage/storage-adapter";
 import * as sniffModule from "../../src/background/sniffImageMime";
+import type { RequestResult } from "../../src/types/queue";
 
 // ---------------------------------------------------------------------------
 // Mocks — must be declared before importing the module under test
@@ -27,13 +28,14 @@ import { addImageFiles } from "../../src/background/fileHandlers/images";
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Helper: build a Blob from a hex string. */
-function blobFromHex(hex: string): Blob {
-  const bytes = hex
-    .trim()
-    .split(/\s+/)
-    .map((b) => parseInt(b, 16));
-  return new Blob([new Uint8Array(bytes)]);
+/** Helper: build a byte array from a hex string. */
+function bytesFromHex(hex: string): Uint8Array {
+  return new Uint8Array(
+    hex
+      .trim()
+      .split(/\s+/)
+      .map((b) => parseInt(b, 16)),
+  );
 }
 
 /** Helper: create a mock storage adapter. */
@@ -54,24 +56,68 @@ function createMockStorage(): IStorageAdapter {
   };
 }
 
-/** Helper: make a fake Response-like object. */
-function makeResponse(blob: Blob, contentType?: string): Response {
-  return {
-    blob: async () => blob,
-    headers: {
-      get: (name: string) =>
-        name.toLowerCase() === "content-type" ? (contentType ?? "") : null,
-    },
+/**
+ * Helper: build a RequestResult carrying the Wave-1 snapshot API
+ * (`result.snapshot.bytes` / `result.snapshot.contentType` / `result.type`).
+ */
+function makeResult(bytes: Uint8Array, contentType?: string): RequestResult {
+  const headers: Record<string, string> = contentType
+    ? { "content-type": contentType }
+    : {};
+  const snapshot = {
     ok: true,
     status: 200,
     statusText: "OK",
-  } as unknown as Response;
+    headers,
+    contentType: contentType ?? "",
+    type: "default" as const,
+    bytes,
+    text: null,
+  };
+  return {
+    requestId: "req-1",
+    url: "https://cdn.example.com/asset",
+    snapshot,
+    type: "default",
+    duration: 1,
+    size: bytes.byteLength,
+    fromCache: false,
+    get response() {
+      return new Response(bytes, { headers });
+    },
+  } as unknown as RequestResult;
 }
 
-/** Helper: configure enqueue to resolve immediately with the given response. */
-function enqueueImage(response: Response) {
+/** Helper: build an opaque (no-cors) RequestResult — body never readable. */
+function makeOpaqueResult(): RequestResult {
+  const snapshot = {
+    ok: false,
+    status: 0,
+    statusText: "",
+    headers: {},
+    contentType: "",
+    type: "opaque" as const,
+    bytes: null,
+    text: null,
+  };
+  return {
+    requestId: "req-1",
+    url: "https://cdn.example.com/asset",
+    snapshot,
+    type: "opaque",
+    duration: 1,
+    size: 0,
+    fromCache: false,
+    get response() {
+      return new Response(null);
+    },
+  } as unknown as RequestResult;
+}
+
+/** Helper: configure enqueue to resolve immediately with the given result. */
+function enqueueImage(result: RequestResult) {
   mockEnqueue.mockImplementation(async (opts: any) => {
-    opts.onComplete({ response });
+    opts.onComplete(result);
     return { id: "1" };
   });
 }
@@ -86,9 +132,9 @@ describe("addImageFiles — MIME sniffing integration", () => {
   });
 
   it("sniffs PNG when Content-Type is empty and maps to .png filename", async () => {
-    const pngBlob = blobFromHex("89 50 4E 47 0D 0A 1A 0A 00 00 00 0D");
+    const pngBytes = bytesFromHex("89 50 4E 47 0D 0A 1A 0A 00 00 00 0D");
     mockSniff.mockResolvedValue("image/png");
-    enqueueImage(makeResponse(pngBlob));
+    enqueueImage(makeResult(pngBytes));
 
     const storage = createMockStorage();
     const map = await addImageFiles(
@@ -105,9 +151,9 @@ describe("addImageFiles — MIME sniffing integration", () => {
   });
 
   it("passes sniffed MIME to storage.addFile", async () => {
-    const pngBlob = blobFromHex("89 50 4E 47 0D 0A 1A 0A");
+    const pngBytes = bytesFromHex("89 50 4E 47 0D 0A 1A 0A");
     mockSniff.mockResolvedValue("image/png");
-    enqueueImage(makeResponse(pngBlob));
+    enqueueImage(makeResult(pngBytes));
 
     const storage = createMockStorage();
     await addImageFiles(
@@ -126,9 +172,9 @@ describe("addImageFiles — MIME sniffing integration", () => {
   });
 
   it("falls back to .bin when sniff returns null", async () => {
-    const randomBlob = blobFromHex("DE AD BE EF 00 11 22 33");
+    const randomBytes = bytesFromHex("DE AD BE EF 00 11 22 33");
     mockSniff.mockResolvedValue(null);
-    enqueueImage(makeResponse(randomBlob));
+    enqueueImage(makeResult(randomBytes));
 
     const storage = createMockStorage();
     const map = await addImageFiles(
@@ -151,8 +197,8 @@ describe("addImageFiles — MIME sniffing integration", () => {
   });
 
   it("does NOT sniff when Content-Type is already known", async () => {
-    const webpBlob = blobFromHex("52 49 46 46 00 00 00 00 57 45 42 50");
-    enqueueImage(makeResponse(webpBlob, "image/webp"));
+    const webpBytes = bytesFromHex("52 49 46 46 00 00 00 00 57 45 42 50");
+    enqueueImage(makeResult(webpBytes, "image/webp"));
 
     const storage = createMockStorage();
     const map = await addImageFiles(
@@ -175,9 +221,9 @@ describe("addImageFiles — MIME sniffing integration", () => {
   });
 
   it("sniffs when Content-Type is application/octet-stream", async () => {
-    const jpegBlob = blobFromHex("FF D8 FF E0 00 10");
+    const jpegBytes = bytesFromHex("FF D8 FF E0 00 10");
     mockSniff.mockResolvedValue("image/jpeg");
-    enqueueImage(makeResponse(jpegBlob, "application/octet-stream"));
+    enqueueImage(makeResult(jpegBytes, "application/octet-stream"));
 
     const storage = createMockStorage();
     const map = await addImageFiles(
@@ -197,5 +243,38 @@ describe("addImageFiles — MIME sniffing integration", () => {
       "image/jpeg",
       "https://cdn.example.com/data",
     );
+  });
+
+  // ------------------------------------------------------------------------
+  // Opaque (no-cors) responses — task 2.4
+  // ------------------------------------------------------------------------
+
+  it("records a categorized cors failure for opaque responses and never reads the body", async () => {
+    const opaqueResult = makeOpaqueResult();
+    const responseSpy = vi.spyOn(opaqueResult, "response", "get");
+    enqueueImage(opaqueResult);
+
+    const storage = createMockStorage();
+    const messages: any[] = [];
+    const map = await addImageFiles(
+      ["https://cdn.example.com/blocked.png"],
+      storage,
+      "https://cdn.example.com/page",
+      (m) => messages.push(m),
+    );
+
+    // The body must never be touched.
+    expect(responseSpy).not.toHaveBeenCalled();
+    expect(mockSniff).not.toHaveBeenCalled();
+    expect(storage.addFile).not.toHaveBeenCalled();
+
+    // Recorded as a failure with the "cors" category, download continues.
+    expect(map.size).toBe(0);
+    const summary = messages.find(
+      (m) => typeof m === "object" && m.key === "status.imagesSummary",
+    );
+    expect(summary).toBeDefined();
+    expect(summary.options.failed).toBe(1);
+    expect(summary.options.failureCategories).toEqual({ cors: 1 });
   });
 });

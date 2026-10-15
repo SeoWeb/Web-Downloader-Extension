@@ -322,7 +322,13 @@ export class ServerClient {
     return data.id;
   }
 
-  /** (8.3) Upload an HTML chunk to the server. */
+  /** (8.3) Upload an HTML chunk to the server.
+   *
+   * Wrapped in withRetry (task 4.5 / D9): transient network/5xx failures are
+   * retried with backoff like every other control-plane call, so a chunk is
+   * never silently lost to a momentary blip. 4xx errors (e.g. 413
+   * session-full) are not retried. A chunk that exhausts its retries throws
+   * — callers surface the failure instead of skipping the chunk. */
   async uploadHtmlChunk(
     sessionId: string,
     html: string,
@@ -340,20 +346,22 @@ export class ServerClient {
       body.pageUrl = pageUrl;
     }
 
-    const res = await this.authenticatedFetch(
-      `/api/v1/sessions/${sessionId}/html`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      },
-    );
+    return this.withRetry(async () => {
+      const res = await this.authenticatedFetch(
+        `/api/v1/sessions/${sessionId}/html`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
 
-    if (!res.ok) {
-      await this.throwForStatus(res, "uploadHtmlChunk");
-    }
+      if (!res.ok) {
+        await this.throwForStatus(res, "uploadHtmlChunk");
+      }
 
-    return (await res.json()) as UploadHtmlChunkResponse;
+      return (await res.json()) as UploadHtmlChunkResponse;
+    });
   }
 
   /** (8.4) Signal that all HTML chunks have been uploaded. */

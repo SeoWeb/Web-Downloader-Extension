@@ -1,5 +1,7 @@
 import { memoryManager } from "../utils/MemoryManager";
 import { RESOURCE_SIZE_LIMITS } from "../utils/memoryLimits";
+import { RequestQueueError } from "../types/queue";
+import type { RequestErrorCategory } from "../types/queue";
 
 export interface FetchOptions {
   retries?: number;
@@ -395,6 +397,19 @@ export function getExtensionFromMimeType(mimeType: string): string | null {
 }
 
 /**
+ * DJB2-style short hash rendered as 8 hex chars. Shared by the query-hash
+ * helpers so URLs that differ only by query string get unique filenames.
+ */
+function hashQueryString(query: string): string {
+  if (!query || query.length <= 1) return "";
+  let hash = 5381;
+  for (let i = 0; i < query.length; i++) {
+    hash = ((hash << 5) + hash + query.charCodeAt(i)) & 0xffffffff;
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+/**
  * Extract a short deterministic hash from the query string of a URL.
  * Returns an empty string if there is no query string.
  * Used to disambiguate URLs that share the same path but differ by
@@ -403,14 +418,7 @@ export function getExtensionFromMimeType(mimeType: string): string | null {
 function getQueryHash(urlSrc: string): string {
   try {
     const url = new URL(urlSrc.startsWith("//") ? "https:" + urlSrc : urlSrc);
-    const query = url.search; // e.g. "?modules=site.styles&only=styles"
-    if (!query || query.length <= 1) return "";
-    // Simple hash: take first 8 hex chars of a DJB2-style hash
-    let hash = 5381;
-    for (let i = 0; i < query.length; i++) {
-      hash = ((hash << 5) + hash + query.charCodeAt(i)) & 0xffffffff;
-    }
-    return (hash >>> 0).toString(16).padStart(8, "0");
+    return hashQueryString(url.search);
   } catch {
     return "";
   }
@@ -522,4 +530,358 @@ export function generateImageFilename(
   return queryHash
     ? `${sanitized}_${queryHash}.${extension}`
     : `${sanitized}.${extension}`;
+}
+
+// ---------------------------------------------------------------------------
+// Archive path builder (design D5 / OpenSpec task 3.1)
+// ---------------------------------------------------------------------------
+
+/** Default extension applied when the URL filename has none. */
+const CATEGORY_DEFAULT_EXTENSIONS: Record<string, string> = {
+  styles: "css",
+  scripts: "js",
+  documents: "bin",
+  images: "bin",
+};
+
+/** Options for {@link buildArchivePath}. */
+export interface BuildArchivePathOptions {
+  /**
+   * Extension used when the URL filename carries none. Overrides the
+   * category default (useful when a Content-Type sniff is available).
+   */
+  defaultExtension?: string;
+}
+
+/** Sanitize a single archive path segment (directory or file base name). */
+function sanitizeArchiveSegment(segment: string): string {
+  return (
+    segment
+      .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~\s]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 100)
+  );
+}
+
+/** Percent-decode a path segment, keeping the raw value on invalid input. */
+function decodeSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+/**
+ * Build the archive path for an uploaded asset (design D5).
+ *
+ * Unlike the previous basename-only naming, this preserves the URL's
+ * directory structure under the category prefix and hashes the query
+ * string into the filename, so `/a/main.css` and `/b/main.css` (or
+ * `x.css?v=1` and `x.css?v=2`) never collide. The asset registry, the
+ * filename map, and the uploaded path all use this same builder so their
+ * keys always match.
+ *
+ * @param url - Absolute URL of the asset (relative paths are handled best-effort)
+ * @param category - Archive bucket prefix, e.g. "styles" | "scripts" | "images" | "documents"
+ * @returns Archive path like `styles/assets/js/main_1a2b3c4d.css`
+ *
+ * @example
+ * buildArchivePath("https://host/a/main.css", "styles")    // "styles/a/main.css"
+ * buildArchivePath("https://host/x.css?v=2", "styles")     // "styles/x_<hash8>.css"
+ * buildArchivePath("https://host/dir/page/img/x.png", "images") // "images/dir/page/img/x.png"
+ */
+export function buildArchivePath(
+  url: string,
+  category: string,
+  options?: BuildArchivePathOptions,
+): string {
+  const safeCategory = sanitizeArchiveSegment(String(category ?? "")) || "assets";
+
+  let pathname = "";
+  let search = "";
+  try {
+    const parsed = new URL(url);
+    pathname = parsed.pathname;
+    search = parsed.search;
+  } catch {
+    // Best-effort: treat the input as a raw path with an optional query.
+    const withoutHash = String(url ?? "").split("#")[0];
+    const queryIndex = withoutHash.indexOf("?");
+    if (queryIndex >= 0) {
+      search = withoutHash.slice(queryIndex);
+      pathname = withoutHash.slice(0, queryIndex);
+    } else {
+      pathname = withoutHash;
+    }
+  }
+
+  const rawSegments = pathname
+    .split("/")
+    .filter((s) => s.length > 0 && s !== "." && s !== "..");
+
+  // Strip "undefined" prefixes left behind by broken JS-generated URLs
+  // (legacy handler behavior — applied here so handlers and the registry
+  // that both call this builder stay consistent).
+  const lastRaw = rawSegments[rawSegments.length - 1];
+  if (lastRaw && lastRaw.startsWith("undefined") && lastRaw.length > "undefined".length) {
+    rawSegments[rawSegments.length - 1] = lastRaw.slice("undefined".length);
+  }
+
+  // A trailing slash means a directory-style URL ("/blog/"): the last
+  // segment stays a directory and the filename becomes "index".
+  const rawBasename = pathname.endsWith("/")
+    ? "index"
+    : rawSegments.pop() || "index";
+
+  // Preserve the directory structure with sanitized segment names.
+  const directorySegments = rawSegments
+    .map(decodeSegment)
+    .map(sanitizeArchiveSegment)
+    .filter((s) => s.length > 0);
+
+  const queryHash = search.length > 1 ? hashQueryString(search) : "";
+
+  const dotIndex = rawBasename.lastIndexOf(".");
+  const extensionLength = rawBasename.length - dotIndex - 1;
+  const hasValidExtension =
+    dotIndex > 0 && extensionLength > 0 && extensionLength <= 10;
+
+  let filename: string;
+  if (hasValidExtension) {
+    const extension = rawBasename.slice(dotIndex + 1).toLowerCase();
+    const name =
+      sanitizeArchiveSegment(decodeSegment(rawBasename.slice(0, dotIndex))) ||
+      "file";
+    filename = queryHash
+      ? `${name}_${queryHash}.${extension}`
+      : `${name}.${extension}`;
+  } else {
+    const name = sanitizeArchiveSegment(decodeSegment(rawBasename)) || "file";
+    const extension =
+      options?.defaultExtension || CATEGORY_DEFAULT_EXTENSIONS[safeCategory] || "bin";
+    filename = queryHash
+      ? `${name}_${queryHash}.${extension}`
+      : `${name}.${extension}`;
+  }
+
+  return [safeCategory, ...directorySegments, filename].join("/");
+}
+
+// ---------------------------------------------------------------------------
+// URL scheme filtering + document-URL resolution (design D2 / tasks 3.6, 1.5)
+// ---------------------------------------------------------------------------
+
+/** Scheme prefixes that can never be fetched over HTTP(S). */
+const NON_FETCHABLE_URL_PREFIXES = [
+  "data:",
+  "blob:",
+  "chrome-extension:",
+  "moz-extension:",
+  "about:",
+  "javascript:",
+  "mailto:",
+  "tel:",
+] as const;
+
+/**
+ * Whether a raw resource URL can be fetched over HTTP at all.
+ * Rejects empty input, fragment-only references (`#svg-fragment`, which CSS
+ * `url(#gradient)` produces), and non-HTTP schemes (data:, blob:,
+ * chrome-extension:, ...).
+ */
+export function isFetchableResourceUrl(raw: string): boolean {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed || trimmed.startsWith("#")) return false;
+  const lowered = trimmed.toLowerCase();
+  return !NON_FETCHABLE_URL_PREFIXES.some((prefix) =>
+    lowered.startsWith(prefix),
+  );
+}
+
+/**
+ * Resolve a raw resource URL against the document URL it was found in.
+ *
+ * Design D2: relative references must resolve against the HTML document's
+ * URL, not the site origin — `img/x.png` on `https://host/dir/page.html`
+ * lives at `https://host/dir/img/x.png`.
+ *
+ * @param raw - Raw attribute value (absolute, protocol-relative, or relative)
+ * @param documentUrl - Absolute URL of the containing document, when known
+ * @param fallbackBase - Legacy origin base ("https://origin/") used when no
+ *   document URL is available, preserving the previous behavior
+ * @returns The absolute URL, or null when the reference is not fetchable
+ */
+export function resolveResourceUrl(
+  raw: string,
+  documentUrl?: string,
+  fallbackBase?: string,
+): string | null {
+  const trimmed = (raw ?? "").trim();
+  if (!isFetchableResourceUrl(trimmed)) return null;
+
+  if (documentUrl) {
+    try {
+      return new URL(trimmed, documentUrl).href;
+    } catch {
+      return null;
+    }
+  }
+
+  // Legacy fallback: resolve against the origin (previous handler behavior).
+  if (trimmed.startsWith("http")) return trimmed;
+  if (trimmed.startsWith("//")) return "https:" + trimmed;
+  if (!fallbackBase) return null;
+  try {
+    return new URL(trimmed, fallbackBase).href;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Charset-aware decoding (design D6 / task 3.3)
+// ---------------------------------------------------------------------------
+
+/** Extract the charset parameter from a Content-Type header value. */
+export function parseCharsetFromContentType(contentType?: string): string | null {
+  if (!contentType) return null;
+  const match = contentType.match(/charset\s*=\s*"?([^";\s]+)"?/i);
+  return match ? match[1] : null;
+}
+
+/** Decode bytes with a charset label; null when the label is unsupported. */
+function tryDecode(bytes: Uint8Array, charset: string): string | null {
+  try {
+    return new TextDecoder(charset).decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Decode response bytes to text honoring the declared charset:
+ * 1. the `charset` parameter of the Content-Type header,
+ * 2. a leading `@charset "x";` rule read from the raw bytes (CSS),
+ * 3. UTF-8 as the final fallback.
+ * Never reads a Response body directly — safe with queue snapshots.
+ */
+export function decodeTextWithCharset(
+  bytes: Uint8Array | null | undefined,
+  contentType?: string,
+): string {
+  if (!bytes || bytes.length === 0) return "";
+
+  const headerCharset = parseCharsetFromContentType(contentType);
+  if (headerCharset) {
+    const decoded = tryDecode(bytes, headerCharset);
+    if (decoded !== null) return decoded;
+  }
+
+  // The @charset directive is ASCII, so a Latin-1 decode of the first bytes
+  // is enough to detect the label regardless of the actual encoding.
+  const prefix = new TextDecoder("iso-8859-1").decode(
+    bytes.subarray(0, Math.min(bytes.length, 256)),
+  );
+  const charsetMatch = prefix.match(/^\uFEFF?@charset\s+["']([^"']+)["']/i);
+  if (charsetMatch) {
+    const decoded = tryDecode(bytes, charsetMatch[1]);
+    if (decoded !== null) return decoded;
+  }
+
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+// ---------------------------------------------------------------------------
+// CSS content extraction (design D6 / tasks 3.4, url() robustness)
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract all `url()` references from CSS content.
+ *
+ * Unlike the previous lazy regex, quoted URLs may safely contain
+ * parentheses: `url("foo(bar).png")` is captured whole.
+ */
+export function extractCssUrls(cssContent: string): string[] {
+  const urls: string[] = [];
+  if (!cssContent) return urls;
+  const urlPattern = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)'"]+))\s*\)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = urlPattern.exec(cssContent)) !== null) {
+    const value = (match[1] ?? match[2] ?? match[3] ?? "").trim();
+    if (value) urls.push(value);
+  }
+  return urls;
+}
+
+/**
+ * Extract `@import` target URLs from CSS content.
+ * Handles `@import url("x")`, `@import url('x')`, `@import url(x)` and the
+ * string forms `@import "x"` / `@import 'x'`, with an optional media query
+ * after the target. Callers enforce recursion depth and dedup.
+ */
+export function extractCssImports(cssContent: string): string[] {
+  const imports: string[] = [];
+  if (!cssContent) return imports;
+  const importPattern =
+    /@import\s+(?:url\(\s*(?:"([^"]*)"|'([^']*)'|([^)'"]+))\s*\)|"([^"]*)"|'([^']*)')[^;]*;/gi;
+  let match: RegExpExecArray | null;
+  while ((match = importPattern.exec(cssContent)) !== null) {
+    const value = (
+      match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5] ?? ""
+    )
+      .trim()
+      .replace(/^url\(\s*/i, "")
+      .replace(/\s*\)$/, "");
+    if (value) imports.push(value);
+  }
+  return imports;
+}
+
+// ---------------------------------------------------------------------------
+// File handler shared options + categorized failures (tasks 1.5, 2.4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Shared optional options threaded into the file handlers.
+ * Passed as the trailing (optional) argument of each handler so existing
+ * positional call sites keep working unchanged.
+ */
+export interface FileHandlerOptions {
+  /**
+   * Absolute URL of the HTML document in which the resources were found.
+   * Relative resource URLs resolve against this document URL (design D2)
+   * instead of the site origin. When omitted, handlers fall back to the
+   * legacy origin-based resolution.
+   */
+  documentUrl?: string;
+}
+
+/** Failure categories reported by file handlers ("cors" extends the queue set). */
+export type FileHandlerFailureCategory = RequestErrorCategory | "cors";
+
+/** Error carrying a machine-readable failure category from a file handler. */
+export class FileHandlerError extends Error {
+  readonly category: FileHandlerFailureCategory;
+
+  constructor(
+    message: string,
+    category: FileHandlerFailureCategory = "unknown",
+    options?: { cause?: unknown },
+  ) {
+    super(message);
+    this.name = "FileHandlerError";
+    this.category = category;
+    if (options?.cause !== undefined) {
+      (this as { cause?: unknown }).cause = options.cause;
+    }
+  }
+}
+
+/** Map a queue/handler error to its failure category for reporting. */
+export function toFailureCategory(error: unknown): FileHandlerFailureCategory {
+  if (error instanceof RequestQueueError) return error.category;
+  if (error instanceof FileHandlerError) return error.category;
+  return "unknown";
 }

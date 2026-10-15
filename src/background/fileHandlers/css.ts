@@ -1,269 +1,386 @@
 import { IStorageAdapter } from "../storage/server-storage-adapter";
-import { fixFilename } from "../urlUtils";
+import {
+  buildArchivePath,
+  decodeTextWithCharset,
+  extractCssImports,
+  extractCssUrls,
+  FileHandlerError,
+  isFetchableResourceUrl,
+  resolveResourceUrl,
+  toFailureCategory,
+} from "../urlUtils";
+import type {
+  FileHandlerFailureCategory,
+  FileHandlerOptions,
+} from "../urlUtils";
 import { DEFAULT_MEMORY_LIMITS } from "../../utils/memoryLimits";
 import { requestQueue } from "../../utils/RequestQueue";
-import { RequestPriority, ResourceType } from "../../types/queue";
+import { RequestPriority, RequestResult, ResourceType } from "../../types/queue";
+import type { QueuedRequest } from "../../types/queue";
 
+/** Maximum @import recursion depth (page-level CSS counts as depth 0). */
+export const CSS_IMPORT_DEPTH_LIMIT = 3;
+
+/** Outcome of a queued fetch — either a result or the failure. */
+type QueueOutcome =
+  | { ok: true; result: RequestResult }
+  | { ok: false; error: unknown };
+
+type SendMessage = (message: string | { key: string; options?: any }) => void;
+
+/** Per-download accounting shared by top-level stylesheets and imports. */
+interface CssDownloadState {
+  storage: IStorageAdapter;
+  sendMessage: SendMessage;
+  /** Failure counters by category (cors, network, timeout, http, ...). */
+  failureCategories: Partial<Record<FileHandlerFailureCategory, number>>;
+  /** Resolved absolute CSS URLs already processed — dedups per download. */
+  visited: Set<string>;
+  /** Number of page-level stylesheets (drives progress totals). */
+  totalCount: number;
+  /** Top-level stats (drive progress + summary). */
+  successCount: number;
+  failCount: number;
+  skippedCount: number;
+  completedCount: number;
+  /** Stats for @import-discovered stylesheets. */
+  importsSucceeded: number;
+  importsFailed: number;
+  /** Schedule a stylesheet for processing (tracked by the drain loop). */
+  spawn: (item: { url: string; depth: number }) => void;
+}
+
+/** Enqueue one fetch and settle to a plain outcome (never throws). */
+function enqueueRequest(
+  request: Omit<QueuedRequest, "id" | "status" | "queuedAt">,
+): Promise<QueueOutcome> {
+  return new Promise<QueueOutcome>((resolve) => {
+    requestQueue
+      .enqueue({
+        ...request,
+        onComplete: (result) => resolve({ ok: true, result }),
+        onError: (error) => resolve({ ok: false, error }),
+      })
+      .catch((error) => resolve({ ok: false, error }));
+  });
+}
+
+/** Record a failure in the per-download category breakdown. */
+function recordFailure(
+  state: CssDownloadState,
+  error: unknown,
+): FileHandlerFailureCategory {
+  const category = toFailureCategory(error);
+  state.failureCategories[category] =
+    (state.failureCategories[category] ?? 0) + 1;
+  return category;
+}
+
+/**
+ * Download CSS files (and their @import chain) so the server can rewrite
+ * url() references during finalization.
+ *
+ * Relative URLs resolve against the document URL (design D2). Text is
+ * decoded with the declared charset (design D6). Opaque (no-cors) responses
+ * are recorded as a categorized `cors` failure — their body is unreadable.
+ */
 export async function addCssFiles(
   csss: string[],
   storage: IStorageAdapter,
   tabUrl: string,
-  sendMessage: (message: string | { key: string; options?: any }) => void,
+  sendMessage: SendMessage,
   downloadId?: string,
+  options?: FileHandlerOptions,
 ) {
   if (!csss?.length) return;
 
-  // Using storage adapter directly
-  const count = csss.length;
-  let successCount = 0;
-  let failCount = 0;
-  let skippedCount = 0;
-  let completedCount = 0;
+  const documentUrl = options?.documentUrl;
+  // Legacy fallback base: the site origin (previous behavior).
+  const fallbackBase = new URL(tabUrl).origin + "/";
 
-  // Enqueue all CSS files
-  const requestPromises: Promise<string>[] = [];
+  const state: CssDownloadState = {
+    storage,
+    sendMessage,
+    failureCategories: {},
+    visited: new Set<string>(),
+    totalCount: 0,
+    successCount: 0,
+    failCount: 0,
+    skippedCount: 0,
+    completedCount: 0,
+    importsSucceeded: 0,
+    importsFailed: 0,
+    spawn: () => {},
+  };
 
-  for (let i = 0; i < count; i++) {
-    const css = csss[i];
-
-    if (!css) {
-      failCount++;
-      continue;
-    }
-
-    // Resolve URL like Single File mode does - use origin for relative paths
-    // This fixes issues where paths like 'catalog/view/...' get wrongly appended to page path
-    const tabOrigin = new URL(tabUrl).origin + "/";
-    let fullCssUrl: string;
-    if (css.startsWith("http")) {
-      fullCssUrl = css;
-    } else if (css.startsWith("//")) {
-      fullCssUrl = "https:" + css;
-    } else {
-      // All relative paths (both '/path' and 'path') use origin as base
-      fullCssUrl = new URL(css, tabOrigin).href;
-    }
-
-    // Create a promise that resolves when the CSS is processed
-    const cssPromise = new Promise<string>(async (resolve, reject) => {
-      await requestQueue.enqueue({
-        url: fullCssUrl,
-        resourceType: ResourceType.CSS,
-        priority: RequestPriority.HIGH, // CSS is high priority for rendering
-        domain: "", // Will be auto-extracted
-        dependencies: [], // No dependencies for CSS files
-        retryCount: 0,
-        estimatedSize: 0, // Unknown size
-        fetchOptions: {
-          headers: {
-            Accept: "text/css,*/*;q=0.1",
-            "Cache-Control": "max-age=0",
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          },
-          retries: 5, // Increase retries for CSS files
-          timeout: 45000, // Increase timeout for CSS files
-        },
-        onComplete: async (result) => {
-          completedCount++;
-          sendMessage({
-            key: "status.cssProgress",
-            options: { completed: completedCount, total: count },
-          });
-          try {
-            // Check for opaque response (CORS issue)
-            if (result.response.type === "opaque") {
-              skippedCount++;
-              resolve(css);
-              return;
-            }
-
-            // Get CSS content
-            const cssContent = await result.response.text();
-
-            // Check CSS content size against limits
-            if (
-              cssContent.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE
-            ) {
-              skippedCount++;
-              resolve(css);
-              return;
-            }
-
-            // Extract background images from CSS content
-            const backgroundImages = extractBackgroundImagesFromCSS(cssContent);
-
-            // Download background images with memory management
-            if (backgroundImages.length > 0) {
-              await downloadBackgroundImages(
-                backgroundImages,
-                storage,
-                fullCssUrl,
-                sendMessage,
-                downloadId,
-              );
-            }
-
-            // Upload raw CSS so the server can rewrite url() references during finalization.
-            const cssBlob = new Blob([cssContent], { type: "text/css" });
-            let filename = new URL(fullCssUrl).pathname.split("/").pop();
-            if (!filename) {
-              failCount++;
-              resolve(css);
-              return;
-            }
-
-            // Strip "undefined" prefix from broken JS-generated URLs
-            if (filename.startsWith("undefined")) {
-              filename = filename.slice("undefined".length) || filename;
-            }
-            // Add .css extension for extensionless filenames
-            if (!filename.includes(".")) {
-              filename = filename + ".css";
-            }
-
-            await storage.addFile(
-              `styles/${fixFilename(filename)}`,
-              cssBlob,
-              "text/css",
-            );
-            successCount++;
-            resolve(css);
-          } catch (error) {
-            failCount++;
-            reject(error);
-          }
-        },
-        onError: (error) => {
-          failCount++;
-          reject(error);
-        },
-      });
-    });
-
-    requestPromises.push(cssPromise);
+  // Log download tracking if downloadId is provided
+  if (downloadId) {
+    // TODO: Log download tracking
   }
 
-  // Wait for all CSS files to be processed
-  await Promise.allSettled(requestPromises);
+  /** In-flight processing tasks — grows as @imports are discovered. */
+  const inflight = new Set<Promise<void>>();
 
-  // Failures handled inside the promise block
+  state.spawn = (item) => {
+    const task = processCssItem(item, state)
+      .catch(() => {
+        // Defensive: an unexpected rejection must never leave the drain
+        // loop waiting forever.
+        state.failCount++;
+      })
+      .then(() => {
+        inflight.delete(task);
+      });
+    inflight.add(task);
+  };
 
-  if (failCount > 0 || skippedCount > 0) {
+  // Seed the drain loop with the page-level stylesheets.
+  for (const css of csss) {
+    if (!css) {
+      state.failCount++;
+      continue;
+    }
+    const resolved = resolveResourceUrl(css, documentUrl, fallbackBase);
+    if (!resolved) {
+      // data:/blob:/fragment-only references are never fetched.
+      state.skippedCount++;
+      continue;
+    }
+    if (state.visited.has(resolved)) {
+      state.skippedCount++;
+      continue;
+    }
+    state.visited.add(resolved);
+    state.totalCount++;
+    state.spawn({ url: resolved, depth: 0 });
+  }
+
+  // Drain: keep waiting while any stylesheet (or newly discovered import)
+  // is still being processed.
+  while (inflight.size > 0) {
+    await Promise.race(inflight);
+  }
+
+  const failureCategories = state.failureCategories;
+  const hasFailures =
+    state.failCount > 0 ||
+    state.skippedCount > 0 ||
+    state.importsFailed > 0 ||
+    Object.keys(failureCategories).length > 0;
+
+  if (hasFailures) {
     sendMessage({
       key: "status.cssSummary",
       options: {
-        succeeded: successCount,
-        failed: failCount,
-        skipped: skippedCount,
+        succeeded: state.successCount,
+        failed: state.failCount,
+        skipped: state.skippedCount,
+        importsSucceeded: state.importsSucceeded || undefined,
+        importsFailed: state.importsFailed || undefined,
+        failureCategories: Object.keys(failureCategories).length
+          ? failureCategories
+          : undefined,
       },
     });
   }
 }
 
-// Helper function to extract background images from CSS content
-function extractBackgroundImagesFromCSS(cssContent: string): string[] {
-  const imageUrls: string[] = [];
+/**
+ * Fetch, decode, upload one stylesheet and follow its @import rules.
+ * Resolves after its own work; discovered imports are spawned into the
+ * drain loop (entered into `inflight` before this task settles).
+ */
+async function processCssItem(
+  item: { url: string; depth: number },
+  state: CssDownloadState,
+): Promise<void> {
+  const { url: fullCssUrl, depth } = item;
+  const isTopLevel = depth === 0;
 
-  // Regular expression to match url() patterns in CSS
-  const urlPattern = /url\(['"]?(.*?)['"]?\)/g;
-  let match;
+  const outcome = await enqueueRequest({
+    url: fullCssUrl,
+    resourceType: ResourceType.CSS,
+    priority: RequestPriority.HIGH, // CSS is high priority for rendering
+    domain: "", // Will be auto-extracted
+    dependencies: [], // No dependencies for CSS files
+    retryCount: 0,
+    estimatedSize: 0, // Unknown size
+    fetchOptions: {
+      headers: {
+        Accept: "text/css,*/*;q=0.1",
+        "Cache-Control": "max-age=0",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
+      retries: 5, // Increase retries for CSS files
+      timeout: 45000, // Increase timeout for CSS files
+    },
+  });
 
-  while ((match = urlPattern.exec(cssContent)) !== null) {
-    const imageUrl = match[1].trim();
-    if (imageUrl && !imageUrl.startsWith("data:")) {
-      imageUrls.push(imageUrl);
-    }
+  if (isTopLevel) {
+    state.completedCount++;
+    state.sendMessage({
+      key: "status.cssProgress",
+      options: { completed: state.completedCount, total: state.totalCount },
+    });
   }
 
-  return imageUrls;
+  if (!outcome.ok) {
+    recordFailure(state, outcome.error);
+    if (isTopLevel) state.failCount++;
+    else state.importsFailed++;
+    return;
+  }
+
+  const { result } = outcome;
+
+  // Opaque (no-cors) responses have an unreadable body — record a
+  // categorized cors failure instead of attempting to read text (task 2.4).
+  if (result.type === "opaque" || result.snapshot.type === "opaque") {
+    recordFailure(
+      state,
+      new FileHandlerError(
+        `Opaque (no-cors) response for stylesheet — body unreadable: ${fullCssUrl}`,
+        "cors",
+      ),
+    );
+    if (isTopLevel) state.failCount++;
+    else state.importsFailed++;
+    return;
+  }
+
+  try {
+    // Decode with the declared charset (Content-Type, then @charset, then
+    // UTF-8) — never via response.text(), which assumes UTF-8 (design D6).
+    const cssContent = decodeTextWithCharset(
+      result.snapshot.bytes,
+      result.snapshot.headers["content-type"],
+    );
+
+    // Check CSS content size against limits
+    if (cssContent.length > DEFAULT_MEMORY_LIMITS.MAX_HTML_CONTENT_SIZE) {
+      state.skippedCount++;
+      return;
+    }
+
+    // Download images and other resources referenced via url(). Relative
+    // references resolve against the CSS file's own URL, per the CSS spec.
+    // @import statements are stripped first — their url("target") is an
+    // import to recurse into (below), not a background image to fetch.
+    const cssWithoutImports = cssContent.replace(/@import[^;]*;/gi, "");
+    const backgroundImages = extractCssUrls(cssWithoutImports).filter(
+      (candidate) =>
+        isFetchableResourceUrl(candidate) && !candidate.startsWith("data:"),
+    );
+    if (backgroundImages.length > 0) {
+      await downloadBackgroundImages(
+        backgroundImages,
+        state.storage,
+        fullCssUrl,
+        state.sendMessage,
+      );
+    }
+
+    // Upload the raw CSS at a collision-free archive path (design D5).
+    const archivePath = buildArchivePath(fullCssUrl, "styles");
+    const cssBlob = new Blob([cssContent], { type: "text/css" });
+    await state.storage.addFile(archivePath, cssBlob, "text/css");
+
+    if (isTopLevel) state.successCount++;
+    else state.importsSucceeded++;
+
+    // Follow @import rules (url and string forms) up to the depth cap.
+    if (depth < CSS_IMPORT_DEPTH_LIMIT) {
+      for (const importTarget of extractCssImports(cssContent)) {
+        // @import resolves against the importing stylesheet's URL.
+        const resolvedImport = resolveResourceUrl(importTarget, fullCssUrl);
+        if (!resolvedImport || state.visited.has(resolvedImport)) continue;
+        state.visited.add(resolvedImport);
+        state.spawn({ url: resolvedImport, depth: depth + 1 });
+      }
+    }
+  } catch (error) {
+    recordFailure(state, error);
+    if (isTopLevel) state.failCount++;
+    else state.importsFailed++;
+  }
 }
 
-// Helper function to download background images found in CSS
+/**
+ * Download images referenced by CSS url() rules (background images, fonts,
+ * cursors). Opaque responses are skipped with a categorized cors failure.
+ */
 async function downloadBackgroundImages(
   imageUrls: string[],
   storage: IStorageAdapter,
   baseUrl: string,
-  sendMessage: (message: string | { key: string; options?: any }) => void,
-  downloadId?: string,
+  sendMessage: SendMessage,
 ): Promise<void> {
-  // Using storage adapter directly
-  const count = imageUrls.length;
   let successCount = 0;
   let failCount = 0;
   let skippedCount = 0;
   let completedCount = 0;
 
-  // Log download tracking if downloadId is provided
-  if (downloadId) {
-    // Log download tracking
-  }
-
-  // Enqueue all background image files
-  const requestPromises: Promise<string>[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const imageUrl = imageUrls[i];
-
-    if (!imageUrl) {
-      failCount++;
-      continue;
+  const tasks = imageUrls.map(async (imageUrl) => {
+    const fullImageUrl = resolveResourceUrl(imageUrl, baseUrl);
+    if (!fullImageUrl) {
+      skippedCount++;
+      return;
     }
 
-    // Create a promise that resolves when the image is processed
-    const imagePromise = new Promise<string>(async (resolve, reject) => {
-      const fullImageUrl = new URL(imageUrl, baseUrl).href;
-      await requestQueue.enqueue({
-        url: fullImageUrl,
-        resourceType: ResourceType.IMAGE,
-        priority: RequestPriority.LOW, // Background images are low priority
-        domain: "", // Will be auto-extracted
-        dependencies: [], // No dependencies for images
-        retryCount: 0,
-        estimatedSize: 0, // Unknown size
-        fetchOptions: {
-          headers: {
-            Accept: "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-          },
+    const outcome = await enqueueRequest({
+      url: fullImageUrl,
+      resourceType: ResourceType.IMAGE,
+      priority: RequestPriority.LOW, // Background images are low priority
+      domain: "", // Will be auto-extracted
+      dependencies: [], // No dependencies for images
+      retryCount: 0,
+      estimatedSize: 0, // Unknown size
+      fetchOptions: {
+        headers: {
+          Accept: "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
         },
-        onComplete: async (result) => {
-          completedCount++;
-          sendMessage({
-            key: "status.bgImagesProgress",
-            options: { completed: completedCount, total: count },
-          });
-          try {
-            const blob = await result.response.blob();
-            const filename = new URL(fullImageUrl).pathname.split("/").pop();
-            if (!filename) {
-              sendMessage(`Could not determine filename for: ${imageUrl}`);
-              failCount++;
-              resolve(imageUrl);
-              return;
-            }
-
-            await storage.addFile(`images/${fixFilename(filename)}`, blob);
-            successCount++;
-            resolve(imageUrl);
-          } catch (error) {
-            failCount++;
-            reject(error);
-          }
-        },
-        onError: (error) => {
-          failCount++;
-          reject(error);
-        },
-      });
+      },
     });
 
-    requestPromises.push(imagePromise);
-  }
+    completedCount++;
+    sendMessage({
+      key: "status.bgImagesProgress",
+      options: { completed: completedCount, total: imageUrls.length },
+    });
 
-  // Wait for all background image files to be processed
-  await Promise.allSettled(requestPromises);
+    if (!outcome.ok) {
+      failCount++;
+      sendMessage(
+        `Background image failed (${toFailureCategory(outcome.error)}): ${imageUrl}`,
+      );
+      return;
+    }
 
-  // Failures handled inside the promise block
+    const { result } = outcome;
+
+    // Opaque (no-cors) bodies are unreadable — skip with a cors failure.
+    if (result.type === "opaque" || result.snapshot.type === "opaque") {
+      failCount++;
+      sendMessage(
+        `Background image CORS-blocked (opaque response): ${imageUrl}`,
+      );
+      return;
+    }
+
+    try {
+      const snapshotBytes = result.snapshot.bytes;
+      const bytes = snapshotBytes ? new Uint8Array(snapshotBytes) : new Uint8Array();
+      const blob = new Blob([bytes]);
+
+      await storage.addFile(buildArchivePath(fullImageUrl, "images"), blob);
+      successCount++;
+    } catch {
+      failCount++;
+    }
+  });
+
+  await Promise.allSettled(tasks);
 
   if (failCount > 0 || skippedCount > 0) {
     sendMessage({
