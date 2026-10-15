@@ -26,18 +26,17 @@ describe("PageViewerShell", () => {
   it("renders iframe with correct sandbox attribute", () => {
     renderShell();
     const iframe = screen.getByTitle("Saved page content");
-    expect(iframe).toHaveAttribute(
-      "sandbox",
-      "allow-same-origin allow-popups allow-forms",
-    );
+    expect(iframe).toHaveAttribute("sandbox", "allow-popups allow-forms");
   });
 
   it("does not include forbidden sandbox tokens", () => {
     renderShell();
     const iframe = screen.getByTitle("Saved page content");
     const sandbox = iframe.getAttribute("sandbox") ?? "";
+    expect(sandbox).not.toContain("allow-same-origin");
     expect(sandbox).not.toContain("allow-top-navigation");
     expect(sandbox).not.toContain("allow-scripts-same-origin");
+    expect(sandbox).not.toContain("allow-scripts");
     expect(sandbox).not.toContain("allowfullscreen");
   });
 

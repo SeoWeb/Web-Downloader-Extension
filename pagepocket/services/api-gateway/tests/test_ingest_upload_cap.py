@@ -117,6 +117,27 @@ class TestIngestUploadCap(unittest.TestCase):
         self.assertEqual(len(sent.assets), 1)
         self.assertEqual(sent.assets[0].data, b"png-bytes")
 
+    def test_under_cap_ingest_carries_asset_metadata(self):
+        """Each asset's filename + content_type from the multipart parts reach
+        the built IngestPageRequest (pagepocket-ingest-rest)."""
+        html = _StreamUpload(b"<html>ok</html>")
+        assets = [
+            _StreamUpload(b"png-bytes", filename="a.png", content_type="image/png"),
+            _StreamUpload(b"woff2-bytes", filename="font.woff2", content_type="font/woff2"),
+            # Missing filename/content_type fall back to the route defaults
+            _StreamUpload(b"bare-bytes", filename=None, content_type=None),
+        ]
+        self._ingest(self._request(content_length=17), html, assets=assets)
+        sent = self.stub.IngestPage.call_args.args[0]
+        self.assertEqual(
+            [(a.filename, a.content_type, a.data) for a in sent.assets],
+            [
+                ("a.png", "image/png", b"png-bytes"),
+                ("font.woff2", "font/woff2", b"woff2-bytes"),
+                ("", "application/octet-stream", b"bare-bytes"),
+            ],
+        )
+
     def test_413_detail_carries_api_version(self):
         upload = _StreamUpload(b"x" * 2048)
         with self.assertRaises(HTTPException) as cm:

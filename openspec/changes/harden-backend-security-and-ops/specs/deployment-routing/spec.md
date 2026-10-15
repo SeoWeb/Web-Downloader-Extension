@@ -1,11 +1,15 @@
 ## ADDED Requirements
 
 ### Requirement: Routing contract
-The deployment SHALL define, and document, exactly one public entry point per backend: the pagepocket gateway (:8090) serves `pagepocket.app` API traffic; the monolith's public hostname (`server.pagepocket.app`) serves the extension's download-pipeline contract. The reverse proxy in front of each SHALL forward `X-Forwarded-Proto` and `X-Forwarded-Host`, and the monolith SHALL use them when building absolute `download_url` values so returned URLs are valid from the browser's perspective (correct scheme and host behind TLS-terminating proxies).
+The deployment SHALL define, and document, exactly one public entry point per backend: the pagepocket gateway (:8090) serves `pagepocket.app` API traffic; the monolith's public hostname (`server.pagepocket.app`) serves the extension's download-pipeline contract. The reverse proxy in front of each SHALL forward `X-Forwarded-Proto` and `X-Forwarded-Host`, and the monolith SHALL build absolute `download_url` values from them when the request arrives from a trusted proxy (the `TRUST_PROXY` setting, the same gate as client-IP resolution) so returned URLs are valid from the browser's perspective (correct scheme and host behind TLS-terminating proxies). Requests without forwarded headers, or from peers that are not trusted, SHALL fall back to the request's own scheme and host.
 
 #### Scenario: Download URL is correct behind the proxy
 - **WHEN** the monolith builds a session's `download_url` while serving a request that arrived via HTTPS through the reverse proxy
-- **THEN** the URL uses `https` and the public hostname (from `X-Forwarded-Proto`/`X-Forwarded-Host`), not the internal scheme, host, or port
+- **THEN** the URL uses `https` and the public hostname (from `X-Forwarded-Proto`/`X-Forwarded-Host`, honored because the peer is a trusted proxy), not the internal scheme, host, or port
+
+#### Scenario: Forwarded headers from an untrusted peer are ignored
+- **WHEN** a request carries `X-Forwarded-Proto`/`X-Forwarded-Host` but the monolith does not trust the peer (`TRUST_PROXY` disabled)
+- **THEN** the headers are ignored and `download_url` is built from the request's own scheme and host
 
 #### Scenario: Direct access still works
 - **WHEN** the monolith is reached directly (no proxy headers, e.g., local development)

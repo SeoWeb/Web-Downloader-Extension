@@ -25,15 +25,14 @@ test.describe("Page Viewer", () => {
     await expect(iframe).toBeVisible();
 
     // Assert sandbox attribute matches security policy exactly
-    await expect(iframe).toHaveAttribute(
-      "sandbox",
-      "allow-same-origin allow-popups allow-forms",
-    );
+    await expect(iframe).toHaveAttribute("sandbox", "allow-popups allow-forms");
 
     // Verify forbidden tokens are absent
     const sandbox = (await iframe.getAttribute("sandbox")) ?? "";
+    expect(sandbox).not.toContain("allow-same-origin");
     expect(sandbox).not.toContain("allow-top-navigation");
     expect(sandbox).not.toContain("allow-scripts-same-origin");
+    expect(sandbox).not.toContain("allow-scripts");
     expect(sandbox).not.toContain("allowfullscreen");
 
     // Verify no allowfullscreen attribute

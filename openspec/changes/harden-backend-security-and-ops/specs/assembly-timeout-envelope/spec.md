@@ -13,23 +13,30 @@ The end-to-end assembly budget SHALL be explicit and consistent across the pipel
 - **THEN** the status response distinguishes an actively progressing push from a stalled one (e.g., phase timestamps)
 - **AND** the client can surface elapsed assembly time to the user instead of failing silently
 
-### Requirement: Cloud push meets a performance target
-The monolith's cloud push SHALL upload assets in bounded parallel batches (each batch sized well below the gRPC message limit) rather than one monolithic unary message, targeting a p95 push time of at most 10 minutes for typical pages and staying within the declared worst-case envelope for the largest allowed sessions.
+### Requirement: Cloud push stays inside the unary envelope
+The frozen unary proto contract allows exactly one `IngestPage` per session — the archive service has no upsert semantics, and a second `IngestPage` carrying the same `extension_job_id` silently drops the new assets — so batching a session across multiple `IngestPage` calls is not a valid strategy. The monolith SHALL instead guarantee that the single push message fits the gateway's gRPC message-size limit: it SHALL pre-flight the session's total payload size before uploading and, when it exceeds the 256 MB limit, fail fast with a precise `cloud_error` naming the size limit, without pointless retries. Asset reads feeding the request SHALL run under bounded parallelism so pushes for typical pages complete promptly and the largest allowed sessions stay inside the declared worst-case envelope.
 
-#### Scenario: Large page pushes in batches
-- **WHEN** a session with 200 assets and 100 MB total payload pushes to PagePocket
-- **THEN** assets are uploaded as multiple batched `IngestPage`-compatible requests under bounded concurrency
+#### Scenario: Oversized session fails fast before upload
+- **WHEN** a session's total payload (HTML plus assets) is pre-flighted above the 256 MB gRPC message-size limit
+- **THEN** the push fails immediately with a precise `cloud_error` naming the size limit
+- **AND** no `IngestPage` attempt, retry, or partial upload is made
+
+#### Scenario: Assets are read under bounded parallelism
+- **WHEN** a session with many assets (e.g., 200 assets / 100 MB total) pushes to PagePocket
+- **THEN** asset reads run under bounded concurrency inside the single `IngestPage` request
 - **AND** no single gRPC message exceeds the configured message-size limit
 
 #### Scenario: Push failure keeps the envelope honest
-- **WHEN** a batch fails after retries
+- **WHEN** the push fails after retries
 - **THEN** the push fails within its declared budget
 - **AND** the session reports `cloud_status="failed"` rather than hanging past the client's timeout
 
-### Requirement: Idempotent batched push
-Because a push is now split into batches, re-running a push after a mid-stream failure SHALL NOT produce duplicated or partially-updated archived content: either the existing user-scoped ingest idempotency (same `extension_job_id`) returns the original page, or a retry semantics is defined that converges to a single complete page.
+### Requirement: Single-flight push convergence
+Because a push is a single `IngestPage` per session keyed by user-scoped idempotency (the session's `extension_job_id`), a re-run after a mid-stream failure SHALL NOT produce duplicated or partially-updated archived content: the retry reuses the same idempotency key and the archive service returns the original page. The monolith SHALL NOT split a session across multiple `IngestPage` calls — such split batches cannot converge, because later batches are silently dropped by the idempotency path.
 
-#### Scenario: Retry after partial push converges
-- **WHEN** a push fails after some batches were accepted and the monolith retries
-- **THEN** the archive service returns the same `page_id` for the same `extension_job_id`
-- **AND** the archived page is not duplicated or corrupted
+#### Scenario: Retry after failed push converges
+- **WHEN** a push fails and the monolith retries
+- **THEN** the retry reuses the same user-scoped idempotency key (`extension_job_id`)
+- **AND** the archive service returns the same `page_id` and the archived page is not duplicated or corrupted
+
+> **Follow-up change recommendation (out of scope here):** true >254 MB cloud sessions cannot be served by the unary contract at all — no amount of client-side gating recovers them. Supporting them requires a new chunked-ingest RPC surface — `InitChunkedIngest` / `IngestAssetChunk` / `CommitIngestPage` — with per-chunk idempotency and an atomic commit step, plus a matching envelope update. This change records the recommendation; the proto stays frozen for this change.

@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import re
 import shutil
 from datetime import datetime, timedelta, timezone
 
@@ -24,6 +25,54 @@ from app.services.assembly_manager import assembly_task_manager
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
+
+# Host header sanity for forwarded values: hostname (optionally :port) or a
+# bracketed IPv6 literal (optionally :port). Anything else is ignored so a
+# misconfigured proxy cannot inject path/authority characters into built URLs.
+_FORWARDED_HOST_RE = re.compile(
+    r"^[A-Za-z0-9._\-]+(?::\d+)?$|^\[[0-9A-Fa-f:.]+\](?::\d+)?$"
+)
+_FORWARDED_SCHEMES = ("http", "https")
+
+
+def external_base_url(request: Request) -> str:
+    """Absolute base URL as seen by external clients, for building links
+    such as ``download_url`` (deployment-routing: "Download URL is correct
+    behind the proxy").
+
+    When ``settings.trust_proxy`` is set — the same gate client-IP resolution
+    uses (7.8) — explicit ``X-Forwarded-Proto`` / ``X-Forwarded-Host`` are
+    preferred so built URLs carry the public scheme and host instead of the
+    internal one. Otherwise (no headers, partial headers, unknown scheme,
+    malformed host, or trust_proxy disabled) the request's own base URL wins.
+
+    Note on layering: uvicorn's ``proxy_headers`` handling (on by default,
+    ``forwarded_allow_ips`` defaults to 127.0.0.1 — the same-host nginx) may
+    already have folded a trusted proxy's ``X-Forwarded-Proto`` and Host into
+    ``request.base_url``; this helper makes the preference explicit and test-
+    able instead of relying on server defaults.
+    """
+    base = str(request.base_url).rstrip("/")
+    if not settings.trust_proxy:
+        return base
+
+    scheme, _, host_and_path = base.partition("://")
+
+    forwarded_proto = (
+        (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip().lower()
+    )
+    if forwarded_proto in _FORWARDED_SCHEMES:
+        scheme = forwarded_proto
+
+    forwarded_host = (
+        (request.headers.get("x-forwarded-host") or "").split(",")[0].strip()
+    )
+    if forwarded_host and _FORWARDED_HOST_RE.match(forwarded_host):
+        # Keep any path prefix from base_url (root_path), swap only the host.
+        parts = host_and_path.split("/", 1)
+        host_and_path = forwarded_host if len(parts) == 1 else f"{forwarded_host}/{parts[1]}"
+
+    return f"{scheme}://{host_and_path}"
 
 
 # --- Pydantic models ---
@@ -326,8 +375,8 @@ async def get_session_status(
             output_type = "html"
         else:
             output_type = "zip"
-        # Construct absolute download URL from request base URL
-        base_url = str(request.base_url).rstrip("/")
+        # Construct absolute download URL from the externally-visible base URL
+        base_url = external_base_url(request)
         download_url = f"{base_url}/api/v1/sessions/{session.id}/download"
         if session.zip_path and os.path.exists(session.zip_path):
             output_size = os.path.getsize(session.zip_path)

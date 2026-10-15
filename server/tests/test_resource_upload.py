@@ -720,3 +720,102 @@ class TestDecompressBounded:
         blob = _gzip.compress(b"a" * 2048) + _gzip.compress(b"b" * 5_000_000)
         with pytest.raises(_GzipBombError):
             _decompress_bounded(blob, 1 << 20)
+
+
+# ---------------------------------------------------------------------------
+# server-api — mutations rejected while status=assembling
+# ---------------------------------------------------------------------------
+
+
+class TestAssemblingStatusRejected:
+    """Resource uploads and filename-map merges are rejected with 409 once a
+    session has moved past scraping/uploading (i.e. status='assembling')."""
+
+    @pytest.mark.asyncio
+    async def test_resource_upload_rejected_when_assembling(self):
+        session = _mock_session(
+            session_id="sess-asm", client_id="client-asm",
+            status=SessionStatus.ASSEMBLING,
+        )
+        db = _mock_db(_scalar_one(session))  # session lookup → 409 before size queries
+
+        with patch("app.api.routes.resources.settings") as cfg, \
+             patch("app.api.routes.resources.resource_upload_limiter") as limiter, \
+             patch("app.api.routes.resources.require_session_owner"):
+            cfg.max_session_size_mb = 100
+            cfg.storage_root = "/tmp/unused"
+            limiter.is_allowed.return_value = (True, 0)
+
+            with pytest.raises(HTTPException) as exc:
+                await upload_resource(
+                    session_id="sess-asm",
+                    request=_mock_request(content_length=None),
+                    file=_AsyncUploadFile(b"x"),
+                    path="images/late.png",
+                    originalUrl="https://example.com/late.png",
+                    contentType="image/png",
+                    x_content_gzipped=False,
+                    client=MagicMock(id="client-asm"),
+                    db=db,
+                )
+
+        assert exc.value.status_code == 409
+        assert exc.value.detail["error"] == "invalid_status"
+        assert exc.value.detail["api_version"] == "v1"
+        assert "assembling" in exc.value.detail["message"]
+
+    @pytest.mark.asyncio
+    async def test_resource_upload_rejected_when_ready(self):
+        """The guard covers every non scraping/uploading status (e.g. ready)."""
+        session = _mock_session(
+            session_id="sess-ready", client_id="client-ready",
+            status=SessionStatus.READY,
+        )
+        db = _mock_db(_scalar_one(session))
+
+        with patch("app.api.routes.resources.settings") as cfg, \
+             patch("app.api.routes.resources.resource_upload_limiter") as limiter, \
+             patch("app.api.routes.resources.require_session_owner"):
+            cfg.max_session_size_mb = 100
+            cfg.storage_root = "/tmp/unused"
+            limiter.is_allowed.return_value = (True, 0)
+
+            with pytest.raises(HTTPException) as exc:
+                await upload_resource(
+                    session_id="sess-ready",
+                    request=_mock_request(content_length=None),
+                    file=_AsyncUploadFile(b"x"),
+                    path="images/late.png",
+                    originalUrl="https://example.com/late.png",
+                    contentType="image/png",
+                    x_content_gzipped=False,
+                    client=MagicMock(id="client-ready"),
+                    db=db,
+                )
+
+        assert exc.value.status_code == 409
+        assert exc.value.detail["error"] == "invalid_status"
+
+    @pytest.mark.asyncio
+    async def test_filename_map_rejected_when_assembling(self):
+        from app.api.routes.resources import FilenameMapRequest, upload_filename_map
+
+        session = _mock_session(
+            session_id="sess-map-asm", client_id="client-map-asm",
+            status=SessionStatus.ASSEMBLING,
+        )
+        db = _mock_db(_scalar_one(session))
+
+        with pytest.raises(HTTPException) as exc:
+            await upload_filename_map(
+                "sess-map-asm",
+                body=FilenameMapRequest(map={"https://example.com/a.png": "images/a.png"}),
+                client=MagicMock(id="client-map-asm"),
+                db=db,
+            )
+
+        assert exc.value.status_code == 409
+        assert exc.value.detail["error"] == "invalid_status"
+        assert exc.value.detail["api_version"] == "v1"
+        # The map must not have been touched on the rejected session
+        db.flush.assert_not_called()

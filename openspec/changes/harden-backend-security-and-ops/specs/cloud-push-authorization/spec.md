@@ -40,3 +40,21 @@ The monolith's cloud push (`IngestPage`) SHALL fill `user_id` from the client's 
 #### Scenario: Re-binding updates the plan
 - **WHEN** a client re-runs the binding flow and the verified token now reports a different plan
 - **THEN** subsequent pushes carry the new plan
+
+### Requirement: 401 disambiguation contract on the binding endpoint
+A 401 from the binding endpoint SHALL discriminate its two distinct causes via `detail.error` so that clients (the extension) can react correctly instead of guessing: `detail.error == "invalid_pagepocket_token"` means the request's API key was recognized but the PagePocket access token failed verification (the user's PagePocket login is bad — re-registering the instance must not be attempted), while `detail.error == "invalid_api_key"` means the monolith does not recognize the request's API key (the server-side key was revoked or the instance is unknown — the extension re-registers once as a fresh instance and retries the link a single time).
+
+#### Scenario: Bad PagePocket token reported as invalid_pagepocket_token
+- **WHEN** the request carries a recognized API key but the PagePocket access token fails verification
+- **THEN** the response is 401 with `detail.error == "invalid_pagepocket_token"`
+- **AND** no binding is created or modified
+
+#### Scenario: Revoked or unknown API key reported as invalid_api_key
+- **WHEN** the request carries no API key, an unknown API key, or one revoked server-side
+- **THEN** the response is 401 with `detail.error == "invalid_api_key"`
+- **AND** no binding is created or modified
+
+#### Scenario: Extension reacts differently to each code
+- **WHEN** the extension receives a 401 from the binding endpoint
+- **THEN** on `invalid_pagepocket_token` it does NOT re-register the instance (the PagePocket token is the problem; the user must re-login instead)
+- **AND** on `invalid_api_key` it re-registers once as a fresh instance and retries the link exactly once, surfacing an error if that single retry also fails
