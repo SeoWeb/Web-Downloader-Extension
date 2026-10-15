@@ -34,9 +34,7 @@ function fallbackBuildArchivePath(url: string, category: string): string {
   const safeCategory = (category || "assets").replace(/[^a-z0-9_-]/gi, "");
   try {
     const parsed = new URL(url);
-    const segments = parsed.pathname
-      .split("/")
-      .filter((s) => s.length > 0);
+    const segments = parsed.pathname.split("/").filter((s) => s.length > 0);
 
     if (segments.length === 0) {
       return `${safeCategory}/${fixFilename(url)}`;
@@ -59,7 +57,8 @@ function fallbackBuildArchivePath(url: string, category: string): string {
 }
 
 function resolveBuildArchivePath(): (url: string, category: string) => string {
-  const canonical = (urlUtils as { buildArchivePath?: unknown }).buildArchivePath;
+  const canonical = (urlUtils as { buildArchivePath?: unknown })
+    .buildArchivePath;
   if (typeof canonical === "function") {
     return canonical as (url: string, category: string) => string;
   }

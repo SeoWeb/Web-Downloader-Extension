@@ -11,7 +11,11 @@ import type {
 } from "../urlUtils";
 import { sniffImageMimeType } from "../sniffImageMime";
 import { requestQueue } from "../../utils/RequestQueue";
-import { RequestPriority, RequestResult, ResourceType } from "../../types/queue";
+import {
+  RequestPriority,
+  RequestResult,
+  ResourceType,
+} from "../../types/queue";
 import type { QueuedRequest } from "../../types/queue";
 
 /** Outcome of a queued fetch — either a result or the failure. */
@@ -134,16 +138,15 @@ export async function addImageFiles(
 
     try {
       const snapshotBytes = result.snapshot.bytes;
-      const bytes = snapshotBytes ? new Uint8Array(snapshotBytes) : new Uint8Array();
+      const bytes = snapshotBytes
+        ? new Uint8Array(snapshotBytes)
+        : new Uint8Array();
       let contentType = result.snapshot.contentType || "";
 
       const blob = new Blob([bytes], { type: contentType || undefined });
 
       // When Content-Type is missing or unhelpful, sniff the blob bytes
-      if (
-        contentType === "" ||
-        contentType === "application/octet-stream"
-      ) {
+      if (contentType === "" || contentType === "application/octet-stream") {
         const sniffed = await sniffImageMimeType(blob);
         if (sniffed) contentType = sniffed;
       }

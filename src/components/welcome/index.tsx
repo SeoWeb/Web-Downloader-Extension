@@ -48,13 +48,7 @@ function Step({
   );
 }
 
-function Feature({
-  icon,
-  text,
-}: {
-  icon: React.ReactNode;
-  text: string;
-}) {
+function Feature({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
       <span className="text-brand flex-shrink-0">{icon}</span>
@@ -107,9 +101,18 @@ export default function Welcome() {
             {t("welcome.featuresTitle")}
           </h2>
           <div className="space-y-2">
-            <Feature icon={<Layers className="w-4 h-4" />} text={t("welcome.feature1")} />
-            <Feature icon={<Cloud className="w-4 h-4" />} text={t("welcome.feature2")} />
-            <Feature icon={<Globe className="w-4 h-4" />} text={t("welcome.feature3")} />
+            <Feature
+              icon={<Layers className="w-4 h-4" />}
+              text={t("welcome.feature1")}
+            />
+            <Feature
+              icon={<Cloud className="w-4 h-4" />}
+              text={t("welcome.feature2")}
+            />
+            <Feature
+              icon={<Globe className="w-4 h-4" />}
+              text={t("welcome.feature3")}
+            />
           </div>
         </div>
 

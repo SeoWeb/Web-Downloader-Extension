@@ -282,7 +282,11 @@ export class DomainLimiter implements IDomainLimiter {
       // Any other directive belongs to the current group
       currentGroupHasDirectives = true;
 
-      if (field === "crawl-delay" && currentGroupIsStar && starGroupDelay === null) {
+      if (
+        field === "crawl-delay" &&
+        currentGroupIsStar &&
+        starGroupDelay === null
+      ) {
         const delay = parseFloat(value);
         if (!isNaN(delay)) {
           // Convert to milliseconds

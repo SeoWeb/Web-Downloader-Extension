@@ -70,8 +70,9 @@ export const LanguageSwitcher: React.FC = () => {
   /** Move focus between the rendered `role="option"` buttons. */
   const moveOptionFocus = (direction: 1 | -1) => {
     const options = Array.from(
-      dropdownRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ??
-        [],
+      dropdownRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="option"]',
+      ) ?? [],
     );
     if (options.length === 0) return;
     const currentIndex = options.findIndex(
@@ -90,13 +91,16 @@ export const LanguageSwitcher: React.FC = () => {
   const handleTypeAhead = (char: string, target: HTMLElement) => {
     const now = Date.now();
     const buffer =
-      now - typeAheadRef.current.timestamp > 500 ? "" : typeAheadRef.current.query;
+      now - typeAheadRef.current.timestamp > 500
+        ? ""
+        : typeAheadRef.current.query;
     const query = (buffer + char).toLowerCase();
     typeAheadRef.current = { query, timestamp: now };
 
     const options = Array.from(
-      dropdownRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ??
-        [],
+      dropdownRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="option"]',
+      ) ?? [],
     );
     if (options.length === 0) return;
     const startIndex = Math.max(

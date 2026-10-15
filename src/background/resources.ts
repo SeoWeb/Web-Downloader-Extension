@@ -45,7 +45,10 @@ function parseSrcset(srcset: string | undefined): string[] {
     const firstToken = entry.trim().split(/\s+/)[0];
     if (!firstToken) continue;
     // The URL is the first token; descriptors follow ("320w", "2x", ...)
-    const url = firstToken.replace(new RegExp(ENCODED_COMMA_PLACEHOLDER, "g"), "%2C");
+    const url = firstToken.replace(
+      new RegExp(ENCODED_COMMA_PLACEHOLDER, "g"),
+      "%2C",
+    );
     if (isFetchableResourceUrl(url)) {
       urls.push(url);
     }

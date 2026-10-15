@@ -290,7 +290,8 @@ export class LinkedPageScraper {
     }
 
     // Per-download shared map (main page + linked pages of THIS download)
-    const sharedImageFilenameMap = context?.imageFilenameMap ?? new Map<string, string>();
+    const sharedImageFilenameMap =
+      context?.imageFilenameMap ?? new Map<string, string>();
 
     let accumulatedText = "";
 

@@ -53,7 +53,7 @@
 - [x] 6.1 Add `status.finalizingPartial` and the 26 missing cloud/PagePocket keys to `src/i18n/locales/en.json`; verify every `t()` key in `src/` exists in `en.json`
 - [x] 6.2 Write a sync script that copies missing `en.json` keys (English fallback text) into all other locale files and run it
 - [x] 6.3 Add a vitest locale-coverage check that fails when a `t()` key is missing from `en.json` or a locale is missing an `en.json` key; wire into `npm test`
-- [ ] 6.4 Trim `public/_locales/*` to manifest-required keys once the popup is removed (name/description/title)
+- [x] 6.4 Trim `public/_locales/*` to manifest-required keys once the popup is removed (name/description/title)
 
 ## 7. Security & manifest
 
@@ -65,13 +65,13 @@
 ## 8. Hygiene & tooling
 
 - [x] 8.1 Delete dead code: `StreamingDownloader`, `streamingFetch`, `streaming/*`, `chunkedZip`, `progressPersistence`, `download-services`, `ports/**`, `connection.ts`, `functions.ts` (after salvaging listeners), `components/popup/**`, legacy `components/sidepanel/**`, `popup.tsx`, `popup.html`, `components/ui/**`, `lib/utils.ts`; remove jest config in favor of vitest
-- [ ] 8.2 Remove the 8 phantom dependencies from `package.json` (`socket.io-client`, `tailwind-merge`, `@radix-ui/*` x6) and fix the remaining `tsc --noEmit` errors; add `tsc --noEmit` to the test script
+- [x] 8.2 Remove the 8 phantom dependencies from `package.json` (`socket.io-client`, `tailwind-merge`, `@radix-ui/*` x6) and fix the remaining `tsc --noEmit` errors; add `tsc --noEmit` to the test script
 - [x] 8.3 Add ESLint (`@eslint/js` recommended + `eslint-plugin-react-hooks`) with an npm script, fix/suppress findings, restore `.husky/pre-commit` (prettier + eslint), delete `package-lock.json`
 - [x] 8.4 Make the e2e test terminate reliably in non-headless mode (remove the never-resolving `finally` await) and give TEST 4 real assertions
 - [x] 8.5 Add unit tests for `RequestQueue` fairness/timeout/dedup (§2) and file-handler URL resolution (§1/§3) as part of each task; keep the 194 existing tests green
 
 ## 9. Verification
 
-- [ ] 9.1 Full suite: `npm test` (all green including new tests), `npx tsc --noEmit` (0 errors), `npm run build` (success, dist contains only shipped entries)
+- [x] 9.1 Full suite: `npm test` (all green including new tests), `npx tsc --noEmit` (0 errors), `npm run build` (success, dist contains only shipped entries)
 - [ ] 9.2 Manual smoke matrix: root page + nested page relative assets; same-basename collision page; Shift_JIS page; `@import` chain page; login-gated assets; two concurrent tabs; restricted page (chrome://) start; server-unavailable fallback; panel closed mid-download; SW kill mid-download + resume
-- [ ] 9.3 Verify spec coverage: walk each spec scenario in this change and confirm an automated test or documented manual check exists
+- [x] 9.3 Verify spec coverage: walk each spec scenario in this change and confirm an automated test or documented manual check exists

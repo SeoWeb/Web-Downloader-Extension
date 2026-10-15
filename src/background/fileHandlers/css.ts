@@ -15,7 +15,11 @@ import type {
 } from "../urlUtils";
 import { DEFAULT_MEMORY_LIMITS } from "../../utils/memoryLimits";
 import { requestQueue } from "../../utils/RequestQueue";
-import { RequestPriority, RequestResult, ResourceType } from "../../types/queue";
+import {
+  RequestPriority,
+  RequestResult,
+  ResourceType,
+} from "../../types/queue";
 import type { QueuedRequest } from "../../types/queue";
 
 /** Maximum @import recursion depth (page-level CSS counts as depth 0). */
@@ -370,7 +374,9 @@ async function downloadBackgroundImages(
 
     try {
       const snapshotBytes = result.snapshot.bytes;
-      const bytes = snapshotBytes ? new Uint8Array(snapshotBytes) : new Uint8Array();
+      const bytes = snapshotBytes
+        ? new Uint8Array(snapshotBytes)
+        : new Uint8Array();
       const blob = new Blob([bytes]);
 
       await storage.addFile(buildArchivePath(fullImageUrl, "images"), blob);

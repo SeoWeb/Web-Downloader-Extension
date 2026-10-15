@@ -1112,7 +1112,9 @@ export class ServerClient {
         return `ext-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       }
 
-      const result = await chrome.storage.session.get(EXTENSION_INSTANCE_ID_KEY);
+      const result = await chrome.storage.session.get(
+        EXTENSION_INSTANCE_ID_KEY,
+      );
       if (result[EXTENSION_INSTANCE_ID_KEY]) {
         return result[EXTENSION_INSTANCE_ID_KEY] as string;
       }

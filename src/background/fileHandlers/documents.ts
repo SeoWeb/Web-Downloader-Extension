@@ -1,11 +1,19 @@
 import { IStorageAdapter } from "../storage/server-storage-adapter";
-import { buildArchivePath, resolveResourceUrl, toFailureCategory } from "../urlUtils";
+import {
+  buildArchivePath,
+  resolveResourceUrl,
+  toFailureCategory,
+} from "../urlUtils";
 import type {
   FileHandlerFailureCategory,
   FileHandlerOptions,
 } from "../urlUtils";
 import { requestQueue } from "../../utils/RequestQueue";
-import { RequestPriority, RequestResult, ResourceType } from "../../types/queue";
+import {
+  RequestPriority,
+  RequestResult,
+  ResourceType,
+} from "../../types/queue";
 import type { QueuedRequest } from "../../types/queue";
 
 /** Outcome of a queued fetch — either a result or the failure. */
@@ -144,7 +152,9 @@ export async function addDocumentFiles(
 
     try {
       const snapshotBytes = result.snapshot.bytes;
-      const bytes = snapshotBytes ? new Uint8Array(snapshotBytes) : new Uint8Array();
+      const bytes = snapshotBytes
+        ? new Uint8Array(snapshotBytes)
+        : new Uint8Array();
       const blob = new Blob([bytes]);
 
       // Collision-free archive path preserving the directory structure.

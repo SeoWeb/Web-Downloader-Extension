@@ -555,13 +555,11 @@ export interface BuildArchivePathOptions {
 
 /** Sanitize a single archive path segment (directory or file base name). */
 function sanitizeArchiveSegment(segment: string): string {
-  return (
-    segment
-      .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~\s]/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 100)
-  );
+  return segment
+    .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~\s]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100);
 }
 
 /** Percent-decode a path segment, keeping the raw value on invalid input. */
@@ -597,7 +595,8 @@ export function buildArchivePath(
   category: string,
   options?: BuildArchivePathOptions,
 ): string {
-  const safeCategory = sanitizeArchiveSegment(String(category ?? "")) || "assets";
+  const safeCategory =
+    sanitizeArchiveSegment(String(category ?? "")) || "assets";
 
   let pathname = "";
   let search = "";
@@ -625,7 +624,11 @@ export function buildArchivePath(
   // (legacy handler behavior — applied here so handlers and the registry
   // that both call this builder stay consistent).
   const lastRaw = rawSegments[rawSegments.length - 1];
-  if (lastRaw && lastRaw.startsWith("undefined") && lastRaw.length > "undefined".length) {
+  if (
+    lastRaw &&
+    lastRaw.startsWith("undefined") &&
+    lastRaw.length > "undefined".length
+  ) {
     rawSegments[rawSegments.length - 1] = lastRaw.slice("undefined".length);
   }
 
@@ -660,7 +663,9 @@ export function buildArchivePath(
   } else {
     const name = sanitizeArchiveSegment(decodeSegment(rawBasename)) || "file";
     const extension =
-      options?.defaultExtension || CATEGORY_DEFAULT_EXTENSIONS[safeCategory] || "bin";
+      options?.defaultExtension ||
+      CATEGORY_DEFAULT_EXTENSIONS[safeCategory] ||
+      "bin";
     filename = queryHash
       ? `${name}_${queryHash}.${extension}`
       : `${name}.${extension}`;
@@ -745,7 +750,9 @@ export function resolveResourceUrl(
 // ---------------------------------------------------------------------------
 
 /** Extract the charset parameter from a Content-Type header value. */
-export function parseCharsetFromContentType(contentType?: string): string | null {
+export function parseCharsetFromContentType(
+  contentType?: string,
+): string | null {
   if (!contentType) return null;
   const match = contentType.match(/charset\s*=\s*"?([^";\s]+)"?/i);
   return match ? match[1] : null;
@@ -829,7 +836,12 @@ export function extractCssImports(cssContent: string): string[] {
   let match: RegExpExecArray | null;
   while ((match = importPattern.exec(cssContent)) !== null) {
     const value = (
-      match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5] ?? ""
+      match[1] ??
+      match[2] ??
+      match[3] ??
+      match[4] ??
+      match[5] ??
+      ""
     )
       .trim()
       .replace(/^url\(\s*/i, "")

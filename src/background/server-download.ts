@@ -132,10 +132,7 @@ export class ServerDownloadHandler {
     while (true) {
       // Check for cancellation
       if (signal?.aborted) {
-        throw new DOMException(
-          "Assembly polling was cancelled",
-          "AbortError",
-        );
+        throw new DOMException("Assembly polling was cancelled", "AbortError");
       }
 
       // Check for timeout

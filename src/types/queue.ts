@@ -226,8 +226,11 @@ export function snapshotToResponse(snapshot: ResponseSnapshot): Response {
     snapshot.status >= 200 && snapshot.status <= 599 ? snapshot.status : 200;
   // Null-body statuses reject a non-null body in the Response constructor.
   const isNullBodyStatus =
-    snapshot.status === 204 || snapshot.status === 205 || snapshot.status === 304;
-  const body = snapshot.bytes && !isNullBodyStatus ? new Uint8Array(snapshot.bytes) : null;
+    snapshot.status === 204 ||
+    snapshot.status === 205 ||
+    snapshot.status === 304;
+  const body =
+    snapshot.bytes && !isNullBodyStatus ? new Uint8Array(snapshot.bytes) : null;
 
   return new Response(body, {
     status,
@@ -237,7 +240,9 @@ export function snapshotToResponse(snapshot: ResponseSnapshot): Response {
 }
 
 /** Decode snapshot bytes as text (UTF-8 unless a consumer handles charset). */
-export async function snapshotText(snapshot: ResponseSnapshot): Promise<string> {
+export async function snapshotText(
+  snapshot: ResponseSnapshot,
+): Promise<string> {
   if (snapshot.text !== null) {
     return snapshot.text;
   }

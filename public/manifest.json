@@ -10,7 +10,7 @@
     "default_icon": "icons/128x128.png",
     "default_title": "__MSG_extensionActionTitle__"
   },
-  "permissions": ["activeTab", "tabs", "scripting", "sidePanel", "downloads", "storage"],
+  "permissions": ["activeTab", "tabs", "scripting", "sidePanel", "downloads", "storage", "alarms"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "type": "module",

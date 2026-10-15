@@ -53,7 +53,10 @@ function createCompositeAbort(
 
   const timer = setTimeout(() => {
     composite.abort(
-      new DOMException(`Request timed out after ${timeoutMs}ms`, "TimeoutError"),
+      new DOMException(
+        `Request timed out after ${timeoutMs}ms`,
+        "TimeoutError",
+      ),
     );
   }, timeoutMs);
 
@@ -486,7 +489,10 @@ export class RequestQueue {
       // Get adaptive concurrency limit
       const maxConcurrency = this.throttlingManager.getAdaptiveConcurrency();
 
-      while (this.activeRequests.size + requestsToStart.length < maxConcurrency) {
+      while (
+        this.activeRequests.size + requestsToStart.length <
+        maxConcurrency
+      ) {
         const request = this.scheduler.getNextRequest();
 
         if (!request) {
@@ -628,7 +634,7 @@ export class RequestQueue {
       // Adjust the domain limiter, threading Retry-After hints from
       // 429/Retry-After responses into the rate adjustment.
       const status =
-        error instanceof RequestQueueError ? error.status ?? 0 : 0;
+        error instanceof RequestQueueError ? (error.status ?? 0) : 0;
       const retryAfterMs =
         error instanceof RequestQueueError ? error.retryAfterMs : undefined;
       domainLimiter.adjustRateLimit(status, retryAfterMs);

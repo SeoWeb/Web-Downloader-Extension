@@ -26,10 +26,7 @@ interface UseActiveTabInfoProps {
  */
 const BLOCKED_PROTOCOLS = ["view-source:", "file:"];
 
-const BLOCKED_HOSTS = [
-  "chromewebstore.google.com",
-  "chrome.google.com",
-];
+const BLOCKED_HOSTS = ["chromewebstore.google.com", "chrome.google.com"];
 
 /**
  * Validate a tab URL (task 5.1 / design D8).
@@ -105,11 +102,18 @@ export function useActiveTabInfo({
       setTabUrl(tabUrl);
 
       const supported = isTabUrlSupported(tabUrl);
-      setInfo({ tabId, tabUrl, supported, reason: supported ? null : "unsupportedUrl" });
+      setInfo({
+        tabId,
+        tabUrl,
+        supported,
+        reason: supported ? null : "unsupportedUrl",
+      });
 
       if (supported) {
         setMessages((prev) =>
-          prev.some((m) => (typeof m === "string" ? m : m.key) === "status.connected")
+          prev.some(
+            (m) => (typeof m === "string" ? m : m.key) === "status.connected",
+          )
             ? prev
             : [...prev, { key: "status.connected" }],
         );

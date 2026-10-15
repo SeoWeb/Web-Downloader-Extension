@@ -42,15 +42,9 @@ export const initialDownloadReport: DownloadReport = {
 const SUMMARY_CATEGORIES: Array<[category: string, keys: string[]]> = [
   ["html", ["status.htmlSummary"]],
   ["css", ["status.cssSummary", "status.cssStreamingSummary"]],
-  [
-    "bgImages",
-    ["status.bgImagesSummary", "status.bgImagesStreamingSummary"],
-  ],
+  ["bgImages", ["status.bgImagesSummary", "status.bgImagesStreamingSummary"]],
   ["js", ["status.jsSummary", "status.jsStreamingSummary"]],
-  [
-    "images",
-    ["status.imagesSummary", "status.imagesStreamingSummary"],
-  ],
+  ["images", ["status.imagesSummary", "status.imagesStreamingSummary"]],
   ["documents", ["status.documentsSummary"]],
   ["links", ["status.linksSummary"]],
   ["content", ["status.contentSummary"]],

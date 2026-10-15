@@ -431,12 +431,7 @@ export default function SidePanel() {
     return () => {
       chrome.storage.onChanged.removeListener(handleStorageChange);
     };
-  }, [
-    setMessages,
-    setAction,
-    setDownloadResponse,
-    setIsScraping,
-  ]);
+  }, [setMessages, setAction, setDownloadResponse, setIsScraping]);
 
   // Memoize reset function
   const reset = useCallback(
@@ -570,9 +565,8 @@ export default function SidePanel() {
               );
               const session = status?.result;
               if (session?.status === "ready" && session.download_url) {
-                const { loadFilterOptions } = await import(
-                  "./common/storage/filterStorage"
-                );
+                const { loadFilterOptions } =
+                  await import("./common/storage/filterStorage");
                 const opts = await loadFilterOptions();
                 chrome.downloads.download({
                   url: session.download_url,

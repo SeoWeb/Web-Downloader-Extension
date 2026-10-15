@@ -12,7 +12,7 @@
     "style": "prettier --check \"src/**/*.{ts,tsx}\"",
     "style:fix": "prettier --write \"src/**/*.{ts,tsx}\"",
     "prepare": "husky",
-    "test": "vitest run",
+    "test": "tsc --noEmit && vitest run",
     "test:watch": "vitest",
     "test:e2e": "node tests/e2e/extension-installation.test.cjs",
     "test:e2e:headless": "HEADLESS=true node tests/e2e/extension-installation.test.cjs"

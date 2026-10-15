@@ -5,7 +5,11 @@ import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
 import { abortActiveDownload } from "./download-state";
 import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
 import { resumeServerDownload } from "./download-core";
-import { serverClient, ServerUnavailableError, AuthenticationError } from "./server-client";
+import {
+  serverClient,
+  ServerUnavailableError,
+  AuthenticationError,
+} from "./server-client";
 
 interface ServerSessionState {
   sessionId: string | null;

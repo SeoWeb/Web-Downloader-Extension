@@ -35,13 +35,8 @@ import {
   processImages,
   type HandlerOptions,
 } from "./download-processors";
-import {
-  AssetRegistry,
-  buildArchivePath,
-} from "./asset-registry";
-import {
-  LinkedPageScraper,
-} from "./linked-page-scraper";
+import { AssetRegistry, buildArchivePath } from "./asset-registry";
+import { LinkedPageScraper } from "./linked-page-scraper";
 import { ServerStorageAdapter } from "./storage/server-storage-adapter";
 import {
   serverClient,
@@ -531,7 +526,14 @@ async function executeDownloadServerMode(
       : Promise.resolve(EMPTY_MAP);
 
     const assetsPromise = downloadOptions.downloadAssets
-      ? processAssets(data, storage, tabUrl, sendMessage, context, mainPageOptions)
+      ? processAssets(
+          data,
+          storage,
+          tabUrl,
+          sendMessage,
+          context,
+          mainPageOptions,
+        )
       : Promise.resolve();
 
     const docsPromise = downloadOptions.downloadDocuments
@@ -612,15 +614,27 @@ async function executeDownloadServerMode(
         // registry keys equal uploaded paths.
         for (const cssUrl of data.css) {
           const fullUrl = new URL(cssUrl, tabUrl).href;
-          assetRegistry.register(fullUrl, buildArchivePath(fullUrl, "styles"), 0);
+          assetRegistry.register(
+            fullUrl,
+            buildArchivePath(fullUrl, "styles"),
+            0,
+          );
         }
         for (const jsUrl of data.js) {
           const fullUrl = new URL(jsUrl, tabUrl).href;
-          assetRegistry.register(fullUrl, buildArchivePath(fullUrl, "scripts"), 0);
+          assetRegistry.register(
+            fullUrl,
+            buildArchivePath(fullUrl, "scripts"),
+            0,
+          );
         }
         for (const imgUrl of data.images) {
           const fullUrl = new URL(imgUrl, tabUrl).href;
-          assetRegistry.register(fullUrl, buildArchivePath(fullUrl, "images"), 0);
+          assetRegistry.register(
+            fullUrl,
+            buildArchivePath(fullUrl, "images"),
+            0,
+          );
         }
         for (const docUrl of data.documents) {
           const fullUrl = new URL(docUrl, tabUrl).href;
@@ -691,8 +705,8 @@ async function executeDownloadServerMode(
           key: "status.downloadingLinks",
           options: { count: data.links.length },
         });
-        const { uploadedCount, skippedCount } =
-          await fetchAndUploadLinkedPages({
+        const { uploadedCount, skippedCount } = await fetchAndUploadLinkedPages(
+          {
             links: data.links,
             baseUrl: tabUrl,
             sessionId,
@@ -705,7 +719,8 @@ async function executeDownloadServerMode(
                 "linked",
                 pageUrl,
               ),
-          });
+          },
+        );
         console.log(
           `[ServerMode] Linked pages: ${uploadedCount} uploaded as HTML, ` +
             `${skippedCount} skipped (non-HTML, oversized, or failed)`,
