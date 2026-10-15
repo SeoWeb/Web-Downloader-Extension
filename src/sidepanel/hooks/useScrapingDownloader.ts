@@ -35,6 +35,8 @@ interface UseScrapingDownloaderProps {
   setIsScraping: React.Dispatch<React.SetStateAction<boolean>>;
   downloadOptions: DownloadOptions | null;
   setMessages: React.Dispatch<React.SetStateAction<any[]>>;
+  /** (5.5) Called when the user stops mid-scrape and a partial save proceeds. */
+  onPartialSave?: () => void;
 }
 
 export function useScrapingDownloader({
@@ -44,6 +46,7 @@ export function useScrapingDownloader({
   setIsScraping,
   downloadOptions,
   setMessages,
+  onPartialSave,
 }: UseScrapingDownloaderProps) {
   const { t } = useTranslation();
   const [downloadResponse, setDownloadResponse] =
@@ -96,9 +99,13 @@ export function useScrapingDownloader({
     await sendMessageToBackground(messageActions.SCRAPER_STOP, { tabId });
     if (isScrapingRef.current) {
       stoppedByUserRef.current = true;
+      // (5.5) Partial save: communicate what is happening instead of
+      // silently packaging the content captured so far.
+      setMessages((prev) => [...prev, { key: "status.savingPartialCapture" }]);
+      onPartialSave?.();
     }
     setIsScraping(false);
-  }, [tabId, setIsScraping]);
+  }, [tabId, setIsScraping, setMessages, onPartialSave]);
 
   const scrape = useCallback(async () => {
     if (!tabId) {

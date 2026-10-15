@@ -9,6 +9,7 @@
 import type { PagePocketAuthState, PagePocketUser } from "../types/authTypes";
 import { PAGEPOCKET_AUTH_STORAGE_KEY } from "../types/authTypes";
 import { PAGEPOCKET_URL } from "../common/pagepocket-mode";
+import { assertSecureBaseUrl } from "./server-client";
 
 // ---------------------------------------------------------------------------
 // Error classes (3.1)
@@ -125,6 +126,11 @@ export class PagePocketClient {
 
   constructor() {
     this.baseUrl = PAGEPOCKET_URL?.replace(/\/+$/, "") ?? "";
+
+    if (this.baseUrl) {
+      // D11 (task 7.4): refuse insecure configuration instead of warning
+      assertSecureBaseUrl(this.baseUrl, "PagePocket URL");
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -498,70 +504,6 @@ export class PagePocketClient {
   }
 
   // -----------------------------------------------------------------------
-  // Stream upload with progress (service worker compatible)
-  // -----------------------------------------------------------------------
-
-  private async progressStreamUpload(
-    path: string,
-    formData: FormData,
-    signal: AbortSignal | undefined,
-    onProgress: (loaded: number, total: number) => void,
-  ): Promise<Response> {
-    const tempReq = new Request(`${this.baseUrl}${path}`, {
-      method: "POST",
-      body: formData,
-    });
-    const bodyBytes = new Uint8Array(await tempReq.arrayBuffer());
-    const contentType = tempReq.headers.get("Content-Type")!;
-    const total = bodyBytes.length;
-
-    const createProgressStream = (): ReadableStream<Uint8Array> => {
-      const CHUNK = 64 * 1024;
-      let offset = 0;
-      return new ReadableStream({
-        pull(controller) {
-          if (offset >= total) {
-            controller.close();
-            return;
-          }
-          const end = Math.min(offset + CHUNK, total);
-          controller.enqueue(bodyBytes.slice(offset, end));
-          offset = end;
-          onProgress(offset, total);
-        },
-      });
-    };
-
-    const attempt = async (accessToken: string): Promise<Response> =>
-      fetch(`${this.baseUrl}${path}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": contentType,
-        },
-        body: createProgressStream(),
-        signal,
-        duplex: "half",
-      } as RequestInit & { duplex: string });
-
-    const token = await this.ensureAccessToken();
-    let res = await attempt(token);
-
-    if (res.status === 401) {
-      const newToken = await this.refreshWithMutex();
-      res = await attempt(newToken);
-      if (res.status === 401) {
-        await this.clearAuth();
-        throw new PagePocketAuthError(
-          "Authentication failed after token refresh",
-        );
-      }
-    }
-
-    return res;
-  }
-
-  // -----------------------------------------------------------------------
   // Error helpers
   // -----------------------------------------------------------------------
 
@@ -604,7 +546,10 @@ export class PagePocketClient {
   }
 
   // -----------------------------------------------------------------------
-  // Token persistence (chrome.storage.local)
+  // Token persistence (chrome.storage.session — D11 / task 7.2)
+  //
+  // Auth state never lives on disk: chrome.storage.session is cleared when
+  // the browser closes, so the user re-authenticates per browser session.
   // -----------------------------------------------------------------------
 
   private async saveAuth(data: AuthResponse): Promise<PagePocketAuthState> {
@@ -621,8 +566,8 @@ export class PagePocketClient {
 
   private async persistAuth(): Promise<void> {
     try {
-      if (!chrome?.storage?.local) return;
-      await chrome.storage.local.set({
+      if (!chrome?.storage?.session) return;
+      await chrome.storage.session.set({
         [PAGEPOCKET_AUTH_STORAGE_KEY]: this.authState,
       });
     } catch {
@@ -633,17 +578,18 @@ export class PagePocketClient {
   private async clearAuth(): Promise<void> {
     this.authState = null;
     try {
-      if (!chrome?.storage?.local) return;
-      await chrome.storage.local.remove(PAGEPOCKET_AUTH_STORAGE_KEY);
+      if (!chrome?.storage?.session) return;
+      await chrome.storage.session.remove(PAGEPOCKET_AUTH_STORAGE_KEY);
     } catch {
       // Non-critical
     }
   }
 
   private async loadAuthFromStorage(): Promise<PagePocketAuthState | null> {
+    await this.scrubLegacyLocalAuth();
     try {
-      if (!chrome?.storage?.local) return null;
-      const result = await chrome.storage.local.get(
+      if (!chrome?.storage?.session) return null;
+      const result = await chrome.storage.session.get(
         PAGEPOCKET_AUTH_STORAGE_KEY,
       );
       return (
@@ -651,6 +597,20 @@ export class PagePocketClient {
       );
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Remove the auth state persisted by older versions in
+   * chrome.storage.local (on disk). Auth is session-only since D11 —
+   * leftovers from previous versions must not outlive the browser session.
+   */
+  private async scrubLegacyLocalAuth(): Promise<void> {
+    try {
+      if (!chrome?.storage?.local) return;
+      await chrome.storage.local.remove(PAGEPOCKET_AUTH_STORAGE_KEY);
+    } catch {
+      // Non-critical
     }
   }
 }

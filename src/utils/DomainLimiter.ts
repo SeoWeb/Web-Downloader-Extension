@@ -16,6 +16,9 @@ export class DomainLimiter implements IDomainLimiter {
   public connectionPoolSize: number = 12;
   public activeConnections: number = 0;
 
+  /** The rate this limiter recovers to after backoff (the configured default). */
+  private readonly configuredDefaultRate: number;
+
   // Cache for robots.txt crawl delay
   private robotsTxtCache: Map<string, number> = new Map();
   private robotsTxtCacheTime: Map<string, number> = new Map();
@@ -24,6 +27,7 @@ export class DomainLimiter implements IDomainLimiter {
   constructor(domain: string, maxRequestsPerSecond: number = 8) {
     this.domain = domain;
     this.maxRequestsPerSecond = maxRequestsPerSecond;
+    this.configuredDefaultRate = maxRequestsPerSecond;
 
     // Initialize robots.txt crawl delay
     this.initializeCrawlDelay();
@@ -104,13 +108,18 @@ export class DomainLimiter implements IDomainLimiter {
 
   /**
    * Adjust the rate limit based on server response
+   * @param responseStatus HTTP status of the last response (0 for non-HTTP outcomes)
+   * @param retryAfterMs Optional Retry-After hint in MILLISECONDS
    */
-  public adjustRateLimit(responseStatus: number, retryAfter?: number): void {
+  public adjustRateLimit(responseStatus: number, retryAfterMs?: number): void {
     // If server sends 429 Too Many Requests, back off
     if (responseStatus === 429) {
-      if (retryAfter) {
-        // Use explicit retry-after header
-        this.maxRequestsPerSecond = Math.max(1, Math.floor(1000 / retryAfter));
+      if (retryAfterMs && retryAfterMs > 0) {
+        // Use explicit retry-after hint (ms) -> allowed requests per second
+        this.maxRequestsPerSecond = Math.max(
+          1,
+          Math.floor(1000 / retryAfterMs),
+        );
       } else {
         // Reduce rate limit by 50%
         this.maxRequestsPerSecond = Math.max(
@@ -130,8 +139,9 @@ export class DomainLimiter implements IDomainLimiter {
 
     // If we get successful responses, we can gradually increase
     else if (responseStatus >= 200 && responseStatus < 300) {
-      // Gradually increase rate limit back to default
-      const defaultRate = 2; // Default rate
+      // Gradually increase rate limit back to the ACTUAL configured default —
+      // a hardcoded fallback would leave domains stuck slow forever.
+      const defaultRate = this.configuredDefaultRate;
       if (this.maxRequestsPerSecond < defaultRate) {
         this.maxRequestsPerSecond = Math.min(
           defaultRate,
@@ -176,7 +186,7 @@ export class DomainLimiter implements IDomainLimiter {
     this.activeRequests = 0;
     this.activeConnections = 0;
     this.lastRequestTime = 0;
-    this.maxRequestsPerSecond = 2; // Reset to default
+    this.maxRequestsPerSecond = this.configuredDefaultRate;
   }
 
   /**
@@ -229,27 +239,59 @@ export class DomainLimiter implements IDomainLimiter {
   }
 
   /**
-   * Parse crawl delay from robots.txt content
+   * Parse crawl delay from robots.txt content.
+   *
+   * Only the `*` (wildcard) user-agent group is honored — a Crawl-delay for a
+   * specific bot (e.g. Googlebot) does not apply to us.
    */
-  private parseCrawlDelay(robotsText: string): number {
+  public parseCrawlDelay(robotsText: string): number {
     const lines = robotsText.split("\n");
 
+    let currentGroupIsStar = false;
+    let currentGroupHasDirectives = false;
+    let starGroupDelay: number | null = null;
+
     for (const line of lines) {
-      const trimmedLine = line.trim().toLowerCase();
+      // Strip comments and whitespace
+      const trimmedLine = line.split("#")[0].trim().toLowerCase();
+      if (!trimmedLine) {
+        continue;
+      }
 
-      // Look for "Crawl-delay:" directive
-      if (trimmedLine.startsWith("crawl-delay:")) {
-        const delayStr = trimmedLine.substring("crawl-delay:".length).trim();
-        const delay = parseFloat(delayStr);
+      const colonIndex = trimmedLine.indexOf(":");
+      if (colonIndex === -1) {
+        continue;
+      }
 
+      const field = trimmedLine.slice(0, colonIndex).trim();
+      const value = trimmedLine.slice(colonIndex + 1).trim();
+
+      if (field === "user-agent") {
+        // Directives seen since the last user-agent line closed that group —
+        // a new user-agent line starts a new group.
+        if (currentGroupHasDirectives) {
+          currentGroupIsStar = false;
+          currentGroupHasDirectives = false;
+        }
+        if (value === "*") {
+          currentGroupIsStar = true;
+        }
+        continue;
+      }
+
+      // Any other directive belongs to the current group
+      currentGroupHasDirectives = true;
+
+      if (field === "crawl-delay" && currentGroupIsStar && starGroupDelay === null) {
+        const delay = parseFloat(value);
         if (!isNaN(delay)) {
           // Convert to milliseconds
-          return Math.floor(delay * 1000);
+          starGroupDelay = Math.floor(delay * 1000);
         }
       }
     }
 
-    return 0;
+    return starGroupDelay ?? 0;
   }
 
   /**
@@ -286,5 +328,13 @@ export class DomainLimiterFactory {
     }
 
     return limiter;
+  }
+
+  /**
+   * Drop all per-domain limiters (fresh rates and robots state).
+   * Useful between downloads and in tests.
+   */
+  public static resetAll(): void {
+    this.limiters.clear();
   }
 }

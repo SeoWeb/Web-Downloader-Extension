@@ -17,7 +17,9 @@
       "maxScrollAttempts": "최대 스크롤 시도 횟수 도달",
       "panelUnavailable": "확장 패널이 닫히거나 사용할 수 없어 다운로드를 완료할 수 없습니다. 다운로드 중에는 이 패널을 열어둔 채로 다시 시도하십시오.",
       "panelUnavailableTitle": "확장 패널 필요",
-      "panelUnavailableTip": "이를 방지하려면 다운로드 중에 이 패널을 열어두고 탭을 전환하지 마십시오."
+      "panelUnavailableTip": "이를 방지하려면 다운로드 중에 이 패널을 열어두고 탭을 전환하지 마십시오.",
+      "somethingWentWrong": "Something went wrong",
+      "unexpectedError": "An unexpected error occurred. Details have been logged to the console."
     },
     "filter": {
       "title": "다운로드할 항목 필터링",
@@ -55,7 +57,20 @@
       "fullWebsiteDescription": "복잡한 웹사이트에 최적 (연결된 페이지의 첫 번째 레벨을 다운로드함)",
       "serverMode": "서버 모드",
       "insecureServerWarning": "HTTPS를 사용하지 않음",
-      "alwaysAskWhereToSave": "항상 파일 저장 위치 묻기"
+      "alwaysAskWhereToSave": "항상 파일 저장 위치 묻기",
+      "cloudStorage": "PagePocket Cloud Storage",
+      "cloudStorageDescription": "Save pages directly to your PagePocket account",
+      "cloudLoginRequired": "Login required",
+      "cloudEmail": "Email",
+      "cloudPassword": "Password",
+      "cloudName": "Name",
+      "cloudLogin": "Login",
+      "cloudRegister": "Register",
+      "cloudLogout": "Sign Out",
+      "cloudLoggedInAs": "Connected as {{email}}",
+      "cloudNoAccount": "Don't have an account?",
+      "cloudHasAccount": "Already have an account?",
+      "cloudAuthError": "Authentication failed"
     },
     "actions": {
       "title": "작업:",
@@ -198,7 +213,23 @@
         "uploading": "리소스 업로드",
         "assembling": "서버 어셈블리",
         "packing": "패키지 생성"
-      }
+      },
+      "resumeDownload": "Resume Download",
+      "reconnectingServer": "Reconnecting to server...",
+      "resumingUploads": "Resuming {{count}} resource uploads...",
+      "pagepocketUploading": "Uploading to PagePocket...",
+      "pagepocketUploadProgress": "Upload progress: {{progress}}%",
+      "pagepocketUploadComplete": "Saved to PagePocket",
+      "pagepocketUploadError": "Upload failed",
+      "pagepocketUploadRetry": "Retry upload",
+      "pagepocketViewPage": "View in PagePocket",
+      "pagepocketQuotaExceeded": "PagePocket storage quota exceeded",
+      "pagepocketSavedTo": "Saved to PagePocket",
+      "finalizingPartial": "Finalizing with the content captured so far…",
+      "savingPartialCapture": "Saving what we captured…",
+      "downloadReport": "Download report",
+      "partialDownload": "Partial download",
+      "partialDownloadNote": "The archive contains what was captured before the download was stopped."
     },
     "permissions": {
       "storage": {
@@ -246,7 +277,8 @@
     "language": {
       "select": "언어 선택",
       "search": "언어 검색...",
-      "current": "현재 언어"
+      "current": "현재 언어",
+      "noMatches": "No languages found"
     },
     "rating": {
       "title": "이 확장 프로그램이 마음에 드시나요?",
@@ -291,7 +323,32 @@
       "proAdvancedSearch": "고급 검색 필터",
       "proCustomExpiry": "맞춤 공유 만료",
       "getStarted": "시작하기",
-      "maybeLater": "나중에 할게요"
+      "maybeLater": "나중에 할게요",
+      "newFeature": "New Feature",
+      "close": "Close",
+      "freeBadge": "FREE",
+      "freeNoLimit": "No time limit — yours to keep, forever"
+    },
+    "tab": {
+      "unsupportedTitle": "This page can't be downloaded",
+      "unsupportedDescription": "Website Downloader works on regular web pages (http and https). Browser settings pages, the Chrome Web Store and local files are not supported. Open a website in this tab to start a download."
+    },
+    "welcome": {
+      "title": "Welcome to Web Page Downloader",
+      "subtitle": "Save any web page as a ZIP archive — HTML, images, styles and scripts — right from your browser.",
+      "featuresTitle": "What you can do",
+      "feature1": "Capture complete pages, including images, CSS and JavaScript",
+      "feature2": "Save pages to your computer as a ZIP, or to PagePocket cloud storage",
+      "feature3": "Browse the archived page offline at any time",
+      "stepsTitle": "How it works",
+      "step1Title": "Open the side panel",
+      "step1Description": "Click the extension icon in the toolbar and select \"Open side panel\".",
+      "step2Title": "Configure your download",
+      "step2Description": "Choose what to capture — full HTML, images, assets or a single file.",
+      "step3Title": "Download the page",
+      "step3Description": "Press \"Start download\" and get a ZIP archive you can open offline.",
+      "cta": "Open the side panel",
+      "ctaHint": "Tip: you can also right-click the extension icon and choose \"Open side panel\"."
     }
   }
 }

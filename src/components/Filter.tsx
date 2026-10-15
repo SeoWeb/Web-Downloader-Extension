@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Checkbox } from "./Checkbox";
 import { CheckedState } from "@radix-ui/react-checkbox";
@@ -23,8 +23,6 @@ import {
   useDownloadOptions,
   useStorageStatus,
 } from "../hooks/useFilterOptions";
-import { StoragePermissionBanner } from "./StoragePermissionBanner";
-import { hasStoragePermission } from "../common/permissions";
 import { IS_PAGEPOCKET_AVAILABLE } from "../common/pagepocket-mode";
 import { PagePocketToggle } from "./PagePocketToggle";
 
@@ -43,8 +41,6 @@ export default function Filter({
   tabUrl: string;
 }) {
   const { t } = useTranslation();
-  const [showPermissionBanner, setShowPermissionBanner] = useState(false);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const {
@@ -66,28 +62,6 @@ export default function Filter({
 
   const downloadOptions = useDownloadOptions();
   const { isLoadingFromStorage } = useStorageStatus();
-
-  // Check permissions on mount
-  useEffect(() => {
-    const checkPermissions = async () => {
-      try {
-        const storagePermission = await hasStoragePermission();
-        setHasPermission(storagePermission);
-
-        // Show banner if permission is not granted and we haven't shown it before
-        if (
-          !storagePermission &&
-          !localStorage.getItem("storage-banner-dismissed")
-        ) {
-          setShowPermissionBanner(true);
-        }
-      } catch {
-        setHasPermission(false);
-      }
-    };
-
-    checkPermissions();
-  }, []);
 
   const handleDownload = async () => {
     download(downloadOptions);
@@ -148,17 +122,6 @@ export default function Filter({
     setDownloadLinks(!!checked);
   };
 
-  const handlePermissionGranted = () => {
-    setHasPermission(true);
-    setShowPermissionBanner(false);
-    window.location.reload();
-  };
-
-  const handlePermissionDenied = () => {
-    setShowPermissionBanner(false);
-    localStorage.setItem("storage-banner-dismissed", "true");
-  };
-
   if (isLoading || isLoadingFromStorage) {
     return (
       <div className="p-4 space-y-4">
@@ -170,24 +133,6 @@ export default function Filter({
 
   return (
     <div className="animate-fade-in space-y-6">
-      {/* Permission Banners */}
-      <div className="space-y-4">
-        {showPermissionBanner && (
-          <StoragePermissionBanner
-            onPermissionGranted={handlePermissionGranted}
-            onPermissionDenied={handlePermissionDenied}
-          />
-        )}
-        {hasPermission === false && !showPermissionBanner && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-            <span className="text-sm text-amber-800">
-              {t("filter.permissionWarning")}
-            </span>
-          </div>
-        )}
-      </div>
-
       {/* Main Action Area */}
       <div className="card p-6 bg-gradient-to-br from-white to-slate-50 border-slate-200">
         <button
@@ -209,6 +154,8 @@ export default function Filter({
       <div className="card overflow-hidden">
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
+          aria-expanded={showAdvanced}
+          aria-controls="filter-advanced-config"
           className="w-full flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100 hover:bg-slate-100 transition-colors text-slate-700 font-medium cursor-pointer"
         >
           <div className="flex items-center gap-2">
@@ -222,12 +169,15 @@ export default function Filter({
           )}
         </button>
 
-        <div
-          className={cn(
-            "transition-all duration-300 ease-in-out",
-            showAdvanced ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0",
-          )}
-        >
+        {/* (5.6) Collapsed content is removed from the DOM via `hidden` so
+            its controls are not focusable while collapsed. */}
+        <div id="filter-advanced-config" hidden={!showAdvanced}>
+          <div
+            className={cn(
+              "transition-all duration-300 ease-in-out",
+              showAdvanced ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0",
+            )}
+          >
           <div className="p-4 space-y-4 bg-white">
             {/* Cloud Storage Toggle */}
             {IS_PAGEPOCKET_AVAILABLE && <PagePocketToggle />}
@@ -330,14 +280,6 @@ export default function Filter({
                 checked={options.downloadContentAsText}
                 onChange={(c: any) => setDownloadContentAsText(!!c)}
                 label={t("filter.downloadContentAsText")}
-                icon={<FileText className="w-4 h-4" />}
-              />
-
-              <OptionItem
-                id="singleFile"
-                checked={options.singleFile}
-                onChange={(c: any) => setSingleFile(!!c)}
-                label={t("filter.singleFile")}
                 icon={<FileText className="w-4 h-4" />}
               />
 
@@ -451,6 +393,7 @@ export default function Filter({
                 )}
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

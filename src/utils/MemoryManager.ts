@@ -1,6 +1,13 @@
 /**
  * Memory Manager for WebsiteDownloader Extension
  * Provides real-time memory monitoring, resource tracking, and automatic cleanup
+ *
+ * Accounting model: `currentUsage` is derived from the set of ACTIVE
+ * allocations (in-flight requests whose response has been received). Every
+ * tracked allocation has an active record, `releaseResource` always matches a
+ * record (unknown ids are a warned no-op), and `forceCleanup` recomputes
+ * usage from the live records so a stale high-water mark can never stall
+ * downloads.
  */
 
 import {
@@ -19,6 +26,12 @@ export interface ResourceRequest {
   status: "pending" | "downloading" | "completed" | "failed";
 }
 
+/** Optional metadata supplied when tracking an allocation. */
+export interface AllocationInfo {
+  url?: string;
+  type?: string;
+}
+
 export interface MemoryStats {
   totalMemoryUsed: number;
   totalMemoryLimit: number;
@@ -33,14 +46,18 @@ export interface MemoryStats {
 export class MemoryManager {
   private readonly config: MemoryLimitsConfig;
   private currentUsage: number = 0;
+  /** Pending records registered via queueResource (statistics only). */
   private resourceQueue: ResourceRequest[] = [];
-  private activeRequests: Set<string> = new Set();
+  /** In-flight allocations — the source of truth behind currentUsage. */
+  private activeAllocations: Map<string, ResourceRequest> = new Map();
   private completedRequests: Map<string, ResourceRequest> = new Map();
   private memoryCheckInterval: NodeJS.Timeout | null = null;
   private gcHintInterval: NodeJS.Timeout | null = null;
   private cleanupCallbacks: Array<() => Promise<void>> = [];
   private memoryPressureCallbacks: Array<(level: MemoryPressureLevel) => void> =
     [];
+  /** Last level reported to pressure callbacks — transitions fire exactly once. */
+  private lastNotifiedLevel: MemoryPressureLevel | null = null;
 
   constructor(config: Partial<MemoryLimitsConfig> = {}) {
     this.config = { ...DEFAULT_MEMORY_LIMITS, ...config };
@@ -57,7 +74,7 @@ export class MemoryManager {
     return {
       totalMemoryUsed: this.currentUsage,
       totalMemoryLimit: this.config.MAX_TOTAL_MEMORY_USAGE,
-      activeDownloads: this.activeRequests.size,
+      activeDownloads: this.activeAllocations.size,
       queuedDownloads: this.resourceQueue.length,
       completedDownloads: this.completedRequests.size,
       failedDownloads: Array.from(this.completedRequests.values()).filter(
@@ -126,9 +143,17 @@ export class MemoryManager {
   }
 
   /**
-   * Add a resource request to the queue
+   * Register a resource as queued.
+   *
+   * This only records statistics — actual memory accounting happens in
+   * `trackResourceAllocation`/`releaseResource`, which the RequestQueue binds
+   * to the real request lifecycle (allocate on response, release in `finally`).
    */
   public queueResource(request: Omit<ResourceRequest, "timestamp">): string {
+    // Drop stale pending records so the list cannot grow unbounded when
+    // callers never reach the allocation step (skipped/failed requests).
+    this.pruneStalePendingRequests();
+
     const fullRequest: ResourceRequest = {
       ...request,
       timestamp: Date.now(),
@@ -136,66 +161,110 @@ export class MemoryManager {
 
     this.resourceQueue.push(fullRequest);
 
-    // Process queue asynchronously
-    setTimeout(() => this.processQueue(), 0);
-
     return fullRequest.id;
   }
 
   /**
-   * Track memory allocation for a resource
+   * Track memory allocation for an in-flight resource. Called by the
+   * RequestQueue when a request's response has been received, with the actual
+   * response size (Content-Length or byte length).
    */
-  public trackResourceAllocation(resourceId: string, size: number): void {
-    this.currentUsage += size;
-    this.activeRequests.add(resourceId);
+  public trackResourceAllocation(
+    resourceId: string,
+    size: number,
+    info?: AllocationInfo,
+  ): void {
+    const safeSize = Number.isFinite(size) && size > 0 ? size : 0;
 
-    // Update the request in the queue or completed requests
-    const request =
-      this.resourceQueue.find((r) => r.id === resourceId) ||
-      this.completedRequests.get(resourceId);
+    const existing = this.activeAllocations.get(resourceId);
+    if (existing) {
+      // Re-tracking an active id adjusts usage by the delta (e.g. the size
+      // became known after an estimate) instead of double-counting.
+      const delta = safeSize - existing.size;
+      existing.size = safeSize;
+      if (info?.url) existing.url = info.url;
+      if (info?.type) existing.type = info.type;
+      existing.status = "downloading";
+      this.currentUsage = Math.max(0, this.currentUsage + delta);
+    } else {
+      const queuedIndex = this.resourceQueue.findIndex(
+        (r) => r.id === resourceId,
+      );
+      const base =
+        queuedIndex !== -1
+          ? this.resourceQueue.splice(queuedIndex, 1)[0]
+          : undefined;
 
-    if (request) {
-      request.size = size;
-      request.status = "downloading";
+      this.activeAllocations.set(resourceId, {
+        id: resourceId,
+        url: info?.url ?? base?.url ?? "",
+        type: info?.type ?? base?.type ?? "unknown",
+        size: safeSize,
+        timestamp: base?.timestamp ?? Date.now(),
+        status: "downloading",
+      });
+      this.currentUsage += safeSize;
     }
 
-    // Check memory pressure
-    const pressureLevel = this.getMemoryPressureLevel();
-    if (pressureLevel >= MemoryPressureLevel.HIGH) {
-      this.handleMemoryPressure(pressureLevel);
-    }
+    this.evaluateMemoryPressure();
   }
 
   /**
-   * Release memory when a resource is completed or failed
+   * Release memory when a resource is completed or failed. Releasing an id
+   * without an active allocation is a warned no-op that cannot corrupt state.
    */
   public releaseResource(resourceId: string): void {
-    const request =
-      this.resourceQueue.find((r) => r.id === resourceId) ||
-      this.completedRequests.get(resourceId);
+    const record = this.activeAllocations.get(resourceId);
 
-    if (request) {
-      this.currentUsage = Math.max(0, this.currentUsage - request.size);
-      this.activeRequests.delete(resourceId);
-      this.completedRequests.set(resourceId, {
-        ...request,
-        status: "completed",
-      });
+    if (!record) {
+      // Clear any stale pending record for this id as well.
+      const queuedIndex = this.resourceQueue.findIndex(
+        (r) => r.id === resourceId,
+      );
+      if (queuedIndex !== -1) {
+        this.resourceQueue.splice(queuedIndex, 1);
+      }
+      console.warn(
+        `[MemoryManager] releaseResource called for unknown allocation: ${resourceId}`,
+      );
+      return;
     }
+
+    this.activeAllocations.delete(resourceId);
+    this.currentUsage = Math.max(0, this.currentUsage - record.size);
+    this.completedRequests.set(resourceId, {
+      ...record,
+      status: "completed",
+    });
+
+    this.evaluateMemoryPressure();
   }
 
   /**
-   * Mark a resource as failed and clean up
+   * Mark a resource as failed and release its allocation
    */
   public markResourceFailed(resourceId: string): void {
-    const request = this.resourceQueue.find((r) => r.id === resourceId);
+    const record = this.activeAllocations.get(resourceId);
 
-    if (request) {
-      this.currentUsage = Math.max(0, this.currentUsage - request.size);
-      this.activeRequests.delete(resourceId);
-      request.status = "failed";
-      this.completedRequests.set(resourceId, request);
+    if (!record) {
+      const queuedIndex = this.resourceQueue.findIndex(
+        (r) => r.id === resourceId,
+      );
+      if (queuedIndex !== -1) {
+        const pending = this.resourceQueue.splice(queuedIndex, 1)[0];
+        this.completedRequests.set(pending.id, {
+          ...pending,
+          status: "failed",
+        });
+      }
+      return;
     }
+
+    this.activeAllocations.delete(resourceId);
+    this.currentUsage = Math.max(0, this.currentUsage - record.size);
+    this.completedRequests.set(resourceId, { ...record, status: "failed" });
+
+    this.evaluateMemoryPressure();
   }
 
   /**
@@ -215,21 +284,29 @@ export class MemoryManager {
   }
 
   /**
-   * Force immediate cleanup of all resources
+   * Force immediate cleanup of all resources.
+   *
+   * `currentUsage` is recomputed from the set of actually in-flight
+   * allocations — never left at a stale cumulative high-water mark.
    */
   public async forceCleanup(): Promise<void> {
     // Run all cleanup callbacks
     const cleanupPromises = this.cleanupCallbacks.map((callback) => callback());
-
     await Promise.allSettled(cleanupPromises);
 
-    // Clear completed requests older than max age
+    // Clear completed requests older than max age and stale pending records
     this.cleanupOldCompletedRequests();
+    this.pruneStalePendingRequests();
+
+    // Recompute usage from live in-flight allocations
+    let liveUsage = 0;
+    this.activeAllocations.forEach((record) => {
+      liveUsage += record.size;
+    });
+    this.currentUsage = liveUsage;
 
     // Suggest garbage collection
-    if (typeof gc !== "undefined") {
-      gc();
-    }
+    this.hintGC();
   }
 
   /**
@@ -252,60 +329,56 @@ export class MemoryManager {
 
     // Clear all tracking data
     this.resourceQueue = [];
-    this.activeRequests.clear();
+    this.activeAllocations.clear();
     this.completedRequests.clear();
     this.currentUsage = 0;
+    this.lastNotifiedLevel = null;
     this.cleanupCallbacks = [];
     this.memoryPressureCallbacks = [];
   }
 
   /**
-   * Process the resource queue based on available memory and concurrency limits
+   * Evaluate the current pressure level and notify callbacks once per
+   * transition. Callbacks fire only when the level enters or leaves the high
+   * zone (high/critical) — low/medium transitions stay silent. Levels are
+   * compared by numeric rank, never lexicographically.
    */
-  private async processQueue(): Promise<void> {
-    const maxConcurrency = this.getOptimalConcurrency();
-
-    while (
-      this.activeRequests.size < maxConcurrency &&
-      this.resourceQueue.length > 0
-    ) {
-      const request = this.resourceQueue.shift();
-
-      if (!request) break;
-
-      // Check if we have enough memory for this request
-      if (!this.checkMemoryAvailability(request.size)) {
-        // Put it back in the queue and stop processing
-        this.resourceQueue.unshift(request);
-        break;
-      }
-
-      // Start processing this request
-      this.activeRequests.add(request.id);
+  private evaluateMemoryPressure(): MemoryPressureLevel {
+    const level = this.getMemoryPressureLevel();
+    if (this.lastNotifiedLevel === level) {
+      return level;
     }
+
+    const previous = this.lastNotifiedLevel;
+    this.lastNotifiedLevel = level;
+
+    const entersHighZone = level >= MemoryPressureLevel.HIGH;
+    const leavesHighZone =
+      previous !== null && previous >= MemoryPressureLevel.HIGH;
+
+    if (entersHighZone || leavesHighZone) {
+      this.notifyMemoryPressure(level);
+    }
+
+    return level;
   }
 
   /**
-   * Handle memory pressure situations
+   * Notify pressure callbacks and take critical-pressure actions
    */
-  private async handleMemoryPressure(
-    level: MemoryPressureLevel,
-  ): Promise<void> {
-    // Notify callbacks
-    this.memoryPressureCallbacks.forEach((callback) => {
+  private notifyMemoryPressure(level: MemoryPressureLevel): void {
+    for (const callback of this.memoryPressureCallbacks) {
       try {
         callback(level);
       } catch {
-        // Ignore
+        // Ignore listener errors
       }
-    });
+    }
 
     if (level === MemoryPressureLevel.CRITICAL) {
-      // Force cleanup in critical situations
-      await this.forceCleanup();
-
-      // Reduce queue processing
-      this.resourceQueue.splice(Math.floor(this.resourceQueue.length / 2));
+      // Recoverable: forceCleanup recomputes usage from live allocations, so
+      // the queue can resume once in-flight requests settle.
+      void this.forceCleanup();
     }
   }
 
@@ -320,9 +393,7 @@ export class MemoryManager {
 
     // Periodic garbage collection hints
     this.gcHintInterval = setInterval(() => {
-      if (typeof gc !== "undefined") {
-        gc();
-      }
+      this.hintGC();
     }, this.config.GC_HINT_INTERVAL);
 
     // Cleanup on service worker shutdown
@@ -337,18 +408,10 @@ export class MemoryManager {
    * Perform periodic memory checks
    */
   private performMemoryCheck(): void {
-    const pressureLevel = this.getMemoryPressureLevel();
+    const pressureLevel = this.evaluateMemoryPressure();
 
     if (pressureLevel >= MemoryPressureLevel.HIGH) {
       this.cleanupOldCompletedRequests();
-    }
-
-    // Continue processing queue if there's capacity
-    if (
-      this.resourceQueue.length > 0 &&
-      this.activeRequests.size < this.getOptimalConcurrency()
-    ) {
-      this.processQueue();
     }
   }
 
@@ -366,6 +429,26 @@ export class MemoryManager {
     });
 
     toDelete.forEach((id) => this.completedRequests.delete(id));
+  }
+
+  /**
+   * Drop pending records that never reached the allocation step
+   */
+  private pruneStalePendingRequests(): void {
+    const now = Date.now();
+    this.resourceQueue = this.resourceQueue.filter(
+      (request) => now - request.timestamp <= this.config.MAX_BLOB_AGE,
+    );
+  }
+
+  /**
+   * Suggest garbage collection when the host exposes it
+   */
+  private hintGC(): void {
+    const globalGC = (globalThis as { gc?: () => void }).gc;
+    if (typeof globalGC === "function") {
+      globalGC();
+    }
   }
 
   /**

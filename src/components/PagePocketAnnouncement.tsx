@@ -29,6 +29,9 @@ export function PagePocketAnnouncement() {
   };
 
   const handleMaybeLater = () => {
+    // (5.4) Persist the dismissal so the modal does not re-open on
+    // every panel open.
+    chrome.storage.local.set({ [STORAGE_KEY]: true });
     setShow(false);
   };
 
@@ -41,7 +44,7 @@ export function PagePocketAnnouncement() {
         <button
           onClick={handleMaybeLater}
           className="absolute top-3 right-3 z-10 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-          aria-label="Close"
+          aria-label={t("pagepocketAnnouncement.close")}
         >
           <X className="h-4 w-4" />
         </button>
@@ -51,7 +54,7 @@ export function PagePocketAnnouncement() {
           <div className="flex items-center gap-2 mb-3">
             <Cloud className="h-6 w-6" />
             <span className="text-sm font-medium uppercase tracking-wider opacity-80">
-              New Feature
+              {t("pagepocketAnnouncement.newFeature")}
             </span>
           </div>
           <h2 className="text-xl font-bold">

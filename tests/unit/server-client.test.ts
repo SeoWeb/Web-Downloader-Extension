@@ -21,6 +21,60 @@ import {
 } from "../../src/background/server-client";
 
 // ---------------------------------------------------------------------------
+// chrome.storage.session mock (D11 / task 7.2)
+//
+// tests/setup.cjs only mocks chrome.storage.local. Credentials now persist in
+// chrome.storage.session, so mock that area here too (each vitest test file
+// gets a fresh environment, so this does not leak into other files).
+// ---------------------------------------------------------------------------
+
+const sessionStore: Record<string, unknown> = {};
+
+if (typeof globalThis.chrome?.storage === "object") {
+  (globalThis.chrome.storage as Record<string, unknown>).session = {
+    _store: sessionStore, // Exposed for test cleanup/assertions
+    get: async (keys: string | string[]) => {
+      const keyArr = Array.isArray(keys) ? keys : [keys];
+      const result: Record<string, unknown> = {};
+      for (const k of keyArr) {
+        if (sessionStore[k] !== undefined) {
+          result[k] = sessionStore[k];
+        }
+      }
+      return result;
+    },
+    set: async (items: Record<string, unknown>) => {
+      Object.assign(sessionStore, items);
+    },
+    remove: async (keys: string | string[]) => {
+      const keyArr = Array.isArray(keys) ? keys : [keys];
+      for (const k of keyArr) {
+        delete sessionStore[k];
+      }
+    },
+  };
+
+  // The shared setup.cjs local mock has no remove(); the legacy-key scrub
+  // (D11) relies on it. Back it with the mock's own _store.
+  const localArea = globalThis.chrome.storage.local as Record<
+    string,
+    unknown
+  > & { _store: Record<string, unknown> };
+  if (typeof localArea.remove !== "function") {
+    localArea.remove = async (keys: string | string[]) => {
+      const keyArr = Array.isArray(keys) ? keys : [keys];
+      for (const k of keyArr) {
+        delete localArea._store[k];
+      }
+    };
+  }
+}
+
+/** Storage keys written by ServerClient (kept in sync with the module). */
+const API_KEY_STORAGE_KEY = "server_api_key";
+const EXTENSION_INSTANCE_ID_KEY = "server_extension_instance_id";
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -56,6 +110,7 @@ describe("ServerClient", () => {
     if (store) {
       Object.keys(store).forEach((k) => delete store[k]);
     }
+    Object.keys(sessionStore).forEach((k) => delete sessionStore[k]);
   });
 
   afterEach(() => {
@@ -433,6 +488,93 @@ describe("ServerClient", () => {
       const id = await client.createSession("https://example.com");
       expect(reRegistered).toBe(true);
       expect(id).toBe("sess-retry");
+    });
+
+    // -------------------------------------------------------------------
+    // D11 / task 7.2 — credentials persist in chrome.storage.session
+    // -------------------------------------------------------------------
+    it("persists the API key and instance ID to session storage, not local", async () => {
+      fetchSpy.mockImplementation(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/register")) {
+          return mockResponse(200, { api_key: "session-key", client_id: "c1" });
+        }
+        return mockResponse(201, { id: "sess-1", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
+      });
+
+      const client = createClient();
+      await client.createSession("https://example.com");
+
+      expect(sessionStore[API_KEY_STORAGE_KEY]).toBe("session-key");
+      expect(typeof sessionStore[EXTENSION_INSTANCE_ID_KEY]).toBe("string");
+      // Nothing may land in the on-disk local area
+      const localStore = globalThis.chrome?.storage?.local?._store as
+        | Record<string, unknown>
+        | undefined;
+      expect(localStore?.[API_KEY_STORAGE_KEY]).toBeUndefined();
+      expect(localStore?.[EXTENSION_INSTANCE_ID_KEY]).toBeUndefined();
+    });
+
+    it("reuses the API key from session storage without re-registering", async () => {
+      sessionStore[API_KEY_STORAGE_KEY] = "stored-session-key";
+      sessionStore[EXTENSION_INSTANCE_ID_KEY] = "ext-stored";
+
+      let registerCalled = false;
+      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/register")) {
+          registerCalled = true;
+          return mockResponse(200, { api_key: "fresh-key", client_id: "c1" });
+        }
+        if (urlStr.includes("/sessions") && init?.method === "POST") {
+          const h = init?.headers as Headers;
+          expect(h?.get?.("X-API-Key")).toBe("stored-session-key");
+          return mockResponse(201, { id: "sess-2", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
+        }
+        return mockResponse(404, {});
+      });
+
+      const client = createClient();
+      await client.createSession("https://example.com");
+      expect(registerCalled).toBe(false);
+    });
+
+    it("auto re-registers on first use when session storage is empty", async () => {
+      // Session store left empty — simulates the first call of a browser session
+      let registerCalled = false;
+      fetchSpy.mockImplementation(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/register")) {
+          registerCalled = true;
+          return mockResponse(200, { api_key: "re-registered-key", client_id: "c1" });
+        }
+        return mockResponse(201, { id: "sess-3", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
+      });
+
+      const client = createClient();
+      await client.createSession("https://example.com");
+      expect(registerCalled).toBe(true);
+      expect(sessionStore[API_KEY_STORAGE_KEY]).toBe("re-registered-key");
+    });
+
+    it("scrubs legacy key material from chrome.storage.local", async () => {
+      const localStore = globalThis.chrome?.storage?.local?._store as Record<string, unknown>;
+      localStore[API_KEY_STORAGE_KEY] = "legacy-local-key";
+      localStore[EXTENSION_INSTANCE_ID_KEY] = "legacy-instance";
+
+      fetchSpy.mockImplementation(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/register")) {
+          return mockResponse(200, { api_key: "new-key", client_id: "c1" });
+        }
+        return mockResponse(201, { id: "sess-4", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
+      });
+
+      const client = createClient();
+      await client.createSession("https://example.com");
+
+      expect(localStore[API_KEY_STORAGE_KEY]).toBeUndefined();
+      expect(localStore[EXTENSION_INSTANCE_ID_KEY]).toBeUndefined();
     });
   });
 

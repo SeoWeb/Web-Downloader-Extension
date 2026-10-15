@@ -17,6 +17,7 @@ import {
   ServerUnavailableError,
   AuthenticationError,
   AssemblyTimeoutError,
+  assertSecureBaseUrl,
   SessionStatusResponse,
   serverClient as defaultServerClient,
 } from "./server-client";
@@ -200,9 +201,9 @@ export class ServerDownloadHandler {
    * server downloads use a direct HTTP URL that Chrome can download natively.
    * No side panel interaction is needed.
    *
-   * The download URL is validated: if it uses `http://` with a non-loopback
-   * host, a console warning is logged (the user was already warned at
-   * configuration time per S6).
+   * The download URL is validated: plain `http://` with a non-loopback host
+   * throws a ConfigurationError (fail fast per D11 / task 7.4); loopback
+   * hosts stay allowed for development.
    *
    * @param downloadUrl The server download URL (from session status)
    * @param filename The desired filename for the download
@@ -215,8 +216,9 @@ export class ServerDownloadHandler {
     tabId?: number,
     saveAs: boolean = true,
   ): Promise<number> {
-    // Validate the download URL scheme
-    this.warnIfHttpDownload(downloadUrl);
+    // Validate the download URL scheme — plain HTTP on a non-loopback host
+    // is refused (D11 / task 7.4), loopback stays allowed for development.
+    assertSecureBaseUrl(downloadUrl, "Download URL");
 
     // Use chrome.downloads.download with the server URL directly.
     // No blob URL or panel delegation needed — the URL is a regular HTTP(S) URL.
@@ -411,36 +413,6 @@ export class ServerDownloadHandler {
     if (this.pollingAbortController) {
       this.pollingAbortController.abort();
       this.pollingAbortController = null;
-    }
-  }
-
-  // -----------------------------------------------------------------------
-  // HTTPS warning (S6 note)
-  // -----------------------------------------------------------------------
-
-  /**
-   * Warn if the download URL uses http:// with a non-loopback host.
-   * Chrome blocks mixed-content downloads from HTTP remote origins.
-   * The user was already warned at configuration time, but this serves
-   * as an additional runtime reminder.
-   */
-  private warnIfHttpDownload(downloadUrl: string): void {
-    try {
-      const url = new URL(downloadUrl);
-      if (url.protocol === "http:") {
-        const isLoopback = ["localhost", "127.0.0.1", "::1"].includes(
-          url.hostname,
-        );
-        if (!isLoopback) {
-          console.warn(
-            `[ServerDownloadHandler] WARNING: Download URL uses http:// with ` +
-              `non-loopback host (${url.hostname}). ` +
-              "Chrome may block this download. HTTPS is mandatory for non-localhost deployments.",
-          );
-        }
-      }
-    } catch {
-      // Invalid URL — ignore
     }
   }
 }

@@ -40,6 +40,68 @@ export class AssemblyTimeoutError extends Error {
 }
 
 /**
+ * Thrown at client construction when the configured base URL is invalid or
+ * would transmit auth tokens in cleartext (plain HTTP on a non-loopback host).
+ */
+export class ConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ConfigurationError";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Transport security helpers (D11 / task 7.4 — fail fast, not warn)
+// ---------------------------------------------------------------------------
+
+/** Hosts for which plain HTTP is permitted (local development). */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+
+/**
+ * Check whether a URL hostname is a loopback address (localhost, 127.0.0.1,
+ * ::1). Accepts the bracketed form (`[::1]`) that `URL.hostname` returns for
+ * IPv6 literals.
+ */
+export function isLoopbackHost(hostname: string): boolean {
+  const bare =
+    hostname.startsWith("[") && hostname.endsWith("]")
+      ? hostname.slice(1, -1)
+      : hostname;
+  return LOOPBACK_HOSTS.has(bare.toLowerCase());
+}
+
+/**
+ * Enforce transport security for a base URL at configuration time.
+ *
+ * Plain `http://` is rejected for non-loopback hosts — tokens must never be
+ * transmitted in cleartext. Loopback hosts (localhost / 127.0.0.1 / [::1])
+ * stay allowed for local development.
+ *
+ * @throws ConfigurationError when the URL is unparseable or insecure.
+ */
+export function assertSecureBaseUrl(rawUrl: string, label: string): void {
+  if (!rawUrl) return; // Unconfigured — callers guard that separately
+
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new ConfigurationError(
+      `${label}: invalid URL "${rawUrl}" — expected an absolute http(s):// URL`,
+    );
+  }
+
+  if (url.protocol === "http:" && !isLoopbackHost(url.hostname)) {
+    throw new ConfigurationError(
+      `${label}: plain HTTP is not allowed for non-loopback host ` +
+        `(${url.hostname}) — auth tokens would be transmitted in cleartext. ` +
+        "Use HTTPS, or point at http://localhost / 127.0.0.1 / [::1] for " +
+        "local development.",
+    );
+  }
+}
+
+/**
  * HTTP error with status code, thrown by ServerClient for 4xx responses.
  * Includes `retryAfter` (seconds) for 429 Rate Limit responses.
  */
@@ -214,8 +276,8 @@ export class ServerClient {
       ) ?? "";
 
     if (this.serverUrl) {
-      // S6 note: warn if using http:// with a non-loopback host
-      this.warnIfHttp();
+      // D11 (S6): refuse insecure configuration instead of warning
+      assertSecureBaseUrl(this.serverUrl, "Server URL");
     }
   }
 
@@ -605,7 +667,7 @@ export class ServerClient {
 
   /**
    * Register with the server to obtain an API key.
-   * Stores the key in chrome.storage.local for future use.
+   * Stores the key in chrome.storage.session for the current browser session.
    * Retries up to MAX_REGISTRATION_ATTEMPTS with exponential backoff.
    */
   private async register(): Promise<string> {
@@ -1008,13 +1070,19 @@ export class ServerClient {
   }
 
   // -----------------------------------------------------------------------
-  // chrome.storage helpers
+  // chrome.storage.session helpers (D11 / task 7.2)
+  //
+  // The API key and instance ID persist in chrome.storage.session so they
+  // never live on disk. On the first server call of a browser session the
+  // key is absent and auto-registration runs again (automatic, uses the
+  // instance ID for idempotency).
   // -----------------------------------------------------------------------
 
   private async loadApiKeyFromStorage(): Promise<string | null> {
+    await this.scrubLegacyLocalKeys();
     try {
-      if (!chrome?.storage?.local) return null;
-      const result = await chrome.storage.local.get(API_KEY_STORAGE_KEY);
+      if (!chrome?.storage?.session) return null;
+      const result = await chrome.storage.session.get(API_KEY_STORAGE_KEY);
       return result[API_KEY_STORAGE_KEY] ?? null;
     } catch {
       return null;
@@ -1023,8 +1091,8 @@ export class ServerClient {
 
   private async saveApiKeyToStorage(key: string): Promise<void> {
     try {
-      if (!chrome?.storage?.local) return;
-      await chrome.storage.local.set({ [API_KEY_STORAGE_KEY]: key });
+      if (!chrome?.storage?.session) return;
+      await chrome.storage.session.set({ [API_KEY_STORAGE_KEY]: key });
     } catch {
       // Non-critical — the key is cached in memory
     }
@@ -1032,44 +1100,37 @@ export class ServerClient {
 
   private async getOrCreateInstanceId(): Promise<string> {
     try {
-      if (!chrome?.storage?.local) {
+      if (!chrome?.storage?.session) {
         return `ext-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       }
 
-      const result = await chrome.storage.local.get(EXTENSION_INSTANCE_ID_KEY);
+      const result = await chrome.storage.session.get(EXTENSION_INSTANCE_ID_KEY);
       if (result[EXTENSION_INSTANCE_ID_KEY]) {
         return result[EXTENSION_INSTANCE_ID_KEY] as string;
       }
 
       const id = `ext-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      await chrome.storage.local.set({ [EXTENSION_INSTANCE_ID_KEY]: id });
+      await chrome.storage.session.set({ [EXTENSION_INSTANCE_ID_KEY]: id });
       return id;
     } catch {
       return `ext-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     }
   }
 
-  // -----------------------------------------------------------------------
-  // HTTPS warning (S6 note from task 8.10)
-  // -----------------------------------------------------------------------
-
-  private warnIfHttp(): void {
+  /**
+   * Remove key material persisted by older versions in chrome.storage.local
+   * (on disk). Credentials are session-only since D11 — leftovers from
+   * previous versions must not outlive the browser session.
+   */
+  private async scrubLegacyLocalKeys(): Promise<void> {
     try {
-      const url = new URL(this.serverUrl);
-      if (url.protocol === "http:") {
-        const isLoopback = ["localhost", "127.0.0.1", "::1"].includes(
-          url.hostname,
-        );
-        if (!isLoopback) {
-          console.warn(
-            `[ServerClient] WARNING: Server URL uses http:// with a non-loopback host (${url.hostname}). ` +
-              "Chrome blocks mixed-content downloads from HTTP remote origins. " +
-              "HTTPS is mandatory for non-localhost deployments.",
-          );
-        }
-      }
+      if (!chrome?.storage?.local) return;
+      await chrome.storage.local.remove([
+        API_KEY_STORAGE_KEY,
+        EXTENSION_INSTANCE_ID_KEY,
+      ]);
     } catch {
-      // Invalid URL — ignore
+      // Non-critical
     }
   }
 }

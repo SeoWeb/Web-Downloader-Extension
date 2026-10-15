@@ -9,9 +9,15 @@ import {
   RequestStatus,
   ResourceType,
   RequestResult,
+  RequestErrorCategory,
+  RequestQueueError,
+  ResponseSnapshot,
   QueueEventListeners,
   RequestQueueOptions,
   DEFAULT_QUEUE_OPTIONS,
+  DEFAULT_THROTTLING_CONFIG,
+  createResponseSnapshot,
+  snapshotToResponse,
   extractDomain,
   getResourceTypeFromUrl,
   getPriorityForResourceType,
@@ -21,6 +27,108 @@ import { DomainLimiterFactory } from "./DomainLimiter";
 import { ThrottlingManager } from "./ThrottlingManager";
 import { memoryManager } from "./MemoryManager";
 
+/** Default tick between processing cycles (only used when work is possible). */
+const QUEUE_TICK_MS = 10;
+/** Upper bound for a single limiter-availability wait (re-evaluate periodically). */
+const MAX_SCHEDULE_DELAY_MS = 30_000;
+const DEFAULT_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+/** Composite abort handle: the download's own signal OR the per-request timeout. */
+interface CompositeAbort {
+  signal: AbortSignal;
+  cleanup: () => void;
+}
+
+/**
+ * Build a composite abort that fires when either the external signal aborts
+ * (with the caller's reason) or the timeout elapses (with a TimeoutError
+ * reason), so `requestTimeout` is actually enforced on every fetch.
+ */
+function createCompositeAbort(
+  external: AbortSignal,
+  timeoutMs: number,
+): CompositeAbort {
+  const composite = new AbortController();
+
+  const timer = setTimeout(() => {
+    composite.abort(
+      new DOMException(`Request timed out after ${timeoutMs}ms`, "TimeoutError"),
+    );
+  }, timeoutMs);
+
+  const onExternalAbort = () => {
+    clearTimeout(timer);
+    const reason =
+      external.reason ??
+      new DOMException("The request was aborted", "AbortError");
+    composite.abort(reason);
+  };
+
+  if (external.aborted) {
+    onExternalAbort();
+  } else {
+    external.addEventListener("abort", onExternalAbort, { once: true });
+  }
+
+  return {
+    signal: composite.signal,
+    cleanup() {
+      clearTimeout(timer);
+      external.removeEventListener("abort", onExternalAbort);
+    },
+  };
+}
+
+/** Classify an abort rejection as a queue error category, or null if not an abort. */
+function classifyAbort(
+  error: unknown,
+  external: AbortSignal,
+  timeoutMs: number,
+): RequestQueueError | null {
+  if (external.aborted) {
+    return new RequestQueueError("Request cancelled", "cancelled");
+  }
+  if ((error as { name?: string })?.name === "TimeoutError") {
+    return new RequestQueueError(
+      `Request timed out after ${timeoutMs}ms`,
+      "timeout",
+    );
+  }
+  return null;
+}
+
+/** Wrap an unknown failure as a categorized queue error. */
+function toRequestQueueError(
+  error: unknown,
+  category: RequestErrorCategory,
+): RequestQueueError {
+  if (error instanceof RequestQueueError) {
+    return error;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return new RequestQueueError(message || "Network request failed", category, {
+    cause: error,
+  });
+}
+
+/** Parse a Retry-After header (seconds or HTTP-date) into milliseconds. */
+function parseRetryAfterHeader(headers: Headers): number | undefined {
+  const value = headers.get("Retry-After");
+  if (!value) {
+    return undefined;
+  }
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.round(seconds * 1000);
+  }
+  const dateMs = Date.parse(value);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+  return undefined;
+}
+
 export class RequestQueue {
   private options: RequestQueueOptions;
   private scheduler: RequestScheduler;
@@ -28,17 +136,24 @@ export class RequestQueue {
   private activeRequests: Map<string, ActiveRequest> = new Map();
   private isProcessing: boolean = false;
   private processingTimer: NodeJS.Timeout | null = null;
+  private nextProcessingAt: number = 0;
+  /** Suppresses prompt re-scheduling while deferred requests are re-queued. */
+  private isRequeueingDeferred: boolean = false;
   private requestCounter: number = 0;
 
   constructor(options?: Partial<RequestQueueOptions>) {
     this.options = { ...DEFAULT_QUEUE_OPTIONS, ...options };
 
-    // Initialize components
-    this.scheduler = new RequestScheduler(this.options.eventListeners);
+    // Initialize components. The scheduler receives the wrapped listeners
+    // below (setupEventListeners integrates queue-level caching, retries and
+    // scheduling) — passing the raw user listeners here would silently bypass
+    // that integration for instances configured via the constructor.
+    this.scheduler = new RequestScheduler();
     this.throttlingManager = new ThrottlingManager(this.options.throttling);
 
     // Set up event listeners
     this.setupEventListeners();
+    this.scheduler.setEventListeners(this.options.eventListeners ?? {});
 
     // Start processing
     this.startProcessing();
@@ -64,7 +179,8 @@ export class RequestQueue {
     const priority =
       request.priority || getPriorityForResourceType(resourceType);
 
-    // Check for duplicates
+    // Check for duplicates — the cached result is a snapshot-backed
+    // RequestResult whose response is independently readable per consumer.
     if (this.throttlingManager.isDuplicateRequest(request.url)) {
       const cachedResult = this.throttlingManager.getCachedResult(request.url);
       if (cachedResult && request.onComplete) {
@@ -138,20 +254,18 @@ export class RequestQueue {
    * Cancel a request
    */
   public cancelRequest(requestId: string): boolean {
-    // Try to cancel in scheduler first
-    if (this.scheduler.cancelRequest(requestId)) {
-      return true;
-    }
-
-    // Try to cancel active request
+    // Abort in-flight requests first — the scheduler only does bookkeeping
+    // for its own active map and would otherwise swallow the cancellation.
+    // The rejection path releases the queue slot and memory, and reports a
+    // categorized "cancelled" error.
     const activeRequest = this.activeRequests.get(requestId);
     if (activeRequest) {
       activeRequest.controller.abort();
-      this.activeRequests.delete(requestId);
       return true;
     }
 
-    return false;
+    // Try to cancel in scheduler (still-queued requests)
+    return this.scheduler.cancelRequest(requestId);
   }
 
   /**
@@ -162,6 +276,7 @@ export class RequestQueue {
     if (this.processingTimer) {
       clearTimeout(this.processingTimer);
       this.processingTimer = null;
+      this.nextProcessingAt = 0;
     }
   }
 
@@ -242,7 +357,11 @@ export class RequestQueue {
         if (originalListeners.onQueued) {
           originalListeners.onQueued(request);
         }
-        this.scheduleProcessing();
+        // Deferred re-queues schedule their own limiter-availability wait; a
+        // prompt tick here would degenerate into the old 10ms busy-spin.
+        if (!this.isRequeueingDeferred) {
+          this.scheduleProcessing();
+        }
       },
 
       onStart: (request) => {
@@ -252,7 +371,7 @@ export class RequestQueue {
       },
 
       onComplete: (result) => {
-        // Cache successful results
+        // Cache successful results (large bodies are skipped by the manager)
         this.throttlingManager.cacheRequestResult(result.url, result);
 
         if (originalListeners.onComplete) {
@@ -262,9 +381,11 @@ export class RequestQueue {
 
       onError: (request, error) => {
         // Handle retries - only retry transient errors, not permanent ones
+        const maxRetries =
+          this.options.throttling?.maxRetries ??
+          DEFAULT_THROTTLING_CONFIG.maxRetries;
         const shouldRetry =
-          request.retryCount < (this.options.throttling?.maxRetries || 3) &&
-          this.isRetryableError(error);
+          request.retryCount < maxRetries && this.isRetryableError(error);
 
         if (shouldRetry) {
           this.retryRequest(request);
@@ -294,75 +415,144 @@ export class RequestQueue {
   }
 
   /**
-   * Schedule next processing cycle
+   * Schedule the next processing cycle.
+   *
+   * Coalesced: the earliest requested run wins so completion ticks stay
+   * prompt, while a long limiter-availability wait is not broken by a storm
+   * of prompt ticks from deferred re-queues.
    */
-  private scheduleProcessing(): void {
-    if (!this.isProcessing || this.processingTimer) {
+  private scheduleProcessing(delayMs: number = QUEUE_TICK_MS): void {
+    if (!this.isProcessing) {
       return;
     }
 
-    this.processingTimer = setTimeout(() => {
-      this.processingTimer = null;
-      this.processQueue();
-    }, 10); // Process every 10ms (reduced from 100ms for faster response)
+    const desiredAt = Date.now() + Math.max(0, delayMs);
+
+    if (this.processingTimer) {
+      if (this.nextProcessingAt <= desiredAt) {
+        return; // An earlier (or equal) run is already scheduled
+      }
+      clearTimeout(this.processingTimer);
+    }
+
+    this.nextProcessingAt = desiredAt;
+    this.processingTimer = setTimeout(
+      () => {
+        this.processingTimer = null;
+        this.processQueue();
+      },
+      Math.max(0, desiredAt - Date.now()),
+    );
   }
 
   /**
-   * Process the queue
+   * Re-queue deferred requests without triggering prompt processing ticks.
+   */
+  private requeueDeferred(requests: QueuedRequest[]): void {
+    if (requests.length === 0) {
+      return;
+    }
+    this.isRequeueingDeferred = true;
+    try {
+      for (const request of requests) {
+        this.scheduler.enqueue(request);
+      }
+    } finally {
+      this.isRequeueingDeferred = false;
+    }
+  }
+
+  /**
+   * Process the queue.
+   *
+   * Fair scheduling: the loop scans past requests whose domain limiter is
+   * saturated and starts requests to ready domains. When every queued
+   * request is limiter-blocked, it waits on the nearest limiter availability
+   * instead of polling at a fixed interval.
    */
   private async processQueue(): Promise<void> {
     if (!this.isProcessing) {
       return;
     }
 
+    let startedCount = 0;
+    let deferredCount = 0;
+    let globalThrottleBlocked = false;
+    let nearestDomainWaitMs = Number.POSITIVE_INFINITY;
+    const requestsToStart: QueuedRequest[] = [];
+    const deferred: QueuedRequest[] = [];
+
     try {
       // Get adaptive concurrency limit
       const maxConcurrency = this.throttlingManager.getAdaptiveConcurrency();
-      const currentActiveRequests = this.activeRequests.size;
 
-      // Process multiple requests in parallel up to concurrency limit
-      const requestsToStart: QueuedRequest[] = [];
-
-      while (currentActiveRequests + requestsToStart.length < maxConcurrency) {
+      while (this.activeRequests.size + requestsToStart.length < maxConcurrency) {
         const request = this.scheduler.getNextRequest();
 
         if (!request) {
-          break; // No more requests to process
+          break; // No more processable requests
         }
 
-        // Check if we should throttle
+        // Check if we should throttle globally (memory/network pressure)
         if (this.throttlingManager.shouldThrottleRequest()) {
-          // Put request back and wait
-          this.scheduler.enqueue(request);
+          deferred.push(request);
+          globalThrottleBlocked = true;
           break;
         }
 
-        // Check domain rate limiting
+        // Check domain rate limiting — remember when this domain frees up
+        // and keep scanning so other domains are not starved (no
+        // head-of-line blocking).
         const domainLimiter = DomainLimiterFactory.getLimiter(request.domain);
         if (!domainLimiter.canMakeRequest()) {
-          // Put request back and wait
-          this.scheduler.enqueue(request);
-          break;
+          nearestDomainWaitMs = Math.min(
+            nearestDomainWaitMs,
+            Math.max(domainLimiter.getWaitTime(), 1),
+          );
+          deferred.push(request);
+          deferredCount++;
+          continue;
         }
 
         requestsToStart.push(request);
-      }
-
-      // Start all eligible requests in parallel
-      for (const request of requestsToStart) {
-        // Start the request without awaiting to avoid blocking the queue processing
-        this.startRequest(request).catch(() => {
-          // Ignore
-        });
       }
     } catch {
       // Ignore
     }
 
-    // Schedule next processing only if we have more items and not paused
-    if (this.isProcessing && !this.scheduler.isEmpty()) {
-      this.scheduleProcessing();
+    // Requests whose head domain is saturated go back, order preserved.
+    this.requeueDeferred(deferred);
+
+    // Start all eligible requests in parallel
+    for (const request of requestsToStart) {
+      // Start the request without awaiting to avoid blocking the queue processing
+      this.startRequest(request).catch(() => {
+        // Ignore
+      });
     }
+
+    if (!this.isProcessing || this.scheduler.isEmpty()) {
+      return;
+    }
+
+    if (globalThrottleBlocked) {
+      // Retry after the throttle delay has elapsed
+      const throttleDelay = Math.max(
+        this.throttlingManager.getThrottleDelay(),
+        QUEUE_TICK_MS,
+      );
+      this.scheduleProcessing(throttleDelay);
+    } else if (startedCount === 0 && deferredCount > 0) {
+      // Every queued request is blocked by its domain limiter — wait for the
+      // nearest limiter availability instead of busy-spinning.
+      const waitMs = Math.min(
+        Math.max(nearestDomainWaitMs, QUEUE_TICK_MS),
+        MAX_SCHEDULE_DELAY_MS,
+      );
+      this.scheduleProcessing(waitMs);
+    }
+    // else: requests were started (or nothing is deferrable) — their
+    // completion callbacks trigger the next processing cycle.
   }
 
   /**
@@ -389,18 +579,12 @@ export class RequestQueue {
 
     this.activeRequests.set(request.id, activeRequest);
 
-    // Update domain limiter
+    // Update domain limiter. Read the pending wait BEFORE recording the
+    // dispatch — otherwise the just-recorded timestamp would count against
+    // this very request and add a spurious full rate-window delay.
     const domainLimiter = DomainLimiterFactory.getLimiter(request.domain);
+    const domainDelay = domainLimiter.getWaitTime();
     domainLimiter.startRequest();
-
-    // Track memory allocation
-    memoryManager.queueResource({
-      id: request.id,
-      url: request.url,
-      type: request.resourceType,
-      size: request.estimatedSize,
-      status: "downloading",
-    });
 
     try {
       // Notify start
@@ -411,25 +595,28 @@ export class RequestQueue {
       // Apply throttle delay if needed
       const throttleDelay = this.throttlingManager.getThrottleDelay();
       if (throttleDelay > 0) {
-        await new Promise((resolve) => setTimeout(resolve, throttleDelay));
+        await this.delay(throttleDelay);
       }
 
       // Apply domain rate limit delay if needed
-      const domainDelay = domainLimiter.getWaitTime();
       if (domainDelay > 0) {
-        await new Promise((resolve) => setTimeout(resolve, domainDelay));
+        await this.delay(domainDelay);
       }
 
       // Execute the request
       const result = await this.executeRequest(request, controller);
 
+      // Memory accounting: usage increases when the response is received
+      // (actual byte length), and is released in `finally` below.
+      memoryManager.trackResourceAllocation(request.id, result.size, {
+        url: request.url,
+        type: request.resourceType,
+      });
+
       // Record success
       const duration = Date.now() - startTime;
       this.throttlingManager.recordRequest(duration, true);
-      domainLimiter.adjustRateLimit(result.response.status);
-
-      // Update memory tracking
-      memoryManager.trackResourceAllocation(request.id, result.size);
+      domainLimiter.adjustRateLimit(result.snapshot.status);
 
       // Complete the request
       this.completeRequest(request.id, result);
@@ -438,24 +625,42 @@ export class RequestQueue {
       const duration = Date.now() - startTime;
       this.throttlingManager.recordRequest(duration, false);
 
-      // Get status code if available
-      let statusCode = 0;
-      if (error instanceof Error) {
-        const statusMatch = error.message.match(/HTTP (\d+)/);
-        if (statusMatch) {
-          statusCode = parseInt(statusMatch[1]);
-        }
-      }
-
-      domainLimiter.adjustRateLimit(statusCode);
+      // Adjust the domain limiter, threading Retry-After hints from
+      // 429/Retry-After responses into the rate adjustment.
+      const status =
+        error instanceof RequestQueueError ? error.status ?? 0 : 0;
+      const retryAfterMs =
+        error instanceof RequestQueueError ? error.retryAfterMs : undefined;
+      domainLimiter.adjustRateLimit(status, retryAfterMs);
 
       // Fail the request
-      this.failRequest(request.id, error as Error);
+      this.failRequest(
+        request.id,
+        error instanceof Error ? error : new Error(String(error)),
+      );
+    } finally {
+      // Memory accounting is bound to the request lifecycle: every exit path
+      // (completed, failed, cancelled) releases the allocation.
+      memoryManager.releaseResource(request.id);
     }
   }
 
   /**
-   * Execute a request with fallback strategies for CORS-blocked resources
+   * Delay helper
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Execute a request with fallback strategies for CORS-blocked resources.
+   *
+   * - Enforces `requestTimeout` via a composite abort (external signal + timeout).
+   * - Primary fetch sends `credentials: "include"`; a 4xx response is retried
+   *   once with `credentials: "omit"`.
+   * - Opaque (`no-cors`) responses are flagged on the result, never read.
+   * - The no-cors fallback is kept only for images (cacheable/usable); the
+   *   spec-illegal navigate-mode fallback has been removed.
    */
   private async executeRequest(
     request: QueuedRequest,
@@ -468,120 +673,154 @@ export class RequestQueue {
     try {
       const urlObj = new URL(request.url);
       referer = urlObj.origin + "/";
-    } catch (e) {
+    } catch {
       // If URL parsing fails, skip referer
     }
 
-    // Prepare fetch options
-    const fetchOptions: RequestInit = {
-      signal: controller.signal,
+    // Split caller hints that are not fetch-init properties
+    const requestFetchOptions: Record<string, unknown> = {
+      ...(request.fetchOptions ?? {}),
+    };
+    const timeoutHint =
+      typeof requestFetchOptions.timeout === "number"
+        ? requestFetchOptions.timeout
+        : undefined;
+    delete requestFetchOptions.timeout;
+    delete requestFetchOptions.retries;
+    const userHeaders = (requestFetchOptions.headers ?? {}) as Record<
+      string,
+      string
+    >;
+    delete requestFetchOptions.headers;
+
+    // Enforce requestTimeout (callers may pass a per-request hint)
+    const timeoutMs =
+      timeoutHint ??
+      this.options.throttling?.requestTimeout ??
+      DEFAULT_THROTTLING_CONFIG.requestTimeout;
+    const composite = createCompositeAbort(controller.signal, timeoutMs);
+
+    const buildInit = (
+      credentials: RequestCredentials,
+      mode: RequestMode,
+    ): RequestInit => ({
+      method: "GET",
+      mode,
+      redirect: "follow",
+      credentials,
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": DEFAULT_USER_AGENT,
         Accept: this.getAcceptHeader(request.resourceType),
         "Cache-Control": "no-cache",
         Referer: referer,
         Origin: referer ? referer.replace(/\/$/, "") : "",
-        ...request.fetchOptions?.headers,
+        ...userHeaders,
       },
-      ...request.fetchOptions,
-    };
+      ...requestFetchOptions,
+      // The composite signal always wins — timeout and cancellation cannot
+      // be bypassed by caller fetch options.
+      signal: composite.signal,
+    });
 
     let response: Response | undefined;
+    let opaque = false;
 
     try {
-      // Make the request
-      response = await fetch(request.url, fetchOptions);
+      try {
+        // Primary: credentialed fetch so session cookies reach
+        // logged-in/private-CDN assets (host permissions cover <all_urls>).
+        response = await fetch(request.url, buildInit("include", "cors"));
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      // If standard fetch fails, try fallback strategies.
-      // For CSS/JS/Images: no-cors mode (opaque response OK for some use cases),
-      // then navigate mode as last resort.
-      // For Documents: skip no-cors (opaque responses can't be read — .blob()
-      // throws) and go directly to navigate mode which returns readable responses.
-      const needsFallback =
-        request.resourceType === ResourceType.CSS ||
-        request.resourceType === ResourceType.JS ||
-        request.resourceType === ResourceType.IMAGE ||
-        request.resourceType === ResourceType.DOCUMENT;
-
-      if (needsFallback) {
-        // For documents, skip no-cors and go straight to navigate mode
-        // since opaque responses can't be read (blob()/text() throw TypeError).
-        if (request.resourceType !== ResourceType.DOCUMENT) {
-          try {
-            response = await fetch(request.url, {
-              method: "GET",
-              mode: "no-cors",
-              cache: "no-cache",
-              credentials: "omit",
-              signal: controller.signal,
-              headers: {
-                Accept: this.getAcceptHeader(request.resourceType),
-                "User-Agent":
-                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-              },
-            });
-
-            // no-cors mode will return opaque responses, which is expected
-            if (response.type === "opaque") {
-            }
-          } catch (fallbackError) {
-            // If no-cors fails, fall through to navigate mode below
-          }
+        if (!response.ok && response.status >= 400 && response.status < 500) {
+          // One cookieless retry — some servers reject requests that carry
+          // cookies they do not recognize.
+          response = await fetch(request.url, buildInit("omit", "cors"));
         }
 
-        // If we still don't have a usable response (or resource type is DOCUMENT),
-        // try navigate mode which bypasses CORS and returns readable responses.
-        if (
-          response === undefined ||
-          (response.type === "opaque" &&
-            request.resourceType === ResourceType.DOCUMENT)
-        ) {
-          try {
-            response = await fetch(request.url, {
-              method: "GET",
-              mode: "navigate",
-              cache: "force-cache",
-              redirect: "follow",
-              signal: controller.signal,
-            });
-          } catch (navigateError) {
-            // All strategies failed, re-throw the original error
-            throw error;
-          }
+        if (!response.ok) {
+          throw new RequestQueueError(
+            `HTTP ${response.status}: ${response.statusText}`,
+            "http",
+            {
+              status: response.status,
+              retryAfterMs: parseRetryAfterHeader(response.headers),
+            },
+          );
         }
-      } else {
-        // For other resource types, just re-throw the error
-        throw error;
-      }
-    }
+      } catch (error) {
+        // Timeout and download-cancellation aborts are terminal.
+        const abortError = classifyAbort(error, controller.signal, timeoutMs);
+        if (abortError) {
+          throw abortError;
+        }
 
-    // If all fetch strategies failed, throw the error
-    if (!response) {
-      throw new Error(
-        `Failed to fetch ${request.url}: all strategies exhausted`,
+        // Network-level failure. Keep the no-cors fallback for images only
+        // (cacheable/usable cases) — never for text or documents.
+        if (request.resourceType !== ResourceType.IMAGE) {
+          throw toRequestQueueError(error, "network");
+        }
+
+        try {
+          response = await fetch(request.url, buildInit("omit", "no-cors"));
+          opaque = response.type === "opaque";
+          if (!opaque && !response.ok) {
+            throw new RequestQueueError(
+              `HTTP ${response.status}: ${response.statusText}`,
+              "http",
+              { status: response.status },
+            );
+          }
+        } catch (fallbackError) {
+          const fallbackAbort = classifyAbort(
+            fallbackError,
+            controller.signal,
+            timeoutMs,
+          );
+          throw fallbackAbort ?? toRequestQueueError(fallbackError, "network");
+        }
+      }
+
+      if (!response) {
+        throw new RequestQueueError(
+          `Failed to fetch ${request.url}: all strategies exhausted`,
+          "network",
+        );
+      }
+
+      // Read the body exactly once and keep an immutable snapshot; every
+      // consumer gets an independently readable result. Opaque bodies are
+      // never read — they are flagged instead.
+      let bytes: Uint8Array | null = null;
+      if (!opaque) {
+        bytes = new Uint8Array(await response.arrayBuffer());
+      }
+
+      const snapshot: ResponseSnapshot = createResponseSnapshot(
+        response,
+        bytes,
       );
+      if (opaque) {
+        snapshot.type = "opaque";
+      }
+
+      const result: RequestResult = {
+        requestId: request.id,
+        url: request.url,
+        duration: Date.now() - startTime,
+        size: bytes ? bytes.byteLength : 0,
+        fromCache: false,
+        snapshot,
+        type: snapshot.type,
+        get response() {
+          // Fresh Response per access — consumers never share a consumed body.
+          return snapshotToResponse(snapshot);
+        },
+      };
+
+      return result;
+    } finally {
+      composite.cleanup();
     }
-
-    // Get response size
-    const contentLength = response.headers.get("Content-Length");
-    const size = contentLength ? parseInt(contentLength) : 0;
-
-    // Create result
-    const result: RequestResult = {
-      requestId: request.id,
-      url: request.url,
-      response,
-      duration: Date.now() - startTime,
-      size,
-      fromCache: false, // We could check cache headers here
-    };
-
-    return result;
   }
 
   /**
@@ -598,9 +837,6 @@ export class RequestQueue {
       activeRequest.request.domain,
     );
     domainLimiter.completeRequest();
-
-    // Release memory
-    memoryManager.releaseResource(requestId);
 
     // Remove from active requests
     this.activeRequests.delete(requestId);
@@ -632,9 +868,6 @@ export class RequestQueue {
     );
     domainLimiter.completeRequest();
 
-    // Release memory
-    memoryManager.releaseResource(requestId);
-
     // Remove from active requests
     this.activeRequests.delete(requestId);
 
@@ -655,32 +888,44 @@ export class RequestQueue {
    * Permanent errors like 404, 403 should not be retried as they will always fail
    */
   private isRetryableError(error: Error): boolean {
+    if (error instanceof RequestQueueError) {
+      switch (error.category) {
+        case "cancelled":
+          // The download was stopped on purpose — never retry.
+          return false;
+        case "http": {
+          const statusCode = error.status ?? 0;
+
+          // 4xx Client Errors - generally not retryable. Exceptions:
+          // 408 Request Timeout and 429 Too Many Requests.
+          if (statusCode >= 400 && statusCode < 500) {
+            return statusCode === 408 || statusCode === 429;
+          }
+
+          // 5xx server errors and anything else are transient.
+          return true;
+        }
+        default:
+          // Timeouts and network failures are transient.
+          return true;
+      }
+    }
+
+    // Legacy message-based classification for errors from other layers
     const message = error.message;
 
-    // Check for HTTP status codes in the error message
     const httpMatch = message.match(/HTTP (\d+)/);
     if (httpMatch) {
       const statusCode = parseInt(httpMatch[1]);
 
-      // 4xx Client Errors - generally not retryable (resource doesn't exist or access denied)
-      // Exceptions:
-      // - 408 Request Timeout - retryable
-      // - 429 Too Many Requests - retryable (rate limiting)
       if (statusCode >= 400 && statusCode < 500) {
-        if (statusCode === 408 || statusCode === 429) {
-          return true; // These are retryable
-        }
-        return false; // Other 4xx errors are permanent
+        return statusCode === 408 || statusCode === 429;
       }
-
-      // 5xx Server Errors - generally retryable (server issues may be temporary)
       if (statusCode >= 500) {
         return true;
       }
     }
 
-    // Network errors, timeouts, and other transient issues are retryable
-    // These typically don't have HTTP status codes
     return true;
   }
 
@@ -692,8 +937,12 @@ export class RequestQueue {
     request.retryCount++;
 
     // Calculate backoff delay
-    const baseDelay = this.options.throttling?.backoffBase || 1000;
-    const maxDelay = this.options.throttling?.maxBackoffDelay || 10000;
+    const baseDelay =
+      this.options.throttling?.backoffBase ??
+      DEFAULT_THROTTLING_CONFIG.backoffBase;
+    const maxDelay =
+      this.options.throttling?.maxBackoffDelay ??
+      DEFAULT_THROTTLING_CONFIG.maxBackoffDelay;
     const delay = Math.min(
       baseDelay * Math.pow(2, request.retryCount - 1),
       maxDelay,

@@ -15,9 +15,7 @@ import { DownloadComplete } from "./sidepanel/components/DownloadComplete";
 import { useActiveTabInfo } from "./sidepanel/hooks/useActiveTabInfo"; // Added hook import
 import { useMessageListener } from "./sidepanel/hooks/useMessageListener"; // Added hook import
 import { useScrapingDownloader } from "./sidepanel/hooks/useScrapingDownloader"; // Added hook import
-import { usePermissions } from "./common/hooks/usePermissions";
-import { GlobalPermissionRequest } from "./common/components/GlobalPermissionRequest";
-import { LanguageSwitcher } from "./components/LanguageSwitcher";
+
 import { sendMessageToBackground } from "./client/message";
 import {
   ServerModeState,
@@ -27,6 +25,11 @@ import {
 import { usePagePocket } from "./hooks/usePagePocket";
 import { CloudUploadState } from "./components/CloudUploadStatus";
 import { PagePocketAnnouncement } from "./components/PagePocketAnnouncement";
+import {
+  DownloadReport,
+  initialDownloadReport,
+  applyDownloadReportMessage,
+} from "./sidepanel/utils/downloadReport";
 
 // ServerModeState type and transition logic are imported from
 // server-mode-state.ts to avoid duplication and enable unit testing.
@@ -51,10 +54,16 @@ function ErrorFallback({
 }) {
   const { t } = useTranslation();
 
+  // (5.6) Never print raw error details to the user — show a localized
+  // generic message and log the details to the console instead.
+  useEffect(() => {
+    console.error("[SidePanel] Render error:", error);
+  }, [error]);
+
   return (
     <div role="alert" className="p-4 bg-red-100 rounded">
       <p className="font-bold text-red-800">{t("app.error")}</p>
-      <pre className="text-red-600">{error.message}</pre>
+      <p className="text-red-600">{t("app.unexpectedError")}</p>
       <button
         onClick={resetErrorBoundary}
         className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
@@ -92,6 +101,10 @@ export default function SidePanel() {
   // PagePocket cloud upload state
   const [cloudUploadState, setCloudUploadState] =
     useState<CloudUploadState | null>(null);
+  // (5.3 + 5.5) Aggregated per-category download report for DownloadComplete
+  const [downloadReport, setDownloadReport] = useState<DownloadReport>(
+    initialDownloadReport,
+  );
   // PagePocket auth/cloud state
   const { cloudStorageEnabled, isAuthenticated } = usePagePocket();
   // downloadResponse and scrollAttempts are now managed by useScrapingDownloader hook
@@ -105,17 +118,13 @@ export default function SidePanel() {
     singleFile: boolean;
   } | null>(null);
 
-  // Use the permissions hook
-  const {
-    hasPermission,
-    permissionRequesting,
-    requestPermission,
-    loading: permissionsLoading,
-    error: permissionsError,
-  } = usePermissions();
-
-  // Use the custom hooks
-  useActiveTabInfo({ setTabId, setTabUrl, setMessages });
+  // (5.1) Active tab support is validated inside the hook; the form is
+  // replaced by the unsupported-page state when the tab can't be scraped.
+  const { supported: tabSupported } = useActiveTabInfo({
+    setTabId,
+    setTabUrl,
+    setMessages,
+  });
 
   // Initialize useScrapingDownloader hook early so setDownloadResponse is available
   const {
@@ -130,6 +139,11 @@ export default function SidePanel() {
     setIsScraping,
     downloadOptions,
     setMessages,
+    // (5.5) A user stop mid-scrape packages partial content — mark the
+    // completion report so the outcome is explicit.
+    onPartialSave: () => {
+      setDownloadReport((prev) => ({ ...prev, partial: true }));
+    },
   });
 
   // Memoize messageWorker to stabilize useMessageListener dependency
@@ -198,6 +212,12 @@ export default function SidePanel() {
           if (msgKey) {
             setServerModeState((prev) =>
               applyServerModeMessage(prev, msgKey, data.message?.options),
+            );
+
+            // (5.3 + 5.5) Aggregate per-category summaries and partial
+            // finalization into the persistent download report.
+            setDownloadReport((prev) =>
+              applyDownloadReportMessage(prev, msgKey, data.message?.options),
             );
           }
           break;
@@ -275,17 +295,25 @@ export default function SidePanel() {
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
           setAction(null);
+          // (5.3) A failed download leaves no completion screen — drop the
+          // partial report collected so far.
+          setDownloadReport(initialDownloadReport);
           // Reset downloadResponse to allow filter to show again
           setDownloadResponse(null);
           break;
 
         case messageActions.DOWNLOAD_CANCELLED:
           if (data.tabId !== undefined && data.tabId !== tabId) break;
-          // User cancelled the download
-          setMessages([{ key: "status.connected" }]);
+          // (5.5) Full cancel — show explicit feedback instead of silently
+          // resetting to the connected state.
+          setMessages([
+            { key: "status.connected" },
+            { key: "status.cancelled" },
+          ]);
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
           setAction(null);
+          setDownloadReport(initialDownloadReport);
           setDownloadResponse(null);
           break;
 
@@ -356,11 +384,6 @@ export default function SidePanel() {
 
   // Listen for download completion via chrome.storage
   useEffect(() => {
-    // Only set up listener if we have storage permission
-    if (!hasPermission) {
-      return;
-    }
-
     const handleStorageChange = (
       changes: { [key: string]: chrome.storage.StorageChange },
       areaName: string,
@@ -409,7 +432,6 @@ export default function SidePanel() {
       chrome.storage.onChanged.removeListener(handleStorageChange);
     };
   }, [
-    hasPermission,
     setMessages,
     setAction,
     setDownloadResponse,
@@ -430,6 +452,7 @@ export default function SidePanel() {
       setDownloadOptions(null);
       setServerModeState(initialServerModeState); // Reset server-mode state
       setCloudUploadState(null); // Reset cloud upload state
+      setDownloadReport(initialDownloadReport); // (5.3) Reset download report
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [setDownloadResponse, setScrollAttempts],
@@ -442,6 +465,7 @@ export default function SidePanel() {
     setCloudUploadState(null);
     setIsScraping(true);
     setDownloadOptions(options);
+    setDownloadReport(initialDownloadReport); // (5.3) Fresh report per run
     setMessages((prev) => [...prev, { key: "status.scraping" }]);
     // (15.7) Track singleFile option in server-mode state
     setServerModeState((prev) => ({
@@ -465,31 +489,6 @@ export default function SidePanel() {
     );
   }
 
-  // Show permission request if user doesn't have storage permission
-  if (!hasPermission && !permissionsLoading) {
-    return (
-      <div className="p-6">
-        <div className="mb-4 flex justify-end">
-          <LanguageSwitcher />
-        </div>
-        <GlobalPermissionRequest
-          onRequestPermission={requestPermission}
-          requesting={permissionRequesting}
-          error={permissionsError}
-        />
-      </div>
-    );
-  }
-
-  // Show loading state while checking permissions
-  if (permissionsLoading) {
-    return (
-      <div className="p-6 text-center">
-        <div className="text-lg">{t("app.loading")}</div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-6">
       <PagePocketAnnouncement />
@@ -504,6 +503,8 @@ export default function SidePanel() {
         tabUrl={tabUrl}
         // Don't interrupt a running download with the auth form
         showAuthForm={cloudStorageEnabled && !isAuthenticated && !isScraping}
+        // (5.1) Hide the form on pages that cannot be downloaded
+        tabSupported={tabSupported}
       />
       <DownloadStatus
         tabId={tabId}
@@ -539,6 +540,55 @@ export default function SidePanel() {
               url: serverModeState.serverDownloadUrl,
               saveAs: opts.alwaysAskWhereToSave ?? true,
             });
+          }
+        }}
+        // (5.2) Local fallback action — design D14: reuse the server ZIP URL
+        // when one exists (fast path), otherwise trigger the server-side
+        // assemble-and-redirect for the partially-uploaded session.
+        onDownloadLocally={async () => {
+          if (serverModeState.serverDownloadUrl) {
+            const { loadFilterOptions } =
+              await import("./common/storage/filterStorage");
+            const opts = await loadFilterOptions();
+            chrome.downloads.download({
+              url: serverModeState.serverDownloadUrl,
+              saveAs: opts.alwaysAskWhereToSave ?? true,
+            });
+            return;
+          }
+          try {
+            await sendMessageToBackground(
+              messageActions.SERVER_FINALIZE_SESSION,
+              { tabId },
+            );
+            // Bounded poll until the assembled ZIP is ready.
+            for (let attempt = 0; attempt < 60; attempt++) {
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              const status = await sendMessageToBackground(
+                messageActions.SERVER_SESSION_STATUS,
+                { tabId },
+              );
+              const session = status?.result;
+              if (session?.status === "ready" && session.download_url) {
+                const { loadFilterOptions } = await import(
+                  "./common/storage/filterStorage"
+                );
+                const opts = await loadFilterOptions();
+                chrome.downloads.download({
+                  url: session.download_url,
+                  saveAs: opts.alwaysAskWhereToSave ?? true,
+                });
+                return;
+              }
+              if (
+                session?.status === "failed" ||
+                session?.status === "expired"
+              ) {
+                return;
+              }
+            }
+          } catch {
+            // Assemble-and-redirect unavailable — the failure card stays.
           }
         }}
         interruptData={interruptData}
@@ -624,6 +674,7 @@ export default function SidePanel() {
         serverDownloadUrl={serverModeState.serverDownloadUrl}
         isSingleFile={serverModeState.isSingleFile}
         cloudUploadState={cloudUploadState}
+        downloadReport={downloadReport}
       />
     </div>
   );

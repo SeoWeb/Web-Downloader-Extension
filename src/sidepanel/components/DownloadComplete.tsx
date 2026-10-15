@@ -14,6 +14,7 @@ import {
   Cloud,
 } from "lucide-react";
 import { CloudUploadState } from "../../components/CloudUploadStatus";
+import { DownloadReport } from "../utils/downloadReport";
 import { PAGEPOCKET_URL } from "../../common/pagepocket-mode";
 
 const ChromeExtensionRating = React.lazy(
@@ -32,6 +33,8 @@ interface DownloadCompleteProps {
   isSingleFile?: boolean;
   /** Cloud upload state — when present, show "Saved to PagePocket" instead of local download UI. */
   cloudUploadState?: CloudUploadState | null;
+  /** (5.3 + 5.5) Aggregated per-category report + partial marker. */
+  downloadReport?: DownloadReport | null;
 }
 
 export function DownloadComplete({
@@ -41,6 +44,7 @@ export function DownloadComplete({
   serverDownloadUrl,
   isSingleFile,
   cloudUploadState,
+  downloadReport,
 }: DownloadCompleteProps) {
   const { t } = useTranslation();
   const [downloadId, setDownloadId] = useState<number | null>(null);
@@ -175,6 +179,41 @@ export function DownloadComplete({
             )}
           </div>
         )}
+
+        {/* (5.3 + 5.5) Persistent download report — per-category
+            succeeded/failed/skipped counts plus the partial marker. */}
+        {downloadReport &&
+          (downloadReport.entries.length > 0 || downloadReport.partial) && (
+            <div className="w-full bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2 text-left">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-slate-700">
+                  {t("status.downloadReport")}
+                </h3>
+                {downloadReport.partial && (
+                  <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    {t("status.partialDownload")}
+                  </span>
+                )}
+              </div>
+              {downloadReport.partial && (
+                <p className="text-xs text-amber-700">
+                  {t("status.partialDownloadNote")}
+                </p>
+              )}
+              {downloadReport.entries.length > 0 && (
+                <ul className="space-y-1">
+                  {downloadReport.entries.map((entry) => (
+                    <li
+                      key={entry.key}
+                      className="text-xs text-slate-600 leading-relaxed"
+                    >
+                      {t(entry.key, entry.options)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
         {/* Extraction Alert - Accordion (hidden for cloud uploads) */}
         {!cloudUploadState && (

@@ -109,6 +109,9 @@ export default defineConfig({
         sidePanel: resolve(__dirname, "sidePanel.html"),
 
         background: resolve(__dirname, "background.js"),
+
+        // First-run welcome page (task 5.7) — opened by the install listener.
+        welcome: resolve(__dirname, "welcome.html"),
       },
       output: {
         chunkFileNames: (chunkInfo) => {

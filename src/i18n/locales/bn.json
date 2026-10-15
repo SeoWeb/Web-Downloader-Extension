@@ -17,7 +17,9 @@
       "maxScrollAttempts": "সর্বাধিক স্ক্রোল প্রচেষ্টা পৌঁছেছে",
       "panelUnavailable": "ডাউনলোড সম্পন্ন হতে পারেনি কারণ এক্সটেনশন প্যানেল বন্ধ হয়ে গেছে বা অনুপলব্ধ হয়েছে। ডাউনলোডের সময় এই প্যানেলটি খোলা রাখুন এবং আবার চেষ্টা করুন।",
       "panelUnavailableTitle": "এক্সটেনশন প্যানেল প্রয়োজন",
-      "panelUnavailableTip": "এটি এড়াতে, ডাউনলোডের সময় এই প্যানেলটি খোলা রাখুন এবং ট্যাব পরিবর্তন করবেন না।"
+      "panelUnavailableTip": "এটি এড়াতে, ডাউনলোডের সময় এই প্যানেলটি খোলা রাখুন এবং ট্যাব পরিবর্তন করবেন না।",
+      "somethingWentWrong": "Something went wrong",
+      "unexpectedError": "An unexpected error occurred. Details have been logged to the console."
     },
     "filter": {
       "title": "আপনি যা ডাউনলোড করতে চান তা ফিল্টার করুন",
@@ -55,7 +57,20 @@
       "fullWebsiteDescription": "জটিল ওয়েবসাইটের জন্য সেরা (লিঙ্ক করা পৃষ্ঠাগুলির প্রথম স্তর ডাউনলোড করে)",
       "serverMode": "সার্ভার মোড",
       "insecureServerWarning": "HTTPS ব্যবহার করা হচ্ছে না",
-      "alwaysAskWhereToSave": "সর্বদা জিজ্ঞাসা করুন ফাইল কোথায় সংরক্ষণ করবেন"
+      "alwaysAskWhereToSave": "সর্বদা জিজ্ঞাসা করুন ফাইল কোথায় সংরক্ষণ করবেন",
+      "cloudStorage": "PagePocket Cloud Storage",
+      "cloudStorageDescription": "Save pages directly to your PagePocket account",
+      "cloudLoginRequired": "Login required",
+      "cloudEmail": "Email",
+      "cloudPassword": "Password",
+      "cloudName": "Name",
+      "cloudLogin": "Login",
+      "cloudRegister": "Register",
+      "cloudLogout": "Sign Out",
+      "cloudLoggedInAs": "Connected as {{email}}",
+      "cloudNoAccount": "Don't have an account?",
+      "cloudHasAccount": "Already have an account?",
+      "cloudAuthError": "Authentication failed"
     },
     "actions": {
       "title": "অ্যাকশন:",
@@ -198,7 +213,23 @@
         "uploading": "রিসোর্স আপলোড",
         "assembling": "সার্ভার অ্যাসেম্বলি",
         "packing": "প্যাকেজ তৈরি"
-      }
+      },
+      "resumeDownload": "Resume Download",
+      "reconnectingServer": "Reconnecting to server...",
+      "resumingUploads": "Resuming {{count}} resource uploads...",
+      "pagepocketUploading": "Uploading to PagePocket...",
+      "pagepocketUploadProgress": "Upload progress: {{progress}}%",
+      "pagepocketUploadComplete": "Saved to PagePocket",
+      "pagepocketUploadError": "Upload failed",
+      "pagepocketUploadRetry": "Retry upload",
+      "pagepocketViewPage": "View in PagePocket",
+      "pagepocketQuotaExceeded": "PagePocket storage quota exceeded",
+      "pagepocketSavedTo": "Saved to PagePocket",
+      "finalizingPartial": "Finalizing with the content captured so far…",
+      "savingPartialCapture": "Saving what we captured…",
+      "downloadReport": "Download report",
+      "partialDownload": "Partial download",
+      "partialDownloadNote": "The archive contains what was captured before the download was stopped."
     },
     "permissions": {
       "storage": {
@@ -246,7 +277,8 @@
     "language": {
       "select": "ভাষা নির্বাচন করুন",
       "search": "ভাষা খুঁজুন...",
-      "current": "বর্তমান ভাষা"
+      "current": "বর্তমান ভাষা",
+      "noMatches": "No languages found"
     },
     "rating": {
       "title": "এই এক্সটেনশনটি উপভোগ করছেন?",
@@ -291,7 +323,32 @@
       "proAdvancedSearch": "উন্নত অনুসন্ধান ফিল্টার",
       "proCustomExpiry": "কাস্টম শেয়ার মেয়াদোত্তীর্ণ",
       "getStarted": "শুরু করুন",
-      "maybeLater": "হয়তো পরে"
+      "maybeLater": "হয়তো পরে",
+      "newFeature": "New Feature",
+      "close": "Close",
+      "freeBadge": "FREE",
+      "freeNoLimit": "No time limit — yours to keep, forever"
+    },
+    "tab": {
+      "unsupportedTitle": "This page can't be downloaded",
+      "unsupportedDescription": "Website Downloader works on regular web pages (http and https). Browser settings pages, the Chrome Web Store and local files are not supported. Open a website in this tab to start a download."
+    },
+    "welcome": {
+      "title": "Welcome to Web Page Downloader",
+      "subtitle": "Save any web page as a ZIP archive — HTML, images, styles and scripts — right from your browser.",
+      "featuresTitle": "What you can do",
+      "feature1": "Capture complete pages, including images, CSS and JavaScript",
+      "feature2": "Save pages to your computer as a ZIP, or to PagePocket cloud storage",
+      "feature3": "Browse the archived page offline at any time",
+      "stepsTitle": "How it works",
+      "step1Title": "Open the side panel",
+      "step1Description": "Click the extension icon in the toolbar and select \"Open side panel\".",
+      "step2Title": "Configure your download",
+      "step2Description": "Choose what to capture — full HTML, images, assets or a single file.",
+      "step3Title": "Download the page",
+      "step3Description": "Press \"Start download\" and get a ZIP archive you can open offline.",
+      "cta": "Open the side panel",
+      "ctaHint": "Tip: you can also right-click the extension icon and choose \"Open side panel\"."
     }
   }
 }

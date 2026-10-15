@@ -17,7 +17,9 @@
       "maxScrollAttempts": "Numărul maxim de încercări de defilare a fost atins",
       "panelUnavailable": "Descărcarea nu a putut fi finalizată deoarece panoul extensiei a fost închis sau a devenit indisponibil. Vă rugăm să păstrați acest panou deschis în timpul descărcării și încercați din nou.",
       "panelUnavailableTitle": "Panou extensie necesar",
-      "panelUnavailableTip": "Pentru a evita acest lucru, păstrați acest panou deschis și evitați schimbarea filelor în timpul descărcării."
+      "panelUnavailableTip": "Pentru a evita acest lucru, păstrați acest panou deschis și evitați schimbarea filelor în timpul descărcării.",
+      "somethingWentWrong": "Something went wrong",
+      "unexpectedError": "An unexpected error occurred. Details have been logged to the console."
     },
     "filter": {
       "title": "Filtrează ce vrei să descarci",
@@ -55,7 +57,20 @@
       "fullWebsiteDescription": "Cel mai bun pentru site-uri complexe (descarcă primul nivel de pagini conectate)",
       "serverMode": "Mod server",
       "insecureServerWarning": "Fără HTTPS",
-      "alwaysAskWhereToSave": "Întreabă întotdeauna unde să salvezi fișierul"
+      "alwaysAskWhereToSave": "Întreabă întotdeauna unde să salvezi fișierul",
+      "cloudStorage": "PagePocket Cloud Storage",
+      "cloudStorageDescription": "Save pages directly to your PagePocket account",
+      "cloudLoginRequired": "Login required",
+      "cloudEmail": "Email",
+      "cloudPassword": "Password",
+      "cloudName": "Name",
+      "cloudLogin": "Login",
+      "cloudRegister": "Register",
+      "cloudLogout": "Sign Out",
+      "cloudLoggedInAs": "Connected as {{email}}",
+      "cloudNoAccount": "Don't have an account?",
+      "cloudHasAccount": "Already have an account?",
+      "cloudAuthError": "Authentication failed"
     },
     "actions": {
       "title": "Acțiuni:",
@@ -198,7 +213,23 @@
         "uploading": "încărcare resurse",
         "assembling": "asamblare server",
         "packing": "creare pachet"
-      }
+      },
+      "resumeDownload": "Resume Download",
+      "reconnectingServer": "Reconnecting to server...",
+      "resumingUploads": "Resuming {{count}} resource uploads...",
+      "pagepocketUploading": "Uploading to PagePocket...",
+      "pagepocketUploadProgress": "Upload progress: {{progress}}%",
+      "pagepocketUploadComplete": "Saved to PagePocket",
+      "pagepocketUploadError": "Upload failed",
+      "pagepocketUploadRetry": "Retry upload",
+      "pagepocketViewPage": "View in PagePocket",
+      "pagepocketQuotaExceeded": "PagePocket storage quota exceeded",
+      "pagepocketSavedTo": "Saved to PagePocket",
+      "finalizingPartial": "Finalizing with the content captured so far…",
+      "savingPartialCapture": "Saving what we captured…",
+      "downloadReport": "Download report",
+      "partialDownload": "Partial download",
+      "partialDownloadNote": "The archive contains what was captured before the download was stopped."
     },
     "permissions": {
       "storage": {
@@ -246,7 +277,8 @@
     "language": {
       "select": "Selectează Limba",
       "search": "Caută limbi...",
-      "current": "Limba curentă"
+      "current": "Limba curentă",
+      "noMatches": "No languages found"
     },
     "rating": {
       "title": "Îți place această extensie?",
@@ -291,7 +323,32 @@
       "proAdvancedSearch": "Filtre avansate de căutare",
       "proCustomExpiry": "Expirare personalizată a distribuirii",
       "getStarted": "Începe",
-      "maybeLater": "Poate mai târziu"
+      "maybeLater": "Poate mai târziu",
+      "newFeature": "New Feature",
+      "close": "Close",
+      "freeBadge": "FREE",
+      "freeNoLimit": "No time limit — yours to keep, forever"
+    },
+    "tab": {
+      "unsupportedTitle": "This page can't be downloaded",
+      "unsupportedDescription": "Website Downloader works on regular web pages (http and https). Browser settings pages, the Chrome Web Store and local files are not supported. Open a website in this tab to start a download."
+    },
+    "welcome": {
+      "title": "Welcome to Web Page Downloader",
+      "subtitle": "Save any web page as a ZIP archive — HTML, images, styles and scripts — right from your browser.",
+      "featuresTitle": "What you can do",
+      "feature1": "Capture complete pages, including images, CSS and JavaScript",
+      "feature2": "Save pages to your computer as a ZIP, or to PagePocket cloud storage",
+      "feature3": "Browse the archived page offline at any time",
+      "stepsTitle": "How it works",
+      "step1Title": "Open the side panel",
+      "step1Description": "Click the extension icon in the toolbar and select \"Open side panel\".",
+      "step2Title": "Configure your download",
+      "step2Description": "Choose what to capture — full HTML, images, assets or a single file.",
+      "step3Title": "Download the page",
+      "step3Description": "Press \"Start download\" and get a ZIP archive you can open offline.",
+      "cta": "Open the side panel",
+      "ctaHint": "Tip: you can also right-click the extension icon and choose \"Open side panel\"."
     }
   }
 }

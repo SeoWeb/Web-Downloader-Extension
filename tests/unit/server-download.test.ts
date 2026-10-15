@@ -19,6 +19,7 @@ import {
   ServerUnavailableError,
   AuthenticationError,
   AssemblyTimeoutError,
+  ConfigurationError,
   SessionStatusResponse,
 } from "../../src/background/server-client";
 
@@ -154,48 +155,53 @@ describe("ServerDownloadHandler", () => {
       ).rejects.toThrow("chrome.downloads.download failed");
     });
 
-    it("logs warning for HTTP non-loopback download URLs", async () => {
+    it("rejects HTTP non-loopback download URLs with ConfigurationError (D11)", async () => {
       const { handler } = createHandler();
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation();
 
-      await handler.triggerServerDownload(
-        "http://myserver.example.com/api/v1/sessions/test-123/download",
-        "test.zip",
-      );
+      await expect(
+        handler.triggerServerDownload(
+          "http://myserver.example.com/api/v1/sessions/test-123/download",
+          "test.zip",
+        ),
+      ).rejects.toThrow(ConfigurationError);
 
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("http://"),
-      );
-
-      warnSpy.mockRestore();
+      // Fail fast — nothing may be handed to chrome.downloads
+      expect(mockChromeDownloadsDownload).not.toHaveBeenCalled();
     });
 
-    it("does not warn for HTTPS URLs", async () => {
+    it("allows HTTPS download URLs", async () => {
       const { handler } = createHandler();
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation();
 
-      await handler.triggerServerDownload(
+      const result = await handler.triggerServerDownload(
         "https://myserver.example.com/api/v1/sessions/test-123/download",
         "test.zip",
       );
 
-      expect(warnSpy).not.toHaveBeenCalled();
-
-      warnSpy.mockRestore();
+      expect(mockChromeDownloadsDownload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: "https://myserver.example.com/api/v1/sessions/test-123/download",
+        }),
+        expect.any(Function),
+      );
+      expect(result).toBe(42);
     });
 
-    it("does not warn for localhost HTTP URLs", async () => {
+    it("allows loopback HTTP download URLs (local development)", async () => {
       const { handler } = createHandler();
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation();
 
-      await handler.triggerServerDownload(
-        "http://localhost:8000/api/v1/sessions/test-123/download",
-        "test.zip",
+      await expect(
+        handler.triggerServerDownload(
+          "http://127.0.0.1:8000/api/v1/sessions/test-123/download",
+          "test.zip",
+        ),
+      ).resolves.toBe(42);
+
+      expect(mockChromeDownloadsDownload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: "http://127.0.0.1:8000/api/v1/sessions/test-123/download",
+        }),
+        expect.any(Function),
       );
-
-      expect(warnSpy).not.toHaveBeenCalled();
-
-      warnSpy.mockRestore();
     });
   });
 

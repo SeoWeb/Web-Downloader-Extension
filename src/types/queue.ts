@@ -99,19 +99,152 @@ export interface RequestProgress {
   eta: number;
 }
 
+/**
+ * Fetch response type as reported by the Fetch spec.
+ * "opaque" responses (no-cors) have an unreadable body — consumers must
+ * branch on this flag instead of calling bytes()/text().
+ */
+export type ResponseSnapshotType =
+  | "basic"
+  | "cors"
+  | "default"
+  | "opaque"
+  | "error";
+
+/**
+ * Immutable snapshot of a fetched response. Stored by the dedup cache and
+ * used to hand every consumer an independently readable result, instead of
+ * sharing a single `Response` whose body can only be consumed once.
+ */
+export interface ResponseSnapshot {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  /** Lowercased header name -> value */
+  headers: Record<string, string>;
+  contentType: string;
+  /** Response type info — "opaque" means the body could not be read (no-cors). */
+  type: ResponseSnapshotType;
+  /** Raw response bytes. `null` for opaque responses (body is unreadable). */
+  bytes: Uint8Array | null;
+  /** Decoded text when the queue chose the text form; usually `null`. */
+  text: string | null;
+}
+
 export interface RequestResult {
   /** Request ID */
   requestId: string;
   /** URL that was fetched */
   url: string;
-  /** Response data */
-  response: Response;
+  /**
+   * Response data. A fresh, independently readable `Response` reconstructed
+   * from the snapshot on every access — each consumer may read the body.
+   */
+  readonly response: Response;
+  /** Immutable snapshot backing `response`; bytes/text can be read directly. */
+  readonly snapshot: ResponseSnapshot;
+  /** Response type info — "opaque" bodies are unreadable (no-cors). */
+  readonly type: ResponseSnapshotType;
   /** Download duration in milliseconds */
   duration: number;
   /** Final size in bytes */
   size: number;
   /** Whether the response was from cache */
   fromCache: boolean;
+}
+
+/** Error categories used to classify queue request failures. */
+export type RequestErrorCategory =
+  | "timeout"
+  | "cancelled"
+  | "network"
+  | "http"
+  | "unknown";
+
+/** Error thrown/recorded by the request queue with a machine-readable category. */
+export class RequestQueueError extends Error {
+  readonly category: RequestErrorCategory;
+  /** HTTP status for "http" category errors. */
+  readonly status?: number;
+  /** Retry-After hint from the server, in milliseconds (when provided). */
+  readonly retryAfterMs?: number;
+
+  constructor(
+    message: string,
+    category: RequestErrorCategory = "unknown",
+    options?: { status?: number; retryAfterMs?: number; cause?: unknown },
+  ) {
+    super(message);
+    this.name = "RequestQueueError";
+    this.category = category;
+    this.status = options?.status;
+    this.retryAfterMs = options?.retryAfterMs;
+    if (options?.cause !== undefined) {
+      (this as { cause?: unknown }).cause = options.cause;
+    }
+  }
+}
+
+/** Response bodies above this size are not stored in the dedup cache (re-fetched instead). */
+export const MAX_DEDUP_CACHE_BODY_SIZE = 5 * 1024 * 1024; // 5 MB
+
+/** Build an immutable snapshot from a fetched response and its read-once bytes. */
+export function createResponseSnapshot(
+  response: Response,
+  bytes: Uint8Array | null,
+): ResponseSnapshot {
+  const headers: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    headers[key.toLowerCase()] = value;
+  });
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+    contentType: headers["content-type"] ?? "",
+    type: (response.type as ResponseSnapshotType) || "default",
+    bytes,
+    text: null,
+  };
+}
+
+/**
+ * Reconstruct a fresh, independently readable Response from a snapshot.
+ * Each call returns a new Response backed by the snapshot bytes, so several
+ * consumers can read the body without "body has already been consumed".
+ */
+export function snapshotToResponse(snapshot: ResponseSnapshot): Response {
+  if (snapshot.type === "opaque") {
+    // Status 0 responses cannot be constructed — hand back an empty body.
+    // Consumers must branch on snapshot.type instead of reading the body.
+    return new Response(null, { headers: snapshot.headers });
+  }
+
+  const status =
+    snapshot.status >= 200 && snapshot.status <= 599 ? snapshot.status : 200;
+  // Null-body statuses reject a non-null body in the Response constructor.
+  const isNullBodyStatus =
+    snapshot.status === 204 || snapshot.status === 205 || snapshot.status === 304;
+  const body = snapshot.bytes && !isNullBodyStatus ? new Uint8Array(snapshot.bytes) : null;
+
+  return new Response(body, {
+    status,
+    statusText: snapshot.statusText,
+    headers: snapshot.headers,
+  });
+}
+
+/** Decode snapshot bytes as text (UTF-8 unless a consumer handles charset). */
+export async function snapshotText(snapshot: ResponseSnapshot): Promise<string> {
+  if (snapshot.text !== null) {
+    return snapshot.text;
+  }
+  if (!snapshot.bytes) {
+    return "";
+  }
+  return new TextDecoder().decode(snapshot.bytes);
 }
 
 export interface DomainLimiter {

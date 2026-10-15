@@ -17,3 +17,10 @@ tests/e2e/downloads/
 agents.config.json
 .roorules
 .rooignore
+.deploy.env
+
+# Signing key material and signed CRX artifacts (D11 / task 7.1 — never commit)
+*.pem
+*.crx
+dist.pem
+dist.crx

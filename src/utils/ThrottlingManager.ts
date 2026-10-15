@@ -8,6 +8,7 @@ import {
   NetworkCondition,
   QueueEventListeners,
   DEFAULT_THROTTLING_CONFIG,
+  MAX_DEDUP_CACHE_BODY_SIZE,
 } from "../types/queue";
 import { memoryManager } from "./MemoryManager";
 
@@ -23,7 +24,6 @@ export class ThrottlingManager {
   };
   private memoryPressureLevel: "low" | "medium" | "high" | "critical" = "low";
   private adaptiveConcurrency: number = 10;
-  private networkMonitorInterval: NodeJS.Timeout | null = null;
   private memoryMonitorInterval: NodeJS.Timeout | null = null;
   private requestHistory: Array<{
     timestamp: number;
@@ -98,7 +98,9 @@ export class ThrottlingManager {
   }
 
   /**
-   * Record a request completion
+   * Record a request completion. Network congestion is derived from the
+   * download's own request outcomes (error/timeout/latency ratios) — no
+   * third-party probes.
    */
   public recordRequest(duration: number, success: boolean): void {
     const now = Date.now();
@@ -115,6 +117,9 @@ export class ThrottlingManager {
 
     // Update adaptive concurrency based on performance
     this.updateAdaptiveConcurrency();
+
+    // Re-derive network conditions from outcomes
+    this.updateNetworkConditionFromOutcomes();
   }
 
   /**
@@ -137,10 +142,27 @@ export class ThrottlingManager {
   }
 
   /**
-   * Cache a request result
+   * Cache a request result.
+   *
+   * Bodies above MAX_DEDUP_CACHE_BODY_SIZE are not cached — a repeated
+   * request for the same URL re-fetches instead of serving a snapshot that
+   * would blow the memory budget.
    */
   public cacheRequestResult(url: string, result: any): void {
     if (!this.config.enableDeduplication) {
+      return;
+    }
+
+    const declaredSize =
+      typeof result?.size === "number" && Number.isFinite(result.size)
+        ? result.size
+        : 0;
+    const snapshotSize = result?.snapshot?.bytes?.byteLength ?? 0;
+
+    if (
+      declaredSize > MAX_DEDUP_CACHE_BODY_SIZE ||
+      snapshotSize > MAX_DEDUP_CACHE_BODY_SIZE
+    ) {
       return;
     }
 
@@ -248,10 +270,6 @@ export class ThrottlingManager {
    * Start monitoring systems
    */
   private startMonitoring(): void {
-    if (this.config.enableNetworkMonitoring) {
-      this.startNetworkMonitoring();
-    }
-
     this.startMemoryMonitoring();
   }
 
@@ -259,27 +277,10 @@ export class ThrottlingManager {
    * Stop monitoring systems
    */
   private stopMonitoring(): void {
-    if (this.networkMonitorInterval) {
-      clearInterval(this.networkMonitorInterval);
-      this.networkMonitorInterval = null;
-    }
-
     if (this.memoryMonitorInterval) {
       clearInterval(this.memoryMonitorInterval);
       this.memoryMonitorInterval = null;
     }
-  }
-
-  /**
-   * Start network monitoring
-   */
-  private startNetworkMonitoring(): void {
-    this.networkMonitorInterval = setInterval(() => {
-      this.measureNetworkCondition();
-    }, 10000); // Measure every 10 seconds
-
-    // Initial measurement
-    this.measureNetworkCondition();
   }
 
   /**
@@ -295,44 +296,38 @@ export class ThrottlingManager {
   }
 
   /**
-   * Measure network condition
+   * Derive network conditions from the download's own request outcomes
+   * (recent error/timeout/latency ratios). Replaces the former third-party
+   * congestion probe.
    */
-  private async measureNetworkCondition(): Promise<void> {
-    try {
-      const startTime = Date.now();
+  private updateNetworkConditionFromOutcomes(): void {
+    const recentRequests = this.getRecentRequests(10);
+    if (recentRequests.length < 5) {
+      return; // Not enough signal yet
+    }
 
-      // Simple network test - fetch a small resource
-      await fetch("https://www.google.com/favicon.ico", {
-        method: "HEAD",
-        cache: "no-cache",
-        signal: AbortSignal.timeout(5000),
-      });
+    const avgDuration =
+      recentRequests.reduce((sum, req) => sum + req.duration, 0) /
+      recentRequests.length;
 
-      const endTime = Date.now();
-      const latency = endTime - startTime;
+    const congested = this.isNetworkCongested();
+    const quality = this.determineNetworkQuality(avgDuration);
 
-      // Update network condition
-      this.networkCondition = {
-        quality: this.determineNetworkQuality(latency),
-        bandwidth: this.estimateBandwidth(),
-        latency,
-        congested: this.isNetworkCongested(),
-        measuredAt: endTime,
-      };
+    const changed =
+      congested !== this.networkCondition.congested ||
+      quality !== this.networkCondition.quality;
 
-      // Notify listeners
-      if (this.eventListeners.onNetworkChange) {
-        this.eventListeners.onNetworkChange(this.networkCondition);
-      }
-    } catch (error) {
-      // Network measurement failed, assume poor conditions
-      this.networkCondition = {
-        quality: "slow",
-        bandwidth: 0,
-        latency: 5000,
-        congested: true,
-        measuredAt: Date.now(),
-      };
+    this.networkCondition = {
+      quality,
+      bandwidth: this.estimateBandwidth(),
+      latency: Math.round(avgDuration),
+      congested,
+      measuredAt: Date.now(),
+    };
+
+    // Notify listeners only on state transitions
+    if (changed && this.eventListeners.onNetworkChange) {
+      this.eventListeners.onNetworkChange({ ...this.networkCondition });
     }
   }
 

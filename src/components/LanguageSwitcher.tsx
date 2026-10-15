@@ -8,7 +8,13 @@ export const LanguageSwitcher: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // Type-ahead buffer: keystrokes accumulate briefly to match multi-char prefixes
+  const typeAheadRef = useRef<{ query: string; timestamp: number }>({
+    query: "",
+    timestamp: 0,
+  });
 
   const currentLanguage = getLanguageByCode(i18n.language) || languages[0];
 
@@ -54,6 +60,90 @@ export const LanguageSwitcher: React.FC = () => {
     setSearchQuery("");
   };
 
+  const closeDropdown = () => {
+    setIsOpen(false);
+    setSearchQuery("");
+    // Return focus to the trigger so keyboard users keep their place.
+    triggerRef.current?.focus();
+  };
+
+  /** Move focus between the rendered `role="option"` buttons. */
+  const moveOptionFocus = (direction: 1 | -1) => {
+    const options = Array.from(
+      dropdownRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ??
+        [],
+    );
+    if (options.length === 0) return;
+    const currentIndex = options.findIndex(
+      (option) => option === document.activeElement,
+    );
+    const nextIndex =
+      currentIndex === -1
+        ? direction === 1
+          ? 0
+          : options.length - 1
+        : (currentIndex + direction + options.length) % options.length;
+    options[nextIndex]?.focus();
+  };
+
+  /** Type-ahead: jump to the next option matching the buffered query. */
+  const handleTypeAhead = (char: string, target: HTMLElement) => {
+    const now = Date.now();
+    const buffer =
+      now - typeAheadRef.current.timestamp > 500 ? "" : typeAheadRef.current.query;
+    const query = (buffer + char).toLowerCase();
+    typeAheadRef.current = { query, timestamp: now };
+
+    const options = Array.from(
+      dropdownRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ??
+        [],
+    );
+    if (options.length === 0) return;
+    const startIndex = Math.max(
+      options.findIndex((option) => option === target),
+      0,
+    );
+    for (let step = 1; step <= options.length; step++) {
+      const option = options[(startIndex + step) % options.length];
+      const text = option.textContent?.toLowerCase() ?? "";
+      if (text.includes(query)) {
+        option.focus();
+        return;
+      }
+    }
+  };
+
+  /**
+   * (5.6) Listbox keyboard support: ArrowUp/ArrowDown move between options,
+   * Escape closes, printable keys type-ahead. Handles events bubbling from
+   * both the search input and the option buttons.
+   */
+  const handleDropdownKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeDropdown();
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      moveOptionFocus(event.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+    // Type-ahead only when the event originates from an option button —
+    // the search input already filters as the user types.
+    const target = event.target as HTMLElement;
+    if (
+      target?.getAttribute?.("role") === "option" &&
+      event.key.length === 1 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+      handleTypeAhead(event.key.toLowerCase(), target);
+    }
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent, languageCode: string) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -66,6 +156,7 @@ export const LanguageSwitcher: React.FC = () => {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
         aria-label={t("language.select")}
@@ -84,6 +175,7 @@ export const LanguageSwitcher: React.FC = () => {
         <div
           className="absolute top-full mt-2 w-72 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-96 overflow-hidden flex !flex-col"
           style={{ insetInlineEnd: 0 }}
+          onKeyDown={handleDropdownKeyDown}
         >
           {/* Search input */}
           <div className="p-3 border-b border-gray-200">
@@ -147,7 +239,7 @@ export const LanguageSwitcher: React.FC = () => {
               ))
             ) : (
               <div className="px-4 py-8 text-center text-sm text-gray-500">
-                No languages found
+                {t("language.noMatches")}
               </div>
             )}
           </div>

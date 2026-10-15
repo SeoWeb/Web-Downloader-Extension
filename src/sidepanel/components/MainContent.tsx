@@ -7,6 +7,7 @@ import Actions, { Message } from "../../components/Actions";
 import { ScrollingResponse } from "../hooks/useScrapingDownloader";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { PagePocketAuth } from "../../components/PagePocketAuth";
+import { UnsupportedPage } from "./UnsupportedPage";
 
 const Filter = React.lazy(() => import("../../components/Filter"));
 
@@ -20,6 +21,8 @@ interface MainContentProps {
   onClickStartDownload: (options: any) => void;
   tabUrl: string;
   showAuthForm?: boolean;
+  /** (5.1) False when the active tab cannot be downloaded — hides the form. */
+  tabSupported?: boolean;
 }
 
 export function MainContent({
@@ -32,15 +35,17 @@ export function MainContent({
   onClickStartDownload,
   tabUrl,
   showAuthForm,
+  tabSupported = true,
 }: MainContentProps) {
   const { t } = useTranslation();
   return (
     <>
       <Heading />
 
-      {action !== messageActions.DOWNLOAD_DONE && (
-        <Actions messages={messages} />
-      )}
+      {/* (5.1) Hide the step list when the active tab is unsupported —
+          the unsupported card replaces the connection status. */}
+      {action !== messageActions.DOWNLOAD_DONE &&
+        !(!!tabId && !tabSupported) && <Actions messages={messages} />}
 
       {!!tabId &&
         !isScraping &&
@@ -51,6 +56,9 @@ export function MainContent({
               <ErrorBoundary name="PagePocketAuth">
                 <PagePocketAuth />
               </ErrorBoundary>
+            ) : !tabSupported ? (
+              // (5.1) Unsupported page — friendly state instead of the form.
+              <UnsupportedPage />
             ) : (
               <ErrorBoundary name="Filter">
                 <React.Suspense

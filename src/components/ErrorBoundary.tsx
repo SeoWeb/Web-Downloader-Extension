@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./Button";
 
 interface Props {
@@ -12,6 +13,28 @@ interface State {
   error: Error | null;
 }
 
+/**
+ * (5.6) Localized fallback UI. Lives outside the class component so it can
+ * use the `useTranslation` hook (hooks are not available in class
+ * components). Raw error details are never shown to users — they are
+ * logged to the console instead.
+ */
+function LocalizedErrorFallback({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+      <h3 className="text-red-800 font-medium mb-2">
+        {t("app.somethingWentWrong")}
+      </h3>
+      <p className="text-red-600 text-sm mb-4">{t("app.unexpectedError")}</p>
+      <Button onClick={onRetry} variant="secondary" size="sm">
+        {t("app.tryAgain")}
+      </Button>
+    </div>
+  );
+}
+
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
@@ -23,9 +46,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (error || errorInfo) {
-      // ignore
-    }
+    // (5.6) Log full details for debugging; the UI only shows a generic,
+    // localized message.
+    console.error(
+      `[ErrorBoundary${this.props.name ? `:${this.props.name}` : ""}]`,
+      error,
+      errorInfo,
+    );
   }
 
   private handleRetry = () => {
@@ -38,19 +65,7 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      return (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-          <h3 className="text-red-800 font-medium mb-2">
-            Something went wrong
-          </h3>
-          <p className="text-red-600 text-sm mb-4">
-            {this.state.error?.message || "An unexpected error occurred"}
-          </p>
-          <Button onClick={this.handleRetry} variant="secondary" size="sm">
-            Try again
-          </Button>
-        </div>
-      );
+      return <LocalizedErrorFallback onRetry={this.handleRetry} />;
     }
 
     return this.props.children;

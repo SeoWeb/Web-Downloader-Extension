@@ -62,6 +62,25 @@ interface DownloadStatusProps {
   cloudUploadState?: CloudUploadState | null;
   /** Retry the cloud upload. */
   onRetryCloudUpload?: () => void;
+  /**
+   * (5.2) Server ZIP URL for the local fallback fast path, when the server
+   * managed to assemble a deliverable despite the failure. When present the
+   * button downloads it directly.
+   */
+  fallbackUrl?: string | null;
+  /**
+   * (5.2) Explicit fallback availability override. When omitted, the
+   * availability is derived from `serverModeState.serverError.canFallback`
+   * (emitted by download-core via `status.serverError` /
+   * `status.serverFallbackOffer` with `options.canFallback`).
+   */
+  canFallback?: boolean;
+  /**
+   * (5.2) Trigger the local fallback download (server-side
+   * assemble-and-redirect, or a fresh local run). Only rendered when a
+   * fallback is available.
+   */
+  onDownloadLocally?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -140,6 +159,9 @@ export function DownloadStatus({
   onDismissInterrupt,
   cloudUploadState,
   onRetryCloudUpload,
+  fallbackUrl,
+  canFallback,
+  onDownloadLocally,
 }: DownloadStatusProps) {
   const { t } = useTranslation();
 
@@ -242,6 +264,23 @@ export function DownloadStatus({
             ? t("status.authFailed")
             : t("status.serverError", { error: serverError?.error ?? "" });
 
+    // (5.2) Local fallback: offered only when a fallback deliverable exists.
+    // Retry-only otherwise. Availability comes from the background's
+    // `canFallback` flag on the server error, an explicit prop, or a
+    // concrete fallback URL.
+    const showLocalFallback =
+      canFallback === true ||
+      fallbackUrl != null ||
+      serverError?.canFallback === true;
+
+    const handleDownloadLocally = () => {
+      if (fallbackUrl) {
+        chrome.downloads.download({ url: fallbackUrl, saveAs: true });
+        return;
+      }
+      onDownloadLocally?.();
+    };
+
     return (
       <div className="pt-8 animate-fade-in">
         <div className="card p-6 bg-gradient-to-b from-red-50 to-white border-red-200 space-y-4">
@@ -266,6 +305,13 @@ export function DownloadStatus({
             </p>
           )}
 
+          {/* (5.2) Local fallback warning */}
+          {showLocalFallback && (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+              {t("status.localFallbackWarning")}
+            </p>
+          )}
+
           {/* Action buttons */}
           <div className="flex flex-col gap-2">
             {onRetryServer && (
@@ -275,6 +321,15 @@ export function DownloadStatus({
               >
                 <RefreshCw className="w-4 h-4" />
                 {t("status.retryServer")}
+              </button>
+            )}
+            {showLocalFallback && (
+              <button
+                onClick={handleDownloadLocally}
+                className="btn-secondary w-full flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                {t("status.downloadLocally")}
               </button>
             )}
           </div>

@@ -110,13 +110,17 @@ export const RESOURCE_SIZE_LIMITS = {
 };
 
 /**
- * Memory pressure levels
+ * Memory pressure levels.
+ *
+ * The values ARE the rank (low=0 < medium=1 < high=2 < critical=3), so
+ * ordering comparisons (`level >= HIGH`) compare the numeric rank instead of
+ * comparing enum strings lexicographically.
  */
 export enum MemoryPressureLevel {
-  LOW = "low", // < 50% memory usage
-  MEDIUM = "medium", // 50-75% memory usage
-  HIGH = "high", // 75-85% memory usage
-  CRITICAL = "critical", // > 85% memory usage
+  LOW = 0, // < 50% memory usage
+  MEDIUM = 1, // 50-75% memory usage
+  HIGH = 2, // 75-85% memory usage
+  CRITICAL = 3, // > 85% memory usage
 }
 
 /**

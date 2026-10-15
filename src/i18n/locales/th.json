@@ -17,7 +17,9 @@
       "maxScrollAttempts": "ถึงจำนวนครั้งที่เลื่อนสูงสุดแล้ว",
       "panelUnavailable": "ไม่สามารถดาวน์โหลดให้เสร็จสมบูรณ์ได้เนื่องจากแผงส่วนขยายถูกปิดหรือใช้งานไม่ได้ โปรดเปิดแผงนี้ไว้ขณะดาวน์โหลดและลองอีกครั้ง",
       "panelUnavailableTitle": "ต้องการแผงส่วนขยาย",
-      "panelUnavailableTip": "เพื่อป้องกันปัญหานี้ ให้เปิดแผงนี้ไว้และหลีกเลี่ยงการสลับแท็บระหว่างการดาวน์โหลด"
+      "panelUnavailableTip": "เพื่อป้องกันปัญหานี้ ให้เปิดแผงนี้ไว้และหลีกเลี่ยงการสลับแท็บระหว่างการดาวน์โหลด",
+      "somethingWentWrong": "Something went wrong",
+      "unexpectedError": "An unexpected error occurred. Details have been logged to the console."
     },
     "filter": {
       "title": "กรองสิ่งที่คุณต้องการดาวน์โหลด",
@@ -55,7 +57,20 @@
       "fullWebsiteDescription": "ดีที่สุดสำหรับเว็บไซต์ที่ซับซ้อน (ดาวน์โหลดระดับแรกของหน้าที่เชื่อมโยง)",
       "serverMode": "โหมดเซิร์ฟเวอร์",
       "insecureServerWarning": "ไม่ได้ใช้ HTTPS",
-      "alwaysAskWhereToSave": "ถามที่ตั้งบันทึกไฟล์เสมอ"
+      "alwaysAskWhereToSave": "ถามที่ตั้งบันทึกไฟล์เสมอ",
+      "cloudStorage": "PagePocket Cloud Storage",
+      "cloudStorageDescription": "Save pages directly to your PagePocket account",
+      "cloudLoginRequired": "Login required",
+      "cloudEmail": "Email",
+      "cloudPassword": "Password",
+      "cloudName": "Name",
+      "cloudLogin": "Login",
+      "cloudRegister": "Register",
+      "cloudLogout": "Sign Out",
+      "cloudLoggedInAs": "Connected as {{email}}",
+      "cloudNoAccount": "Don't have an account?",
+      "cloudHasAccount": "Already have an account?",
+      "cloudAuthError": "Authentication failed"
     },
     "actions": {
       "title": "การดำเนินการ:",
@@ -198,7 +213,23 @@
         "uploading": "อัปโหลดทรัพยากร",
         "assembling": "ประกอบเซิร์ฟเวอร์",
         "packing": "สร้างแพ็กเกจ"
-      }
+      },
+      "resumeDownload": "Resume Download",
+      "reconnectingServer": "Reconnecting to server...",
+      "resumingUploads": "Resuming {{count}} resource uploads...",
+      "pagepocketUploading": "Uploading to PagePocket...",
+      "pagepocketUploadProgress": "Upload progress: {{progress}}%",
+      "pagepocketUploadComplete": "Saved to PagePocket",
+      "pagepocketUploadError": "Upload failed",
+      "pagepocketUploadRetry": "Retry upload",
+      "pagepocketViewPage": "View in PagePocket",
+      "pagepocketQuotaExceeded": "PagePocket storage quota exceeded",
+      "pagepocketSavedTo": "Saved to PagePocket",
+      "finalizingPartial": "Finalizing with the content captured so far…",
+      "savingPartialCapture": "Saving what we captured…",
+      "downloadReport": "Download report",
+      "partialDownload": "Partial download",
+      "partialDownloadNote": "The archive contains what was captured before the download was stopped."
     },
     "permissions": {
       "storage": {
@@ -246,7 +277,8 @@
     "language": {
       "select": "เลือกภาษา",
       "search": "ค้นหาภาษา...",
-      "current": "ภาษาปัจจุบัน"
+      "current": "ภาษาปัจจุบัน",
+      "noMatches": "No languages found"
     },
     "rating": {
       "title": "ชอบส่วนขยายนี้ไหม?",
@@ -291,7 +323,32 @@
       "proAdvancedSearch": "ตัวกรองการค้นหาขั้นสูง",
       "proCustomExpiry": "กำหนดวันหมดอายุการแชร์เอง",
       "getStarted": "เริ่มต้นใช้งาน",
-      "maybeLater": "ไว้ทีหลัง"
+      "maybeLater": "ไว้ทีหลัง",
+      "newFeature": "New Feature",
+      "close": "Close",
+      "freeBadge": "FREE",
+      "freeNoLimit": "No time limit — yours to keep, forever"
+    },
+    "tab": {
+      "unsupportedTitle": "This page can't be downloaded",
+      "unsupportedDescription": "Website Downloader works on regular web pages (http and https). Browser settings pages, the Chrome Web Store and local files are not supported. Open a website in this tab to start a download."
+    },
+    "welcome": {
+      "title": "Welcome to Web Page Downloader",
+      "subtitle": "Save any web page as a ZIP archive — HTML, images, styles and scripts — right from your browser.",
+      "featuresTitle": "What you can do",
+      "feature1": "Capture complete pages, including images, CSS and JavaScript",
+      "feature2": "Save pages to your computer as a ZIP, or to PagePocket cloud storage",
+      "feature3": "Browse the archived page offline at any time",
+      "stepsTitle": "How it works",
+      "step1Title": "Open the side panel",
+      "step1Description": "Click the extension icon in the toolbar and select \"Open side panel\".",
+      "step2Title": "Configure your download",
+      "step2Description": "Choose what to capture — full HTML, images, assets or a single file.",
+      "step3Title": "Download the page",
+      "step3Description": "Press \"Start download\" and get a ZIP archive you can open offline.",
+      "cta": "Open the side panel",
+      "ctaHint": "Tip: you can also right-click the extension icon and choose \"Open side panel\"."
     }
   }
 }
