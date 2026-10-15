@@ -1,0 +1,168 @@
+/**
+ * Cloud binding orchestration (task 6.5 / design D4 —
+ * harden-backend-security-and-ops).
+ *
+ * Links the PagePocket identity to the monolith's API-key client via
+ * POST /api/v1/cloud/link and persists the binding state in
+ * chrome.storage.session (same lifetime as the PagePocket auth state and
+ * the server API key — all three are re-established together after a
+ * browser restart or re-registration).
+ *
+ * Lifecycle:
+ * - login/register  → fire-and-forget `linkCloudAccount()` (never fails login)
+ * - logout          → `clearCloudBinding()` (store)
+ * - token refresh   → no re-bind needed: the binding lives server-side on the
+ *                     client row and is tied to the user identity, not the
+ *                     rotating access token
+ * - cloud download  → `ensureCloudBinding()` lazily re-binds when the state
+ *                     is missing (link still in flight, transient failure)
+ * - 403 cloud_not_linked at session creation → `ensureCloudBinding({ force })`
+ *                     re-binds (the server-side client row was replaced)
+ */
+
+import { serverClient } from "./server-client";
+import { pagepocketClient } from "./pagepocket-client";
+import {
+  PAGEPOCKET_AUTH_STORAGE_KEY,
+  PAGEPOCKET_CLOUD_BINDING_KEY,
+  type CloudBindingState,
+  type PagePocketAuthState,
+} from "../types/authTypes";
+
+export type CloudLinkOutcome =
+  | "bound"
+  | "unsupported"
+  | "invalid_token"
+  | "failed";
+
+export interface CloudLinkOutcomeResult {
+  outcome: CloudLinkOutcome;
+  /** The binding state AFTER the attempt (null when nothing was persisted). */
+  binding: CloudBindingState | null;
+}
+
+async function loadStoredAuth(): Promise<PagePocketAuthState | null> {
+  try {
+    if (!chrome?.storage?.session) return null;
+    const result = await chrome.storage.session.get(PAGEPOCKET_AUTH_STORAGE_KEY);
+    return (
+      (result[PAGEPOCKET_AUTH_STORAGE_KEY] as PagePocketAuthState) ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Read the persisted binding state (null when absent). */
+export async function getCloudBinding(): Promise<CloudBindingState | null> {
+  try {
+    if (!chrome?.storage?.session) return null;
+    const result = await chrome.storage.session.get(
+      PAGEPOCKET_CLOUD_BINDING_KEY,
+    );
+    return (
+      (result[PAGEPOCKET_CLOUD_BINDING_KEY] as CloudBindingState) ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Persist the binding state. */
+async function persistCloudBinding(state: CloudBindingState): Promise<void> {
+  try {
+    if (!chrome?.storage?.session) return;
+    await chrome.storage.session.set({
+      [PAGEPOCKET_CLOUD_BINDING_KEY]: state,
+    });
+  } catch {
+    // Non-critical — the lazy path re-binds on the next cloud download
+  }
+}
+
+/** Clear the binding state (logout, rejected token). */
+export async function clearCloudBinding(): Promise<void> {
+  try {
+    if (!chrome?.storage?.session) return;
+    await chrome.storage.session.remove(PAGEPOCKET_CLOUD_BINDING_KEY);
+  } catch {
+    // Non-critical
+  }
+}
+
+/**
+ * Run the binding flow. Uses the supplied access token, or the stored PagePocket
+ * auth state (refreshing an expired token first so a stale session doesn't fail
+ * the link). Persists the result: `bound` / `unsupported` states are stored;
+ * `invalid_token` clears any stale binding; `failed` leaves the state untouched.
+ */
+export async function linkCloudAccount(
+  accessToken?: string,
+): Promise<CloudLinkOutcomeResult> {
+  const auth = await loadStoredAuth();
+  let token = accessToken ?? auth?.accessToken ?? null;
+
+  if (!token && !auth) {
+    return { outcome: "failed", binding: await getCloudBinding() };
+  }
+
+  // Access tokens are short-lived (1 h since the TTL change) — refresh an
+  // expired one so a valid refresh session isn't reported as a bad token.
+  if (auth && token && Date.now() >= auth.expiresAt * 1000) {
+    try {
+      token = await pagepocketClient.refreshToken(auth.refreshToken);
+    } catch {
+      return { outcome: "invalid_token", binding: null };
+    }
+  }
+
+  if (!token) {
+    return { outcome: "failed", binding: await getCloudBinding() };
+  }
+
+  const result = await serverClient.linkCloudAccount(token);
+
+  switch (result.outcome) {
+    case "bound": {
+      const binding: CloudBindingState = {
+        status: "bound",
+        pagepocketUserId: result.pagepocketUserId,
+        plan: result.plan,
+        linkedAt: Date.now(),
+      };
+      await persistCloudBinding(binding);
+      return { outcome: "bound", binding };
+    }
+    case "unsupported": {
+      const binding: CloudBindingState = { status: "unsupported" };
+      await persistCloudBinding(binding);
+      return { outcome: "unsupported", binding };
+    }
+    case "invalid_token":
+      await clearCloudBinding();
+      return { outcome: "invalid_token", binding: null };
+    case "failed":
+      return { outcome: "failed", binding: await getCloudBinding() };
+  }
+}
+
+/**
+ * Lazy ensure for cloud-mode session creation (download-core): returns the
+ * current binding when bound, attempting the link flow when no binding state
+ * exists yet. An `unsupported` state short-circuits to null (legacy
+ * raw-pagepocketUserId fallback) unless `force` re-checks the server — used
+ * by the 403 cloud_not_linked retry so a since-upgraded server is discovered.
+ */
+export async function ensureCloudBinding(
+  options: { force?: boolean } = {},
+): Promise<CloudBindingState | null> {
+  const existing = await getCloudBinding();
+
+  if (!options.force) {
+    if (existing?.status === "bound") return existing;
+    if (existing?.status === "unsupported") return null;
+  }
+
+  const { binding } = await linkCloudAccount();
+  return binding?.status === "bound" ? binding : null;
+}

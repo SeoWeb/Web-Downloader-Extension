@@ -8,7 +8,7 @@
  * - (11.1) Server-side download flow
  * - (11.2) Uses chrome.downloads.download with server URL and custom filename
  * - (11.3) Polls session status with adaptive intervals after finalize until ready/failed
- *          with a 5-minute timeout (AssemblyTimeoutError)
+ *          with a 35-minute timeout (AssemblyTimeoutError — assembly-timeout envelope)
  * - (11.4) Offers local fallback when server fails or times out
  */
 
@@ -46,6 +46,8 @@ export type AssemblyStatusCallback = (
   status: string,
   phase: string | null,
   progressPct: number | null,
+  /** Seconds elapsed since assembly started (additive; null/undefined on older servers). */
+  elapsedSeconds?: number | null,
 ) => void;
 
 /** Callback type for offering local fallback to the user. */
@@ -70,7 +72,16 @@ export class AssemblyFailedError extends Error {
 // Constants
 // ---------------------------------------------------------------------------
 
-const ASSEMBLY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+/**
+ * Assembly timeout envelope (task 6.1 / design D10 —
+ * harden-backend-security-and-ops).
+ *
+ * Server worst case for a cloud assembly: 3 sequential gRPC push calls at
+ * 600 s each + up to 120 s queue wait = 32 minutes. The old 5-minute client
+ * timeout abandoned assemblies the server was still actively completing
+ * (guaranteed false failures). 35 minutes covers the worst case with margin.
+ */
+const ASSEMBLY_TIMEOUT_MS = 35 * 60 * 1000; // 35 minutes
 
 /** Adaptive polling interval: fast for quick assemblies, slower for long ones. */
 function getPollInterval(elapsedMs: number): number {
@@ -109,7 +120,7 @@ export class ServerDownloadHandler {
    * Polls `getSessionStatus` with adaptive intervals (1s→2s→3s→5s) until:
    * - status === "ready" → returns the session status (with download URL)
    * - status === "failed" → throws an error with the server's error message
-   * - timeout (5 minutes) → throws AssemblyTimeoutError
+   * - timeout (35 minutes) → throws AssemblyTimeoutError
    *
    * Cancellation (D7 / task 4.2) is caller-scoped: pass an AbortSignal to
    * cancel this polling loop only. There is no shared/singleton controller,
@@ -164,11 +175,13 @@ export class ServerDownloadHandler {
         continue;
       }
 
-      // Notify caller of current status
+      // Notify caller of current status (elapsedSeconds is undefined-safe:
+      // older servers don't send assembly_elapsed_seconds)
       onStatusUpdate?.(
         status.status,
         status.assembly_phase,
         status.assembly_progress_pct,
+        status.assembly_elapsed_seconds ?? null,
       );
 
       if (status.status === "ready") {

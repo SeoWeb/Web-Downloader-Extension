@@ -74,6 +74,7 @@ def _dict_to_link_response(d):
 class ShareServicer(share_pb2_grpc.ShareServiceServicer):
     def __init__(self):
         self.engine = get_engine()
+        # Dev default stays; production refuses to boot on it (see config.py).
         self.base_url = os.environ.get("BASE_URL", "http://localhost:8000")
 
     def _verify_page_ownership(self, user_id: str, page_id: str) -> bool:

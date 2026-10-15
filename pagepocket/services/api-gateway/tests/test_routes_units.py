@@ -7,6 +7,7 @@ populates from the verified JWT.
 """
 
 import asyncio
+import io
 import types
 import unittest
 from unittest.mock import MagicMock, patch
@@ -31,14 +32,21 @@ class _FakeRpcError(grpc.RpcError):
         return self._details
 
 
-def _fake_request(user_id="u1", plan="free"):
+def _fake_request(user_id="u1", plan="free", headers=None):
     """Stand-in for a Request after the auth middleware ran."""
-    return types.SimpleNamespace(state=types.SimpleNamespace(user_id=user_id, plan=plan))
+    return types.SimpleNamespace(
+        state=types.SimpleNamespace(user_id=user_id, plan=plan),
+        headers=headers or {},
+    )
 
 
 def _fake_upload(data: bytes, filename="index.html", content_type="text/html"):
-    async def read():
-        return data
+    """UploadFile stand-in: async read(size) over an in-memory buffer."""
+    buf = io.BytesIO(data)
+
+    async def read(size=-1):
+        return buf.read(size)
+
     return types.SimpleNamespace(read=read, filename=filename, content_type=content_type)
 
 

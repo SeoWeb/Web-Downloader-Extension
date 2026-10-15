@@ -35,7 +35,7 @@ Users can save pages locally (via the Chrome extension) or upload them to PagePo
                                 │ HTTPS
                                 ▼
                          ┌──────────────┐
-                         │  api-gateway │  :8000 (FastAPI)
+                         │  api-gateway │  :8090 (FastAPI)
                          │  REST → gRPC │
                          └──┬─┬─┬─┬─┬───┘
                             │ │ │ │ │  gRPC
@@ -73,13 +73,13 @@ Users can save pages locally (via the Chrome extension) or upload them to PagePo
 
 Six microservices behind a single FastAPI REST gateway. All inter-service communication uses gRPC (plaintext in dev, mTLS in prod). Each service owns its own MySQL database.
 
-### API Gateway (`:8000`)
+### API Gateway (`:8090`)
 
 FastAPI application that exposes a REST API and translates HTTP requests into gRPC calls to backend services.
 
 - **JWT authentication middleware** — validates `Authorization: Bearer <token>` on all non-public routes
-- **Rate limiting middleware** — per-IP on auth routes (20 req/min), per-user on authenticated routes (600 req/min)
-- **gRPC error translation** — maps gRPC status codes to HTTP errors (e.g., `UNAUTHENTICATED` → 401, `NOT_FOUND` → 404, `RESOURCE_EXHAUSTED` → 402)
+- **Rate limiting middleware** — Redis-backed counters (`REDIS_URL`): per-IP on auth routes (20 req/min), per-user on authenticated routes (600 req/min). Keys expire within the rate window; if Redis is unreachable the limiter **fails open**, logs the failure, and `GET /api/v1/health` reports `"rate_limiter": "degraded"`
+- **gRPC error translation** — maps gRPC status codes to HTTP errors (`UNAUTHENTICATED` → 401, `NOT_FOUND` → 404, `DEADLINE_EXCEEDED` → 503 with `Retry-After`, size-induced `RESOURCE_EXHAUSTED` → 413, quota exhaustion → 402, rate exhaustion → 429)
 - **Lazy gRPC channel management** — memoises channels and stubs per service
 
 ### Auth Service (`:50051`)
@@ -118,7 +118,7 @@ Core service — ingests, stores, and serves archived web pages.
 4. HTML sanitisation — rewrite asset URLs to R2 paths, extract body text
 5. Upload assets, rewritten HTML, and `meta.json` to Cloudflare R2
 6. Insert page row in MySQL
-7. Fire-and-forget gRPC call to search-service for indexing
+7. Fire-and-forget gRPC call to search-service for indexing (with bounded retries; failures leave a durable `search_indexed=False` flag re-delivered by `RetryPendingIndexing`)
 
 ### Library Service (`:50053`)
 
@@ -444,11 +444,12 @@ Quotas reset monthly. Deleting a page decrements the storage counter but does no
 
 - **mTLS**: All gRPC traffic between services encrypted with mutual TLS in production (`MTLS_ENABLED=true`). Development uses plaintext.
 - **bcrypt**: Passwords hashed with 12 rounds, truncated to 72 bytes (bcrypt limit).
-- **JWT HS256**: Signed with a shared secret (`JWT_SECRET`). Tokens expire after 1 hour.
+- **JWT HS256**: Signed with a shared secret (`JWT_SECRET`). Access tokens expire after 1 hour (refresh flow issues new pairs); the gateway refuses to boot with a missing/dev-default secret when `ENVIRONMENT=production`.
 - **Refresh token rotation**: Old tokens are revoked on every refresh. Reuse detection revokes all user tokens.
-- **Rate limiting**: Per-IP on auth routes (20/min), per-user on authenticated routes (600/min).
+- **Rate limiting**: Redis-backed counters — per-IP on auth routes (20/min, keyed by `CF-Connecting-IP` with trusted-proxy fallback), per-user on authenticated routes (600/min). Fails open (with logging + `rate_limiter: degraded` health signal) if Redis is down.
 - **R2 presigned URLs**: Page content served via time-limited presigned URLs (1-hour expiry), not direct access.
-- **CORS**: Configured with `allow_origins=["*"]` (restrict in production).
+- **CORS**: Pinned to an explicit allow-list via `CORS_ALLOW_ORIGINS` (defaults to `https://pagepocket.app`, `https://app.pagepocket.app`; `*` is never honored).
+- **Archived-HTML sandboxing**: Serving routes (`/api/sc/*`, gateway file routes) set `Content-Security-Policy: sandbox allow-popups allow-forms` (no `allow-same-origin`), `X-Content-Type-Options: nosniff`, pinned content types, and `Referrer-Policy: no-referrer` on HTML; archived HTML is sanitised at ingest.
 - **Resource limits**: Production compose file sets memory limits per container (512 MB–1 GB).
 
 ## Directory Structure
@@ -514,8 +515,8 @@ docker compose up -d
 make migrate
 
 # 6. Verify
-curl http://localhost:8000/api/v1/health
-# {"status":"ok","api_version":"v1"}
+curl http://localhost:8090/api/v1/health
+# {"status":"ok","api_version":"v1","rate_limiter":"ok"}
 ```
 
 ## Environment Variables
@@ -523,21 +524,31 @@ curl http://localhost:8000/api/v1/health
 | Variable               | Used by                   | Description                                        |
 | ---------------------- | ------------------------- | -------------------------------------------------- |
 | `MYSQL_ROOT_PASSWORD`  | mysql                     | Root password for MySQL                            |
-| `JWT_SECRET`           | auth-service, api-gateway | HS256 signing key                                  |
+| `JWT_SECRET`           | auth-service, api-gateway | HS256 signing key. Required (and must not be the dev default) when `ENVIRONMENT=production` — the gateway fails fast otherwise |
+| `ENVIRONMENT`          | api-gateway, share-service | `development` (default) or `production`. Production enables fail-fast config checks (JWT_SECRET, BASE_URL) |
+| `CORS_ALLOW_ORIGINS`   | api-gateway               | Comma-separated CORS origin allow-list. `*` is dropped with a warning; defaults to `https://pagepocket.app`, `https://app.pagepocket.app` |
+| `TRUSTED_PROXIES`      | api-gateway               | Comma-separated proxy IPs/CIDRs whose `X-Forwarded-For` is trusted for rate-limit identity (empty = peer address only) |
+| `MAX_UPLOAD_BYTES`     | api-gateway               | Cap on accepted ingest request size; oversized uploads get 413 |
+| `REDIS_URL`            | api-gateway, services     | Redis address for the rate limiter and cache. Limiter fails open when Redis is down; `/api/v1/health` reports `rate_limiter: ok \| degraded` |
+| `REDIS_PASSWORD`       | redis                     | Password for Redis (rollout requires a coordinated stack restart) |
+| `AUTO_CREATE`          | gRPC services             | Dev-only: run `Base.metadata.create_all` at startup. Alembic is the authoritative schema mechanism — production must rely on `make migrate` |
+| `BASE_URL`             | share-service             | Public base URL for generating short links. Required (and must not be `http://localhost:8000`) when `ENVIRONMENT=production` — the share service fails fast otherwise |
 | `DB_URL`               | all gRPC services         | SQLAlchemy connection string (auto-set in compose) |
 | `R2_ENDPOINT_URL`      | archive-service           | Cloudflare R2 endpoint                             |
 | `R2_ACCESS_KEY_ID`     | archive-service           | R2 API access key                                  |
 | `R2_SECRET_ACCESS_KEY` | archive-service           | R2 API secret key                                  |
 | `R2_BUCKET_NAME`       | archive-service           | R2 bucket name (default: `pagepocket-pages`)       |
-| `BASE_URL`             | share-service             | Public base URL for generating short links         |
 | `MTLS_ENABLED`         | all services              | Enable mTLS (`true`/`false`)                       |
 | `*_SERVICE_ADDR`       | api-gateway               | gRPC addresses for each backend service            |
+| `ARCHIVE_SERVICE_ADDR` | share-service, library-service | gRPC address for defense-in-depth page-ownership checks (share links / collection adds) |
+| `SEARCH_SERVICE_ADDR`  | archive-service           | Address for search indexing (bounded retries + durable pending flag) |
+| `LOG_LEVEL`            | all services, monolith    | Log level (default `INFO`)                         |
+| `LOG_FORMAT`           | all services, monolith    | `json` for one-JSON-object-per-line logs (default: human-readable) |
 | `CA_CERT`              | all (prod)                | Path to CA certificate                             |
 | `SERVER_KEY`           | gRPC services (prod)      | Path to server private key                         |
 | `SERVER_CERT`          | gRPC services (prod)      | Path to server certificate                         |
 | `CLIENT_KEY`           | api-gateway (prod)        | Path to client private key                         |
 | `CLIENT_CERT`          | api-gateway (prod)        | Path to client certificate                         |
-| `SEARCH_SERVICE_ADDR`  | archive-service           | Address for fire-and-forget search indexing        |
 
 ## Proto Workflow
 
@@ -575,8 +586,15 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 - Enables mTLS on all services with mounted certificate volumes
 - Sets `restart: always`
-- Removes internal port exposure (only gateway `:8000` is public)
+- Removes internal service port exposure (only the gateway `:8090` is published — and it must be bound to loopback so only nginx reaches it; see `scripts/prod/README.md` for the hardening runbook)
 - Adds memory limits (512 MB per service, 1 GB for archive-service, 2 GB for MySQL)
+
+### Production topology (verified Oct 2026)
+
+- `server.pagepocket.app` → Cloudflare → nginx → `127.0.0.1:8000` (**the monolith**, not the gateway — the gateway has no public hostname; `:8090` answers only on the host)
+- `pagepocket.app` and `app.pagepocket.app` → nginx → `127.0.0.1:3000` (Next.js frontend). `app.pagepocket.app` currently has **no dedicated nginx server block** — it resolves via nginx's default-server fallthrough; one explicit `server_name` block would make this intentional.
+- nginx sets `X-Forwarded-For`/`X-Forwarded-Proto`, `X-Real-IP` and `Host`; `CF-Connecting-IP` comes from the Cloudflare edge. The gateway's `TRUSTED_PROXIES` must list the nginx host for forwarding headers to be honored.
+- ⚠️ As of the Oct 2026 audit, monolith `:8000`, gateway `:8090` and monolith MySQL `:33060` are also reachable directly from the internet — closing them (loopback bind / firewall) is the first hardening step in `scripts/prod/README.md`.
 
 ### Systemd unit
 

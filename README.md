@@ -44,7 +44,7 @@ This is a monorepo with three independent, deployable components, each with its 
 | Component | Path | Stack | How it deploys |
 |---|---|---|---|
 | Browser extension | repo root (`src/`, `vite.config.ts`) | Vite + pnpm | `.zip` artifact (manual store publish) |
-| Frontend | `pagepocket/frontend/` | Next.js + pnpm | Contabo server (pm2 + nginx) |
+| Frontend | `pagepocket/frontend/` | Next.js + pnpm | Contabo server (nginx → `:3000`; see "Production topology" below) |
 | Backend | `pagepocket/services/` + `shared/` + `proto/` | Python 3.12 gRPC, Docker | Contabo server (docker compose) |
 
 ## Development
@@ -95,10 +95,11 @@ make migrate    # run Alembic migrations
 GitHub Actions workflows live in `.github/workflows/` and are path-filtered so only the affected component runs:
 
 - **`ci.yml`** — runs on PRs and pushes to `main`. Builds/lints/tests the extension, frontend, and backend independently based on which files changed.
-- **`deploy.yml`** — runs on push to `main`. Deploys the changed components to the Contabo server over SSH via `scripts/deploy-contabo.sh`:
-  - Backend: `git pull` → `docker compose up -d --build` (prod mTLS) → `make migrate`
-  - Frontend: `git pull` → `pnpm build` → `pm2 restart pagepocket-frontend`
+- **`deploy.yml`** — runs on push to the **`pagepocket` branch** (not `main` — `main` has diverged and is not deployed). Deploys the changed components to the Contabo server over SSH via `scripts/deploy-contabo.sh`:
+  - Backend (pagepocket gRPC services + gateway): `git pull` → `docker compose up -d --build` (prod mTLS) → `make migrate`
+  - Frontend: `git pull` → `pnpm build` → restart the `:3000` server — **known drift:** the workflow's deploy-frontend job assumes `pm2 restart pagepocket-frontend`, but production actually runs a plain `nohup next start` (no pm2 on the host, no auto-restart on crash or reboot). The frontend job's restart step does not match live reality until the ops runbook unifies it.
   - Extension: builds a `.zip` artifact for manual publishing to the Chrome/Firefox stores
+- **The monolith (`server/`) is deployed OUTSIDE CI today**: its container is ~hand-run compose (`server/docker-compose.yml`), not touched by `deploy.yml`. A first rebuild will ship many accumulated commits at once — schedule it deliberately (see `scripts/prod/README.md`).
 
 ### Required repository secrets
 
@@ -108,6 +109,20 @@ GitHub Actions workflows live in `.github/workflows/` and are path-filtered so o
 | `CONTABO_USER` | SSH user |
 | `CONTABO_SSH_KEY` | Private key for SSH access |
 | `CONTABO_DEPLOY_PATH` | (Optional) repo path on server; defaults to `/var/www/Web-Downloader-Extension` |
+
+## Production topology
+
+Verified against the live host (185.213.25.5) in Oct 2026:
+
+| Host | Path | Backend |
+|---|---|---|
+| `server.pagepocket.app` | Cloudflare → nginx :443 → `127.0.0.1:8000` | **Monolith** (`server/`) — serves the extension contract |
+| `pagepocket.app` | nginx :443 → `127.0.0.1:3000` | Next.js frontend |
+| `app.pagepocket.app` | no dedicated nginx server block — falls through to the default vhost (`pagepocket.app`) → `:3000` | Same frontend (works by nginx default-server semantics; one explicit `server_name` block would make it intentional) |
+| (no public hostname) | direct :8090 | pagepocket API gateway — the gateway has no DNS name; it is reached only via the frontend proxy on the host |
+
+- nginx sets `X-Forwarded-For`/`X-Forwarded-Proto`, `X-Real-IP` and `Host`; `CF-Connecting-IP` comes from the Cloudflare edge. Backends that derive client identity from forwarding headers (the gateway's rate limiter) must pin `TRUSTED_PROXIES` to the nginx host — direct-to-port traffic carries spoofable headers.
+- ⚠️ **Direct port exposure**: monolith `:8000`, gateway `:8090`, and monolith MySQL `:33060` are all reachable from the internet today. Closing them (loopback bind / firewall) + credential rotation is the first hardening sequence in [`scripts/prod/README.md`](scripts/prod/README.md) (deployment & hardening runbook: deploy flow, Alembic-in-deploy, backups/restore drill, rollback).
 
 ## Troubleshooting
 

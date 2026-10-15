@@ -1,6 +1,5 @@
 """Archive service entry point."""
 
-import logging
 import os
 import sys
 from concurrent import futures
@@ -12,14 +11,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared",
 
 import archive_pb2_grpc
 from grpc_mtls import require_certs, secure_server_credentials
+from logging_config import configure_logging
 from servicer import ArchiveServicer
 
 
 def serve():
-    logging.basicConfig(
-        level=os.environ.get("LOG_LEVEL", "INFO"),
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    configure_logging()
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10),
         options=[

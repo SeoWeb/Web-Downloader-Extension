@@ -4,7 +4,8 @@
  * Verifies:
  * - (11.5) Download triggers correctly when server ZIP is ready
  * - (11.6) Local fallback works when user chooses after server failure
- * - Assembly polling with 2s interval and 5-minute timeout
+ * - Assembly polling with adaptive intervals and the 35-minute timeout
+ *   envelope (task 6.1 / design D10) plus elapsed-second surfacing
  * - chrome.downloads.download with server URL and custom filename
  * - Error categorization and fallback callbacks
  */
@@ -39,6 +40,7 @@ function mockStatus(overrides: Partial<SessionStatusResponse> = {}): SessionStat
     total_size: 1024,
     assembly_phase: "merging",
     assembly_progress_pct: 50,
+    assembly_elapsed_seconds: null,
     download_url: null,
     output_type: null,
     output_size: null,
@@ -206,7 +208,7 @@ describe("ServerDownloadHandler", () => {
   });
 
   // -----------------------------------------------------------------------
-  // 11.3 — Assembly polling (adaptive interval, 5min timeout)
+  // 11.3 — Assembly polling (adaptive interval, 35-min timeout envelope)
   // -----------------------------------------------------------------------
 
   describe("pollAssemblyStatus", () => {
@@ -279,7 +281,7 @@ describe("ServerDownloadHandler", () => {
       ).rejects.toThrow("Assembly failed: Assembly error: missing resource");
     });
 
-    it("throws AssemblyTimeoutError after 5 minutes", async () => {
+    it("throws AssemblyTimeoutError only after the 35-minute envelope", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date(2025, 0, 1, 0, 0, 0));
 
@@ -292,12 +294,14 @@ describe("ServerDownloadHandler", () => {
       const pollPromise = handlerTimeout.pollAssemblyStatus("test-session-id");
       const rejectionPromise = pollPromise.catch((err) => err);
 
-      // Advance system time to simulate 5+ minutes passing
+      // Advance system time to simulate 35 minutes passing
       // and advance timers to resolve the sleep() calls
       //
       // We do this in large steps: advance time, then advance timers
-      // so both Date.now() and setTimeout are synchronized
-      for (let i = 0; i < 16; i++) {
+      // so both Date.now() and setTimeout are synchronized.
+      // 20s × 106 = 2120s ≥ the 35-minute (2100s) envelope; the poll must
+      // SURVIVE the old 5-minute timeout and only give up past 35 minutes.
+      for (let i = 0; i < 106; i++) {
         vi.setSystemTime(Date.now() + 20000); // 20 seconds per step
         await vi.advanceTimersByTimeAsync(20000);
       }
@@ -307,6 +311,83 @@ describe("ServerDownloadHandler", () => {
 
       mockStatusFn.mockRestore();
     }, 10000);
+
+    it("surfaces assembly_elapsed_seconds to the status callback (task 6.1)", async () => {
+      const { handler, mockGetSessionStatus } = createHandler();
+
+      mockGetSessionStatus.mockResolvedValue(
+        mockStatus({
+          status: "assembling",
+          assembly_phase: "pushing_cloud",
+          assembly_progress_pct: 40,
+          assembly_elapsed_seconds: 615,
+        }),
+      );
+
+      const updates: Array<{
+        status: string;
+        phase: string | null;
+        pct: number | null;
+        elapsed: number | null | undefined;
+      }> = [];
+      const promise = handler.pollAssemblyStatus(
+        "test-session-id",
+        (status, phase, pct, elapsedSeconds) => {
+          updates.push({ status, phase, pct, elapsed: elapsedSeconds });
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(2000);
+
+      mockGetSessionStatus.mockResolvedValue(
+        mockStatus({
+          status: "ready",
+          download_url: "http://localhost:8000/api/v1/sessions/test/download",
+          assembly_elapsed_seconds: 630,
+        }),
+      );
+      await vi.advanceTimersByTimeAsync(2000);
+
+      await promise;
+
+      const pushUpdate = updates.find((u) => u.phase === "pushing_cloud");
+      expect(pushUpdate).toBeDefined();
+      expect(pushUpdate!.elapsed).toBe(615);
+      // The final ready update carries the last elapsed value
+      expect(updates[updates.length - 1].elapsed).toBe(630);
+    });
+
+    it("keeps polling servers that don't send assembly_elapsed_seconds (backward compat)", async () => {
+      const { handler, mockGetSessionStatus } = createHandler();
+
+      // Older server shape: no assembly_elapsed_seconds field at all
+      const legacyStatus = mockStatus({ status: "assembling" }) as SessionStatusResponse;
+      delete (legacyStatus as Partial<SessionStatusResponse>).assembly_elapsed_seconds;
+      mockGetSessionStatus.mockResolvedValue(legacyStatus);
+
+      const updates: Array<number | null | undefined> = [];
+      const promise = handler.pollAssemblyStatus(
+        "test-session-id",
+        (_status, _phase, _pct, elapsedSeconds) => {
+          updates.push(elapsedSeconds);
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(2000);
+
+      mockGetSessionStatus.mockResolvedValue(
+        mockStatus({
+          status: "ready",
+          download_url: "http://localhost:8000/api/v1/sessions/test/download",
+        }),
+      );
+      await vi.advanceTimersByTimeAsync(2000);
+
+      const result = await promise;
+      expect(result.status).toBe("ready");
+      expect(updates.length).toBeGreaterThan(0);
+      expect(updates.every((e) => e === null)).toBe(true);
+    });
 
     it("continues polling through transient ServerUnavailableError", async () => {
       const { handler, mockGetSessionStatus } = createHandler();
@@ -637,8 +718,8 @@ describe("ServerDownloadHandler", () => {
         fallbackCb,
       );
 
-      // Advance past timeout
-      await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 2000);
+      // Advance past the 35-minute timeout envelope
+      await vi.advanceTimersByTimeAsync(35 * 60 * 1000 + 2000);
 
       const result = await promise;
 

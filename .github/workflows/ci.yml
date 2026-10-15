@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, pagepocket]
   pull_request:
-    branches: [main]
+    branches: [main, pagepocket]
 
 permissions:
   contents: read
@@ -17,6 +17,7 @@ jobs:
       extension: ${{ steps.filter.outputs.extension }}
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
+      server: ${{ steps.filter.outputs.server }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,7 +25,11 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
-          base: ${{ github.ref == 'refs/heads/main' && github.event.before || github.event.pull_request.base.sha }}
+          # Push events diff against the previous commit (any branch); PRs
+          # diff against the PR base. (5.7: CI runs on main AND pagepocket —
+          # pagepocket is the production trunk and must never diverge
+          # untested from main again.)
+          base: ${{ github.event.before || github.event.pull_request.base.sha }}
           filters: |
             extension:
               - 'src/**'
@@ -33,7 +38,6 @@ jobs:
               - 'vite.config.ts'
               - 'package.json'
               - 'tsconfig.json'
-              - 'jest.config.cjs'
               - '*.cjs'
               - 'tests/**'
             frontend:
@@ -42,6 +46,10 @@ jobs:
               - 'pagepocket/services/**'
               - 'pagepocket/shared/**'
               - 'pagepocket/proto/**'
+              - 'pagepocket/Makefile'
+              - 'pagepocket/docker-compose*.yml'
+            server:
+              - 'server/**'
 
   # ---------------------------------------------------------------------------
   # Browser extension (repo root)
@@ -120,7 +128,7 @@ jobs:
         env:
           # Build-time placeholders (src/lib/env.ts validates these). Real
           # values are injected by the deployment platform at runtime.
-          NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api/v1
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:8090/api/v1
           NEXT_PUBLIC_MARKETING_SITE_URL: http://localhost:3000
           COOKIE_SECRET: ci-build-only-placeholder
 
@@ -128,7 +136,7 @@ jobs:
         run: pnpm size-limit
 
   # ---------------------------------------------------------------------------
-  # Backend (Python gRPC services)
+  # Backend (Python gRPC services + gateway)
   # ---------------------------------------------------------------------------
   backend:
     needs: changes
@@ -154,6 +162,8 @@ jobs:
             echo "Installing $f"
             pip install -r "$f"
           done
+          # test-only deps (fakeredis, httpx for the integration suite)
+          pip install -r pagepocket/requirements-dev.txt
 
       - name: Generate gRPC stubs
         working-directory: pagepocket
@@ -163,6 +173,42 @@ jobs:
         working-directory: pagepocket
         run: make lint
 
-      - name: Tests
+      - name: Unit tests (all services, api-gateway included)
         working-directory: pagepocket
         run: make test
+
+      # 5.1: the 17 gateway integration tests hit a LIVE stack. They used to
+      # self-skip forever because nothing booted the stack; make
+      # test-integration starts the full compose project (mysql + redis +
+      # 5 services + gateway), waits for /api/v1/health and fails if the
+      # tests cannot run against it.
+      - name: Integration tests (full compose stack)
+        working-directory: pagepocket
+        run: make test-integration
+
+  # ---------------------------------------------------------------------------
+  # Monolith (server/) — 5.2: previously had no CI job at all; the 6
+  # test_session_lifecycle failures shipped silently.
+  # ---------------------------------------------------------------------------
+  server:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r server/requirements.txt
+          # test-only deps: pytest-asyncio (async tests), aiosqlite (the
+          # SQLite-backed ORM fixtures in server/tests/conftest.py), httpx
+          pip install pytest pytest-asyncio aiosqlite httpx
+
+      - name: Run monolith test suite
+        working-directory: server
+        run: python -m pytest tests/ -q

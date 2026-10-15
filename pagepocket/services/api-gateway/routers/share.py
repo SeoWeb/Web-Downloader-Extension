@@ -14,31 +14,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..
 import archive_pb2
 import share_pb2
 from grpc_clients import archive_stub, share_stub
+from serving import content_type_for_path, sandbox_headers
 
 from routers import handle_grpc_error
 
 router = APIRouter(prefix="/api/v1/share", tags=["share"])
-
-CONTENT_TYPE_MAP = {
-    ".html": "text/html; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".js": "application/javascript",
-    ".json": "application/json",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".png": "image/png",
-    ".gif": "image/gif",
-    ".webp": "image/webp",
-    ".svg": "image/svg+xml",
-    ".ico": "image/x-icon",
-    ".woff": "font/woff",
-    ".woff2": "font/woff2",
-    ".ttf": "font/ttf",
-    ".mp4": "video/mp4",
-    ".webm": "video/webm",
-    ".mp3": "audio/mpeg",
-    ".wasm": "application/wasm",
-}
 
 
 def _format_share_response(resp):
@@ -130,11 +110,6 @@ async def validate_share_link(token: str):
         handle_grpc_error(e)
 
 
-def _content_type_for_path(file_path: str) -> str:
-    ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
-    return CONTENT_TYPE_MAP.get(f".{ext}", "application/octet-stream")
-
-
 @router.get("/public/{token}/f/{file_path:path}")
 async def get_share_file(token: str, file_path: str):
     """Public endpoint - serve an archived file for a share token."""
@@ -156,31 +131,39 @@ async def get_share_file(token: str, file_path: str):
         # Try direct path first
         try:
             file_resp = _fetch(file_path)
-        except grpc.RpcError:
-            # Backward compat: try with assets/ prefix for unrewritten paths
-            if not file_path.startswith("assets/"):
-                try:
-                    file_resp = _fetch(f"assets/{file_path}")
-                except grpc.RpcError:
-                    raise HTTPException(status_code=404, detail="File not found")
-            else:
-                raise HTTPException(status_code=404, detail="File not found")
+        except grpc.RpcError as e:
+            # Backward compat: only a genuine NOT_FOUND retries with the
+            # assets/ prefix — every other failure class (deadline, quota,
+            # size, rate) goes through the shared gRPC→HTTP handler instead
+            # of being masked as a 404.
+            if e.code() != grpc.StatusCode.NOT_FOUND:
+                handle_grpc_error(e)
+            if file_path.startswith("assets/"):
+                handle_grpc_error(e)
+            try:
+                file_resp = _fetch(f"assets/{file_path}")
+            except grpc.RpcError as e2:
+                handle_grpc_error(e2)
 
         content_type = file_resp.content_type
         if not content_type or content_type == "application/octet-stream":
-            content_type = _content_type_for_path(file_path)
+            content_type = content_type_for_path(file_path)
 
         # Use immutable caching for hashed filenames (long hex suffixes)
         cache_control = "public, max-age=3600"
         if re.search(r"_[a-f0-9]{8,}", file_path):
             cache_control = "public, max-age=31536000, immutable"
 
+        # Sandboxed serving headers (task 7.1 / spec "archived-html-serving"):
+        # identical set to the archive file route — CSP sandbox without
+        # allow-same-origin, nosniff, pinned Content-Type, and
+        # Referrer-Policy on HTML.
         return FastAPIResponse(
             content=file_resp.data,
             media_type=content_type,
             headers={
                 "Cache-Control": cache_control,
-                "X-Content-Type-Options": "nosniff",
+                **sandbox_headers(content_type),
             },
         )
     except HTTPException:

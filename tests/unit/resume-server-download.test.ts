@@ -23,6 +23,9 @@ vi.mock("../../src/background/server-client", () => ({
     finalizeSession: vi.fn().mockResolvedValue(undefined),
     uploadResource: vi.fn().mockResolvedValue(undefined),
   },
+  // pagepocket-client (loaded transitively via download-core → cloud-binding)
+  // imports this at module load
+  assertSecureBaseUrl: vi.fn(),
   ServerUnavailableError: class extends Error {
     constructor(msg: string) { super(msg); this.name = "ServerUnavailableError"; }
   },

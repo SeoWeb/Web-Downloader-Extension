@@ -1,10 +1,43 @@
 import { NextRequest } from "next/server";
 import { setAuthCookies, clearAuthCookies } from "@/lib/auth/cookies";
 import { API_GATEWAY_URL } from "@/lib/env";
+import { contentTypeForPath, sandboxHeaders } from "@/lib/serving-headers";
 
 const API_BASE = API_GATEWAY_URL;
 
 const refreshPromises = new Map<string, Promise<Response>>();
+
+// Authenticated archived-file serving route (/api/pp/archive/{page_id}/f/*).
+// Archived content must never leave this proxy without the sandbox header set
+// (archived-html-serving) — same semantics as the gateway's serving.py.
+const ARCHIVE_FILE_ROUTE = /^\/archive\/[^/]+\/f\/(.+)$/;
+
+function archiveFilePath(route: string): string | null {
+  const match = route.match(ARCHIVE_FILE_ROUTE);
+  return match ? match[1]! : null;
+}
+
+function proxyResponse(response: Response, filePath: string | null): Response {
+  if (!filePath) {
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+  }
+  const headers = new Headers(response.headers);
+  const sandbox = sandboxHeaders(
+    response.headers.get("content-type") ?? contentTypeForPath(filePath),
+  );
+  for (const [name, value] of Object.entries(sandbox)) {
+    headers.set(name, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
 
 function decodeJwtSubject(token: string): string | null {
   try {
@@ -106,6 +139,7 @@ async function proxyRequest(
 ) {
   const { path } = await params;
   const route = `/${path.join("/")}`;
+  const filePath = archiveFilePath(route);
   const url = new URL(request.url);
   const gatewayUrl = `${API_BASE}${route}?${url.searchParams.toString()}`;
 
@@ -160,11 +194,7 @@ async function proxyRequest(
           ...(hasBody ? { body: body! } : {}),
         });
 
-        const finalResponse = new Response(response.body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers,
-        });
+        const finalResponse = proxyResponse(response, filePath);
 
         setAuthCookies(responseCookieSetter(finalResponse), {
           access: newAccess,
@@ -187,9 +217,5 @@ async function proxyRequest(
     return signOutResponse;
   }
 
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: response.headers,
-  });
+  return proxyResponse(response, filePath);
 }

@@ -18,6 +18,7 @@ import {
   ServerUnavailableError,
   AuthenticationError,
   AssemblyTimeoutError,
+  HttpError,
 } from "../../src/background/server-client";
 
 // ---------------------------------------------------------------------------
@@ -743,5 +744,333 @@ describe("ServerClient", () => {
       const client = createClient();
       await expect(client.scrapeComplete("sess-1", 10)).rejects.toThrow(ServerUnavailableError);
     }, 15000);
+  });
+
+  // -----------------------------------------------------------------------
+  // 6.3 / D14 — Re-registration deadlock fix
+  //
+  // When the stored instance id resolves server-side to a REVOKED key,
+  // re-registering with the SAME id returns the SAME dead key and every
+  // request 401s forever. The 401 path must mint a FRESH instance id
+  // (single-flight via the mutex, definitive failure surfaced).
+  // -----------------------------------------------------------------------
+  describe("re-registration deadlock (6.3 / D14)", () => {
+    /** Build a fetch mock emulating the monolith's register-by-instance-id semantics. */
+    function mockRevokedKeyServer(opts: { registerAlwaysFails?: boolean } = {}) {
+      const registerIds: string[] = [];
+      const keysByInstance = new Map<string, string>();
+      const REVOKED_INSTANCE = "ext-A";
+      const REVOKED_KEY = "revoked-key-A";
+      keysByInstance.set(REVOKED_INSTANCE, REVOKED_KEY);
+      const sessionCallKeys: string[] = [];
+
+      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/register")) {
+          const body = JSON.parse((init?.body as string) ?? "{}");
+          registerIds.push(body.client_id);
+          if (opts.registerAlwaysFails) {
+            return mockResponse(500, { detail: "registration unavailable" });
+          }
+          // Same instance id → SAME key (the deadlock: the id still resolves
+          // to the revoked credential server-side).
+          let key = keysByInstance.get(body.client_id);
+          if (!key) {
+            key = `fresh-key-${body.client_id}`;
+            keysByInstance.set(body.client_id, key);
+          }
+          return mockResponse(200, { api_key: key, client_id: body.client_id });
+        }
+        if (urlStr.includes("/sessions") && init?.method === "POST") {
+          const key = (init?.headers as Headers)?.get?.("X-API-Key") ?? "";
+          sessionCallKeys.push(key);
+          if (key === REVOKED_KEY) {
+            return mockResponse(401, {
+              detail: { error: "invalid_api_key", message: "Invalid or unrecognized API key" },
+            });
+          }
+          return mockResponse(201, { id: "sess-ok", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
+        }
+        return mockResponse(404, {});
+      });
+
+      return { registerIds, sessionCallKeys, REVOKED_INSTANCE, REVOKED_KEY };
+    }
+
+    beforeEach(() => {
+      sessionStore[EXTENSION_INSTANCE_ID_KEY] = "ext-A";
+      sessionStore[API_KEY_STORAGE_KEY] = "revoked-key-A";
+    });
+
+    it("re-registers with a FRESH instance id when the stored key is revoked, then succeeds", async () => {
+      const server = mockRevokedKeyServer();
+
+      const client = createClient();
+      const sessionId = await client.createSession("https://example.com");
+
+      expect(sessionId).toBe("sess-ok");
+
+      // Exactly one re-registration, carrying a different instance id
+      expect(server.registerIds).toHaveLength(1);
+      expect(server.registerIds[0]).not.toBe(server.REVOKED_INSTANCE);
+
+      // The retried request used a key that is NOT the revoked one
+      const successKeys = server.sessionCallKeys.filter((k) => k !== server.REVOKED_KEY);
+      expect(successKeys.length).toBeGreaterThanOrEqual(1);
+
+      // The fresh instance id is persisted to chrome.storage.session
+      expect(sessionStore[EXTENSION_INSTANCE_ID_KEY]).toBe(server.registerIds[0]);
+      expect(sessionStore[API_KEY_STORAGE_KEY]).toBe(successKeys[successKeys.length - 1]);
+    });
+
+    it("shares ONE fresh re-registration across concurrent 401s (single-flight)", async () => {
+      const server = mockRevokedKeyServer();
+
+      const client = createClient();
+      const results = await Promise.all([
+        client.createSession("https://example.com/a"),
+        client.createSession("https://example.com/b"),
+        client.createSession("https://example.com/c"),
+      ]);
+
+      // All three downloads succeeded with the fresh identity
+      results.forEach((id) => expect(id).toBe("sess-ok"));
+
+      // Exactly one register call total (the fresh re-registration — the
+      // revoked key came from storage, so no initial registration either)
+      expect(server.registerIds).toHaveLength(1);
+      expect(server.registerIds[0]).not.toBe(server.REVOKED_INSTANCE);
+    });
+
+    it("surfaces AuthenticationError definitively when fresh re-registration fails", async () => {
+      mockRevokedKeyServer({ registerAlwaysFails: true });
+
+      const client = createClient();
+      // AuthenticationError after the bounded attempts — no infinite loop
+      await expect(client.createSession("https://example.com")).rejects.toThrow(
+        AuthenticationError,
+      );
+    }, 15000);
+  });
+
+  // -----------------------------------------------------------------------
+  // 6.5 / D4 — Cloud identity binding (POST /api/v1/cloud/link)
+  // -----------------------------------------------------------------------
+  describe("linkCloudAccount (6.5 cloud binding)", () => {
+    /** Extract X-API-Key from either a Headers instance or a plain object. */
+    function readApiKey(init?: RequestInit): string {
+      const h = init?.headers as Record<string, string> | Headers | undefined;
+      if (!h) return "";
+      if (typeof (h as Headers).get === "function") {
+        return (h as Headers).get("X-API-Key") ?? "";
+      }
+      return (h as Record<string, string>)["X-API-Key"] ?? "";
+    }
+
+    /**
+     * Mock server: register hands out keys (optionally a revoked one first);
+     * /cloud/link authenticates by key — a revoked key gets 401
+     * invalid_api_key, a valid key gets the configured link response.
+     */
+    function mockCloudLinkServer(
+      linkResponse: { status: number; body: unknown },
+      opts: { firstKeyRevoked?: boolean } = {},
+    ) {
+      let registerCount = 0;
+      const registerIds: string[] = [];
+      const linkCalls: Array<{ apiKey: string; body: unknown }> = [];
+
+      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/register")) {
+          const body = JSON.parse((init?.body as string) ?? "{}");
+          registerCount++;
+          registerIds.push(body.client_id);
+          const key =
+            registerCount === 1 && opts.firstKeyRevoked
+              ? "revoked-key"
+              : `key-${registerCount}`;
+          return mockResponse(200, { api_key: key, client_id: body.client_id });
+        }
+        if (urlStr.includes("/cloud/link")) {
+          const apiKey = readApiKey(init);
+          linkCalls.push({
+            apiKey,
+            body: JSON.parse((init?.body as string) ?? "{}"),
+          });
+          if (apiKey === "revoked-key") {
+            return mockResponse(401, {
+              detail: { error: "invalid_api_key", message: "Invalid or unrecognized API key" },
+            });
+          }
+          return mockResponse(linkResponse.status, linkResponse.body);
+        }
+        return mockResponse(404, {});
+      });
+
+      return { registerCount: () => registerCount, registerIds, linkCalls };
+    }
+
+    it("POSTs /api/v1/cloud/link with X-API-Key + access_token and returns the binding", async () => {
+      const server = mockCloudLinkServer({
+        status: 200,
+        body: { bound: true, pagepocket_user_id: "pp-user-1", plan: "pro", api_version: "v1" },
+      });
+
+      const client = createClient();
+      const result = await client.linkCloudAccount("pp-access-token");
+
+      expect(result).toEqual({
+        outcome: "bound",
+        pagepocketUserId: "pp-user-1",
+        plan: "pro",
+      });
+      // ensureApiKey ran first (login before any server call → register, then bind)
+      expect(server.registerCount()).toBe(1);
+      expect(server.linkCalls).toHaveLength(1);
+      expect(server.linkCalls[0].apiKey).toBe("key-1");
+      expect(server.linkCalls[0].body).toEqual({ access_token: "pp-access-token" });
+    });
+
+    it("does NOT re-register when the PagePocket token is rejected (invalid_pagepocket_token)", async () => {
+      const server = mockCloudLinkServer({
+        status: 401,
+        body: { detail: { error: "invalid_pagepocket_token", message: "PagePocket access token could not be verified" } },
+      });
+
+      const client = createClient();
+      const result = await client.linkCloudAccount("bad-token");
+
+      // The 401 here means the PAGEPOCKET token is bad — the server API key
+      // must survive (no re-registration, no retry loop).
+      expect(result).toEqual({ outcome: "invalid_token" });
+      expect(server.registerCount()).toBe(1);
+      expect(server.linkCalls).toHaveLength(1);
+    });
+
+    it("re-registers once with a fresh instance when the API key is rejected, then links", async () => {
+      const server = mockCloudLinkServer(
+        { status: 200, body: { bound: true, pagepocket_user_id: "pp-user-1", plan: "pro", api_version: "v1" } },
+        { firstKeyRevoked: true },
+      );
+      // Force the first registration to reuse a known instance id
+      sessionStore[EXTENSION_INSTANCE_ID_KEY] = "ext-A";
+
+      const client = createClient();
+      const result = await client.linkCloudAccount("pp-access-token");
+
+      expect(result).toEqual({
+        outcome: "bound",
+        pagepocketUserId: "pp-user-1",
+        plan: "pro",
+      });
+      // Initial register + exactly ONE fresh-instance re-register
+      expect(server.registerCount()).toBe(2);
+      expect(server.registerIds[0]).toBe("ext-A");
+      expect(server.registerIds[1]).not.toBe("ext-A");
+      // The revoked key was answered with invalid_api_key, the fresh one linked
+      expect(server.linkCalls[0].apiKey).toBe("revoked-key");
+      expect(server.linkCalls[1].apiKey).toBe("key-2");
+    });
+
+    it.each([404, 501, 503])(
+      "marks HTTP %i as unsupported (older server / unconfigured binding service)",
+      async (status) => {
+        mockCloudLinkServer({ status, body: { detail: { message: "nope" } } });
+
+        const client = createClient();
+        const result = await client.linkCloudAccount("pp-access-token");
+        expect(result).toEqual({ outcome: "unsupported" });
+      },
+    );
+
+    it("returns failed when a lingering 401 persists after re-registration", async () => {
+      // The link endpoint rejects EVERY key with invalid_api_key — a server
+      // anomaly. One re-register is attempted, then the failure is definitive
+      // (no loop) and NOT misreported as a bad PagePocket token.
+      let registerCount = 0;
+      const registerIds: string[] = [];
+      const linkCalls: string[] = [];
+      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/register")) {
+          const body = JSON.parse((init?.body as string) ?? "{}");
+          registerCount++;
+          registerIds.push(body.client_id);
+          return mockResponse(200, { api_key: `key-${registerCount}`, client_id: body.client_id });
+        }
+        if (urlStr.includes("/cloud/link")) {
+          linkCalls.push(readApiKey(init));
+          return mockResponse(401, {
+            detail: { error: "invalid_api_key", message: "Invalid or unrecognized API key" },
+          });
+        }
+        return mockResponse(404, {});
+      });
+
+      const client = createClient();
+      const result = await client.linkCloudAccount("pp-access-token");
+
+      expect(result).toEqual({
+        outcome: "failed",
+        message: "link failed after re-registration",
+      });
+      expect(registerCount).toBe(2);
+      expect(linkCalls).toHaveLength(2);
+    });
+
+    it("returns failed on network errors", async () => {
+      fetchSpy.mockImplementation(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/register")) {
+          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+        }
+        if (urlStr.includes("/cloud/link")) {
+          throw new TypeError("Failed to fetch");
+        }
+        return mockResponse(404, {});
+      });
+
+      const client = createClient();
+      const result = await client.linkCloudAccount("pp-access-token");
+      expect(result.outcome).toBe("failed");
+    });
+
+    it("returns failed (not thrown) when the server errors with 5xx", async () => {
+      mockCloudLinkServer({ status: 500, body: { detail: { message: "boom" } } });
+
+      const client = createClient();
+      const result = await client.linkCloudAccount("pp-access-token");
+      expect(result.outcome).toBe("failed");
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // HttpError carries the machine-readable error code (6.5 cloud 403 mapping)
+  // -----------------------------------------------------------------------
+  describe("HttpError errorCode extraction", () => {
+    it("exposes detail.error as errorCode on 403 responses", async () => {
+      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/register")) {
+          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+        }
+        if (urlStr.includes("/sessions") && init?.method === "POST") {
+          return mockResponse(403, {
+            detail: {
+              error: "cloud_not_linked",
+              message: "This client has no PagePocket cloud binding.",
+            },
+          });
+        }
+        return mockResponse(404, {});
+      });
+
+      const client = createClient();
+      const err = await client.createSession("https://example.com").catch((e) => e);
+      expect(err).toBeInstanceOf(HttpError);
+      expect(err.statusCode).toBe(403);
+      expect(err.errorCode).toBe("cloud_not_linked");
+    });
   });
 });

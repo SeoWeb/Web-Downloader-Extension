@@ -234,7 +234,10 @@
       "savingPartialCapture": "Saving what we captured…",
       "downloadReport": "Download report",
       "partialDownload": "Partial download",
-      "partialDownloadNote": "The archive contains what was captured before the download was stopped."
+      "partialDownloadNote": "The archive contains what was captured before the download was stopped.",
+      "cloudNotLinked": "Cloud save unavailable: your PagePocket account is not linked to the download server. Log in to PagePocket and try again.",
+      "cloudIdentityMismatch": "PagePocket account mismatch: the download server is linked to a different account. Log out of PagePocket and log back in.",
+      "assemblyElapsed": "Elapsed: {{minutes}}m {{seconds}}s"
     },
     "permissions": {
       "storage": {

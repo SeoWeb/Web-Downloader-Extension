@@ -28,6 +28,11 @@ export interface ServerModeState {
   assemblyPhase: string | null;
   /** Assembly progress percentage (0-100). */
   assemblyProgressPct: number | null;
+  /**
+   * Seconds elapsed since assembly started (assembly-timeout envelope,
+   * task 6.1). Null when the server doesn't report it (older servers).
+   */
+  assemblyElapsedSeconds: number | null;
   /** Server download URL when ZIP is ready. */
   serverDownloadUrl: string | null;
   /** Whether the download is a single-file HTML. */
@@ -42,6 +47,7 @@ export const initialServerModeState: ServerModeState = {
   uploadTotal: 0,
   assemblyPhase: null,
   assemblyProgressPct: null,
+  assemblyElapsedSeconds: null,
   serverDownloadUrl: null,
   isSingleFile: false,
   serverError: null,
@@ -77,13 +83,18 @@ export function applyServerModeMessage(
     case "status.assemblingServer":
       return { ...prev, phase: "assembling" };
 
-    // (15.2) Assembly progress updates
+    // (15.2) Assembly progress updates. `elapsedSeconds` is additive
+    // (task 6.1) — undefined-safe against servers that don't send it.
     case "status.assemblyProgress":
       return {
         ...prev,
         phase: "assembling",
         assemblyPhase: options?.phase ?? prev.assemblyPhase,
         assemblyProgressPct: options?.progressPct ?? prev.assemblyProgressPct,
+        assemblyElapsedSeconds:
+          typeof options?.elapsedSeconds === "number"
+            ? options.elapsedSeconds
+            : prev.assemblyElapsedSeconds,
       };
 
     // (15.1) Upload progress

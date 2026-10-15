@@ -1,6 +1,7 @@
 """Auth service gRPC servicer implementation."""
 
 import hashlib
+import logging
 import os
 import re
 import sys
@@ -18,6 +19,8 @@ import auth_pb2_grpc
 from db import db_session, get_engine
 from jwt_utils import issue_access_token, issue_refresh_token, verify_access_token
 from models import RefreshToken, User
+
+logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
@@ -137,8 +140,12 @@ class AuthServicer(auth_pb2_grpc.AuthServiceServicer):
                 ).scalar_one_or_none()
                 if user is not None:
                     plan = user.plan
-        except Exception:
-            pass  # DB unavailable — serve the token claims rather than fail
+        except Exception as exc:
+            # DB unavailable — serve the token claims rather than fail Verify.
+            logger.warning(
+                "Could not read current plan for user %s — serving token claims: %s",
+                payload.get("sub"), exc,
+            )
         return auth_pb2.VerifyResponse(
             valid=True,
             user_id=payload["sub"],

@@ -10,11 +10,17 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared", "proto_generated"))
 
 import share_pb2_grpc
+from config import enforce_startup_config
 from grpc_mtls import require_certs, secure_server_credentials
+from logging_config import configure_logging
 from servicer import ShareServicer
 
 
 def serve():
+    # Fail fast on unsafe production configuration (7.6): BASE_URL is required
+    # when ENVIRONMENT=production — short URLs must never point at localhost.
+    enforce_startup_config()
+    configure_logging()
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     share_pb2_grpc.add_ShareServiceServicer_to_server(ShareServicer(), server)
 

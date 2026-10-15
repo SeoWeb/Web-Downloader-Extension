@@ -9,6 +9,10 @@ import {
   pagepocketClient,
   PagePocketAuthError,
 } from "../background/pagepocket-client";
+import {
+  linkCloudAccount,
+  clearCloudBinding,
+} from "../background/cloud-binding";
 
 interface PagePocketState {
   // State
@@ -47,6 +51,15 @@ export const usePagePocketStore = create<PagePocketState>()(
       set({ isAuthLoading: true });
       try {
         const authState = await pagepocketClient.login(email, password);
+        // Task 6.5 / D4: bind the PagePocket identity to the download server
+        // (POST /api/v1/cloud/link). Best-effort and non-blocking — a slow or
+        // unreachable monolith must never fail the login itself; the lazy
+        // ensureCloudBinding() on the next cloud download covers transient
+        // failures. ensureApiKey runs inside the link call, so "login without
+        // a server API key yet" registers first, then binds.
+        linkCloudAccount(authState.accessToken).catch((err) => {
+          console.warn("[CloudBinding] link after login failed:", err);
+        });
         set({
           isAuthenticated: true,
           authUser: authState.user,
@@ -66,6 +79,11 @@ export const usePagePocketStore = create<PagePocketState>()(
           password,
           name,
         );
+        // Task 6.5 / D4: same binding flow as login (registration on the
+        // PagePocket side returns a fresh auth state).
+        linkCloudAccount(authState.accessToken).catch((err) => {
+          console.warn("[CloudBinding] link after register failed:", err);
+        });
         set({
           isAuthenticated: true,
           authUser: authState.user,
@@ -83,6 +101,10 @@ export const usePagePocketStore = create<PagePocketState>()(
       } catch {
         // Clear local state even if server logout fails
       }
+      // Task 6.5: the binding belongs to the logged-in identity — drop it so
+      // a re-login with a different account re-binds instead of sending a
+      // stale bound id.
+      await clearCloudBinding();
       set({ isAuthenticated: false, authUser: null });
     },
 

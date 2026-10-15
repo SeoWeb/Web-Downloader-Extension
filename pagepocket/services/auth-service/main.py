@@ -11,10 +11,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared",
 
 import auth_pb2_grpc
 from grpc_mtls import require_certs, secure_server_credentials
+from logging_config import configure_logging
 from servicer import AuthServicer
 
 
 def serve():
+    configure_logging()
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     auth_pb2_grpc.add_AuthServiceServicer_to_server(AuthServicer(), server)
 

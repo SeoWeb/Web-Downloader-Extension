@@ -127,6 +127,53 @@ def _make_client(
 
 
 # ---------------------------------------------------------------------------
+# SQL-level cleanup mock helpers (wave-1 6.4: cleanup gained a fifth step,
+# _cleanup_orphaned_db_records, and _remove_expired_sessions moved from
+# ORM-object iteration to bulk UPDATE + batched DELETE — see cleanup.py.
+# These helpers script per-execute() results and record statements so tests
+# can assert on the SQL passes.)
+# ---------------------------------------------------------------------------
+
+
+def _rows(rows):
+    """Mock execute() result whose .all() returns row tuples (Select paths)."""
+    result = MagicMock()
+    result.all.return_value = rows
+    return result
+
+
+def _scripted_db(results):
+    """AsyncMock AsyncSession returning scripted results in call order.
+
+    Records every statement passed to execute() in
+    ``db.executed_statements`` so tests can assert SQL ordering
+    (the UPDATE ... status=EXPIRED pass precedes the batched DELETEs).
+    """
+    db = AsyncMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+    db.delete = AsyncMock()
+    db.close = AsyncMock()
+    db.executed_statements = []
+    queue = list(results)
+
+    async def _execute(stmt, *args, **kwargs):
+        db.executed_statements.append(stmt)
+        if queue:
+            return queue.pop(0)
+        return MagicMock()
+
+    db.execute = AsyncMock(side_effect=_execute)
+    return db
+
+
+def _statement_kinds(db):
+    """Map recorded statements to their SQL verb class names, in order."""
+    return [type(stmt).__name__ for stmt in db.executed_statements]
+
+
+# ---------------------------------------------------------------------------
 # 7.1 – SessionManager lifecycle management
 # ---------------------------------------------------------------------------
 
@@ -395,12 +442,14 @@ class TestCleanupServicePeriodic:
     @pytest.mark.asyncio
     async def test_periodic_cleanup_uses_stale_assembly_check(self, cleanup, mock_db):
         """Periodic cleanup uses stale assembly check (not blanket startup check)."""
-        # Mock the sub-methods to verify they are called
+        # Mock the sub-methods to verify they are called (including the
+        # wave-1 6.4 orphaned-DB-record pass)
         cleanup._mark_stale_sessions_failed = AsyncMock(return_value=0)
         cleanup._mark_stale_assembling_sessions_failed = AsyncMock(return_value=0)
         cleanup._remove_expired_sessions = AsyncMock(return_value=0)
         cleanup._cleanup_orphaned_api_keys = AsyncMock(return_value=0)
         cleanup._cleanup_orphaned_directories = AsyncMock(return_value=0)
+        cleanup._cleanup_orphaned_db_records = AsyncMock(return_value=0)
         # Force disk usage below the aggressive-cleanup threshold so that
         # branch is skipped; this test targets the normal orchestration path.
         cleanup._get_disk_usage_pct = MagicMock(return_value=50.0)
@@ -412,6 +461,7 @@ class TestCleanupServicePeriodic:
         cleanup._remove_expired_sessions.assert_awaited_once_with(mock_db)
         cleanup._cleanup_orphaned_api_keys.assert_awaited_once_with(mock_db)
         cleanup._cleanup_orphaned_directories.assert_awaited_once_with(mock_db)
+        cleanup._cleanup_orphaned_db_records.assert_awaited_once_with(mock_db)
 
         assert result == {
             "stale_sessions_failed": 0,
@@ -419,11 +469,13 @@ class TestCleanupServicePeriodic:
             "expired_sessions_removed": 0,
             "orphaned_keys_removed": 0,
             "orphaned_dirs_removed": 0,
+            "orphaned_sessions_removed": 0,
         }
 
     @pytest.mark.asyncio
     async def test_startup_cleanup_order(self, cleanup, mock_db):
-        """Startup cleanup runs steps in correct order: stale -> assembling -> expired -> orphans."""
+        """Startup cleanup runs steps in correct order:
+        stale -> assembling -> expired -> orphan keys -> orphan dirs -> orphan db records."""
         call_order = []
 
         async def mock_stale(db):
@@ -446,11 +498,16 @@ class TestCleanupServicePeriodic:
             call_order.append("orphan_dirs")
             return 0
 
+        async def mock_orphan_db_records(db):
+            call_order.append("orphan_db_records")
+            return 0
+
         cleanup._mark_stale_sessions_failed = mock_stale
         cleanup._mark_assembling_sessions_failed = mock_assembling
         cleanup._remove_expired_sessions = mock_expired
         cleanup._cleanup_orphaned_api_keys = mock_orphan_keys
         cleanup._cleanup_orphaned_directories = mock_orphan_dirs
+        cleanup._cleanup_orphaned_db_records = mock_orphan_db_records
 
         await cleanup.run_startup_cleanup(mock_db)
 
@@ -460,6 +517,7 @@ class TestCleanupServicePeriodic:
             "expired",
             "orphan_keys",
             "orphan_dirs",
+            "orphan_db_records",
         ]
 
 
@@ -577,41 +635,31 @@ class TestStartupCleanup:
         assert not os.path.exists(partial_file)
 
     @pytest.mark.asyncio
-    async def test_expired_sessions_removed(self, cleanup, mock_db, storage_root):
+    async def test_expired_sessions_removed(self, cleanup, storage_root):
         """Expired sessions and their files are removed."""
         # Create session directory on disk
-        session_dir = os.path.join(storage_root, "expired-1")
+        session_id = "expired-1"
+        session_dir = os.path.join(storage_root, session_id)
         os.makedirs(os.path.join(session_dir, "resources"), exist_ok=True)
         with open(os.path.join(session_dir, "resources", "test.jpg"), "w") as f:
             f.write("fake image")
 
-        expired_session = _make_session(
-            session_id="expired-1",
-            status=SessionStatus.READY,
-            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
-        )
+        # Script the SQL passes (wave-1: bulk UPDATE + batched DELETE):
+        # bulk UPDATE (expired), bulk UPDATE (old failed), batch select
+        # returning our session id, batch DELETE, then an empty next batch
+        # to end the loop.
+        db = _scripted_db([
+            MagicMock(),                 # pass 1: bulk UPDATE -> EXPIRED
+            MagicMock(),                 # pass 2: bulk UPDATE old FAILED -> EXPIRED
+            _rows([(session_id,)]),      # pass 3: batch select of expired ids
+            MagicMock(),                 # pass 3: batch DELETE (CASCADE children)
+            _rows([]),                   # pass 3: next batch — empty, loop ends
+        ])
 
-        # First call returns the expired session; subsequent calls (resource
-        # queries, next-batch query) return empty results to end the loop.
-        session_result = MagicMock()
-        session_result.scalars.return_value.all.return_value = [expired_session]
-        empty_result = MagicMock()
-        empty_result.scalars.return_value.all.return_value = []
-        call_count = 0
-
-        def _next_result(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return session_result
-            return empty_result
-
-        mock_db.execute.side_effect = _next_result
-
-        count = await cleanup._remove_expired_sessions(mock_db)
+        count = await cleanup._remove_expired_sessions(db)
         assert count == 1
         assert not os.path.exists(session_dir)
-        mock_db.delete.assert_awaited()
+        assert "Delete" in _statement_kinds(db)
 
 
 # ---------------------------------------------------------------------------
@@ -840,44 +888,33 @@ class TestAutoExpireVerification:
     """Verify sessions auto-expire after retention period and cleanup removes files."""
 
     @pytest.mark.asyncio
-    async def test_expired_session_marked_expired_before_deletion(self, cleanup, mock_db, storage_root):
+    async def test_expired_session_marked_expired_before_deletion(self, cleanup, storage_root):
         """Spec: session is marked as 'expired' before being deleted."""
         session_id = "expire-status-test"
         session_dir = os.path.join(storage_root, session_id)
         os.makedirs(os.path.join(session_dir, "resources"), exist_ok=True)
 
-        expired_session = _make_session(
-            session_id=session_id,
-            status=SessionStatus.READY,
-            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
-        )
+        db = _scripted_db([
+            MagicMock(),                    # pass 1: bulk UPDATE -> EXPIRED
+            MagicMock(),                    # pass 2: bulk UPDATE old FAILED -> EXPIRED
+            _rows([(session_id,)]),         # pass 3: batch select of expired ids
+            MagicMock(),                    # pass 3: batch DELETE
+            _rows([]),                      # pass 3: next batch — empty
+        ])
 
-        # Track which execute call we're on:
-        #   call 0: session batch query -> returns [expired_session]
-        #   call 1: resource query for session -> returns []
-        #   call 2: next batch query -> returns [] (loop exits)
-        session_result = MagicMock()
-        session_result.scalars.return_value.all.return_value = [expired_session]
-        empty_result = MagicMock()
-        empty_result.scalars.return_value.all.return_value = []
-        call_count = 0
-
-        def _next_result(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return session_result
-            return empty_result
-
-        mock_db.execute.side_effect = _next_result
-
-        count = await cleanup._remove_expired_sessions(mock_db)
+        count = await cleanup._remove_expired_sessions(db)
         assert count == 1
-        # Session should have been set to EXPIRED status before deletion
-        assert expired_session.status == SessionStatus.EXPIRED
+
+        # The SQL-level equivalent of "marked EXPIRED before deletion": an
+        # UPDATE setting status=EXPIRED must precede the DELETE of the batch.
+        kinds = _statement_kinds(db)
+        assert "Update" in kinds and "Delete" in kinds
+        assert kinds.index("Update") < kinds.index("Delete")
+        update_stmt = db.executed_statements[kinds.index("Update")]
+        assert SessionStatus.EXPIRED in update_stmt.compile().params.values()
 
     @pytest.mark.asyncio
-    async def test_expired_session_files_removed(self, cleanup, mock_db, storage_root):
+    async def test_expired_session_files_removed(self, cleanup, storage_root):
         """Cleanup removes files from disk when session expires."""
         session_id = "expire-files-test"
         session_dir = os.path.join(storage_root, session_id)
@@ -890,64 +927,39 @@ class TestAutoExpireVerification:
         with open(os.path.join(session_dir, "output", "test.zip"), "w") as f:
             f.write("fake zip")
 
-        expired_session = _make_session(
-            session_id=session_id,
-            status=SessionStatus.READY,
-            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
-        )
+        db = _scripted_db([
+            MagicMock(),                 # pass 1: bulk UPDATE -> EXPIRED
+            MagicMock(),                 # pass 2: bulk UPDATE old FAILED -> EXPIRED
+            _rows([(session_id,)]),      # pass 3: batch select of expired ids
+            MagicMock(),                 # pass 3: batch DELETE
+            _rows([]),                   # pass 3: next batch — empty
+        ])
 
-        session_result = MagicMock()
-        session_result.scalars.return_value.all.return_value = [expired_session]
-        empty_result = MagicMock()
-        empty_result.scalars.return_value.all.return_value = []
-        call_count = 0
-
-        def _next_result(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return session_result
-            return empty_result
-
-        mock_db.execute.side_effect = _next_result
-
-        count = await cleanup._remove_expired_sessions(mock_db)
+        count = await cleanup._remove_expired_sessions(db)
         assert count == 1
         assert not os.path.exists(session_dir)
 
     @pytest.mark.asyncio
-    async def test_expired_sessions_processed_in_batches(self, cleanup, mock_db, storage_root):
+    async def test_expired_sessions_processed_in_batches(self, cleanup, storage_root):
         """Expired sessions are deleted in batches to limit memory usage."""
-        session1 = _make_session(
-            session_id="batch-1",
-            status=SessionStatus.READY,
-            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
-        )
-        session2 = _make_session(
-            session_id="batch-2",
-            status=SessionStatus.READY,
-            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
-        )
+        db = _scripted_db([
+            MagicMock(),                                  # pass 1: bulk UPDATE
+            MagicMock(),                                  # pass 2: bulk UPDATE
+            _rows([("batch-1",), ("batch-2",)]),          # pass 3: one batch, two ids
+            MagicMock(),                                  # pass 3: batch DELETE
+            _rows([]),                                    # pass 3: next batch — empty
+        ])
 
-        batch1_result = MagicMock()
-        batch1_result.scalars.return_value.all.return_value = [session1, session2]
-        empty_result = MagicMock()
-        empty_result.scalars.return_value.all.return_value = []
-        call_count = 0
-
-        def _next_result(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return batch1_result
-            return empty_result
-
-        mock_db.execute.side_effect = _next_result
-
-        count = await cleanup._remove_expired_sessions(mock_db)
+        count = await cleanup._remove_expired_sessions(db)
         assert count == 2
-        assert session1.status == SessionStatus.EXPIRED
-        assert session2.status == SessionStatus.EXPIRED
+
+        # Both ids were removed by the batched DELETE's IN clause
+        kinds = _statement_kinds(db)
+        delete_stmt = db.executed_statements[kinds.index("Delete")]
+        deleted_ids = set()
+        for value in delete_stmt.compile().params.values():
+            deleted_ids.update(value if isinstance(value, (list, tuple)) else [value])
+        assert {"batch-1", "batch-2"} <= deleted_ids
 
     @pytest.mark.asyncio
     async def test_not_expired_session_preserved(self, cleanup, mock_db, storage_root):

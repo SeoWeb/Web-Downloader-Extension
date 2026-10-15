@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_GATEWAY_URL } from "@/lib/env";
+import { contentTypeForPath, sandboxHeaders } from "@/lib/serving-headers";
 
 const API_BASE = API_GATEWAY_URL;
 
@@ -23,17 +24,22 @@ export async function GET(
       );
     }
 
-    const contentType =
-      response.headers.get("content-type") ?? "application/octet-stream";
+    // Sandboxed serving headers (archived-html-serving): mirror the gateway's
+    // serving.py set — CSP sandbox without allow-same-origin, nosniff, pinned
+    // content type, no-referrer on HTML. Set here unconditionally so the
+    // proxy never serves archived content without them, even if the gateway
+    // response is missing headers.
+    const sandbox = sandboxHeaders(
+      response.headers.get("content-type") ?? contentTypeForPath(filePath),
+    );
     const data = await response.arrayBuffer();
 
     return new NextResponse(data, {
       status: 200,
       headers: {
-        "Content-Type": contentType,
+        ...sandbox,
         "Cache-Control":
           response.headers.get("cache-control") ?? "public, max-age=3600",
-        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch {

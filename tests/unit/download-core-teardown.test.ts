@@ -74,10 +74,23 @@ vi.mock("../../src/background/server-client", () => {
       this.name = "AuthenticationError";
     }
   }
+  // pagepocket-client (loaded transitively via cloud-binding) imports this
+  const assertSecureBaseUrl = vi.fn();
   class AssemblyTimeoutError extends Error {
     constructor(message = "assembly timeout") {
       super(message);
       this.name = "AssemblyTimeoutError";
+    }
+  }
+  // download-core references HttpError in its error mapping (task 6.5)
+  class HttpError extends Error {
+    statusCode: number;
+    errorCode?: string;
+    constructor(message: string, statusCode: number, errorCode?: string) {
+      super(message);
+      this.name = "HttpError";
+      this.statusCode = statusCode;
+      this.errorCode = errorCode;
     }
   }
   return {
@@ -86,9 +99,11 @@ vi.mock("../../src/background/server-client", () => {
         throw new ServerUnavailableError("mock: server unavailable");
       }),
     },
+    assertSecureBaseUrl,
     ServerUnavailableError,
     AuthenticationError,
     AssemblyTimeoutError,
+    HttpError,
   };
 });
 vi.mock("../../src/background/upload-queue", () => ({

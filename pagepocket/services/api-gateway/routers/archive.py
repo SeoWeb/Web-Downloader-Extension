@@ -5,43 +5,45 @@ import re
 import sys
 
 import grpc
-from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import Response as FastAPIResponse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared", "proto_generated"))
 
 import archive_pb2
 from grpc_clients import archive_stub
+from serving import content_type_for_path, sandbox_headers
+from validation import (
+    PayloadTooLarge,
+    content_length_exceeds,
+    max_upload_bytes,
+    read_bounded,
+)
 
 from routers import handle_grpc_error
 
 router = APIRouter(prefix="/api/v1/archive", tags=["archive"])
 
-_CONTENT_TYPE_MAP = {
-    ".html": "text/html; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".js": "application/javascript",
-    ".json": "application/json",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".png": "image/png",
-    ".gif": "image/gif",
-    ".webp": "image/webp",
-    ".svg": "image/svg+xml",
-    ".ico": "image/x-icon",
-    ".woff": "font/woff",
-    ".woff2": "font/woff2",
-    ".ttf": "font/ttf",
-    ".mp4": "video/mp4",
-    ".webm": "video/webm",
-    ".mp3": "audio/mpeg",
-    ".wasm": "application/wasm",
-}
+
+def _content_length(request: Request) -> int | None:
+    """Declared Content-Length, or None when absent/garbage."""
+    raw = request.headers.get("content-length")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
 
 
-def _content_type_for_path(file_path: str) -> str:
-    ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
-    return _CONTENT_TYPE_MAP.get(f".{ext}", "application/octet-stream")
+def _payload_too_large(max_bytes: int) -> HTTPException:
+    return HTTPException(
+        status_code=413,
+        detail={
+            "detail": f"Upload exceeds the {max_bytes} byte limit",
+            "api_version": "v1",
+        },
+    )
 
 
 @router.get("/pages")
@@ -117,15 +119,28 @@ async def ingest_page(
     plan: str = Form(""),
     assets: list[UploadFile] = File(default=[]),
 ):
-    html_bytes = await html_content.read()
-    asset_protos = []
-    for asset_file in assets:
-        data = await asset_file.read()
-        asset_protos.append(archive_pb2.Asset(
-            filename=asset_file.filename or "",
-            content_type=asset_file.content_type or "application/octet-stream",
-            data=data,
-        ))
+    # Bounded request buffering (task 4.4 / spec "Bounded request buffering"):
+    # a cheap content-length pre-check rejects declared-oversized uploads
+    # before anything is buffered, then every part is read through the bounded
+    # reader so an undeclared oversized body still cannot fill RAM. Starlette's
+    # UploadFile exposes an async read(size), which is the file-like
+    # read_bounded consumes.
+    max_bytes = max_upload_bytes()
+    if content_length_exceeds(_content_length(request), max_bytes):
+        raise _payload_too_large(max_bytes)
+
+    try:
+        html_bytes = await read_bounded(html_content, max_bytes)
+        asset_protos = []
+        for asset_file in assets:
+            data = await read_bounded(asset_file, max_bytes)
+            asset_protos.append(archive_pb2.Asset(
+                filename=asset_file.filename or "",
+                content_type=asset_file.content_type or "application/octet-stream",
+                data=data,
+            ))
+    except PayloadTooLarge:
+        raise _payload_too_large(max_bytes)
 
     try:
         # The plan is authoritative from the JWT claim (request.state.plan).
@@ -160,33 +175,41 @@ async def get_page_file(request: Request, page_id: str, file_path: str):
             user_id=request.state.user_id,
             file_path=file_path,
         ), timeout=30)
-    except grpc.RpcError:
-        # Try with assets/ prefix for backward compat
-        if not file_path.startswith("assets/"):
-            try:
-                file_resp = archive_stub().GetArchiveFile(archive_pb2.GetArchiveFileRequest(
-                    page_id=page_id,
-                    user_id=request.state.user_id,
-                    file_path=f"assets/{file_path}",
-                ), timeout=30)
-            except grpc.RpcError:
-                return FastAPIResponse(status_code=404, content="File not found")
-        else:
-            return FastAPIResponse(status_code=404, content="File not found")
+    except grpc.RpcError as e:
+        # Backward compat: a missing file may be stored under assets/. Only a
+        # genuine NOT_FOUND falls back — every other failure class (deadline,
+        # quota, size, rate, auth) is translated by the shared gRPC→HTTP
+        # handler instead of being masked as a 404.
+        if e.code() != grpc.StatusCode.NOT_FOUND:
+            handle_grpc_error(e)
+        if file_path.startswith("assets/"):
+            handle_grpc_error(e)
+        try:
+            file_resp = archive_stub().GetArchiveFile(archive_pb2.GetArchiveFileRequest(
+                page_id=page_id,
+                user_id=request.state.user_id,
+                file_path=f"assets/{file_path}",
+            ), timeout=30)
+        except grpc.RpcError as e2:
+            handle_grpc_error(e2)
 
     content_type = file_resp.content_type
     if not content_type or content_type == "application/octet-stream":
-        content_type = _content_type_for_path(file_path)
+        content_type = content_type_for_path(file_path)
 
     cache_control = "public, max-age=3600"
     if re.search(r"_[a-f0-9]{8,}", file_path):
         cache_control = "public, max-age=31536000, immutable"
 
+    # Sandboxed serving headers (task 7.1 / spec "archived-html-serving"):
+    # CSP sandbox (no allow-same-origin), nosniff, pinned Content-Type, and
+    # Referrer-Policy on HTML. The explicit Content-Type header wins over
+    # media_type, so the client never sees a sniffed type.
     return FastAPIResponse(
         content=file_resp.data,
         media_type=content_type,
         headers={
             "Cache-Control": cache_control,
-            "X-Content-Type-Options": "nosniff",
+            **sandbox_headers(content_type),
         },
     )

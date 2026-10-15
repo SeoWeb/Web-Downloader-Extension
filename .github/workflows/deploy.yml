@@ -39,7 +39,6 @@ jobs:
               - 'vite.config.ts'
               - 'package.json'
               - 'tsconfig.json'
-              - 'jest.config.cjs'
               - '*.cjs'
               - 'tests/**'
             frontend:
@@ -49,6 +48,48 @@ jobs:
               - 'pagepocket/shared/**'
               - 'pagepocket/proto/**'
               - 'pagepocket/docker-compose*.yml'
+
+  # ---------------------------------------------------------------------------
+  # 5.8: a deploy must never run untested code. CI (ci.yml) triggers on the
+  # same push to `pagepocket`, so a run for github.sha must exist — this job
+  # waits (poll, 30 min budget) for that run to complete and requires a green
+  # conclusion. Deploys of a SHA that never ran CI (manual dispatch of an old
+  # commit) time out here by design; re-push or run ci.yml manually first.
+  # ---------------------------------------------------------------------------
+  ci-gate:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require green CI for this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          deadline=$(( $(date +%s) + 1800 ))
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            json=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&per_page=1")
+            count=$(echo "$json" | jq -r '.total_count')
+            if [ "$count" != "0" ]; then
+              status=$(echo "$json" | jq -r '.workflow_runs[0].status')
+              conclusion=$(echo "$json" | jq -r '.workflow_runs[0].conclusion')
+              echo "CI for $SHA: status=$status conclusion=$conclusion"
+              if [ "$status" = "completed" ]; then
+                if [ "$conclusion" = "success" ]; then
+                  echo "==> CI is green on $SHA — deploy may proceed"
+                  exit 0
+                fi
+                echo "::error::CI concluded '$conclusion' for $SHA — deploy blocked"
+                exit 1
+              fi
+            else
+              echo "no CI run for $SHA yet — waiting (poll every 30s)"
+            fi
+            sleep 30
+          done
+          echo "::error::no completed CI run for $SHA within 30 minutes — deploy blocked. Re-push or trigger ci.yml for this commit first."
+          exit 1
 
   # ---------------------------------------------------------------------------
   # Extension: build the .zip artifact for manual store publishing.
@@ -74,11 +115,17 @@ jobs:
           retention-days: 30
 
   # ---------------------------------------------------------------------------
-  # Backend: deploy to Contabo via SSH (hard reset to origin/pagepocket, then
-  # rebuild the 5 gRPC services and restart the api-gateway; plain compose).
+  # Backend: deploy to Contabo via SSH. Order per deploy (5.6/5.8/5.11):
+  #   hard reset -> scoped image builds -> infra up -> per-service
+  #   `alembic upgrade head` (the single authoritative schema mechanism,
+  #   run BEFORE the new containers start serving) -> service recreation ->
+  #   gateway recreation + restart (stale gRPC channels to recreated
+  #   services are a known gotcha) -> GET /api/v1/health poll (30x2s),
+  #   failing the job on timeout. NOTE: the health endpoint must be polled
+  #   with GET (the monolith rejects HEAD; use GET everywhere).
   # ---------------------------------------------------------------------------
   deploy-backend:
-    needs: changes
+    needs: [changes, ci-gate]
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -95,14 +142,45 @@ jobs:
             git fetch origin
             git reset --hard origin/pagepocket
             cd pagepocket
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --no-deps archive-service auth-service library-service search-service share-service
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml restart api-gateway
+            COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+            echo "==> Building images (fail fast before touching the runtime)"
+            $COMPOSE build auth-service archive-service library-service search-service share-service archive-maintenance api-gateway
+            echo "==> Ensuring infra (mysql, redis) is up for migrations"
+            $COMPOSE up -d --no-deps mysql redis
+            echo "==> Alembic upgrade head per service (5.6: authoritative schema mechanism)"
+            for svc in auth-service archive-service library-service search-service share-service; do
+              echo "---- alembic: $svc"
+              $COMPOSE run --rm -T --no-deps $svc python -m alembic -c /app/alembic.ini upgrade head
+            done
+            echo "==> Recreating services"
+            $COMPOSE up -d --no-deps auth-service archive-service library-service search-service share-service archive-maintenance
+            echo "==> Gateway: recreate (picks up env changes) + restart (re-dials gRPC channels)"
+            $COMPOSE up -d --no-deps api-gateway
+            $COMPOSE restart api-gateway
             echo "==> Backend containers after deploy:"
-            docker ps --filter name=pagepocket --format '{{.Names}}\t{{.Status}}'
+            $COMPOSE ps
+            echo "==> Post-deploy health gate (GET, 30 x 2s)"
+            code=000
+            for i in $(seq 1 30); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/v1/health || true)
+              if [ "$code" = "200" ]; then
+                echo "==> gateway healthy after $i attempt(s)"
+                break
+              fi
+              sleep 2
+            done
+            if [ "$code" != "200" ]; then
+              echo "::error::backend health check failed — :8090/api/v1/health never returned 200; rolling forward is NOT automatic, see scripts/prod/README.md (rollback)"
+              $COMPOSE logs --tail=50 api-gateway || true
+              exit 1
+            fi
 
   # ---------------------------------------------------------------------------
   # Frontend: deploy to Contabo via SSH (hard reset, pnpm build, keep one
-  # .next backup, restart plain `next start` on :3000, verify with curl).
+  # .next backup, restart, verify with curl). Process-manager reality per the
+  # 2026-10-15 spike: there is NO pm2 on the host — the server is a plain
+  # nohup `next start`. The pm2 branch below is kept (harmless if absent, in
+  # case pm2 returns) but the fallback now actually starts the server.
   # ---------------------------------------------------------------------------
   deploy-frontend:
     needs: changes
@@ -134,18 +212,23 @@ jobs:
             # Keep one previous good build for rollback (hardlink copy is cheap).
             rm -rf .next.bak-*
             cp -al .next ".next.bak-$(date +%s)"
-            # Frontend runs under PM2 (app: pagepocket-frontend). Stop it first
-            # so it cannot respawn mid-restart, clear any orphan server
-            # squatters on :3000, then let PM2 own the process again.
+            # Stop whatever serves :3000 first so it cannot respawn
+            # mid-restart, clear any orphan squatters, then start again.
             # NB: keep this script free of the literal patterns used by the
             # pkill lines below - the whole script text is visible in this
             # shell's cmdline and pkill -f would otherwise match it.
-            pm2 stop pagepocket-frontend > /dev/null 2>&1 || true
+            if command -v pm2 >/dev/null 2>&1; then
+              pm2 stop pagepocket-frontend > /dev/null 2>&1 || true
+            fi
             pkill -f 'next[-]server' || true
             sleep 2
-            pm2 restart pagepocket-frontend --update-env > /dev/null 2>&1 || \
-              pm2 start npm --name pagepocket-frontend -- run start > /dev/null 2>&1
-            pm2 save > /dev/null 2>&1 || true
+            if command -v pm2 >/dev/null 2>&1 && pm2 describe pagepocket-frontend > /dev/null 2>&1; then
+              pm2 restart pagepocket-frontend --update-env > /dev/null 2>&1
+            else
+              # no-pm2 reality (spike): plain nohup start with a log file.
+              nohup npm run start > next.log 2>&1 &
+            fi
+            if command -v pm2 >/dev/null 2>&1; then pm2 save > /dev/null 2>&1 || true; fi
             code=000
             for i in $(seq 1 30); do
               code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ || true)
@@ -155,5 +238,5 @@ jobs:
             echo "==> Frontend :3000 HTTP status: ${code:-none}"
             case "$code" in
               2*|3*) exit 0 ;;
-              *) echo "::error::frontend did not respond on :3000 (check pm2 logs pagepocket-frontend on server)"; exit 1 ;;
+              *) echo "::error::frontend did not respond on :3000 (check next.log on server)"; exit 1 ;;
             esac

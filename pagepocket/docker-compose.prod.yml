@@ -1,4 +1,16 @@
-version: "3.9"
+# Production overlay (used together with docker-compose.yml):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Env vars REQUIRED in the host pagepocket/.env before any deploy:
+#   REDIS_PASSWORD      prod compose refuses to render without it (5.10)
+#   JWT_SECRET          gateway refuses to boot with the dev default (4.6)
+#   MYSQL_ROOT_PASSWORD no committed default may survive in prod (5.12 rotates)
+# Env vars OPTIONAL (sane pinned defaults in this file):
+#   CORS_ALLOW_ORIGINS, TRUSTED_PROXIES, MAX_UPLOAD_BYTES
+#
+# Loopback port contract (5.11, spike findings a/c): nginx on the host
+# reaches the gateway via 127.0.0.1:8090; NOTHING is published on a public
+# interface. The gateway has no public hostname at all.
 
 services:
   mysql:
@@ -9,9 +21,25 @@ services:
           memory: 2G
     ports: !override []
 
+  redis:
+    restart: always
+    # 5.10: the password is REQUIRED in prod — compose fails to render the
+    # config if REDIS_PASSWORD is missing from pagepocket/.env, so an
+    # unauthenticated Redis can never come back by accident.
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in pagepocket/.env - see scripts/prod/roll-redis-password.sh}"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in pagepocket/.env - see scripts/prod/roll-redis-password.sh}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
   auth-service:
     restart: always
     environment:
+      # 5.6: Alembic is the single authoritative schema mechanism; implicit
+      # create_all must never shape prod schema.
+      AUTO_CREATE: "false"
       MTLS_ENABLED: "true"
       CA_CERT: /certs/ca.pem
       SERVER_KEY: /certs/auth-service-key.pem
@@ -27,6 +55,7 @@ services:
   archive-service:
     restart: always
     environment:
+      AUTO_CREATE: "false"
       MTLS_ENABLED: "true"
       CA_CERT: /certs/ca.pem
       SERVER_KEY: /certs/archive-service-key.pem
@@ -42,6 +71,7 @@ services:
   library-service:
     restart: always
     environment:
+      AUTO_CREATE: "false"
       MTLS_ENABLED: "true"
       CA_CERT: /certs/ca.pem
       SERVER_KEY: /certs/library-service-key.pem
@@ -57,6 +87,7 @@ services:
   search-service:
     restart: always
     environment:
+      AUTO_CREATE: "false"
       MTLS_ENABLED: "true"
       CA_CERT: /certs/ca.pem
       SERVER_KEY: /certs/search-service-key.pem
@@ -72,6 +103,7 @@ services:
   share-service:
     restart: always
     environment:
+      AUTO_CREATE: "false"
       MTLS_ENABLED: "true"
       CA_CERT: /certs/ca.pem
       SERVER_KEY: /certs/share-service-key.pem
@@ -87,17 +119,51 @@ services:
   api-gateway:
     restart: always
     environment:
+      AUTO_CREATE: "false"
+      # 4.6: prod fail-fast on dev-default JWT_SECRET needs this to be set.
+      ENVIRONMENT: production
       MTLS_ENABLED: "true"
       CA_CERT: /certs/ca.pem
       CLIENT_KEY: /certs/api-gateway-key.pem
       CLIENT_CERT: /certs/api-gateway.pem
+      # 4.6/D12: explicit origin allow-list (never "*"). Override via
+      # pagepocket/.env to append published chrome-extension:// origins.
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-https://pagepocket.app,https://app.pagepocket.app}
+      # D12/4.5: which proxies may set X-Forwarded-For for rate-limit
+      # identity. The gateway sits behind nginx -> docker-proxy, so the
+      # direct peer is the compose bridge gateway (RFC1918 172.16/12);
+      # tighten via TRUSTED_PROXIES in pagepocket/.env after verifying the
+      # actual bridge gateway address on the host.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
     volumes:
       - ./certs:/certs:ro
     deploy:
       resources:
         limits:
           memory: 512M
+    # 5.11: host-only binding — nginx proxies pagepocket API traffic to
+    # 127.0.0.1:8090; the gateway must not be directly reachable from the
+    # internet (spike finding a: it previously was, carrying only spoofable
+    # client-supplied forwarding headers).
     ports:
-      - "8090:8090"
+      - "127.0.0.1:8090:8090"
+
+  # 5.9 (prod side of the base-compose sidecar): mTLS identity + restart
+  # policy. The loop script itself is mounted read-only from
+  # ../scripts/prod/archive-maintenance (base compose).
+  archive-maintenance:
+    restart: always
+    environment:
+      MTLS_ENABLED: "true"
+      CA_CERT: /certs/ca.pem
+      # The api-gateway client cert is the only CA-signed client identity
+      # that exists on the host today; the archive service verifies CA
+      # signatures (no per-CN authorization), so this works without any
+      # PKI change. A dedicated maintenance cert can replace it at the next
+      # coordinated cert rotation (see scripts/prod/README.md).
+      CLIENT_KEY: /certs/api-gateway-key.pem
+      CLIENT_CERT: /certs/api-gateway.pem
+    volumes:
+      - ./certs:/certs:ro
 
 # deploy pipeline probe (2026-10-02): exercises the deploy-backend changes gate.

@@ -334,7 +334,14 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                         user_id=request.user_id,
                     ))
                     collection_page_ids = set(resp.page_ids)
-                except grpc.RpcError:
+                except grpc.RpcError as exc:
+                    # Library unavailable → the collection filter degrades to
+                    # "no pages"; never silently — say so in the logs.
+                    logger.warning(
+                        "ListCollectionPageIds failed for collection %s (user %s): %s "
+                        "— listing without the collection filter",
+                        request.collection_id, request.user_id, exc,
+                    )
                     collection_page_ids = set()
             else:
                 collection_page_ids = set()
@@ -463,11 +470,15 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             prefix = f"{page.user_id}/{page.id}"
             self.r2.delete_prefix(prefix)
 
-            # Delete thumbnail
+            # Delete thumbnail (best-effort — a missing thumbnail must not
+            # fail the delete; a failure is at least visible in the logs).
             try:
                 self.r2.delete(f"{page.user_id}/{page.id}.webp")
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "Could not delete thumbnail %s/%s.webp during page delete: %s",
+                    page.user_id, page.id, exc,
+                )
 
             size = page.size_bytes
             user_id = page.user_id
@@ -483,7 +494,9 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
         cache_delete(key_page(request.page_id))
         cache_invalidate_pattern(pattern_pages(user_id))
 
-        # Fire-and-forget search removal
+        # Fire-and-forget search removal — the page row is already gone, so a
+        # failure here only leaves a stale index entry; log it loudly so the
+        # drift is observable and re-deletable via search-service tooling.
         try:
             stub = _get_search_stub()
             if stub:
@@ -491,8 +504,12 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                     page_id=request.page_id,
                     user_id=request.user_id,
                 ))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "Fire-and-forget RemovePage failed for page %s (user %s): %s "
+                "— search index may hold a stale entry",
+                request.page_id, request.user_id, exc,
+            )
 
         return archive_pb2.StatusResponse(success=True)
 

@@ -5,9 +5,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.logging_config import configure_logging
 from app.middleware.request_filter import RequestFilterMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 
+configure_logging()
 logger = logging.getLogger(__name__)
 
 

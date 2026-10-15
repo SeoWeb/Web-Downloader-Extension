@@ -1,22 +1,31 @@
-.PHONY: proto build dev up down migrate test lint format certs help
+.PHONY: proto build dev up down migrate test test-integration lint format certs help
 
 PROTO_DIR := proto
 STUBS_DIR := shared/proto_generated
-SERVICES := auth-service archive-service library-service search-service share-service
+# All backend services: build + test targets (5.1 — api-gateway included so
+# `make test` reaches its suite; the integration half runs via test-integration).
+SERVICES := auth-service archive-service library-service search-service share-service api-gateway
+# Only services with their own database/alembic directory (5.1: api-gateway
+# has no alembic.ini, so `make migrate` must not visit it).
+MIGRATE_SERVICES := auth-service archive-service library-service search-service share-service
+
+COMPOSE := docker compose
 
 help:
 	@echo "PagePocket Backend"
 	@echo ""
-	@echo "  make proto      Generate gRPC stubs from .proto files"
-	@echo "  make build      Build all service Docker images"
-	@echo "  make dev        Start the dev stack (docker compose up)"
-	@echo "  make up         Alias for dev"
-	@echo "  make down       Stop the dev stack"
-	@echo "  make migrate    Run Alembic migrations for all services"
-	@echo "  make test       Run pytest across all services"
-	@echo "  make lint       Run ruff linter"
-	@echo "  make format     Run ruff + black formatter"
-	@echo "  make certs      Generate mTLS CA + service certificates"
+	@echo "  make proto              Generate gRPC stubs from .proto files"
+	@echo "  make build              Build all service Docker images"
+	@echo "  make dev                Start the dev stack (docker compose up)"
+	@echo "  make up                 Alias for dev"
+	@echo "  make down               Stop the dev stack"
+	@echo "  make migrate            Run Alembic migrations for all DB-backed services"
+	@echo "  make test               Run pytest across all services (unit suites)"
+	@echo "  make test-integration   Boot the full compose stack and run the gateway"
+	@echo "                          integration suite against it (17 tests, :8090)"
+	@echo "  make lint               Run ruff linter"
+	@echo "  make format             Run ruff + black formatter"
+	@echo "  make certs              Generate mTLS CA + service certificates"
 
 proto:
 	@mkdir -p $(STUBS_DIR)
@@ -29,35 +38,100 @@ proto:
 	@echo "Proto stubs generated in $(STUBS_DIR)"
 
 build:
-	docker compose build
+	$(COMPOSE) build
 
 dev: build
-	docker compose up -d
+	$(COMPOSE) up -d
 
 up: dev
 
 down:
-	docker compose down
+	$(COMPOSE) down
 
 migrate:
-	@for svc in $(SERVICES); do \
+	@for svc in $(MIGRATE_SERVICES); do \
 		echo "Running migrations for $$svc..."; \
-		docker compose exec $$svc python -m alembic -c /app/alembic.ini upgrade head; \
+		$(COMPOSE) exec $$svc python -m alembic -c /app/alembic.ini upgrade head; \
 	done
 
+# 5.3: one subshell per service so a `cd` can never leak into the next
+# iteration, python3 (not `python`), and failures propagate (each service
+# runs regardless of the previous one's result; the target exits non-zero
+# if any failed).
 test:
-	@for svc in $(SERVICES); do \
-		echo "Testing $$svc..."; \
-		cd services/$$svc && python -m pytest tests/ -v && cd ../..; \
-	done
+	@status=0; \
+	for svc in $(SERVICES); do \
+		echo "==> Testing $$svc..."; \
+		( cd services/$$svc && PYTHONPATH=../../shared:../../shared/proto_generated python3 -m pytest tests/ ) || status=1; \
+	done; \
+	if [ $$status -ne 0 ]; then echo "==> make test: FAILURES detected" >&2; else echo "==> make test: all service suites passed"; fi; \
+	exit $$status
+
+# 5.1: boots the complete stack (mysql + redis + 5 services + gateway) with
+# the dev compose file and runs the 17 gateway integration tests against the
+# live gateway on 127.0.0.1:8090 — the same path CI uses, so the tests can
+# never silently self-skip again (they skip only when the gateway is
+# unreachable; here the wait loop guarantees it is up or the target fails).
+test-integration:
+	@docker network inspect pagepocket_default >/dev/null 2>&1 || docker network create pagepocket_default
+	$(COMPOSE) up -d --build
+	@status=0; \
+	code=000; \
+	for i in $$(seq 1 60); do \
+		code=$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/v1/health 2>/dev/null || echo 000); \
+		if [ "$$code" = "200" ]; then break; fi; \
+		sleep 2; \
+	done; \
+	warc=000; \
+	if [ "$$code" != "200" ]; then \
+		echo "==> gateway did not become healthy on 127.0.0.1:8090" >&2; \
+		$(COMPOSE) ps; \
+		$(COMPOSE) logs --tail=40 api-gateway; \
+		status=1; \
+	else \
+		echo "==> gateway healthy — warming the service path (auth -> gateway -> gRPC -> archive)"; \
+		wemail="warmup_$$(date +%s)@warmup.test"; \
+		wpass="warmup-password-123"; \
+		for i in $$(seq 1 30); do \
+			reg=$$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8090/api/v1/auth/register -H 'Content-Type: application/json' -d '{"email":"'"$$wemail"'","password":"'"$$wpass"'","name":"Warmup"}' 2>/dev/null || echo 000); \
+			if [ "$$reg" = "200" ] || [ "$$reg" = "201" ] || [ "$$reg" = "409" ]; then \
+				wtok=$$(curl -s -X POST http://127.0.0.1:8090/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"'"$$wemail"'","password":"'"$$wpass"'"}' 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin).get("access_token",""))' 2>/dev/null || echo); \
+				warc=$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/v1/archive/pages -H "Authorization: Bearer $$wtok" 2>/dev/null || echo 000); \
+				if [ "$$warc" = "200" ] || [ "$$warc" = "402" ]; then echo "==> archive path warm (list_pages=$$warc)"; break; fi; \
+			fi; \
+			sleep 2; \
+		done; \
+		if [ "$$warc" != "200" ] && [ "$$warc" != "402" ]; then \
+			echo "==> archive service path never warmed up (last=$$warc)" >&2; \
+			$(COMPOSE) ps; \
+			$(COMPOSE) logs --tail=40 archive-service api-gateway; \
+			status=1; \
+		fi; \
+	fi; \
+	if [ "$$status" -eq 0 ]; then \
+		echo "==> running integration suite"; \
+		( cd services/api-gateway && PAGEPOCKET_GATEWAY_URL=http://127.0.0.1:8090 python3 -m pytest tests/test_gateway_integration.py -v ) || status=1; \
+	fi; \
+	$(COMPOSE) down -v --remove-orphans; \
+	exit $$status
 
 lint:
 	ruff check services/ shared/ proto/
 
 format:
-	ruff check --fix services/ shared/ proto/
+	ruff check --fix services/ shared/
 	black services/ shared/
 
+# 7.3: canonical cert names. The monolith mounts
+# certs/extension-server-key.pem + certs/extension-server.pem
+# (server/docker-compose.yml) — `make certs` must produce exactly those
+# names (the old extension-client-* naming drifted from what is mounted).
+#
+# !!! The HOST PKI on production is AUTHORITATIVE (spike finding b): the live
+# certs on 185.213.25.5 were generated with 10-year validity (expire Jun 2036)
+# and DIFFER from anything generated here. NEVER copy locally generated
+# certs to prod — that would break every service's mTLS identity at once.
+# This target exists for local dev/testing only.
 certs:
 	@mkdir -p certs
 	@echo "Generating CA..."
@@ -73,11 +147,12 @@ certs:
 			-CAcreateserial -out certs/$$svc.pem -days 365; \
 		rm certs/$$svc.csr; \
 	done
-	@echo "Generating shared client cert for extension server..."
-	openssl genpkey -algorithm RSA -out certs/extension-client-key.pem -pkeyopt rsa_keygen_bits:2048
-	openssl req -new -key certs/extension-client-key.pem -out certs/extension-client.csr \
+	@echo "Generating monolith mTLS client cert (canonical: extension-server)"
+	@echo "  -> mounted by server/docker-compose.yml as ARCHIVE/AUTH_CLIENT_KEY/CERT"
+	openssl genpkey -algorithm RSA -out certs/extension-server-key.pem -pkeyopt rsa_keygen_bits:2048
+	openssl req -new -key certs/extension-server-key.pem -out certs/extension-server.csr \
 		-subj "/CN=extension-server"
-	openssl x509 -req -in certs/extension-client.csr -CA certs/ca.pem -CAkey certs/ca-key.pem \
-		-CAcreateserial -out certs/extension-client.pem -days 365
-	rm certs/extension-client.csr
-	@echo "Certificates generated in certs/"
+	openssl x509 -req -in certs/extension-server.csr -CA certs/ca.pem -CAkey certs/ca-key.pem \
+		-CAcreateserial -out certs/extension-server.pem -days 365
+	rm certs/extension-server.csr
+	@echo "Certificates generated in certs/ (local dev only — host PKI is authoritative in prod)"

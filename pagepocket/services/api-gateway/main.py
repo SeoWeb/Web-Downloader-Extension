@@ -12,8 +12,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "sh
 # Fail fast BEFORE importing middleware/routers: jwt_utils reads JWT_SECRET at
 # import time, and a clean configuration error beats a KeyError traceback.
 from config import allowed_origins, enforce_startup_config
+from logging_config import configure_logging
 
 enforce_startup_config()
+configure_logging()
 
 from middleware import AuthMiddleware
 from middleware.rate_limit import RateLimitMiddleware, RedisRateLimiter

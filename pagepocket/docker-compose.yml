@@ -1,4 +1,14 @@
-version: "3.9"
+# Dev stack. Production runs this file + docker-compose.prod.yml, which
+# forces loopback-only published ports (5.11), Redis auth (5.10),
+# AUTO_CREATE=false (5.6) and the mTLS cert mounts.
+#
+# Env vars the HOST environment / .env file is expected to provide:
+#   MYSQL_ROOT_PASSWORD  (default: pagepocket — dev only; prod override requires it)
+#   JWT_SECRET           (default: dev-secret-change-me — dev only)
+#   REDIS_PASSWORD       (default: dev-redis-change-me — dev only; REQUIRED in prod)
+#   R2_ENDPOINT_URL / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME
+#   BASE_URL             (share short-URL base; http://localhost:8090 in dev)
+#   MAX_UPLOAD_BYTES     (gateway ingest cap, bytes; default 268435456 = 256 MB)
 
 services:
   mysql:
@@ -6,7 +16,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-pagepocket}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -19,8 +29,16 @@ services:
 
   redis:
     image: redis:7-alpine
+    # 5.10: Redis requires a password (previously none at all) and stays
+    # unpublished from the host. REDISCLI_AUTH lets the healthcheck's plain
+    # `redis-cli ping` authenticate without leaking the password into argv.
+    # The rotation script (scripts/prod/roll-redis-password.sh) generates hex
+    # passwords so the redis:// URL interpolation below needs no escaping.
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-dev-redis-change-me}"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-dev-redis-change-me}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -32,7 +50,7 @@ services:
     environment:
       DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/auth_db
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dev-redis-change-me}@redis:6379/0
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
@@ -40,7 +58,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "50051:50051"
+      - "127.0.0.1:50051:50051"
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50051)); s.close()"]
       interval: 5s
@@ -60,7 +78,7 @@ services:
       R2_BUCKET_NAME: ${R2_BUCKET_NAME:-pagepocket-pages}
       SEARCH_SERVICE_ADDR: search-service:50054
       LIBRARY_SERVICE_ADDR: library-service:50053
-      REDIS_URL: redis://redis:6379/1
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dev-redis-change-me}@redis:6379/1
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
@@ -68,7 +86,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "50052:50052"
+      - "127.0.0.1:50052:50052"
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50052)); s.close()"]
       interval: 5s
@@ -81,7 +99,11 @@ services:
       dockerfile: services/library-service/Dockerfile
     environment:
       DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/library_db
-      REDIS_URL: redis://redis:6379/2
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dev-redis-change-me}@redis:6379/2
+      # 5.10 (wave-1 follow-up): defense-in-depth page-ownership checks —
+      # library-service verifies page ownership against archive-service
+      # itself instead of trusting the gateway alone.
+      ARCHIVE_SERVICE_ADDR: archive-service:50052
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
@@ -89,7 +111,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "50053:50053"
+      - "127.0.0.1:50053:50053"
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50053)); s.close()"]
       interval: 5s
@@ -102,7 +124,7 @@ services:
       dockerfile: services/search-service/Dockerfile
     environment:
       DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/search_db
-      REDIS_URL: redis://redis:6379/3
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dev-redis-change-me}@redis:6379/3
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
@@ -110,7 +132,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "50054:50054"
+      - "127.0.0.1:50054:50054"
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50054)); s.close()"]
       interval: 5s
@@ -124,7 +146,9 @@ services:
     environment:
       DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/share_db
       BASE_URL: ${BASE_URL:-http://localhost:8090}
-      REDIS_URL: redis://redis:6379/4
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dev-redis-change-me}@redis:6379/4
+      # 5.10 (wave-1 follow-up): defense-in-depth page-ownership checks.
+      ARCHIVE_SERVICE_ADDR: archive-service:50052
       MTLS_ENABLED: "false"
     depends_on:
       mysql:
@@ -132,7 +156,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "50055:50055"
+      - "127.0.0.1:50055:50055"
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50055)); s.close()"]
       interval: 5s
@@ -150,9 +174,17 @@ services:
       LIBRARY_SERVICE_ADDR: library-service:50053
       SEARCH_SERVICE_ADDR: search-service:50054
       SHARE_SERVICE_ADDR: share-service:50055
+      # 5.10: was MISSING — without it the Redis-backed rate limiter runs in
+      # permanent fail-open ("REDIS_URL not set") and never limits anything.
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dev-redis-change-me}@redis:6379/5
+      # 5.10/4.4: bounded multipart ingest buffering (bytes; 256 MB default
+      # matching the gRPC message-size limit).
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-268435456}
       MTLS_ENABLED: "false"
     ports:
-      - "8090:8090"
+      # 5.11 (dev): loopback-only — convenient for local dev, never exposed
+      # on a public interface.
+      - "127.0.0.1:8090:8090"
     depends_on:
       auth-service:
         condition: service_healthy
@@ -163,6 +195,40 @@ services:
       search-service:
         condition: service_healthy
       share-service:
+        condition: service_healthy
+    # 5.10: api-gateway was the only service without a compose healthcheck.
+    # The image ships python; urllib keeps the dependency footprint at zero.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/api/v1/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # 5.9: archive maintenance scheduler as a compose sidecar (chosen over host
+  # cron: it deploys with the stack, survives reboots via the prod restart
+  # policy, and the spike found no usable crontab automation path on the
+  # host). Reuses the archive-service image (grpcio + generated stubs baked
+  # in) and mounts the loop script from scripts/prod/archive-maintenance.
+  #   - RetryPendingIndexing(limit=100)   every 5 min  (wave-1 3.8 retry path)
+  #   - SweepOrphanR2Objects(grace=7d)    daily        (wave-1 2.9 reconciliation)
+  archive-maintenance:
+    build:
+      context: .
+      dockerfile: services/archive-service/Dockerfile
+    entrypoint: ["python3", "/opt/maintenance/loop.py"]
+    volumes:
+      - ../scripts/prod/archive-maintenance:/opt/maintenance:ro
+    environment:
+      ARCHIVE_SERVICE_ADDR: archive-service:50052
+      MTLS_ENABLED: "false"
+      RETRY_INTERVAL_SECONDS: "300"
+      RETRY_LIMIT: "100"
+      SWEEP_INTERVAL_SECONDS: "86400"
+      SWEEP_GRACE_SECONDS: "604800"
+      SWEEP_MAX_PREFIXES: "0"
+    depends_on:
+      archive-service:
         condition: service_healthy
 
 networks:

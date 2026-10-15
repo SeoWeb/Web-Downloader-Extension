@@ -154,6 +154,40 @@ describe("applyServerModeMessage", () => {
     expect(next.assemblyProgressPct).toBe(60);
   });
 
+  // Task 6.1 — assembly-timeout envelope: elapsed seconds are additive.
+  it("should record assembly elapsed seconds when the server reports them", () => {
+    const next = applyServerModeMessage(initialServerModeState, "status.assemblyProgress", {
+      phase: "pushing_cloud",
+      progressPct: 30,
+      elapsedSeconds: 615,
+    });
+    expect(next.assemblyElapsedSeconds).toBe(615);
+  });
+
+  it("should keep the last elapsed value when a later message omits it", () => {
+    const first = applyServerModeMessage(initialServerModeState, "status.assemblyProgress", {
+      elapsedSeconds: 120,
+    });
+    const next = applyServerModeMessage(first, "status.assemblyProgress", {
+      phase: "zipping",
+    });
+    expect(next.assemblyElapsedSeconds).toBe(120);
+  });
+
+  it("stays undefined-safe when elapsedSeconds is null or missing entirely", () => {
+    // Older servers never send assembly_elapsed_seconds — the option is
+    // absent and the state stays null without throwing.
+    const next = applyServerModeMessage(initialServerModeState, "status.assemblyProgress", {
+      phase: "merging_html",
+      progressPct: 10,
+    });
+    expect(next.assemblyElapsedSeconds).toBeNull();
+    const explicitNull = applyServerModeMessage(initialServerModeState, "status.assemblyProgress", {
+      elapsedSeconds: null,
+    });
+    expect(explicitNull.assemblyElapsedSeconds).toBeNull();
+  });
+
   // -----------------------------------------------------------------------
   // 15.3 — Download from server (ready state)
   // -----------------------------------------------------------------------
@@ -329,7 +363,7 @@ describe("applyServerModeMessage", () => {
       { key: "status.assemblingServer" },
     ]);
     const s2 = applyServerModeMessage(s1, "status.serverError", {
-      error: "5 minute timeout",
+      error: "35 minute timeout",
       canFallback: true,
       reason: "assembly_timeout",
     });

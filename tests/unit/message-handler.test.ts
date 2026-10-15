@@ -35,6 +35,9 @@ vi.mock("../../src/background/server-client", () => {
   return {
     __esModule: true,
     serverClient: mocks,
+    // pagepocket-client (loaded transitively via download-core → cloud-binding)
+    // imports this at module load
+    assertSecureBaseUrl: vi.fn(),
     ServerUnavailableError: class ServerUnavailableError extends Error {
       constructor(msg: string) {
         super(msg);

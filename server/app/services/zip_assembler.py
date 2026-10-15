@@ -23,6 +23,7 @@ import os
 import re
 import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import PurePosixPath
 from typing import Optional
 from urllib.parse import urlparse
@@ -44,6 +45,20 @@ logger = logging.getLogger(__name__)
 ZIP_COMPRESSION_LEVEL = 6          # DEFLATE level per spec
 MAX_FILENAME_LENGTH = 200          # Max chars for ZIP filename
 CONTENT_TXT_MAX_SIZE = 1 * 1024 * 1024  # 1 MB cap for single-file content embedding
+
+# Cloud push read envelope (6.2): asset files are read from disk in
+# bounded-parallel batches — at most CLOUD_ASSET_READ_CONCURRENCY files in
+# flight, and batches whose combined size stays under
+# CLOUD_ASSET_READ_BATCH_BYTES so a read wave never materializes more than
+# that in transient buffers. The IngestPage contract is a single unary
+# message, so the assembled asset list itself is unavoidable; the batching
+# bounds the build phase and cuts wall time versus serial reads.
+CLOUD_ASSET_READ_CONCURRENCY = 8
+CLOUD_ASSET_READ_BATCH_BYTES = 32 * 1024 * 1024
+
+# Progress surfaced while the gRPC push is in flight so status polls can
+# distinguish an actively progressing push from a stalled one (6.1/6.2).
+CLOUD_PUSH_PROGRESS_PCT = 50
 
 
 # ---------------------------------------------------------------------------
@@ -645,22 +660,80 @@ class ZipAssemblerService:
         always forwarded — never omitted, never client-supplied. When the
         caller does not pass one, it is resolved from the binding stamped on
         the session, falling back to "free".
+
+        6.2 hardening: the push payload is accounted BEFORE assets are read
+        from disk (stat-only manifest + in-RAM HTML sizes), so an oversize
+        session fails in milliseconds with a precise quota-style error
+        instead of materializing the whole payload and dying after
+        3 × 600 s of deterministic message-size retries. Assets are then
+        read in bounded-parallel batches, and the in-flight push is
+        surfaced via the existing assembly progress mechanism.
         """
-        from app.services.archive_client import push_to_archive
+        from app.services import archive_client as archive_client_mod
+        from app.services.archive_client import (
+            CloudPayloadTooLargeError,
+            format_mb,
+            push_to_archive,
+        )
 
         push_plan = plan or getattr(session, "pagepocket_plan", None) or "free"
         html_bytes = main_html.encode("utf-8")
         title = self._extract_title(html_bytes)
 
-        assets = await self._build_cloud_assets(session_id, db, archive_paths)
-
+        linked_assets: list[tuple[str, str, bytes]] = []
         for page_hash, page_html in linked_page_htmls.items():
             filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
-            assets.append((f"pages/{filename}", "text/html", page_html.encode("utf-8")))
+            linked_assets.append((f"pages/{filename}", "text/html", page_html.encode("utf-8")))
+        limit = archive_client_mod.CLOUD_PUSH_MAX_PAYLOAD_BYTES
+
+        # Pre-flight layer 1: HTML + linked pages (both already in RAM) are
+        # checked before any disk reads or asset building.
+        known_bytes = len(html_bytes) + sum(len(data) for _n, _ct, data in linked_assets)
+        if known_bytes > limit:
+            error = archive_client_mod.cloud_size_error(known_bytes, limit)
+            logger.error(
+                "Cloud push pre-flight rejected (HTML/linked pages): "
+                "session=%s payload=%s limit=%s",
+                session_id, format_mb(known_bytes), format_mb(limit),
+            )
+            session.cloud_status = "failed"
+            session.cloud_error = error
+            session.status = "ready"
+            session.assembly_phase = None
+            session.assembly_progress_pct = None
+            session.zip_path = None
+            await db.flush()
+            return
+
+        # Pre-flight layer 2: _build_cloud_assets stats the resource files
+        # (no reads) and raises CloudPayloadTooLargeError if the assets
+        # alone exceed the cap — before a single byte is read from disk.
+        try:
+            assets = await self._build_cloud_assets(session_id, db, archive_paths)
+        except CloudPayloadTooLargeError as exc:
+            logger.error(
+                "Cloud push pre-flight rejected (assets): session=%s %s",
+                session_id, exc,
+            )
+            session.cloud_status = "failed"
+            session.cloud_error = str(exc)
+            session.status = "ready"
+            session.assembly_phase = None
+            session.assembly_progress_pct = None
+            session.zip_path = None
+            await db.flush()
+            return
+
+        assets.extend(linked_assets)
 
         session.cloud_status = "pending"
         session.cloud_error = None
         await db.flush()
+        # Surface the push phase: status polls now see "pushing_cloud" with
+        # progress instead of a silent hang during the long unary RPC.
+        await self._update_progress(
+            db, session, "pushing_cloud", CLOUD_PUSH_PROGRESS_PCT,
+        )
 
         try:
             result = await asyncio.to_thread(
@@ -846,12 +919,17 @@ class ZipAssemblerService:
         return ""
 
     @staticmethod
-    async def _build_cloud_assets(
+    async def _cloud_resource_manifest(
         session_id: str,
         db,
         archive_paths: Optional[dict[str, str]] = None,
-    ) -> list[tuple[str, str, bytes]]:
-        """Build (filename, content_type, data) tuples from session resources.
+    ) -> list[tuple[str, str, str, int]]:
+        """Build a stat-only asset manifest for the cloud push (6.2).
+
+        Returns (archive_name, content_type, storage_path, size_bytes) per
+        readable resource. No file bytes are read: this lets callers account
+        the push payload (pre-flight size gate) before anything is
+        materialized in RAM.
 
         ``archive_paths`` (3.7): resource id → final archive path, applied so
         cloud-push asset filenames match the references written into the HTML
@@ -865,25 +943,110 @@ class ZipAssemblerService:
         result = await db.execute(stmt)
         resources = list(result.scalars().all())
 
-        assets: list[tuple[str, str, bytes]] = []
-        storage_root = settings.storage_root
+        manifest: list[tuple[str, str, str, int]] = []
         for r in resources:
             if not r.local_path or not r.storage_path:
                 continue
-            full_path = r.storage_path
-            if not os.path.isfile(full_path):
-                continue
-            asset_name = (archive_paths or {}).get(r.id, r.local_path)
             try:
-                with open(full_path, "rb") as f:
-                    data = f.read()
-                assets.append((asset_name, r.content_type or "application/octet-stream", data))
+                size = os.path.getsize(r.storage_path)
+            except OSError:
+                continue  # missing/unreadable — same skip rule as the reader
+            asset_name = (archive_paths or {}).get(r.id, r.local_path)
+            manifest.append((
+                asset_name,
+                r.content_type or "application/octet-stream",
+                r.storage_path,
+                size,
+            ))
+        return manifest
+
+    @staticmethod
+    def _read_asset_batches(
+        manifest: list[tuple[str, str, str, int]],
+        session_id: str,
+    ) -> list[tuple[str, str, bytes]]:
+        """Read asset files from disk in bounded-parallel batches (6.2).
+
+        The manifest is split into batches whose combined size stays under
+        ``CLOUD_ASSET_READ_BATCH_BYTES`` (a single oversized file still gets
+        its own batch), and each batch is read with a bounded thread pool of
+        ``CLOUD_ASSET_READ_CONCURRENCY`` workers — cutting wall time versus
+        the previous serial read of every file while bounding transient
+        buffers. Results are collected position-indexed, so output order
+        always equals manifest order regardless of read completion order.
+
+        Files that disappear or error between stat and read are skipped with
+        a warning (same rule as the previous serial implementation).
+        """
+        batches: list[list[int]] = []
+        current: list[int] = []
+        current_bytes = 0
+        for idx, entry in enumerate(manifest):
+            size = entry[3]
+            if current and current_bytes + size > CLOUD_ASSET_READ_BATCH_BYTES:
+                batches.append(current)
+                current = []
+                current_bytes = 0
+            current.append(idx)
+            current_bytes += size
+        if current:
+            batches.append(current)
+
+        def _read_one(idx: int):
+            name, content_type, storage_path, _size = manifest[idx]
+            try:
+                with open(storage_path, "rb") as f:
+                    return idx, name, content_type, f.read()
             except OSError:
                 logger.warning(
                     "Skipping cloud asset (read error): session=%s path=%s",
-                    session_id, r.local_path,
+                    session_id, name,
                 )
-        return assets
+                return idx, None, None, None
+
+        results: list[Optional[tuple[str, str, bytes]]] = [None] * len(manifest)
+        with ThreadPoolExecutor(max_workers=CLOUD_ASSET_READ_CONCURRENCY) as pool:
+            for batch in batches:
+                futures = [pool.submit(_read_one, i) for i in batch]
+                for future in as_completed(futures):
+                    idx, name, content_type, data = future.result()
+                    if name is not None:
+                        results[idx] = (name, content_type, data)
+        return [r for r in results if r is not None]
+
+    @staticmethod
+    async def _build_cloud_assets(
+        session_id: str,
+        db,
+        archive_paths: Optional[dict[str, str]] = None,
+    ) -> list[tuple[str, str, bytes]]:
+        """Build (filename, content_type, data) tuples from session resources.
+
+        ``archive_paths`` (3.7): resource id → final archive path, applied so
+        cloud-push asset filenames match the references written into the HTML
+        (collision-suffixed when applicable).
+
+        6.2: raises ``CloudPayloadTooLargeError`` when the asset bytes alone
+        exceed the cloud push message cap — raised BEFORE any file is read,
+        so an oversize session never materializes its payload. Otherwise the
+        files are read from disk in bounded-parallel batches (see
+        ``_read_asset_batches``).
+        """
+        from app.services.archive_client import CLOUD_PUSH_MAX_PAYLOAD_BYTES, CloudPayloadTooLargeError
+
+        manifest = await ZipAssemblerService._cloud_resource_manifest(
+            session_id, db, archive_paths,
+        )
+        if not manifest:
+            return []
+
+        total_bytes = sum(entry[3] for entry in manifest)
+        if total_bytes > CLOUD_PUSH_MAX_PAYLOAD_BYTES:
+            raise CloudPayloadTooLargeError(total_bytes)
+
+        return await asyncio.to_thread(
+            ZipAssemblerService._read_asset_batches, manifest, session_id,
+        )
 
     # ------------------------------------------------------------------
     # File helpers

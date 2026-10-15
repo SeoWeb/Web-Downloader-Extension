@@ -44,6 +44,8 @@ import {
   ServerUnavailableError,
   AuthenticationError,
   AssemblyTimeoutError,
+  HttpError,
+  type SessionOptions,
 } from "./server-client";
 import { UploadQueue } from "./upload-queue";
 import {
@@ -62,6 +64,10 @@ import {
   PAGEPOCKET_AUTH_STORAGE_KEY,
   type PagePocketAuthState,
 } from "../types/authTypes";
+import {
+  ensureCloudBinding,
+  getCloudBinding,
+} from "./cloud-binding";
 
 const EMPTY_MAP: Map<string, string> = new Map();
 
@@ -75,19 +81,33 @@ const LINKED_PAGE_FETCH_TIMEOUT_MS = 30_000;
 const LINKED_PAGE_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 /**
- * Get the PagePocket user ID when cloud mode is enabled.
+ * Resolve the PagePocket credential for cloud-mode session creation
+ * (task 6.5 / design D4 — harden-backend-security-and-ops).
  *
- * Returns the user ID when ALL of the following hold:
- *  1. The PagePocket cloud toggle is ON (chrome.storage.session — D11/task 7.2)
- *  2. Valid auth tokens exist in chrome.storage.session
+ * The cloud push identity is a SERVER-side binding (POST /api/v1/cloud/link
+ * stamped it on the API-key client row). The credential sent in
+ * `options.pagepocketUserId` is now only a hint:
  *
- * Returns null otherwise — the server will create a normal (non-cloud) session.
+ * 1. Binding `bound`   → send the BOUND id (matches the server binding, so a
+ *                        new monolith accepts it, and an older monolith that
+ *                        still trusts this field keeps working unchanged).
+ * 2. Binding `unsupported` (older monolith without /cloud/link, or its
+ *                        binding service unconfigured) → legacy behavior:
+ *                        send the raw authenticated user id.
+ * 3. No binding state yet (login link still in flight or failed transiently)
+ *                      → try to link once, then fall back to the raw id — a
+ *                        new server answers 403 cloud_not_linked, which the
+ *                        session-creation wrapper below turns into a forced
+ *                        re-bind + retry.
+ *
+ * Returns undefined when cloud mode is off or there is no authenticated
+ * PagePocket user — the server creates a normal (non-cloud) session.
  */
-async function getPagepocketUserId(): Promise<string | null> {
+export async function resolveCloudCredential(): Promise<string | undefined> {
   try {
     // D11: auth state and the cloud toggle live in chrome.storage.session
-    // (never on disk). Wave-1 hand-off — this previously read storage.local.
-    if (!chrome?.storage?.session) return null;
+    // (never on disk).
+    if (!chrome?.storage?.session) return undefined;
     const result = await chrome.storage.session.get([
       PAGEPOCKET_CLOUD_ENABLED_KEY,
       PAGEPOCKET_AUTH_STORAGE_KEY,
@@ -96,12 +116,64 @@ async function getPagepocketUserId(): Promise<string | null> {
     const auth = result[PAGEPOCKET_AUTH_STORAGE_KEY] as
       | PagePocketAuthState
       | undefined;
-    if (cloudEnabled && auth?.accessToken && auth?.user?.id) {
+    if (!(cloudEnabled && auth?.accessToken && auth?.user?.id)) {
+      return undefined;
+    }
+
+    const binding = await getCloudBinding();
+    if (binding?.status === "bound") {
+      return binding.pagepocketUserId;
+    }
+    if (binding?.status === "unsupported") {
+      // Graceful degradation (task 6.5): keep cloud mode working against an
+      // un-upgraded server via the legacy raw-pagepocketUserId behavior.
       return auth.user.id;
     }
-    return null;
+
+    // Binding missing/unknown — attempt the link flow once (no-op when the
+    // login-time link already stored the binding by now).
+    const linked = await ensureCloudBinding();
+    if (linked?.status === "bound") {
+      return linked.pagepocketUserId;
+    }
+    return auth.user.id;
   } catch {
-    return null;
+    return undefined;
+  }
+}
+
+/**
+ * Create the server session, handling the monolith's binding enforcement
+ * (task 6.5). A 403 `cloud_not_linked` means the server-side client row has
+ * no binding although the extension believed it was bound — the row was
+ * replaced by a re-registration or a server redeploy. Re-run the link flow
+ * (forced) and retry ONCE with the freshly bound identity; any other error
+ * (including cloud_identity_mismatch) propagates to the caller's mapping.
+ */
+export async function createSessionWithCloudRetry(
+  url: string,
+  options: SessionOptions,
+): Promise<string> {
+  try {
+    return await serverClient.createSession(url, options);
+  } catch (error) {
+    if (
+      error instanceof HttpError &&
+      error.statusCode === 403 &&
+      error.errorCode === "cloud_not_linked"
+    ) {
+      console.warn(
+        "[ServerMode] cloud_not_linked from session creation — re-running the binding flow",
+      );
+      const rebound = await ensureCloudBinding({ force: true });
+      if (rebound?.status === "bound") {
+        return serverClient.createSession(url, {
+          ...options,
+          pagepocketUserId: rebound.pagepocketUserId,
+        });
+      }
+    }
+    throw error;
   }
 }
 
@@ -305,10 +377,11 @@ export async function downloadResources(
   try {
     createKeepalivePort(tabId!);
 
-    // Read PagePocket cloud user ID if cloud mode is enabled.
+    // Read the PagePocket cloud credential if cloud mode is enabled.
     // When set, the server will push the assembled result to PagePocket
-    // instead of creating a ZIP file.
-    const pagepocketUserId = await getPagepocketUserId();
+    // instead of creating a ZIP file (identity sourced from the server-side
+    // binding — task 6.5 / D4).
+    const pagepocketUserId = await resolveCloudCredential();
 
     // Create server session (reuse existing if created during INITIALIZE_DIFFERENTIAL_SCRAPING)
     const existingSessionId = getActiveServerSessionId(tabId!);
@@ -316,7 +389,7 @@ export async function downloadResources(
     if (existingSessionId) {
       serverSessionId = existingSessionId;
     } else {
-      serverSessionId = await serverClient.createSession(tabUrl, {
+      serverSessionId = await createSessionWithCloudRetry(tabUrl, {
         singleFile: downloadOptions?.singleFile ?? false,
         retentionDays: 1,
         pagepocketUserId: pagepocketUserId ?? undefined,
@@ -362,6 +435,22 @@ export async function downloadResources(
 
     if (error instanceof PanelUnavailableError) {
       userFriendlyMessage = { key: "app.panelUnavailable" };
+    } else if (
+      error instanceof HttpError &&
+      error.statusCode === 403 &&
+      error.errorCode === "cloud_not_linked"
+    ) {
+      // Task 6.5: the monolith refused cloud mode because this client has no
+      // PagePocket binding (re-bind + retry already attempted above).
+      userFriendlyMessage = { key: "status.cloudNotLinked" };
+    } else if (
+      error instanceof HttpError &&
+      error.statusCode === 403 &&
+      error.errorCode === "cloud_identity_mismatch"
+    ) {
+      // Task 6.5: the sent id diverges from the server-side binding — the
+      // user must re-authenticate to resolve the conflict.
+      userFriendlyMessage = { key: "status.cloudIdentityMismatch" };
     } else if (
       error instanceof AuthenticationError ||
       error instanceof ServerUnavailableError
@@ -867,10 +956,10 @@ async function executeDownloadServerMode(
         return false;
       },
       // Assembly status callback — forward to UI for progress display
-      (status, phase, progressPct) => {
+      (status, phase, progressPct, elapsedSeconds) => {
         sendMessage({
           key: "status.assemblyProgress",
-          options: { status, phase, progressPct },
+          options: { status, phase, progressPct, elapsedSeconds },
         });
       },
       tabId,
@@ -1032,10 +1121,10 @@ async function finalizeAndPollAssembly(
     tabUrl,
     false,
     async () => false,
-    (_status, phase, progressPct) => {
+    (_status, phase, progressPct, elapsedSeconds) => {
       sendMessage({
         key: "status.assemblyProgress",
-        options: { status: "assembling", phase, progressPct },
+        options: { status: "assembling", phase, progressPct, elapsedSeconds },
       });
     },
     tabId,
@@ -1126,10 +1215,10 @@ export async function resumeServerDownload(
         tabUrl ?? "",
         false,
         async () => false,
-        (_status, phase, progressPct) => {
+        (_status, phase, progressPct, elapsedSeconds) => {
           sendMessage({
             key: "status.assemblyProgress",
-            options: { status: "assembling", phase, progressPct },
+            options: { status: "assembling", phase, progressPct, elapsedSeconds },
           });
         },
         tabId,

@@ -15,7 +15,7 @@ import grpc_clients
 from grpc_clients import CHANNEL_OPTIONS, GRPC_MAX_MESSAGE_LENGTH
 
 _ROUTERS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "routers"))
-_OWNED_ROUTERS = ("auth.py", "library.py", "search.py")
+_OWNED_ROUTERS = ("auth.py", "library.py", "search.py", "archive.py", "share.py")
 
 _EXPECTED_LIMIT = 256 * 1024 * 1024
 

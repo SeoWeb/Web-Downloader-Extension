@@ -2,6 +2,8 @@
 
 import logging
 import os
+import sys
+import threading
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -11,6 +13,42 @@ logger = logging.getLogger(__name__)
 _channel = None
 _stub = None
 
+# ---------------------------------------------------------------------------
+# Cloud push envelope (6.2)
+# ---------------------------------------------------------------------------
+
+# Wire-level gRPC message cap. Matches the channel options in _get_stub() and
+# the archive-service / api-gateway 256 MB limits (harden 4.1).
+GRPC_MAX_MESSAGE_BYTES = 256 * 1024 * 1024
+
+# Headroom for proto serialization overhead (field tags, varint lengths,
+# filenames, url/title strings). A few KB in practice, rounded up generously.
+CLOUD_PUSH_SAFETY_MARGIN_BYTES = 2 * 1024 * 1024
+
+# Effective payload cap (HTML + every asset) enforced BEFORE anything is
+# built or sent. Pushing past this is a deterministic failure — the channel
+# rejects the message client-side and every retry would re-send it.
+CLOUD_PUSH_MAX_PAYLOAD_BYTES = GRPC_MAX_MESSAGE_BYTES - CLOUD_PUSH_SAFETY_MARGIN_BYTES
+
+# Per-attempt unary deadline. The spec envelope documents the server's worst
+# case as 3 sequential calls at this budget plus queue wait (≤ 32 min).
+PUSH_TIMEOUT_SECONDS = 600
+
+# Max wait for the per-session single-flight lock: covers the worst case of
+# one in-flight push (3 × 600 s) plus margin before giving up.
+PUSH_LOCK_WAIT_SECONDS = PUSH_TIMEOUT_SECONDS * 3 + 120
+
+# Detail fragments (lower-cased) that identify a gRPC message-size failure.
+# Mirror of the gateway's _SIZE_DETAIL_MARKERS (pagepocket/services/
+# api-gateway/routers/__init__.py, task 4.3): gRPC emits e.g. "Sent message
+# larger than max (5 vs. 4)".
+_SIZE_DETAIL_MARKERS = (
+    "larger than max",
+    "message size exceeds",
+    "exceeds maximum message size",
+    "message too large",
+)
+
 
 @dataclass
 class CloudPushResult:
@@ -18,6 +56,124 @@ class CloudPushResult:
 
     page_id: Optional[str] = None
     error: Optional[str] = None
+
+
+class CloudPayloadTooLargeError(Exception):
+    """Raised before any upload work when the push payload exceeds the cap.
+
+    Deterministic: no retry can shrink the message. ``str(exc)`` is the
+    precise user-facing error (``cloud_size_error``).
+    """
+
+    def __init__(self, total_bytes: int, limit_bytes: int = CLOUD_PUSH_MAX_PAYLOAD_BYTES):
+        self.total_bytes = total_bytes
+        self.limit_bytes = limit_bytes
+        super().__init__(cloud_size_error(total_bytes, limit_bytes))
+
+
+def format_mb(num_bytes: int) -> str:
+    """Format a byte count as a human-readable MB string."""
+    return f"{num_bytes / (1024 * 1024):.1f} MB"
+
+
+def cloud_size_error(
+    total_bytes: int,
+    limit_bytes: int = CLOUD_PUSH_MAX_PAYLOAD_BYTES,
+) -> str:
+    """Precise, non-retryable cloud_error for an oversize push payload.
+
+    The message names the wire-level gRPC limit (256 MB — the number that
+    matters to a user), while the enforced gate is the slightly smaller
+    ``limit_bytes`` (serialization headroom).
+    """
+    return (
+        f"session exceeds {GRPC_MAX_MESSAGE_BYTES // (1024 * 1024)} MB cloud limit: "
+        f"{format_mb(total_bytes)}"
+    )
+
+
+def _rpc_error_parts(exc: BaseException) -> tuple[Optional[str], str]:
+    """Extract (upper-cased status code, combined detail text) from an error.
+
+    Duck-typed so classification works without importing grpc and with test
+    doubles: reads ``exc.code()`` / ``exc.details()`` when present.
+    """
+    code: Optional[str] = None
+    code_getter = getattr(exc, "code", None)
+    if callable(code_getter):
+        try:
+            code = str(code_getter()).upper()
+        except Exception:
+            code = None
+
+    parts = [str(exc)]
+    details_getter = getattr(exc, "details", None)
+    if callable(details_getter):
+        try:
+            parts.append(str(details_getter()))
+        except Exception:
+            pass
+    return code, " ".join(parts).lower()
+
+
+def is_message_size_error(exc: BaseException) -> bool:
+    """True when a gRPC failure is a deterministic message-size rejection.
+
+    Mirrors the gateway's 4.3 classification (RESOURCE_EXHAUSTED carrying a
+    size detail). These failures are deterministic — retrying re-sends the
+    same oversize message and burns the full 3 × 600 s budget for nothing.
+    Quota-induced RESOURCE_EXHAUSTED ("Storage limit reached", no size
+    marker) deliberately stays retryable, matching the gateway's 402 vs 413
+    distinction.
+    """
+    code, text = _rpc_error_parts(exc)
+    if code is None or "RESOURCE_EXHAUSTED" not in code:
+        return False
+    return any(marker in text for marker in _SIZE_DETAIL_MARKERS)
+
+
+# ---------------------------------------------------------------------------
+# Single-flight push (6.2)
+# ---------------------------------------------------------------------------
+
+# One lock per session id: concurrent pushes for the SAME session (e.g. the
+# extension retrying while a push is still in flight) serialize instead of
+# stacking duplicate full-payload RPCs. Cross-session pushes never contend.
+# Whichever push completes first wins; later ones re-ingest and the archive
+# service's user-scoped idempotency (2.6: unique user_id + extension_job_id)
+# returns the same page_id, so retries converge.
+_session_push_locks: dict[str, threading.Lock] = {}
+_session_push_locks_guard = threading.Lock()
+
+
+def _session_push_lock(session_id: str) -> threading.Lock:
+    with _session_push_locks_guard:
+        lock = _session_push_locks.get(session_id)
+        if lock is None:
+            # Bound the registry: finished locks are never removed
+            # individually (no waiter count on threading.Lock), so reset
+            # once it grows large. Worst case of a reset is that two
+            # pushes for the same session briefly use different lock
+            # objects — still converged by the service's idempotency.
+            if len(_session_push_locks) >= 4096:
+                _session_push_locks.clear()
+            lock = threading.Lock()
+            _session_push_locks[session_id] = lock
+        return lock
+
+
+def _ensure_proto_path() -> None:
+    """Make the generated proto modules importable (idempotent).
+
+    Resolve proto_generated directory:
+    1. PROTO_DIR env var (explicit, used in Docker)
+    2. Relative path to pagepocket/shared/proto_generated (local dev)
+    """
+    proto_dir = os.environ.get("PROTO_DIR") or os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "pagepocket", "shared", "proto_generated")
+    )
+    if proto_dir not in sys.path:
+        sys.path.insert(0, proto_dir)
 
 
 def _build_credentials():
@@ -50,18 +206,9 @@ def _get_stub():
     if _stub is not None:
         return _stub
 
-    import sys
-
     import grpc
 
-    # Resolve proto_generated directory:
-    # 1. PROTO_DIR env var (explicit, used in Docker)
-    # 2. Relative path to pagepocket/shared/proto_generated (local dev)
-    proto_dir = os.environ.get("PROTO_DIR") or os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "pagepocket", "shared", "proto_generated")
-    )
-    if proto_dir not in sys.path:
-        sys.path.insert(0, proto_dir)
+    _ensure_proto_path()
 
     import archive_pb2_grpc
 
@@ -71,8 +218,8 @@ def _get_stub():
 
     credentials = _build_credentials()
     options = [
-        ("grpc.max_receive_message_length", 256 * 1024 * 1024),
-        ("grpc.max_send_message_length", 256 * 1024 * 1024),
+        ("grpc.max_receive_message_length", GRPC_MAX_MESSAGE_BYTES),
+        ("grpc.max_send_message_length", GRPC_MAX_MESSAGE_BYTES),
     ]
     if credentials is not None:
         channel = grpc.secure_channel(addr, credentials, options=options)
@@ -108,11 +255,28 @@ def push_to_archive(
     Returns:
         CloudPushResult with page_id on success or error details on failure.
     """
+    _ensure_proto_path()
     stub = _get_stub()
     if stub is None:
         return CloudPushResult(error="Archive service not configured")
 
     import archive_pb2
+
+    # 6.2 pre-flight size gate: account the exact payload before building
+    # anything. The IngestPage contract is one unary message (no batched /
+    # append RPC exists), so an oversize session can never succeed — fail
+    # immediately with a precise quota-style error instead of burning the
+    # 3 × 600 s retry budget on deterministic channel rejections.
+    total_bytes = len(html_content) + sum(len(data) for _fn, _ct, data in assets)
+    if total_bytes > CLOUD_PUSH_MAX_PAYLOAD_BYTES:
+        logger.error(
+            "Cloud push rejected pre-flight: session=%s payload=%s limit=%s assets=%d",
+            session_id, format_mb(total_bytes),
+            format_mb(CLOUD_PUSH_MAX_PAYLOAD_BYTES), len(assets),
+        )
+        return CloudPushResult(
+            error=cloud_size_error(total_bytes, CLOUD_PUSH_MAX_PAYLOAD_BYTES)
+        )
 
     asset_msgs = [
         archive_pb2.Asset(filename=fn, content_type=ct, data=data)
@@ -132,36 +296,63 @@ def push_to_archive(
         plan=plan or "free",
     )
 
+    # 6.2 single-flight: serialize pushes per session so a concurrent retry
+    # waits instead of stacking a second full-payload RPC. Convergence for
+    # the waiting caller comes from the service's user-scoped idempotency.
+    lock = _session_push_lock(session_id)
+    if not lock.acquire(timeout=PUSH_LOCK_WAIT_SECONDS):
+        logger.warning(
+            "Cloud push skipped: another push for session %s still in flight", session_id,
+        )
+        return CloudPushResult(error="another push for this session is already in flight")
+
     max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = stub.IngestPage(request, timeout=600)
-            if response.success:
-                logger.info(
-                    "Cloud push succeeded: session=%s page_id=%s attempt=%d",
-                    session_id, response.page_id, attempt + 1,
-                )
-                return CloudPushResult(page_id=response.page_id)
-            else:
+    started = time.monotonic()
+    try:
+        for attempt in range(max_retries):
+            try:
+                response = stub.IngestPage(request, timeout=PUSH_TIMEOUT_SECONDS)
+                if response.success:
+                    logger.info(
+                        "Cloud push succeeded: session=%s page_id=%s attempt=%d wall=%.1fs",
+                        session_id, response.page_id, attempt + 1,
+                        time.monotonic() - started,
+                    )
+                    return CloudPushResult(page_id=response.page_id)
+                else:
+                    logger.warning(
+                        "Cloud push returned failure: session=%s message=%s wall=%.1fs",
+                        session_id, response.message, time.monotonic() - started,
+                    )
+                    return CloudPushResult(error=response.message or "server returned failure")
+            except Exception as exc:
+                # 6.2 retry classification: a message-size rejection is
+                # deterministic — the channel will refuse this exact message
+                # on every attempt. Fail immediately with the precise size
+                # error; everything else keeps the retry budget.
+                if is_message_size_error(exc):
+                    logger.error(
+                        "Cloud push rejected by gRPC channel (message size): "
+                        "session=%s payload=%s error=%s — not retrying",
+                        session_id, format_mb(total_bytes), exc,
+                    )
+                    return CloudPushResult(
+                        error=cloud_size_error(total_bytes, CLOUD_PUSH_MAX_PAYLOAD_BYTES)
+                    )
                 logger.warning(
-                    "Cloud push returned failure: session=%s message=%s",
-                    session_id, response.message,
+                    "Cloud push attempt %d/%d failed: session=%s error=%s",
+                    attempt + 1, max_retries, session_id, exc,
                 )
-                return CloudPushResult(error=response.message or "server returned failure")
-        except Exception as exc:
-            error_str = f"{type(exc).__name__}: {exc}"
-            logger.warning(
-                "Cloud push attempt %d/%d failed: session=%s error=%s",
-                attempt + 1, max_retries, session_id, exc,
-            )
-            if attempt < max_retries - 1:
-                time.sleep(2 ** attempt)  # Exponential backoff: 1s, 2s
-            else:
-                logger.error(
-                    "Cloud push failed after %d attempts: session=%s",
-                    max_retries, session_id,
-                )
-                return CloudPushResult(error=error_str)
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff: 1s, 2s
+                else:
+                    logger.error(
+                        "Cloud push failed after %d attempts: session=%s wall=%.1fs",
+                        max_retries, session_id, time.monotonic() - started,
+                    )
+                    return CloudPushResult(error=f"{type(exc).__name__}: {exc}")
+    finally:
+        lock.release()
 
 
 def is_configured() -> bool:

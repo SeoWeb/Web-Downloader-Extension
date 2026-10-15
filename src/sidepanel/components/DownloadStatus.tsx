@@ -384,6 +384,17 @@ export function DownloadStatus({
         )
       : "";
     const progressPct = serverModeState.assemblyProgressPct ?? 0;
+    // Assembly-timeout envelope (task 6.1): surface elapsed time so a long
+    // cloud push reads as "progressing", not stuck. Undefined-safe — older
+    // servers don't send assembly_elapsed_seconds.
+    const elapsedSeconds = serverModeState.assemblyElapsedSeconds;
+    const elapsedLabel =
+      typeof elapsedSeconds === "number" && elapsedSeconds > 0
+        ? t("status.assemblyElapsed", {
+            minutes: Math.floor(elapsedSeconds / 60),
+            seconds: elapsedSeconds % 60,
+          })
+        : "";
 
     return (
       <div className="pt-8 animate-fade-in">
@@ -413,6 +424,9 @@ export function DownloadStatus({
             <p className="text-xs text-slate-500 text-center">
               {Math.round(progressPct)}%
             </p>
+          )}
+          {elapsedLabel && (
+            <p className="text-xs text-slate-400 text-center">{elapsedLabel}</p>
           )}
 
           {/* Stop button */}

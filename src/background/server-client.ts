@@ -103,17 +103,26 @@ export function assertSecureBaseUrl(rawUrl: string, label: string): void {
 
 /**
  * HTTP error with status code, thrown by ServerClient for 4xx responses.
- * Includes `retryAfter` (seconds) for 429 Rate Limit responses.
+ * Includes `retryAfter` (seconds) for 429 Rate Limit responses and the
+ * machine-readable `detail.error` code (e.g. "cloud_not_linked") when the
+ * server provides one.
  */
 export class HttpError extends Error {
   public readonly statusCode: number;
   public readonly retryAfter?: number;
+  public readonly errorCode?: string;
 
-  constructor(message: string, statusCode: number, retryAfter?: number) {
+  constructor(
+    message: string,
+    statusCode: number,
+    retryAfter?: number,
+    errorCode?: string,
+  ) {
     super(message);
     this.name = "HttpError";
     this.statusCode = statusCode;
     this.retryAfter = retryAfter;
+    this.errorCode = errorCode;
   }
 }
 
@@ -191,6 +200,12 @@ export interface SessionStatusResponse {
   total_size: number;
   assembly_phase: string | null;
   assembly_progress_pct: number | null;
+  /**
+   * Seconds elapsed since assembly started (additive field from the
+   * assembly-timeout-envelope work). Undefined on older servers —
+   * consumers must treat it as optional.
+   */
+  assembly_elapsed_seconds?: number | null;
   download_url: string | null;
   output_type: string | null;
   output_size: number | null;
@@ -210,6 +225,36 @@ export interface HealthResponse {
   description: string | null;
   api_version: string;
 }
+
+// ---------------------------------------------------------------------------
+// Cloud identity binding (task 6.5 / design D4 — harden-backend-security-and-ops)
+// ---------------------------------------------------------------------------
+
+/** Response of POST /api/v1/cloud/link on success. */
+interface CloudLinkResponse {
+  bound: boolean;
+  pagepocket_user_id: string;
+  plan?: string | null;
+  api_version: string;
+}
+
+/**
+ * Outcome of the binding call. `invalid_token` means the PAGEPOCKET access
+ * token was rejected — never a server API-key problem, so it must not
+ * trigger server re-registration.
+ */
+export type CloudLinkResult =
+  | {
+      outcome: "bound";
+      pagepocketUserId: string;
+      plan: string | null;
+    }
+  /** Older monolith without the endpoint (404/501) or binding service unconfigured (503). */
+  | { outcome: "unsupported" }
+  /** PagePocket token rejected (401 invalid_pagepocket_token). */
+  | { outcome: "invalid_token" }
+  /** Network failure or unexpected server error — transient, retried lazily. */
+  | { outcome: "failed"; message?: string };
 
 // ---------------------------------------------------------------------------
 // Text-based MIME types that should be gzip-compressed before upload
@@ -627,6 +672,116 @@ export class ServerClient {
     }
   }
 
+  /**
+   * (6.5) Bind the PagePocket identity to this API-key client via
+   * POST /api/v1/cloud/link. The monolith verifies the access token against
+   * the PagePocket auth service and stores user id + plan on the client row.
+   *
+   * Deliberately does NOT use authenticatedFetch: its 401 path re-registers
+   * the server client, but a 401 from /cloud/link means the PAGEPOCKET token
+   * was rejected (detail.error "invalid_pagepocket_token") — re-registering
+   * would destroy a healthy binding for nothing. Only a 401 that the server
+   * reports as an API-key problem ("invalid_api_key" / unknown body) is
+   * treated as a revoked key and retried once after a fresh re-registration
+   * (6.3 semantics).
+   */
+  async linkCloudAccount(accessToken: string): Promise<CloudLinkResult> {
+    this.assertConfigured();
+
+    const attempt = async (
+      apiKey: string,
+    ): Promise<{ res: Response | null; networkError?: Error }> => {
+      try {
+        const res = await fetch(`${this.serverUrl}/api/v1/cloud/link`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": apiKey,
+          },
+          body: JSON.stringify({ access_token: accessToken }),
+          signal: AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS),
+        });
+        return { res };
+      } catch (err) {
+        // Includes the 60s control-call timeout (TimeoutError DOMException) —
+        // reported as a transient failure, never thrown into the login flow.
+        return { res: null, networkError: err as Error };
+      }
+    };
+
+    const readErrorCode = async (res: Response): Promise<string | undefined> => {
+      try {
+        const json = (await res.json()) as { detail?: { error?: unknown } };
+        return typeof json?.detail?.error === "string"
+          ? json.detail.error
+          : undefined;
+      } catch {
+        return undefined;
+      }
+    };
+
+    // Register if needed, but don't loop: a stored key that the server
+    // rejects is handled by the single re-register + retry below.
+    const apiKey = await this.ensureApiKey();
+    let { res, networkError } = await attempt(apiKey);
+
+    if (res && res.status === 401) {
+      const errorCode = await readErrorCode(res);
+      if (errorCode === "invalid_pagepocket_token") {
+        // The PagePocket token is bad — the server API key is fine.
+        return { outcome: "invalid_token" };
+      }
+      // API-key problem (revoked/unknown key): re-register with a FRESH
+      // instance id (6.3) and retry the link exactly once.
+      this.apiKey = null;
+      let freshKey: string;
+      try {
+        freshKey = await this.registerWithMutex({ freshInstance: true });
+      } catch {
+        return { outcome: "failed", message: "re-registration failed" };
+      }
+      const retry = await attempt(freshKey);
+      res = retry.res;
+      networkError = retry.networkError;
+      if (res && res.status === 401) {
+        // Still 401 with a fresh key: distinguish a rejected PagePocket
+        // token from any other lingering key problem.
+        const retryCode = await readErrorCode(res);
+        return retryCode === "invalid_pagepocket_token"
+          ? { outcome: "invalid_token" }
+          : {
+              outcome: "failed",
+              message: "link failed after re-registration",
+            };
+      }
+    }
+
+    if (!res) {
+      return {
+        outcome: "failed",
+        message: networkError?.message ?? "network error",
+      };
+    }
+
+    if (res.ok) {
+      const data = (await res.json()) as CloudLinkResponse;
+      return {
+        outcome: "bound",
+        pagepocketUserId: data.pagepocket_user_id,
+        plan: data.plan ?? null,
+      };
+    }
+
+    // Graceful degradation (task 6.5): older monoliths have no /cloud/link
+    // (404/501) and an unconfigured auth service returns 503 — fall back to
+    // the legacy raw-pagepocketUserId behavior instead of failing cloud mode.
+    if (res.status === 404 || res.status === 501 || res.status === 503) {
+      return { outcome: "unsupported" };
+    }
+
+    return { outcome: "failed", message: `cloud/link returned ${res.status}` };
+  }
+
   // -----------------------------------------------------------------------
   // Auto-registration (task 8.11)
   // -----------------------------------------------------------------------
@@ -655,15 +810,22 @@ export class ServerClient {
    * Promise-based mutex registration: if a registration is already
    * in progress, all callers await the same promise. At most one
    * POST /auth/register call is made regardless of concurrency.
+   *
+   * `freshInstance` (task 6.3 / D14): mint a NEW instance id instead of
+   * reusing the stored one. Used after a 401 — when the stored instance id
+   * resolves server-side to a revoked key, re-registering with the SAME id
+   * returns the SAME doomed key and the request 401s forever.
    */
-  private registerWithMutex(): Promise<string> {
+  private registerWithMutex(
+    options: { freshInstance?: boolean } = {},
+  ): Promise<string> {
     if (this.registrationLock) {
       return this.registrationLock;
     }
 
     this.registrationLock = (async () => {
       try {
-        const key = await this.register();
+        const key = await this.register(options);
         return key;
       } finally {
         this.registrationLock = null;
@@ -677,15 +839,21 @@ export class ServerClient {
    * Register with the server to obtain an API key.
    * Stores the key in chrome.storage.session for the current browser session.
    * Retries up to MAX_REGISTRATION_ATTEMPTS with exponential backoff.
+   *
+   * With `freshInstance`, a new instance id is minted (and persisted) before
+   * the attempt loop — a fresh id forces the server to create a new client
+   * row + key instead of resolving the doomed identity again.
    */
-  private async register(): Promise<string> {
+  private async register(
+    options: { freshInstance?: boolean } = {},
+  ): Promise<string> {
     let lastError: Error | null = null;
+    const instanceId = options.freshInstance
+      ? await this.rotateInstanceId()
+      : await this.getOrCreateInstanceId();
 
     for (let attempt = 0; attempt < MAX_REGISTRATION_ATTEMPTS; attempt++) {
       try {
-        // Generate or retrieve extension instance ID for idempotent registration
-        const instanceId = await this.getOrCreateInstanceId();
-
         const res = await fetch(`${this.serverUrl}/api/v1/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -769,8 +937,13 @@ export class ServerClient {
       // Clear cached key
       this.apiKey = null;
 
-      // Re-register via mutex — concurrent callers share the same registration
-      const newKey = await this.registerWithMutex();
+      // Re-register via mutex — concurrent callers share the same registration.
+      // Fresh instance id (6.3 / D14): the stored id may resolve server-side
+      // to a revoked key, which would return the same dead key and 401
+      // forever. A fresh id forces a new client row + working key. The mutex
+      // keeps this single-flight; failure throws AuthenticationError
+      // (definitive — no retry loop).
+      const newKey = await this.registerWithMutex({ freshInstance: true });
 
       // Retry with the new key
       const retryHeaders = new Headers(init.headers);
@@ -887,6 +1060,7 @@ export class ServerClient {
     operation: string,
   ): never {
     let detail: string;
+    let errorCode: string | undefined;
     try {
       const json = JSON.parse(bodyText);
       detail =
@@ -894,6 +1068,9 @@ export class ServerClient {
         json?.detail?.error ??
         json?.message ??
         JSON.stringify(json);
+      if (typeof json?.detail?.error === "string") {
+        errorCode = json.detail.error;
+      }
     } catch {
       detail = bodyText || `HTTP ${status}`;
     }
@@ -922,11 +1099,16 @@ export class ServerClient {
           retryAfter = parsed;
         }
       }
-      throw new HttpError(`${operation}: 429 — ${detail}`, 429, retryAfter);
+      throw new HttpError(
+        `${operation}: 429 — ${detail}`,
+        429,
+        retryAfter,
+        errorCode,
+      );
     }
 
     // 4xx errors (except 401 and 429 handled above)
-    throw new HttpError(`${operation}: ${status} — ${detail}`, status);
+    throw new HttpError(`${operation}: ${status} — ${detail}`, status, undefined, errorCode);
   }
 
   /**
@@ -1061,10 +1243,12 @@ export class ServerClient {
     // First attempt with current API key
     let result = await attempt(apiKey);
 
-    // Handle 401 — re-register and retry once
+    // Handle 401 — re-register and retry once.
+    // Fresh instance id (6.3 / D14) for the same reason as authenticatedFetch:
+    // a revoked key resolved by the stored instance id never recovers.
     if (result.status === 401) {
       this.apiKey = null;
-      const newKey = await this.registerWithMutex();
+      const newKey = await this.registerWithMutex({ freshInstance: true });
       result = await attempt(newKey);
 
       if (result.status === 401) {
@@ -1104,6 +1288,34 @@ export class ServerClient {
     } catch {
       // Non-critical — the key is cached in memory
     }
+  }
+
+  private async saveInstanceIdToStorage(id: string): Promise<void> {
+    try {
+      if (!chrome?.storage?.session) return;
+      await chrome.storage.session.set({ [EXTENSION_INSTANCE_ID_KEY]: id });
+    } catch {
+      // Non-critical — the id lives in the closure of the current registration
+    }
+  }
+
+  /**
+   * Discard the stored instance id and mint a fresh one, persisting it to
+   * chrome.storage.session (task 6.3 / D14). Used when the stored identity
+   * resolved to a revoked key — re-registering with the same id would return
+   * the same revoked key forever (re-registration deadlock).
+   */
+  private async rotateInstanceId(): Promise<string> {
+    try {
+      if (chrome?.storage?.session) {
+        await chrome.storage.session.remove(EXTENSION_INSTANCE_ID_KEY);
+      }
+    } catch {
+      // Non-critical — we overwrite it below anyway
+    }
+    const id = `ext-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    await this.saveInstanceIdToStorage(id);
+    return id;
   }
 
   private async getOrCreateInstanceId(): Promise<string> {
