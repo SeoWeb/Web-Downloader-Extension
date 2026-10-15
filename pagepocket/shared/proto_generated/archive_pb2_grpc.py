@@ -64,6 +64,16 @@ class ArchiveServiceStub(object):
                 request_serializer=archive__pb2.GetArchiveFileRequest.SerializeToString,
                 response_deserializer=archive__pb2.ArchiveFileResponse.FromString,
                 _registered_method=True)
+        self.RetryPendingIndexing = channel.unary_unary(
+                '/archive.ArchiveService/RetryPendingIndexing',
+                request_serializer=archive__pb2.RetryPendingIndexingRequest.SerializeToString,
+                response_deserializer=archive__pb2.RetryPendingIndexingResponse.FromString,
+                _registered_method=True)
+        self.SweepOrphanR2Objects = channel.unary_unary(
+                '/archive.ArchiveService/SweepOrphanR2Objects',
+                request_serializer=archive__pb2.SweepOrphanR2ObjectsRequest.SerializeToString,
+                response_deserializer=archive__pb2.SweepOrphanR2ObjectsResponse.FromString,
+                _registered_method=True)
 
 
 class ArchiveServiceServicer(object):
@@ -105,6 +115,20 @@ class ArchiveServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RetryPendingIndexing(self, request, context):
+        """Additive (harden-backend-security-and-ops 3.8/5.9): internal maintenance
+        RPCs. Not proxied by the gateway; reachable only on the service network.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SweepOrphanR2Objects(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ArchiveServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -137,6 +161,16 @@ def add_ArchiveServiceServicer_to_server(servicer, server):
                     servicer.GetArchiveFile,
                     request_deserializer=archive__pb2.GetArchiveFileRequest.FromString,
                     response_serializer=archive__pb2.ArchiveFileResponse.SerializeToString,
+            ),
+            'RetryPendingIndexing': grpc.unary_unary_rpc_method_handler(
+                    servicer.RetryPendingIndexing,
+                    request_deserializer=archive__pb2.RetryPendingIndexingRequest.FromString,
+                    response_serializer=archive__pb2.RetryPendingIndexingResponse.SerializeToString,
+            ),
+            'SweepOrphanR2Objects': grpc.unary_unary_rpc_method_handler(
+                    servicer.SweepOrphanR2Objects,
+                    request_deserializer=archive__pb2.SweepOrphanR2ObjectsRequest.FromString,
+                    response_serializer=archive__pb2.SweepOrphanR2ObjectsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -301,6 +335,60 @@ class ArchiveService(object):
             '/archive.ArchiveService/GetArchiveFile',
             archive__pb2.GetArchiveFileRequest.SerializeToString,
             archive__pb2.ArchiveFileResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RetryPendingIndexing(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/archive.ArchiveService/RetryPendingIndexing',
+            archive__pb2.RetryPendingIndexingRequest.SerializeToString,
+            archive__pb2.RetryPendingIndexingResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SweepOrphanR2Objects(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/archive.ArchiveService/SweepOrphanR2Objects',
+            archive__pb2.SweepOrphanR2ObjectsRequest.SerializeToString,
+            archive__pb2.SweepOrphanR2ObjectsResponse.FromString,
             options,
             channel_credentials,
             insecure,

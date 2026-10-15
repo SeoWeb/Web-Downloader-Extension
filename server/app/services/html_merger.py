@@ -874,11 +874,36 @@ class HtmlMergerService:
                     self.storage_root, session_id, "skeletons", f"{page_hash}.html"
                 )
                 skeleton_from_first_chunk = False
+                skip_scroll_zero = False
                 if os.path.exists(skeleton_path):
                     job.skeleton_path = skeleton_path
                     job.initialized = True
                     with open(skeleton_path, "r", encoding="utf-8") as f:
-                        job.total_size = len(f.read().encode("utf-8"))
+                        skeleton_html = f.read()
+                    job.total_size = len(skeleton_html.encode("utf-8"))
+
+                    # Restart-during-upload dedup (3.6): the skeleton is built
+                    # from the scrollIndex-0 chunk, so its content is contained
+                    # in the skeleton document. If the 0.html chunk on disk IS
+                    # the skeleton source, mark it consumed so the merge below
+                    # does not emit the first screen a second time.
+                    first_chunk_path = os.path.join(
+                        self.storage_root, session_id,
+                        "chunks", pt, page_hash, "0.html",
+                    )
+                    if os.path.exists(first_chunk_path):
+                        with open(first_chunk_path, "r", encoding="utf-8") as f:
+                            first_chunk_html = f.read()
+                        if (
+                            first_chunk_html
+                            and first_chunk_html in skeleton_html
+                        ):
+                            skip_scroll_zero = True
+                            logger.info(
+                                "Skeleton already contains scroll-0 chunk — "
+                                "marked consumed: session=%s page=%s",
+                                session_id, page_hash,
+                            )
                 else:
                     # No explicit skeleton file — fall back to using the first
                     # chunk (scrollIndex 0) as the skeleton.  This handles
@@ -915,10 +940,11 @@ class HtmlMergerService:
 
                 chunk_files.sort(key=lambda x: x[0])
 
-                # Determine whether scrollIndex 0 was used as the skeleton.
-                # If so, skip it from the chunks list to avoid double-inserting
-                # its content (the skeleton already contains it).
-                skip_scroll_zero = skeleton_from_first_chunk
+                # Determine whether scrollIndex 0 was consumed by the skeleton:
+                # either it was used to reconstruct the skeleton above, or an
+                # existing skeleton document already contains its content
+                # (both mean the merge must not emit it a second time).
+                skip_scroll_zero = skip_scroll_zero or skeleton_from_first_chunk
 
                 for scroll_idx, fpath in chunk_files:
                     # Skip the first chunk if it was used as the skeleton

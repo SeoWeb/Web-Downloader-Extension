@@ -4,6 +4,8 @@ import logging
 import time
 from collections import defaultdict
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -121,6 +123,18 @@ class RateLimiter:
 # Pre-configured rate limiters
 # Registration: 5 requests/minute per IP = 5/60 per second, burst of 5
 registration_limiter = RateLimiter(rate=5 / 60, capacity=5)
+
+# Registration per extension instance id (7.8): at most
+# ``registration_per_instance_daily_limit`` registration attempts per
+# instance id per day. Burst == limit; the refill rate spreads the budget
+# over 24 hours so a persistent id gets roughly N fresh attempts per day.
+_registration_instance_daily = max(
+    1, settings.registration_per_instance_daily_limit
+)
+registration_instance_limiter = RateLimiter(
+    rate=_registration_instance_daily / 86400,
+    capacity=_registration_instance_daily,
+)
 
 # Resource uploads: 60 requests/second per session, burst of 100
 # The extension uploads resources in bursts (5 concurrent workers uploading

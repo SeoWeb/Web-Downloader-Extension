@@ -10,7 +10,7 @@ Runs on **port 8000** via FastAPI + uvicorn.
 
 | Method | Path             | Auth | Description                                                   |
 | ------ | ---------------- | ---- | ------------------------------------------------------------- |
-| GET    | `/api/v1/health` | No   | Health check, returns `{"status": "ok", "api_version": "v1"}` |
+| GET    | `/api/v1/health` | No   | Health check, returns `{"status": "ok", "api_version": "v1", "rate_limiter": "ok"\|"degraded"}` |
 
 ### Auth
 
@@ -58,22 +58,28 @@ Runs on **port 8000** via FastAPI + uvicorn.
 ## Middleware
 
 - **AuthMiddleware** — Validates JWT `Bearer` tokens on all non-public paths. Sets `request.state.user_id`, `email`, and `plan`.
-- **RateLimitMiddleware** — In-memory sliding-window rate limiting:
-  - Auth routes: 20 requests/minute per IP
+- **RateLimitMiddleware** — Redis-backed fixed-window rate limiting (`INCR` + bounded `EXPIRE`; shared across workers):
+  - Auth routes: 20 requests/minute per client IP (`CF-Connecting-IP`, falling back to trusted `X-Forwarded-For` when `TRUSTED_PROXIES` is configured, then the peer address)
   - Authenticated routes: 600 requests/minute per user
-- **CORSMiddleware** — Allows all origins, methods, and headers.
+  - Fails **open** (with an error log and a `rate_limiter: degraded` health signal) when Redis is unreachable
+- **CORSMiddleware** — Explicit origin allow-list from `CORS_ALLOW_ORIGINS` (never `*`).
 
 ## Configuration
 
-| Variable               | Required | Default | Description                             |
-| ---------------------- | -------- | ------- | --------------------------------------- |
-| `AUTH_SERVICE_ADDR`    | Yes      | —       | gRPC address of the auth service        |
-| `ARCHIVE_SERVICE_ADDR` | Yes      | —       | gRPC address of the archive service     |
-| `LIBRARY_SERVICE_ADDR` | Yes      | —       | gRPC address of the library service     |
-| `SEARCH_SERVICE_ADDR`  | Yes      | —       | gRPC address of the search service      |
-| `SHARE_SERVICE_ADDR`   | Yes      | —       | gRPC address of the share service       |
-| `JWT_SECRET`           | Yes      | —       | Secret used to verify JWT access tokens |
-| `MTLS_ENABLED`         | No       | `false` | Enable mutual TLS for gRPC channels     |
+| Variable               | Required | Default                                           | Description                                                                                          |
+| ---------------------- | -------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `AUTH_SERVICE_ADDR`    | Yes      | —                                                 | gRPC address of the auth service                                                                     |
+| `ARCHIVE_SERVICE_ADDR` | Yes      | —                                                 | gRPC address of the archive service                                                                  |
+| `LIBRARY_SERVICE_ADDR` | Yes      | —                                                 | gRPC address of the library service                                                                  |
+| `SEARCH_SERVICE_ADDR`  | Yes      | —                                                 | gRPC address of the search service                                                                   |
+| `SHARE_SERVICE_ADDR`   | Yes      | —                                                 | gRPC address of the share service                                                                    |
+| `JWT_SECRET`           | Yes      | —                                                 | Secret used to verify JWT access tokens. Must not be the dev default when `ENVIRONMENT=production` (startup fails fast) |
+| `ENVIRONMENT`          | No       | `development`                                     | `production` enables the secret fail-fast check                                                      |
+| `REDIS_URL`            | No       | —                                                 | Redis for the rate limiter; unset → limiter fails open and health reports `degraded`                 |
+| `CORS_ALLOW_ORIGINS`   | No       | `https://pagepocket.app,https://app.pagepocket.app` | Comma-separated origin allow-list (never `*`); add `chrome-extension://<id>` entries here          |
+| `TRUSTED_PROXIES`      | No       | —                                                 | Comma-separated proxy IPs/CIDRs; required before `X-Forwarded-For` is honored for rate limiting      |
+| `MAX_UPLOAD_BYTES`     | No       | `268435456`                                       | Ingest request body cap (413 above the cap; see `validation.py`)                                     |
+| `MTLS_ENABLED`         | No       | `false`                                           | Enable mutual TLS for gRPC channels                                                                  |
 
 ## Dependencies
 
@@ -103,13 +109,14 @@ python main.py
 
 ## Service Communication
 
-The gateway is the only service exposed to clients. It opens gRPC channels (lazily, memoised) to each backend service. Error translation maps gRPC status codes to HTTP responses:
+The gateway is the only service exposed to clients. It opens gRPC channels (lazily, memoised, 256 MB send/receive limits) to each backend service. Every call carries an explicit `timeout=` deadline (30 s default; 120 s for ingest/push-class calls). Error translation maps gRPC status codes to HTTP responses:
 
-| gRPC Code            | HTTP Status              |
-| -------------------- | ------------------------ |
-| `UNAUTHENTICATED`    | 401                      |
-| `ALREADY_EXISTS`     | 409                      |
-| `INVALID_ARGUMENT`   | 400                      |
-| `NOT_FOUND`          | 404                      |
-| `PERMISSION_DENIED`  | 403                      |
-| `RESOURCE_EXHAUSTED` | 402 (quota) / 429 (rate) |
+| gRPC Code            | HTTP Status                                                  |
+| -------------------- | ------------------------------------------------------------ |
+| `UNAUTHENTICATED`    | 401                                                          |
+| `ALREADY_EXISTS`     | 409                                                          |
+| `INVALID_ARGUMENT`   | 400                                                          |
+| `NOT_FOUND`          | 404                                                          |
+| `PERMISSION_DENIED`  | 403                                                          |
+| `DEADLINE_EXCEEDED`  | 503 (with `Retry-After`)                                     |
+| `RESOURCE_EXHAUSTED` | 413 (size) / 402 (quota) / 429 (rate)                        |

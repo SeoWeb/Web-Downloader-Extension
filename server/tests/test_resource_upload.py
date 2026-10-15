@@ -22,6 +22,7 @@ rate-limiter to remain self-contained.
 """
 
 import sys
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 # Stub the database module before any route import triggers engine creation
@@ -385,3 +386,337 @@ class TestDedupAfterSizeCheck:
 
         # Must raise 413 (not StopIteration), confirming dedup was not called
         assert exc.value.status_code == 413
+
+
+# ---------------------------------------------------------------------------
+# 3.3 — filename map merge persistence (regression)
+# ---------------------------------------------------------------------------
+
+
+class TestFilenameMapMergePersistence:
+    """The incremental merge MUST persist: a follow-up read returns the union.
+
+    Regression for the audit finding: `existing_map.update(body.map)` mutated
+    the already-persistent JSON object in place and re-assigned the SAME
+    object, so SQLAlchemy never marked the attribute dirty — flush() emitted
+    no UPDATE and the merge silently never committed.
+    """
+
+    @pytest.mark.asyncio
+    async def test_second_merge_persists_union(self, sqlite_db, tmp_path):
+        from sqlalchemy import select as sa_select
+
+        from app.api.routes.resources import FilenameMapRequest, upload_filename_map
+        from app.models.client import Client
+        from app.models.session import Session
+
+        _engine, factory = sqlite_db
+
+        # Seed client + session in UPLOADING (accepted for map uploads)
+        async with factory() as db:
+            db.add(Client(
+                id="client-map", api_key="k-map",
+                api_key_hash=Client.hash_key("k-map"),
+            ))
+            db.add(Session(
+                id="sess-map", client_id="client-map",
+                url="https://example.com",
+                status=SessionStatus.UPLOADING,
+                expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+            ))
+            await db.commit()
+
+        # First upload from one db session
+        async with factory() as db:
+            client = (await db.execute(
+                sa_select(Client).where(Client.id == "client-map")
+            )).scalar_one()
+            resp1 = await upload_filename_map(
+                "sess-map",
+                body=FilenameMapRequest(map={
+                    "https://example.com/a.png": "images/a.png",
+                }),
+                client=client,
+                db=db,
+            )
+            await db.commit()
+        assert resp1.mappings_count == 1
+
+        # Second (incremental) upload from a FRESH db session — this is the
+        # merge that used to be silently dropped.
+        async with factory() as db:
+            client = (await db.execute(
+                sa_select(Client).where(Client.id == "client-map")
+            )).scalar_one()
+            resp2 = await upload_filename_map(
+                "sess-map",
+                body=FilenameMapRequest(map={
+                    "https://example.com/b.png": "images/b.png",
+                }),
+                client=client,
+                db=db,
+            )
+            await db.commit()
+        assert resp2.mappings_count == 2
+
+        # Follow-up read in a third session returns the UNION, not the
+        # original map.
+        async with factory() as db:
+            row = (await db.execute(
+                sa_select(Session).where(Session.id == "sess-map")
+            )).scalar_one()
+            assert row.filename_map == {
+                "https://example.com/a.png": "images/a.png",
+                "https://example.com/b.png": "images/b.png",
+            }
+
+    @pytest.mark.asyncio
+    async def test_merge_overwrites_same_url_keys(self, sqlite_db):
+        """Re-uploading a URL key replaces its mapping (dict-merge semantics)."""
+        from sqlalchemy import select as sa_select
+
+        from app.api.routes.resources import FilenameMapRequest, upload_filename_map
+        from app.models.client import Client
+        from app.models.session import Session
+
+        _engine, factory = sqlite_db
+
+        async with factory() as db:
+            db.add(Client(
+                id="client-map2", api_key="k-map2",
+                api_key_hash=Client.hash_key("k-map2"),
+            ))
+            db.add(Session(
+                id="sess-map2", client_id="client-map2",
+                url="https://example.com",
+                status=SessionStatus.UPLOADING,
+                expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+                filename_map={"https://example.com/a.png": "images/old.png"},
+            ))
+            await db.commit()
+
+        async with factory() as db:
+            client = (await db.execute(
+                sa_select(Client).where(Client.id == "client-map2")
+            )).scalar_one()
+            await upload_filename_map(
+                "sess-map2",
+                body=FilenameMapRequest(map={
+                    "https://example.com/a.png": "images/new.png",
+                }),
+                client=client,
+                db=db,
+            )
+            await db.commit()
+
+        async with factory() as db:
+            row = (await db.execute(
+                sa_select(Session).where(Session.id == "sess-map2")
+            )).scalar_one()
+            assert row.filename_map == {
+                "https://example.com/a.png": "images/new.png",
+            }
+
+
+# ---------------------------------------------------------------------------
+# 3.5 — gzip bomb guard
+# ---------------------------------------------------------------------------
+
+
+class TestGzipBombGuard:
+    """Bounded decompression: small gzipped payloads inflating past the
+    per-resource ceiling / session budget are rejected with 413 BEFORE the
+    full inflated buffer is allocated."""
+
+    def _gz(self, payload: bytes) -> bytes:
+        import gzip as _gzip
+        return _gzip.compress(payload)
+
+    @pytest.mark.asyncio
+    async def test_gzip_bomb_rejected_413(self, tmp_path):
+        """~10 KB compressed inflating to 10 MB with a 1 MB ceiling → 413."""
+        import gzip as _gzip
+
+        session_id = "sess-bomb"
+        client_id = "client-bomb"
+        storage_root = str(tmp_path)
+
+        db = _mock_db(
+            _scalar_one(_mock_session(session_id, client_id)),  # session lookup
+            _scalar(0),                                          # session size query
+        )
+
+        bomb = self._gz(b"A" * (10 * 1024 * 1024))
+        assert len(bomb) < 100_000  # genuinely small compressed payload
+
+        with patch("app.api.routes.resources.settings") as cfg, \
+             patch("app.api.routes.resources.resource_upload_limiter") as limiter, \
+             patch("app.api.routes.resources.require_session_owner"):
+            cfg.max_session_size_mb = 100
+            cfg.max_resource_inflate_mb = 1  # hard ceiling: 1 MB
+            cfg.storage_root = storage_root
+            limiter.is_allowed.return_value = (True, 0)
+
+            with pytest.raises(HTTPException) as exc:
+                await upload_resource(
+                    session_id=session_id,
+                    request=_mock_request(content_length=None),
+                    file=_AsyncUploadFile(bomb, "bomb.css"),
+                    path="styles/bomb.css",
+                    originalUrl="https://example.com/bomb.css",
+                    contentType="text/css",
+                    x_content_gzipped=True,
+                    client=MagicMock(id=client_id),
+                    db=db,
+                )
+
+        assert exc.value.status_code == 413
+        assert exc.value.detail["error"] == "inflated_size_exceeded"
+
+        # Nothing written to disk
+        resources_dir = os.path.join(storage_root, session_id, "resources")
+        assert not os.path.exists(resources_dir) or os.listdir(resources_dir) == []
+
+    @pytest.mark.asyncio
+    async def test_gzip_within_budget_is_stored(self, tmp_path):
+        """A gzipped payload inflating under the cap is stored decompressed."""
+        session_id = "sess-gz-ok"
+        client_id = "client-gz-ok"
+        storage_root = str(tmp_path)
+
+        payload = b"body { color: red; }\n" * 20  # 420 bytes inflated
+        gz = self._gz(payload)
+
+        db = _mock_db(
+            _scalar_one(_mock_session(session_id, client_id)),  # session lookup
+            _scalar(0),                                          # session size query
+            _scalar_one(None),                                   # dedup → no match
+        )
+
+        with patch("app.api.routes.resources.settings") as cfg, \
+             patch("app.api.routes.resources.resource_upload_limiter") as limiter, \
+             patch("app.api.routes.resources.require_session_owner"):
+            cfg.max_session_size_mb = 100
+            cfg.max_resource_inflate_mb = 1
+            cfg.storage_root = storage_root
+            limiter.is_allowed.return_value = (True, 0)
+
+            response = await upload_resource(
+                session_id=session_id,
+                request=_mock_request(content_length=None),
+                file=_AsyncUploadFile(gz, "main.css"),
+                path="styles/main.css",
+                originalUrl="https://example.com/main.css",
+                contentType="text/css",
+                x_content_gzipped=True,
+                client=MagicMock(id=client_id),
+                db=db,
+            )
+
+        assert response.deduplicated is False
+        assert response.size == len(payload)
+
+        # The stored file holds the DECOMPRESSED content
+        resources_dir = os.path.join(storage_root, session_id, "resources")
+        written = os.listdir(resources_dir)
+        assert len(written) == 1
+        with open(os.path.join(resources_dir, written[0]), "rb") as f:
+            assert f.read() == payload
+
+    @pytest.mark.asyncio
+    async def test_gzip_rejected_when_session_budget_exhausted(self, tmp_path):
+        """No remaining session budget → 413 before any decompression."""
+        session_id = "sess-gz-full"
+        client_id = "client-gz-full"
+        storage_root = str(tmp_path)
+
+        db = _mock_db(
+            _scalar_one(_mock_session(session_id, client_id)),  # session lookup
+            _scalar(100 * 1024 * 1024),                          # session already full
+        )
+
+        with patch("app.api.routes.resources.settings") as cfg, \
+             patch("app.api.routes.resources.resource_upload_limiter") as limiter, \
+             patch("app.api.routes.resources.require_session_owner"):
+            cfg.max_session_size_mb = 100
+            cfg.max_resource_inflate_mb = 1
+            cfg.storage_root = storage_root
+            limiter.is_allowed.return_value = (True, 0)
+
+            with pytest.raises(HTTPException) as exc:
+                await upload_resource(
+                    session_id=session_id,
+                    request=_mock_request(content_length=None),
+                    file=_AsyncUploadFile(self._gz(b"tiny"), "x.css"),
+                    path="styles/x.css",
+                    originalUrl="https://example.com/x.css",
+                    contentType="text/css",
+                    x_content_gzipped=True,
+                    client=MagicMock(id=client_id),
+                    db=db,
+                )
+
+        assert exc.value.status_code == 413
+        assert exc.value.detail["error"] == "session_size_exceeded"
+
+
+# ---------------------------------------------------------------------------
+# 3.5 helper — bounded decompression unit checks
+# ---------------------------------------------------------------------------
+
+
+class TestDecompressBounded:
+    """Unit tests for the _decompress_bounded helper."""
+
+    def test_rejects_output_past_cap(self):
+        import gzip as _gzip
+
+        from app.api.routes.resources import _GzipBombError, _decompress_bounded
+
+        bomb = _gzip.compress(b"x" * 5_000_000)
+        with pytest.raises(_GzipBombError):
+            _decompress_bounded(bomb, 1024 * 1024)
+
+    def test_accepts_output_within_cap(self):
+        import gzip as _gzip
+
+        from app.api.routes.resources import _decompress_bounded
+
+        payload = b"y" * 4096
+        assert _decompress_bounded(_gzip.compress(payload), 1 << 20) == payload
+
+    def test_rejects_truncated_stream(self):
+        import gzip as _gzip
+
+        from app.api.routes.resources import _decompress_bounded
+
+        blob = _gzip.compress(b"z" * 100)
+        with pytest.raises(EOFError):
+            _decompress_bounded(blob[: len(blob) // 2], 1 << 20)
+
+    def test_rejects_malformed_stream(self):
+        import zlib
+
+        from app.api.routes.resources import _decompress_bounded
+
+        with pytest.raises(zlib.error):
+            _decompress_bounded(b"not-gzip-at-all", 1 << 20)
+
+    def test_handles_multimember_stream(self):
+        import gzip as _gzip
+
+        from app.api.routes.resources import _decompress_bounded
+
+        payload1 = b"a" * 2048
+        payload2 = b"b" * 2048
+        blob = _gzip.compress(payload1) + _gzip.compress(payload2)
+        assert _decompress_bounded(blob, 1 << 20) == payload1 + payload2
+
+    def test_multimember_bomb_still_rejected(self):
+        import gzip as _gzip
+
+        from app.api.routes.resources import _GzipBombError, _decompress_bounded
+
+        blob = _gzip.compress(b"a" * 2048) + _gzip.compress(b"b" * 5_000_000)
+        with pytest.raises(_GzipBombError):
+            _decompress_bounded(blob, 1 << 20)

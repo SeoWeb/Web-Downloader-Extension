@@ -13,6 +13,10 @@ services:
       - ARCHIVE_CA_CERT=/app/certs/ca.pem
       - ARCHIVE_CLIENT_KEY=/app/certs/extension-server-key.pem
       - ARCHIVE_CLIENT_CERT=/app/certs/extension-server.pem
+      - AUTH_SERVICE_ADDR=auth-service:50051
+      - AUTH_CA_CERT=/app/certs/ca.pem
+      - AUTH_CLIENT_KEY=/app/certs/extension-server-key.pem
+      - AUTH_CLIENT_CERT=/app/certs/extension-server.pem
       - PROTO_DIR=/app/proto_generated
     volumes:
       - ./storage:/app/storage

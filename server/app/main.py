@@ -24,13 +24,20 @@ async def lifespan(app: FastAPI):
             logger.error("Config error: %s", err)
         raise RuntimeError("Archive service config invalid: " + "; ".join(config_errors))
 
+    # Validate auth service config (cloud identity binding)
+    from app.services.auth_client import validate_config as validate_auth_config
+    auth_errors = validate_auth_config()
+    if auth_errors:
+        for err in auth_errors:
+            logger.error("Config error: %s", err)
+        raise RuntimeError("Auth service config invalid: " + "; ".join(auth_errors))
+
     # Import models so Alembic/Auto-generate can discover them
-    import app.models  # noqa: F401
-
-    from app.db.database import init_db, async_session_factory
-
     # Ensure storage root directory exists
     import os
+
+    import app.models  # noqa: F401
+    from app.db.database import async_session_factory, init_db
     os.makedirs(settings.storage_root, exist_ok=True)
 
     await init_db()
@@ -85,7 +92,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestFilterMiddleware)
 
 # API routers
-from app.api.routes import auth, download, health, html, resources, sessions
+from app.api.routes import auth, cloud, download, health, html, resources, sessions
 
 app.include_router(auth.router)
 app.include_router(health.router)
@@ -93,3 +100,4 @@ app.include_router(sessions.router)
 app.include_router(html.router)
 app.include_router(resources.router)
 app.include_router(download.router)
+app.include_router(cloud.router)

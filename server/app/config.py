@@ -54,6 +54,25 @@ class Settings(BaseSettings):
     archive_client_key: str = ""
     archive_client_cert: str = ""
 
+    # PagePocket auth service (cloud identity binding, cloud/link)
+    # Sane default matches the compose service name on the internal network.
+    auth_service_addr: str = "auth-service:50051"
+    auth_ca_cert: str = ""
+    auth_client_key: str = ""
+    auth_client_cert: str = ""
+
+    # Resource guards — gzip decompression ceiling per uploaded resource
+    # (hard cap, independent of the per-session budget).
+    max_resource_inflate_mb: int = 50
+
+    # Registration throttling (7.8)
+    # Max distinct registration attempts per extension instance id per day
+    # and per client IP per day (burst == limit, refill spread over 24h).
+    registration_per_instance_daily_limit: int = 10
+    # Honor X-Forwarded-For for client-IP resolution ONLY when the monolith
+    # sits behind a trusted reverse proxy (default: use the peer address).
+    trust_proxy: bool = False
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

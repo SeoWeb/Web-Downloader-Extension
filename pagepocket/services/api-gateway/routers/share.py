@@ -57,13 +57,25 @@ def _format_share_response(resp):
 
 @router.post("")
 async def create_share_link(request: Request, body: dict):
+    # Mandatory page-ownership check (D3): resolve the page via the archive
+    # service with the caller's user_id BEFORE creating a link. A page that
+    # does not exist or belongs to another user yields NOT_FOUND, which is
+    # surfaced unchanged (no existence leak).
+    try:
+        archive_stub().GetPage(archive_pb2.GetPageRequest(
+            page_id=body["page_id"],
+            user_id=request.state.user_id,
+        ), timeout=30)
+    except grpc.RpcError as e:
+        handle_grpc_error(e)
+
     try:
         resp = share_stub().CreateShareLink(share_pb2.CreateShareLinkRequest(
             user_id=request.state.user_id,
             page_id=body["page_id"],
             is_public=body.get("is_public", True),
             expires_at=body.get("expires_at", 0),
-        ))
+        ), timeout=30)
         return _format_share_response(resp)
     except grpc.RpcError as e:
         handle_grpc_error(e)
@@ -75,7 +87,7 @@ async def get_share_link_by_page(request: Request, page_id: str):
         resp = share_stub().GetShareLinkByPage(share_pb2.GetShareLinkByPageRequest(
             user_id=request.state.user_id,
             page_id=page_id,
-        ))
+        ), timeout=30)
         return _format_share_response(resp)
     except grpc.RpcError as e:
         handle_grpc_error(e)
@@ -87,7 +99,7 @@ async def revoke_share_link(request: Request, token: str):
         resp = share_stub().RevokeShareLink(share_pb2.RevokeShareLinkRequest(
             token=token,
             user_id=request.state.user_id,
-        ))
+        ), timeout=30)
         return {"success": resp.success}
     except grpc.RpcError as e:
         handle_grpc_error(e)
@@ -97,15 +109,17 @@ async def revoke_share_link(request: Request, token: str):
 async def validate_share_link(token: str):
     """Public endpoint - no auth required."""
     try:
-        resp = share_stub().ValidateToken(share_pb2.ValidateTokenRequest(token=token))
+        resp = share_stub().ValidateToken(share_pb2.ValidateTokenRequest(token=token), timeout=30)
         if not resp.valid:
             raise HTTPException(status_code=404, detail={"detail": "Share link not found or expired", "api_version": "v1"})
 
-        # Get presigned URL for the page
+        # Get presigned URL for the page. The owner resolved at token
+        # validation is passed as user_id — ownership checks are mandatory
+        # downstream; an empty user_id is no longer a wildcard (D3).
         content = archive_stub().GetPageContent(archive_pb2.GetPageContentRequest(
             page_id=resp.page_id,
-            user_id="",  # Share tokens bypass user check
-        ))
+            user_id=resp.owner_user_id,
+        ), timeout=30)
         expires_at = None
         if content.expires_at:
             expires_at = datetime.fromtimestamp(content.expires_at, tz=timezone.utc).isoformat()
@@ -125,18 +139,19 @@ def _content_type_for_path(file_path: str) -> str:
 async def get_share_file(token: str, file_path: str):
     """Public endpoint - serve an archived file for a share token."""
     try:
-        resp = share_stub().ValidateToken(share_pb2.ValidateTokenRequest(token=token))
+        resp = share_stub().ValidateToken(share_pb2.ValidateTokenRequest(token=token), timeout=30)
         if not resp.valid:
             raise HTTPException(status_code=404, detail="Share link not found or expired")
 
         page_id = resp.page_id
+        owner_user_id = resp.owner_user_id
 
         def _fetch(path):
             return archive_stub().GetArchiveFile(archive_pb2.GetArchiveFileRequest(
                 page_id=page_id,
-                user_id="",
+                user_id=owner_user_id,
                 file_path=path,
-            ))
+            ), timeout=30)
 
         # Try direct path first
         try:

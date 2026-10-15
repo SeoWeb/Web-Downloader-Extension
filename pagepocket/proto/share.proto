@@ -50,6 +50,9 @@ message ShareLinkResponse {
 message ValidateShareResponse {
   bool valid = 1;
   string page_id = 2;
+  // Page owner resolved at validation time so downstream file access can use
+  // mandatory ownership checks (additive field — see harden-backend-security-and-ops D3/D9).
+  string owner_user_id = 3;
 }
 
 message StatusResponse {

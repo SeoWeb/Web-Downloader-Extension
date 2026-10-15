@@ -156,6 +156,12 @@ class Session(Base):
         nullable=True,
         comment="PagePocket cloud user ID for cloud archive push",
     )
+    pagepocket_plan: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+        comment="PagePocket plan copied from the client binding at session "
+        "creation; authoritative plan for the cloud push (never client-supplied)",
+    )
     cloud_status: Mapped[str | None] = mapped_column(
         String(20),
         nullable=True,

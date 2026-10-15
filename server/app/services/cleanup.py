@@ -25,7 +25,6 @@ import shutil
 from datetime import datetime, timedelta, timezone
 
 import psutil
-
 from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -557,11 +556,15 @@ class CleanupService:
     # ------------------------------------------------------------------
 
     async def _cleanup_orphaned_api_keys(self, db: AsyncSession) -> int:
-        """Delete client records with no sessions and age > 30 days.
+        """Delete client records with no sessions and no auth activity (6.4).
 
-        Prevents unbounded accumulation of API keys from extension
-        instances that registered but never created any sessions, or
-        whose sessions have all expired and been cleaned up.
+        A client is orphaned when it has zero sessions AND its last
+        authentication activity (``last_auth_at``, falling back to
+        ``created_at`` for legacy rows) is older than the configured age
+        (default 30 days). Prevents unbounded accumulation of API keys from
+        extension instances that registered but never created any sessions,
+        or whose sessions have all expired and been cleaned up. Expired
+        sessions of dead clients are reaped by the normal expiry pass.
 
         Returns:
             Number of orphaned client records deleted.
@@ -570,8 +573,9 @@ class CleanupService:
             days=self.orphaned_key_age_days
         )
 
-        # Find clients with no sessions and created before the cutoff
-        # Use a subquery to count sessions per client
+        # Find clients with no sessions whose last auth activity (or
+        # creation, for never-authed rows) predates the cutoff.
+        # Use a subquery to count sessions per client.
         session_count_stmt = (
             select(Session.client_id, func.count().label("session_count"))
             .group_by(Session.client_id)
@@ -585,7 +589,7 @@ class CleanupService:
                 Client.id == session_count_stmt.c.client_id,
             )
             .where(
-                Client.created_at <= cutoff,
+                func.coalesce(Client.last_auth_at, Client.created_at) <= cutoff,
                 # No sessions at all, or session_count is NULL (left join)
                 session_count_stmt.c.session_count.is_(None),
             )

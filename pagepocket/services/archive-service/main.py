@@ -1,5 +1,6 @@
 """Archive service entry point."""
 
+import logging
 import os
 import sys
 from concurrent import futures
@@ -15,6 +16,10 @@ from servicer import ArchiveServicer
 
 
 def serve():
+    logging.basicConfig(
+        level=os.environ.get("LOG_LEVEL", "INFO"),
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10),
         options=[

@@ -17,11 +17,22 @@ sys.path.insert(0, _shared)
 sys.path.insert(0, os.path.join(_shared, "proto_generated"))
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), "..")))
 
+# Per-service module names (models/servicer) exist in every service. Import
+# this suite's copies ONCE under an alias; tests/conftest.py re-points the
+# shared sys.modules names per test for combined multi-suite runs.
+_PP_ALIAS = "_ppsvc_library-service_"
+if _PP_ALIAS + "models" not in sys.modules:
+    for _name in ("models", "servicer"):
+        sys.modules.pop(_name, None)
+
 import grpc
 import library_pb2
 import servicer as _servicer_mod
 from db import Base, db_session
 from models import Collection, PageCollection
+
+sys.modules[_PP_ALIAS + "models"] = sys.modules["models"]
+sys.modules[_PP_ALIAS + "servicer"] = sys.modules["servicer"]
 
 
 class _FakeRpcContext:
@@ -315,6 +326,150 @@ class TestLibraryServicer(unittest.TestCase):
         )
         resp = self.svc.UpdateCollection(req, ctx)
         self.assertEqual(resp.color, "#00FF00")
+
+
+# ---------------------------------------------------------------------------
+# Page-ownership checks on membership writes (2.5): a foreign or missing page
+# must never be linkable (and therefore never enumerable via ListPages).
+# ---------------------------------------------------------------------------
+
+class _FakeOwnershipError(grpc.RpcError):
+    def __init__(self, code):
+        self._code = code
+
+    def code(self):
+        return self._code
+
+    def details(self):
+        return "fake"
+
+
+class TestPageOwnership(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.engine = _init_db()
+        cls._engine_patcher = unittest.mock.patch.object(
+            _servicer_mod, "get_engine", return_value=cls.engine
+        )
+        cls._engine_patcher.start()
+
+        orig_db_session = _servicer_mod.db_session
+
+        def _bound_session(engine_arg=None):
+            return orig_db_session(engine_arg or cls.engine)
+
+        cls._session_patcher = unittest.mock.patch.object(
+            _servicer_mod, "db_session", _bound_session
+        )
+        cls._session_patcher.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._engine_patcher.stop()
+        cls._session_patcher.stop()
+
+    def setUp(self):
+        with db_session(self.engine) as s:
+            s.query(PageCollection).delete()
+            s.query(Collection).delete()
+        self.svc = _servicer_mod.LibraryServicer()
+
+    def _set_archive_stub(self, stub):
+        p = unittest.mock.patch.object(_servicer_mod, "_get_archive_stub", return_value=stub)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def _coll(self, user_id=USER_A):
+        ctx = _FakeRpcContext()
+        resp = self.svc.CreateCollection(
+            library_pb2.CreateCollectionRequest(user_id=user_id, name="Coll"), ctx
+        )
+        return resp.id
+
+    def _add(self, page_id, collection_id, user_id=USER_A):
+        ctx = _FakeRpcContext()
+        resp = self.svc.AddPageToCollection(library_pb2.PageCollectionRequest(
+            user_id=user_id, page_id=page_id, collection_id=collection_id,
+        ), ctx)
+        return resp, ctx
+
+    def _remove(self, page_id, collection_id, user_id=USER_A):
+        ctx = _FakeRpcContext()
+        resp = self.svc.RemovePageFromCollection(library_pb2.PageCollectionRequest(
+            user_id=user_id, page_id=page_id, collection_id=collection_id,
+        ), ctx)
+        return resp, ctx
+
+    def _owned_stub(self):
+        stub = unittest.mock.MagicMock()
+        stub.GetPage.return_value = unittest.mock.MagicMock()
+        return stub
+
+    def _foreign_stub(self):
+        stub = unittest.mock.MagicMock()
+        stub.GetPage.side_effect = _FakeOwnershipError(grpc.StatusCode.NOT_FOUND)
+        return stub
+
+    def test_add_owned_page_succeeds(self):
+        self._set_archive_stub(self._owned_stub())
+        coll = self._coll()
+        resp, ctx = self._add("my-page", coll)
+        self.assertIsNone(ctx.code)
+        self.assertTrue(resp.success)
+        with db_session(self.engine) as s:
+            self.assertEqual(s.query(PageCollection).count(), 1)
+
+    def test_add_foreign_page_rejected_not_found(self):
+        self._set_archive_stub(self._foreign_stub())
+        coll = self._coll()
+        _resp, ctx = self._add("someone-elses-page", coll)
+        self.assertEqual(ctx.code, grpc.StatusCode.NOT_FOUND)
+        with db_session(self.engine) as s:
+            self.assertEqual(s.query(PageCollection).count(), 0)
+
+    def test_add_missing_page_rejected_not_found(self):
+        self._set_archive_stub(self._foreign_stub())
+        coll = self._coll()
+        _, ctx = self._add("does-not-exist", coll)
+        self.assertEqual(ctx.code, grpc.StatusCode.NOT_FOUND)
+
+    def test_foreign_page_not_enumerable_via_collection(self):
+        """The 2.5 chain: unlinkable page ⇒ ListCollectionPageIds excludes it."""
+        self._set_archive_stub(self._foreign_stub())
+        coll = self._coll()
+        self._add("someone-elses-page", coll)
+
+        ctx = _FakeRpcContext()
+        resp = self.svc.ListCollectionPageIds(
+            library_pb2.ListCollectionPageIdsRequest(
+                collection_id=coll, user_id=USER_A,
+            ), ctx
+        )
+        self.assertEqual(list(resp.page_ids), [])
+
+    def test_remove_foreign_page_rejected_not_found(self):
+        self._set_archive_stub(self._foreign_stub())
+        coll = self._coll()
+        _, ctx = self._remove("someone-elses-page", coll)
+        self.assertEqual(ctx.code, grpc.StatusCode.NOT_FOUND)
+
+    def test_archive_unavailable_fails_closed(self):
+        stub = unittest.mock.MagicMock()
+        stub.GetPage.side_effect = _FakeOwnershipError(grpc.StatusCode.UNAVAILABLE)
+        self._set_archive_stub(stub)
+        coll = self._coll()
+        _, ctx = self._add("any-page", coll)
+        self.assertEqual(ctx.code, grpc.StatusCode.NOT_FOUND)
+        with db_session(self.engine) as s:
+            self.assertEqual(s.query(PageCollection).count(), 0)
+
+    def test_no_archive_configured_gateway_is_enforcement_point(self):
+        """Without ARCHIVE_SERVICE_ADDR behavior is unchanged (gateway enforces)."""
+        self._set_archive_stub(None)
+        coll = self._coll()
+        resp, ctx = self._add("page-1", coll)
+        self.assertIsNone(ctx.code)
+        self.assertTrue(resp.success)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,10 @@ service ArchiveService {
   rpc DeletePage(DeletePageRequest) returns (StatusResponse);
   rpc GetPageContent(GetPageContentRequest) returns (PageContentResponse);
   rpc GetArchiveFile(GetArchiveFileRequest) returns (ArchiveFileResponse);
+  // Additive (harden-backend-security-and-ops 3.8/5.9): internal maintenance
+  // RPCs. Not proxied by the gateway; reachable only on the service network.
+  rpc RetryPendingIndexing(RetryPendingIndexingRequest) returns (RetryPendingIndexingResponse);
+  rpc SweepOrphanR2Objects(SweepOrphanR2ObjectsRequest) returns (SweepOrphanR2ObjectsResponse);
 }
 
 message Asset {
@@ -92,4 +96,25 @@ message GetArchiveFileRequest {
 message ArchiveFileResponse {
   bytes data = 1;
   string content_type = 2;
+}
+
+message RetryPendingIndexingRequest {
+  int32 limit = 1; // max pages to retry in one pass; 0 = service default
+}
+
+message RetryPendingIndexingResponse {
+  int32 retried = 1;
+  int32 succeeded = 2;
+}
+
+message SweepOrphanR2ObjectsRequest {
+  int64 grace_period_seconds = 1; // 0 = default (7 days)
+  int32 max_prefixes = 2;         // safety cap on user prefixes scanned; 0 = unbounded
+}
+
+message SweepOrphanR2ObjectsResponse {
+  int32 scanned_prefixes = 1;
+  int32 deleted_prefixes = 2;
+  int32 deleted_objects = 3;
+  repeated string errors = 4;
 }

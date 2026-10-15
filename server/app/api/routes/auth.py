@@ -8,8 +8,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.rate_limiter import registration_instance_limiter, registration_limiter
+from app.config import settings
 from app.db.database import get_db
-from app.api.rate_limiter import registration_limiter
 from app.models.client import Client
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,27 @@ class RegisterResponse(BaseModel):
     api_version: str = "v1"
 
 
+def get_client_ip(request: Request) -> str:
+    """Resolve the client IP for rate limiting (7.8).
+
+    By default the peer address is used — honoring ``X-Forwarded-For`` from
+    an untrusted caller lets anyone rotate their limit key. Only when
+    ``TRUST_PROXY`` is enabled (monolith behind a known reverse proxy) is the
+    rightmost X-Forwarded-For entry trusted: the trusted proxy appends the
+    real peer to the header, so the rightmost entry is the one it observed.
+    """
+    peer = request.client.host if request.client else "unknown"
+    if not settings.trust_proxy:
+        return peer
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        # Rightmost entry is added by the trusted proxy → most trustworthy.
+        candidate = forwarded.split(",")[-1].strip()
+        if candidate:
+            return candidate
+    return peer
+
+
 @router.post(
     "/register",
     response_model=RegisterResponse,
@@ -50,8 +72,8 @@ async def register(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> RegisterResponse:
     """Register an extension client and return an API key."""
-    # Rate limiting by client IP
-    client_ip = request.client.host if request.client else "unknown"
+    # Rate limiting by client IP (proxy-aware per TRUST_PROXY, 7.8)
+    client_ip = get_client_ip(request)
     allowed, retry_after = registration_limiter.is_allowed(client_ip)
     if not allowed:
         raise HTTPException(
@@ -66,8 +88,27 @@ async def register(
 
     body = body or RegisterRequest()
 
-    # If extension_instance_id provided, check if already registered
+    # Rate limiting per extension instance id (7.8): instance ids are
+    # client-controlled strings; without a per-id bound, a caller can hammer
+    # the dedup lookup with arbitrary ids. Burst == daily limit, refill
+    # spread over 24h, so each id gets at most ~N registrations per day.
     if body.client_id:
+        allowed, retry_after = registration_instance_limiter.is_allowed(
+            body.client_id
+        )
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error": "rate_limit_exceeded",
+                    "message": "Too many registration attempts for this instance id. "
+                    "Please try again later.",
+                    "api_version": "v1",
+                },
+                headers={"Retry-After": str(math.ceil(retry_after))},
+            )
+
+        # If extension_instance_id provided, check if already registered
         stmt = select(Client).where(Client.extension_instance_id == body.client_id)
         result = await db.execute(stmt)
         existing = result.scalar_one_or_none()
@@ -78,10 +119,12 @@ async def register(
                 extension_instance_id=existing.extension_instance_id,
             )
 
-    # Create new client
+    # Create new client — API key hash is stored at creation (7.5).
+    # flush() first so the api_key column default is applied and hashable.
     client = Client(extension_instance_id=body.client_id, name=body.name)
     db.add(client)
     await db.flush()
+    client.api_key_hash = Client.hash_key(client.api_key)
 
     logger.info("Registered new client: id=%s", client.id)
     return RegisterResponse(

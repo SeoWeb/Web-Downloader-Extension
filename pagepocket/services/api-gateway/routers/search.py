@@ -31,7 +31,7 @@ async def search(
             page=page,
             page_size=page_size,
             collection_id=collection_id,
-        ))
+        ), timeout=30)
         return {
             "results": [
                 {

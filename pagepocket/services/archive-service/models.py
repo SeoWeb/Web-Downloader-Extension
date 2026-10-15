@@ -5,7 +5,7 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, DateTime, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
@@ -23,6 +23,12 @@ def _now():
 
 class Page(Base):
     __tablename__ = "pages"
+    # Ingest idempotency is scoped per user (D3/2.6): one user's job id can
+    # never resolve to another user's page. Supersedes the previous global
+    # unique on extension_job_id (migration 002 swaps the constraint).
+    __table_args__ = (
+        Index("ix_pages_user_job", "user_id", "extension_job_id", unique=True),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
@@ -31,7 +37,11 @@ class Page(Base):
     preview_text: Mapped[str] = mapped_column(Text, nullable=True)
     r2_key: Mapped[str] = mapped_column(String(500), nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
-    extension_job_id: Mapped[str] = mapped_column(String(36), unique=True, nullable=True, index=True)
+    extension_job_id: Mapped[str] = mapped_column(String(36), nullable=True)
+    # Reliable search indexing (3.8): set False at insert (same transaction),
+    # flipped True only after SearchService.IndexPage succeeds. Rows left False
+    # are retried by RetryPendingIndexing.
+    search_indexed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     archived_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
 
 

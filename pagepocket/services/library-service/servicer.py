@@ -1,5 +1,6 @@
 """Library service gRPC servicer implementation."""
 
+import logging
 import os
 import sys
 
@@ -9,6 +10,8 @@ from sqlalchemy import func, select
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared", "proto_generated"))
 
+import archive_pb2
+import archive_pb2_grpc
 import library_pb2
 import library_pb2_grpc
 from cache import cache_delete, cache_get, cache_invalidate_pattern, cache_set
@@ -21,7 +24,29 @@ from cache_config import (
     pattern_collections,
 )
 from db import db_session, get_engine
+from grpc_mtls import secure_channel_credentials
 from models import Collection, PageCollection
+
+logger = logging.getLogger(__name__)
+
+
+def _get_archive_stub():
+    """Optional archive-service client for page-ownership checks (2.5).
+
+    The library DB has no pages table, so page ownership is verified against
+    the archive service when ARCHIVE_SERVICE_ADDR is configured. The gateway
+    performs the same check on ingest-serving routes; this is the in-service
+    enforcement for callers that bypass the gateway.
+    """
+    addr = os.environ.get("ARCHIVE_SERVICE_ADDR")
+    if not addr:
+        return None
+    mtls = os.environ.get("MTLS_ENABLED", "false").lower() == "true"
+    if mtls:
+        channel = grpc.secure_channel(addr, secure_channel_credentials())
+    else:
+        channel = grpc.insecure_channel(addr)
+    return archive_pb2_grpc.ArchiveServiceStub(channel)
 
 
 def _coll_to_dict(c, page_count):
@@ -45,6 +70,30 @@ def _dict_to_response(d):
 class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
     def __init__(self):
         self.engine = get_engine()
+
+    def _page_owned_by_user(self, user_id: str, page_id: str) -> bool:
+        """Verify the page exists and is owned by `user_id` (2.5).
+
+        Fail closed: only a positive confirmation from the archive service
+        counts. Any failure returns False and callers surface NOT_FOUND
+        uniformly, so another user's page existence is never leaked.
+        """
+        stub = _get_archive_stub()
+        if stub is None:
+            # Not configured: the gateway's ownership checks on the archive
+            # routes are the enforcement point for gateway traffic.
+            return True
+        try:
+            stub.GetPage(archive_pb2.GetPageRequest(
+                page_id=page_id, user_id=user_id,
+            ), timeout=30)
+            return True
+        except grpc.RpcError as exc:
+            logger.warning(
+                "Page-ownership check failed for user %s page %s: %s",
+                user_id, page_id, exc.code(),
+            )
+            return False
 
     def CreateCollection(self, request, context):
         if not request.name.strip():
@@ -207,6 +256,15 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
                 context.set_details("Collection not owned by user")
                 return library_pb2.StatusResponse()
 
+            # Page-ownership check (2.5): a page that is missing or owned by
+            # another user must never be linked into a collection, otherwise
+            # it becomes enumerable via ListPages(collection_id). NOT_FOUND
+            # covers both cases without leaking existence.
+            if not self._page_owned_by_user(request.user_id, request.page_id):
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details("Page not found")
+                return library_pb2.StatusResponse()
+
             existing = session.execute(
                 select(PageCollection).where(
                     PageCollection.page_id == request.page_id,
@@ -236,6 +294,12 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             if not coll or coll.user_id != request.user_id:
                 context.set_code(grpc.StatusCode.PERMISSION_DENIED)
                 context.set_details("Collection not owned by user")
+                return library_pb2.StatusResponse()
+
+            # Page-ownership check for symmetry with Add (2.5).
+            if not self._page_owned_by_user(request.user_id, request.page_id):
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details("Page not found")
                 return library_pb2.StatusResponse()
 
             session.query(PageCollection).filter(

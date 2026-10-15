@@ -1788,3 +1788,179 @@ class TestLinkedPageFilenames:
         base2 = generate_page_filename(url2)
         assert base1 != base2  # "about.html" vs "contact.html"
 
+
+
+# ---------------------------------------------------------------------------
+# 3.7 — deterministic dedup of colliding archive paths
+# ---------------------------------------------------------------------------
+
+
+class TestArchivePathCollisionDedup:
+    """Two distinct URLs resolving to the same local_path both land in the
+    ZIP under distinct, deterministic entries and references are rewritten."""
+
+    @staticmethod
+    def _colliding_resources(tmp_path):
+        """Two resources with different URLs/storage files but the same
+        local_path (e.g. both uploaded as images/logo.png)."""
+        import types
+
+        r_a = types.SimpleNamespace(
+            id="res-a",
+            local_path="images/logo.png",
+            storage_path=str(tmp_path / "a.png"),
+            original_url="https://site-a.example/logo.png",
+            content_type="image/png",
+            size=3,
+        )
+        r_b = types.SimpleNamespace(
+            id="res-b",
+            local_path="images/logo.png",
+            storage_path=str(tmp_path / "b.png"),
+            original_url="https://site-b.example/logo.png",
+            content_type="image/png",
+            size=4,
+        )
+        (tmp_path / "a.png").write_bytes(b"AAA")
+        (tmp_path / "b.png").write_bytes(b"BBBB")
+        return r_a, r_b
+
+    def test_collision_gets_stable_suffix(self, tmp_path):
+        from app.services.zip_assembler import resolve_archive_path_collisions
+
+        r_a, r_b = self._colliding_resources(tmp_path)
+        (
+            archive_paths, conv_map, conv_storage, conv_ext,
+        ) = resolve_archive_path_collisions(
+            [r_a, r_b], {"https://site-a.example/logo.png": "images/logo.png",
+                         "https://site-b.example/logo.png": "images/logo.png"},
+            {"images/logo.png": r_a.storage_path},
+            {},
+        )
+
+        # Both stored, distinct entries
+        paths = sorted(archive_paths.values())
+        assert len(paths) == 2
+        assert len(set(paths)) == 2
+        assert "images/logo.png" in paths  # one keeps the original name
+        suffixed = next(p for p in paths if p != "images/logo.png")
+        assert suffixed.startswith("images/logo-")
+        assert suffixed.endswith(".png")
+
+        # Stable hash suffix (no timestamp/randomness)
+        r_a2, r_b2 = self._colliding_resources(tmp_path)
+        again = resolve_archive_path_collisions(
+            [r_a2, r_b2], {}, {}, {},
+        )[0]
+        assert sorted(again.values()) == paths, (
+            "re-assembly must produce identical archive paths"
+        )
+
+    def test_filename_map_rewritten_to_suffixed_path(self, tmp_path):
+        """HTML references (URL → filename map) point at the correct entry."""
+        from app.services.zip_assembler import resolve_archive_path_collisions
+
+        r_a, r_b = self._colliding_resources(tmp_path)
+        filename_map = {
+            "https://site-a.example/logo.png": "images/logo.png",
+            "https://site-b.example/logo.png": "images/logo.png",
+        }
+        (_, conv_map, conv_storage, _) = resolve_archive_path_collisions(
+            [r_a, r_b], filename_map, {}, {},
+        )
+
+        # Loser's URL now maps to the suffixed entry
+        assert conv_map["https://site-a.example/logo.png"] == "images/logo.png"
+        loser_final = conv_map["https://site-b.example/logo.png"]
+        assert loser_final != "images/logo.png"
+
+        # Disk lookup resolves the suffixed name to the correct storage file
+        assert conv_storage[loser_final] == r_b.storage_path
+        assert conv_storage["images/logo.png"] == r_a.storage_path
+
+    def test_non_colliding_paths_untouched(self, tmp_path):
+        from app.services.zip_assembler import resolve_archive_path_collisions
+
+        import types
+        r1 = types.SimpleNamespace(
+            id="r1", local_path="images/x.png",
+            storage_path="/tmp/x.png", original_url="https://e/x.png",
+        )
+        r2 = types.SimpleNamespace(
+            id="r2", local_path="styles/s.css",
+            storage_path="/tmp/s.css", original_url="https://e/s.css",
+        )
+        fm = {"https://e/x.png": "images/x.png", "https://e/s.css": "styles/s.css"}
+        (archive_paths, conv_map, conv_storage, _) = resolve_archive_path_collisions(
+            [r1, r2], fm, {}, {},
+        )
+        assert archive_paths == {"r1": "images/x.png", "r2": "styles/s.css"}
+        assert conv_map == fm
+
+    def test_dedup_is_deterministic_regardless_of_input_order(self, tmp_path):
+        from app.services.zip_assembler import resolve_archive_path_collisions
+
+        r_a, r_b = self._colliding_resources(tmp_path)
+        first = resolve_archive_path_collisions([r_a, r_b], {}, {}, {})[0]
+        second = resolve_archive_path_collisions([r_b, r_a], {}, {}, {})[0]
+        # Same resource keeps the same final path in both orders
+        assert first["res-a"] == second["res-a"]
+        assert first["res-b"] == second["res-b"]
+
+    def test_zip_contains_both_colliding_entries(self, assembler, tmp_path):
+        """End-to-end through _assemble_zip: two distinct entries, correct
+        content in each."""
+        import asyncio
+        import types
+
+        from app.services.zip_assembler import resolve_archive_path_collisions
+
+        session_id = "collision-session"
+        # The assembler writes the ZIP into <storage_root>/<session_id>/
+        os.makedirs(str(tmp_path / session_id), exist_ok=True)
+        r_a, r_b = self._colliding_resources(tmp_path)
+        (archive_paths, _, _, _) = resolve_archive_path_collisions(
+            [r_a, r_b], {}, {}, {},
+        )
+
+        session = types.SimpleNamespace(
+            id=session_id,
+            url="https://example.com/page",
+            status="assembling",
+            assembly_phase=None,
+            assembly_progress_pct=None,
+            options={"singleFile": False},
+        )
+
+        class _DB:
+            calls = 0
+
+            async def flush(self):
+                _DB.calls += 1
+
+        orig_progress = assembler._update_progress
+
+        async def _silent(db, sess, phase, pct, **kwargs):
+            pass
+
+        assembler._update_progress = _silent
+        try:
+            zip_path = asyncio.new_event_loop().run_until_complete(
+                assembler._assemble_zip(
+                    session_id, _DB(), session,
+                    "<html><body></body></html>",
+                    {}, {}, {}, {}, None,
+                    [r_a, r_b],
+                    archive_paths=archive_paths,
+                )
+            )
+        finally:
+            assembler._update_progress = orig_progress
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            names = zf.namelist()
+            assert "images/logo.png" in names
+            suffixed = next(n for n in names if n.startswith("images/logo-"))
+            assert names.count("images/logo.png") == 1
+            assert zf.read("images/logo.png") == b"AAA"
+            assert zf.read(suffixed) == b"BBBB"

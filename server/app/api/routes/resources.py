@@ -1,17 +1,27 @@
 """Resource upload and filename map routes."""
 
-import gzip
 import hashlib
 import logging
 import math
 import os
 import uuid
+import zlib
 
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_client, require_session_owner
 from app.api.rate_limiter import resource_upload_limiter
@@ -24,6 +34,65 @@ from app.models.session import Session, SessionStatus
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/sessions", tags=["resources"])
+
+
+class _GzipBombError(Exception):
+    """Raised when gzipped content inflates past the configured cap (3.5)."""
+
+
+def _decompress_bounded(data: bytes, max_output: int) -> bytes:
+    """Decompress a gzip payload, refusing to inflate past ``max_output`` bytes.
+
+    Streaming/bounded variant of ``gzip.decompress`` (3.5): output is capped
+    BEFORE full decompression, so a small gzipped payload that declares an
+    enormous inflated size is rejected without allocating the buffer.
+    Handles multi-member (concatenated) gzip streams like gzip.decompress.
+
+    Raises:
+        _GzipBombError: inflated size exceeds ``max_output``.
+        zlib.error: malformed gzip stream.
+        EOFError: truncated gzip stream.
+    """
+    if max_output <= 0:
+        raise _GzipBombError("inflate cap is zero")
+
+    out = bytearray()
+    member = data  # remaining compressed bytes for the current member
+    while member:
+        decomp = zlib.decompressobj(zlib.MAX_WBITS | 16)  # gzip wrapper
+        # max_length-bounded decompress: output per call is capped, surplus
+        # input lands in unconsumed_tail so we can stop as soon as the cap
+        # is exceeded.
+        piece = decomp.decompress(member, max_output - len(out) + 1)
+        out += piece
+        while decomp.unconsumed_tail:
+            if len(out) > max_output:
+                raise _GzipBombError(
+                    f"inflated size exceeds cap of {max_output} bytes"
+                )
+            piece = decomp.decompress(
+                decomp.unconsumed_tail, max_output - len(out) + 1
+            )
+            out += piece
+            if not piece and decomp.unconsumed_tail:
+                # No progress with output room remaining — cannot happen for
+                # a valid stream; bail out to avoid a spin.
+                break
+        if len(out) > max_output:
+            raise _GzipBombError(f"inflated size exceeds cap of {max_output} bytes")
+
+        # Flush any final buffered output (bounded — at most the window size).
+        out += decomp.flush()
+        if len(out) > max_output:
+            raise _GzipBombError(f"inflated size exceeds cap of {max_output} bytes")
+
+        if not decomp.eof:
+            raise EOFError("truncated gzip stream")
+
+        # Multi-member streams: continue with any trailing member.
+        member = decomp.unused_data
+
+    return bytes(out)
 
 
 class ResourceUploadResponse(BaseModel):
@@ -152,14 +221,66 @@ async def upload_resource(
     storage_path = os.path.join(resources_dir, resource_id)
 
     if x_content_gzipped:
-        # Gzip path: full read is required for decompression.
-        # Gzip payloads are typically small text assets so buffering is
-        # acceptable here.
-        content = await file.read()
+        # Gzip path with bounded decompression (3.5): the inflated size is
+        # capped BEFORE decompression at min(remaining session budget, hard
+        # per-resource ceiling) so a gzip bomb cannot exhaust memory or the
+        # session quota. Compressed input is streamed in chunks and capped at
+        # the same bound (compressed data is never larger than its inflated
+        # form for a payload within budget), so neither the input nor the
+        # inflated buffer is allocated beyond the cap.
+        max_session_bytes = settings.max_session_size_mb * 1024 * 1024
+        current_total_result = await db.execute(sa_text(SIZE_QUERY), {"sid": session_id})
+        current_total = current_total_result.scalar() or 0
+        remaining_budget = max_session_bytes - current_total
+        hard_ceiling = settings.max_resource_inflate_mb * 1024 * 1024
+        inflate_cap = min(remaining_budget, hard_ceiling)
+
+        if inflate_cap <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail={
+                    "error": "session_size_exceeded",
+                    "message": f"Session already at size limit ({settings.max_session_size_mb}MB)",
+                    "current_size": int(current_total),
+                    "max_size": max_session_bytes,
+                    "api_version": "v1",
+                },
+            )
+
+        compressed = bytearray()
+        while True:
+            chunk = await file.read(65536)  # 64 KB compressed chunks
+            if not chunk:
+                break
+            compressed.extend(chunk)
+            if len(compressed) > inflate_cap:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail={
+                        "error": "inflated_size_exceeded",
+                        "message": "Compressed payload exceeds the per-resource "
+                        "ceiling and remaining session budget",
+                        "inflate_cap_bytes": inflate_cap,
+                        "max_resource_inflate_mb": settings.max_resource_inflate_mb,
+                        "api_version": "v1",
+                    },
+                )
+
         try:
-            content = gzip.decompress(content)
-            original_size = len(content)
-        except Exception as e:
+            content = _decompress_bounded(bytes(compressed), inflate_cap)
+        except _GzipBombError:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail={
+                    "error": "inflated_size_exceeded",
+                    "message": "Inflated resource size exceeds the per-resource "
+                    "ceiling and remaining session budget",
+                    "inflate_cap_bytes": inflate_cap,
+                    "max_resource_inflate_mb": settings.max_resource_inflate_mb,
+                    "api_version": "v1",
+                },
+            )
+        except (zlib.error, EOFError) as e:
             logger.warning("Failed to decompress gzip resource: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -169,10 +290,10 @@ async def upload_resource(
                     "api_version": "v1",
                 },
             )
+        original_size = len(content)
 
-        # Check session size limit
-        current_total_result = await db.execute(sa_text(SIZE_QUERY), {"sid": session_id})
-        current_total = current_total_result.scalar() or 0
+        # Authoritative session-size double check (kept from the previous
+        # behavior; the inflate cap already bounds this in practice).
         if current_total + original_size > max_session_bytes:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -351,19 +472,23 @@ async def upload_filename_map(
             },
         )
 
-    # Merge with existing map
-    existing_map = session.filename_map or {}
-    existing_map.update(body.map)
-    session.filename_map = existing_map
+    # Merge with existing map — copy BEFORE mutating (3.3). Mutating the
+    # already-persistent JSON object in place (`existing_map.update(...)`
+    # then re-assigning the same object) is invisible to SQLAlchemy change
+    # tracking: the attribute is not marked dirty, flush() emits no UPDATE,
+    # and the merge silently never commits. Assigning a NEW dict gives the
+    # attribute a fresh identity so the ORM detects and persists the change.
+    session.filename_map = {**(session.filename_map or {}), **body.map}
+    merged_map = session.filename_map
 
     await db.flush()
 
     logger.info(
         "Filename map updated: session=%s entries=%d",
         session_id,
-        len(existing_map),
+        len(merged_map),
     )
 
     return FilenameMapResponse(
-        mappings_count=len(existing_map),
+        mappings_count=len(merged_map),
     )

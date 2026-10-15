@@ -25,17 +25,29 @@ sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), ".."
 
 os.environ.setdefault("JWT_SECRET", "test-secret-key")
 
+# Per-service module names (models/servicer) exist in every service. Import
+# this suite's copies ONCE under an alias; tests/conftest.py re-points the
+# shared sys.modules names per test for combined multi-suite runs.
+_PP_ALIAS = "_ppsvc_auth-service_"
+if _PP_ALIAS + "models" not in sys.modules:
+    for _name in ("models", "servicer"):
+        sys.modules.pop(_name, None)
+
 import auth_pb2
 import grpc
 import servicer as _servicer_mod
 from db import Base, db_session, get_engine
 from jwt_utils import (
     ACCESS_TOKEN_EXPIRY,
+    REFRESH_TOKEN_EXPIRY,
     issue_access_token,
     issue_refresh_token,
     verify_access_token,
 )
 from models import RefreshToken, User
+
+sys.modules[_PP_ALIAS + "models"] = sys.modules["models"]
+sys.modules[_PP_ALIAS + "servicer"] = sys.modules["servicer"]
 
 
 class _FakeRpcContext:
@@ -89,6 +101,18 @@ class TestJWTUtils(unittest.TestCase):
         expected = hashlib.sha256(raw.encode()).hexdigest()
         self.assertEqual(token_hash, expected)
         self.assertTrue(expires_at > time.time())
+
+    def test_access_token_ttl_is_one_hour(self):
+        # Spec (pagepocket-auth-service): access tokens MUST NOT exceed one
+        # hour; exp == iat + 3600 exactly, and refresh stays at 30 days.
+        self.assertEqual(ACCESS_TOKEN_EXPIRY, 3600)
+        self.assertEqual(REFRESH_TOKEN_EXPIRY, 30 * 24 * 3600)
+
+        token, expires_at = issue_access_token("user-1", "a@b.com", "free")
+        payload = verify_access_token(token)
+        self.assertIsNotNone(payload)
+        self.assertEqual(payload["exp"] - payload["iat"], 3600)
+        self.assertEqual(expires_at, payload["exp"])
 
     def test_wrong_secret_returns_none(self):
         token, _ = issue_access_token("user-1", "a@b.com", "free")
@@ -144,6 +168,34 @@ class TestAuthServicer(unittest.TestCase):
         ctx = _FakeRpcContext()
         req = auth_pb2.LoginRequest(email=email, password=password)
         return self.svc.Login(req, ctx), ctx
+
+    def _verify(self, token):
+        ctx = _FakeRpcContext()
+        return self.svc.Verify(auth_pb2.VerifyRequest(token=token), ctx), ctx
+
+    # -- Verify returns the CURRENT plan from the users table (2.2) --
+
+    def test_verify_returns_plan_from_users_table(self):
+        """A plan change after token issuance must be reflected by Verify —
+        the monolith binding flow stores what Verify returns."""
+        registered, _ = self._register()
+        user_id = registered.user.id
+        token, _ = issue_access_token(user_id, "alice@example.com", "free")
+
+        # User upgrades to pro AFTER the token was issued.
+        with db_session(self.engine) as s:
+            user = s.query(User).filter(User.id == user_id).one()
+            user.plan = "pro"
+
+        resp, _ = self._verify(token)
+        self.assertTrue(resp.valid)
+        self.assertEqual(resp.plan, "pro")
+
+    def test_verify_falls_back_to_token_claims_without_user_row(self):
+        token, _ = issue_access_token("ghost-user", "ghost@example.com", "team")
+        resp, _ = self._verify(token)
+        self.assertTrue(resp.valid)
+        self.assertEqual(resp.plan, "team")
 
     # -- Register --
 

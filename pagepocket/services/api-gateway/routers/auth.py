@@ -23,7 +23,7 @@ async def register(body: dict):
             email=body["email"],
             password=body["password"],
             name=body["name"],
-        ))
+        ), timeout=30)
         return {
             "access_token": resp.access_token,
             "refresh_token": resp.refresh_token,
@@ -47,7 +47,7 @@ async def login(body: dict):
         resp = auth_stub().Login(auth_pb2.LoginRequest(
             email=body["email"],
             password=body["password"],
-        ))
+        ), timeout=30)
         return {
             "access_token": resp.access_token,
             "refresh_token": resp.refresh_token,
@@ -70,7 +70,7 @@ async def refresh(body: dict):
     try:
         resp = auth_stub().Refresh(auth_pb2.RefreshRequest(
             refresh_token=body["refresh_token"],
-        ))
+        ), timeout=30)
         return {
             "access_token": resp.access_token,
             "refresh_token": resp.refresh_token,
@@ -83,5 +83,8 @@ async def refresh(body: dict):
 @router.post("/logout")
 async def logout(request):
     user_id = request.state.user_id
-    auth_stub().Logout(auth_pb2.LogoutRequest(user_id=user_id))
+    try:
+        auth_stub().Logout(auth_pb2.LogoutRequest(user_id=user_id), timeout=30)
+    except grpc.RpcError as e:
+        handle_grpc_error(e)
     return {"success": True}

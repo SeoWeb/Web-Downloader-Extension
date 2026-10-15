@@ -17,6 +17,7 @@ Tasks covered:
 """
 
 import asyncio
+import hashlib
 import logging
 import os
 import re
@@ -27,8 +28,12 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from app.config import settings
-from app.services.html_merger import html_merger_service, MergeResult
-from app.services.html_converter import html_converter_service, generate_page_filename, MIME_TO_IMAGE_EXTENSION
+from app.services.html_converter import (
+    MIME_TO_IMAGE_EXTENSION,
+    generate_page_filename,
+    html_converter_service,
+)
+from app.services.html_merger import MergeResult, html_merger_service
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +159,21 @@ class ZipAssemblerService:
                         if ext:
                             filename_ext_map[base] = ext
 
+                # 3.7 — deterministic dedup of colliding archive paths. Must
+                # run BEFORE URL conversion so HTML/CSS references are written
+                # to the (possibly hash-suffixed) final archive paths.
+                (
+                    archive_path_by_resource_id,
+                    conv_filename_map,
+                    conv_local_path_to_storage,
+                    conv_filename_ext_map,
+                ) = resolve_archive_path_collisions(
+                    all_resources,
+                    filename_map,
+                    local_path_to_storage,
+                    filename_ext_map,
+                )
+
                 # Build page_filename_map BEFORE converting main HTML so that
                 # convert_html() can rewrite intra-site links to linked pages.
                 linked_results: dict[str, MergeResult] = {
@@ -182,12 +202,12 @@ class ZipAssemblerService:
                 main_html = await asyncio.to_thread(
                     html_converter_service.convert_html,
                     main_html, tab_url,
-                    filename_map,      # filename_map (positional)
-                    False,             # is_linked_page
-                    None,              # path
+                    conv_filename_map,  # collision-rewritten filename map (3.7)
+                    False,              # is_linked_page
+                    None,               # path
                     page_filename_map, # page_filename_map (positional)
                     content_type_map,  # content_type_map (positional)
-                    filename_ext_map,  # filename_ext_map (positional)
+                    conv_filename_ext_map,  # collision-rewritten ext map (3.7)
                 )
                 await self._update_progress(db, session, "converting_urls", 100)
 
@@ -210,8 +230,8 @@ class ZipAssemblerService:
                             if lp_result.success and lp_result.html:
                                 converted = await asyncio.to_thread(
                                     html_converter_service.convert_linked_page_html,
-                                    lp_result.html, tab_url, filename_map, page_filename_map,
-                                    content_type_map, filename_ext_map,
+                                    lp_result.html, tab_url, conv_filename_map, page_filename_map,
+                                    content_type_map, conv_filename_ext_map,
                                 )
                                 linked_page_htmls[page_hash] = converted
                                 if lp_result.page_url:
@@ -242,8 +262,8 @@ class ZipAssemblerService:
                         nonlocal css_completed
                         async with css_sem:
                             await self._convert_css_resource(
-                                resource, tab_url, filename_map, session_id,
-                                content_type_map, filename_ext_map,
+                                resource, tab_url, conv_filename_map, session_id,
+                                content_type_map, conv_filename_ext_map,
                             )
                             css_completed += 1
                             pct = int(css_completed / max(total_css, 1) * 100)
@@ -262,29 +282,32 @@ class ZipAssemblerService:
                     await self._update_progress(db, session, "inlining_css", 0)
                     main_html = await asyncio.to_thread(
                         html_converter_service.inline_css_into_html,
-                        main_html, self.storage_root, session_id, filename_map, "./",
-                        local_path_to_storage,
+                        main_html, self.storage_root, session_id, conv_filename_map, "./",
+                        conv_local_path_to_storage,
                     )
                     # Also inline CSS into linked pages (using ../ path prefix)
                     for page_hash, page_html in linked_page_htmls.items():
                         linked_page_htmls[page_hash] = await asyncio.to_thread(
                             html_converter_service.inline_css_into_html,
-                            page_html, self.storage_root, session_id, filename_map, "../",
-                            local_path_to_storage,
+                            page_html, self.storage_root, session_id, conv_filename_map, "../",
+                            conv_local_path_to_storage,
                         )
                     await self._update_progress(db, session, "inlining_css", 100)
 
                 # ---- Cloud-only assembly branch ----
                 if session.pagepocket_user_id:
                     await self._update_progress(db, session, "assembling_zip", 0)
+                    # 3.2 — plan comes from the server-side binding stamped on
+                    # the session (fallback "free", never omitted).
+                    push_plan = getattr(session, "pagepocket_plan", None) or "free"
 
                     if is_single_file:
                         # Single-file cloud: produce inlined HTML, push without assets
                         content_text = self._read_content_txt(session_id)
                         html_path = await self._assemble_single_file(
                             session_id, db, session,
-                            main_html, tab_url, filename_map, content_text,
-                            local_path_to_storage,
+                            main_html, tab_url, conv_filename_map, content_text,
+                            conv_local_path_to_storage,
                         )
                         if html_path is None:
                             return
@@ -309,6 +332,7 @@ class ZipAssemblerService:
                                 title=title,
                                 html_content=html_bytes,
                                 assets=[],
+                                plan=push_plan,
                             )
                             if result.page_id:
                                 session.cloud_status = "success"
@@ -345,6 +369,8 @@ class ZipAssemblerService:
                         await self._assemble_cloud_push(
                             session_id, db, session,
                             main_html, linked_page_htmls, page_hash_to_filename,
+                            plan=push_plan,
+                            archive_paths=archive_path_by_resource_id,
                         )
                     return
 
@@ -357,15 +383,16 @@ class ZipAssemblerService:
                 if is_single_file:
                     output_path = await self._assemble_single_file(
                         session_id, db, session,
-                        main_html, tab_url, filename_map, content_text,
-                        local_path_to_storage,
+                        main_html, tab_url, conv_filename_map, content_text,
+                        conv_local_path_to_storage,
                     )
                 else:
                     output_path = await self._assemble_zip(
                         session_id, db, session,
                         main_html, linked_page_htmls, linked_page_urls,
-                        page_hash_to_filename, filename_map, content_text,
+                        page_hash_to_filename, conv_filename_map, content_text,
                         all_resources,
+                        archive_paths=archive_path_by_resource_id,
                     )
 
                 if output_path is None:
@@ -419,6 +446,7 @@ class ZipAssemblerService:
         filename_map: dict[str, str],
         content_text: Optional[str],
         all_resources: list | None = None,
+        archive_paths: Optional[dict[str, str]] = None,
     ) -> Optional[str]:
         """Assemble a ZIP archive with the correct directory structure.
 
@@ -431,6 +459,11 @@ class ZipAssemblerService:
           fonts/              – font files
           documents/          – document resources
           pages/              – linked page HTML files
+
+        ``archive_paths`` (3.7): resource id → final archive path from
+        ``resolve_archive_path_collisions``; colliding paths carry a stable
+        hash suffix so no resource silently overwrites another and the HTML
+        references (already rewritten by the same pass) still resolve.
         """
         session_dir = os.path.join(self.storage_root, session_id)
         zip_filename = generate_safe_filename(session.url, ".zip")
@@ -470,8 +503,12 @@ class ZipAssemblerService:
                         steps_done += 1
                         continue
 
-                    # Sanitize the local path to prevent path traversal (6.4)
-                    safe_path = sanitize_zip_path(local_path)
+                    # Final archive path (3.7 collision dedup when provided),
+                    # sanitized to prevent path traversal (6.4)
+                    preresolved = (archive_paths or {}).get(
+                        getattr(resource, "id", ""), None
+                    )
+                    safe_path = sanitize_zip_path(preresolved or local_path)
                     if not safe_path:
                         steps_done += 1
                         continue
@@ -595,19 +632,27 @@ class ZipAssemblerService:
         main_html: str,
         linked_page_htmls: dict[str, str],
         page_hash_to_filename: dict[str, str],
+        plan: Optional[str] = None,
+        archive_paths: Optional[dict[str, str]] = None,
     ) -> None:
         """Push processed HTML + assets to PagePocket cloud (no local file).
 
         Encodes main_html as UTF-8, builds asset list from session
         resources, appends linked page HTMLs, calls push_to_archive(),
         and updates session cloud fields.
+
+        ``plan`` (3.2) comes from the server-side client binding and is
+        always forwarded — never omitted, never client-supplied. When the
+        caller does not pass one, it is resolved from the binding stamped on
+        the session, falling back to "free".
         """
         from app.services.archive_client import push_to_archive
 
+        push_plan = plan or getattr(session, "pagepocket_plan", None) or "free"
         html_bytes = main_html.encode("utf-8")
         title = self._extract_title(html_bytes)
 
-        assets = await self._build_cloud_assets(session_id, db)
+        assets = await self._build_cloud_assets(session_id, db, archive_paths)
 
         for page_hash, page_html in linked_page_htmls.items():
             filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
@@ -626,6 +671,7 @@ class ZipAssemblerService:
                 title=title,
                 html_content=html_bytes,
                 assets=assets,
+                plan=push_plan,
             )
             if result.page_id:
                 session.cloud_status = "success"
@@ -704,6 +750,7 @@ class ZipAssemblerService:
     async def _get_session(db, session_id: str):
         """Load a session from the database."""
         from sqlalchemy import select
+
         from app.models.session import Session
         stmt = select(Session).where(Session.id == session_id)
         result = await db.execute(stmt)
@@ -713,6 +760,7 @@ class ZipAssemblerService:
     async def _get_all_resources(db, session_id: str) -> list:
         """Get all resources for a session."""
         from sqlalchemy import select
+
         from app.models.resource import Resource
         stmt = select(Resource).where(Resource.session_id == session_id)
         result = await db.execute(stmt)
@@ -722,6 +770,7 @@ class ZipAssemblerService:
     async def _get_resources_by_prefix(db, session_id: str, prefix: str) -> list:
         """Get resources whose local_path starts with a given prefix."""
         from sqlalchemy import select
+
         from app.models.resource import Resource
         stmt = (
             select(Resource)
@@ -797,10 +846,20 @@ class ZipAssemblerService:
         return ""
 
     @staticmethod
-    async def _build_cloud_assets(session_id: str, db) -> list[tuple[str, str, bytes]]:
-        """Build (filename, content_type, data) tuples from session resources."""
-        from app.models.resource import Resource
+    async def _build_cloud_assets(
+        session_id: str,
+        db,
+        archive_paths: Optional[dict[str, str]] = None,
+    ) -> list[tuple[str, str, bytes]]:
+        """Build (filename, content_type, data) tuples from session resources.
+
+        ``archive_paths`` (3.7): resource id → final archive path, applied so
+        cloud-push asset filenames match the references written into the HTML
+        (collision-suffixed when applicable).
+        """
         from sqlalchemy import select
+
+        from app.models.resource import Resource
 
         stmt = select(Resource).where(Resource.session_id == session_id)
         result = await db.execute(stmt)
@@ -814,10 +873,11 @@ class ZipAssemblerService:
             full_path = r.storage_path
             if not os.path.isfile(full_path):
                 continue
+            asset_name = (archive_paths or {}).get(r.id, r.local_path)
             try:
                 with open(full_path, "rb") as f:
                     data = f.read()
-                assets.append((r.local_path, r.content_type or "application/octet-stream", data))
+                assets.append((asset_name, r.content_type or "application/octet-stream", data))
             except OSError:
                 logger.warning(
                     "Skipping cloud asset (read error): session=%s path=%s",
@@ -967,6 +1027,143 @@ def sanitize_zip_path(path: str) -> Optional[str]:
         return None
 
     return "/".join(parts)
+
+
+def resolve_archive_path_collisions(
+    resources: list,
+    filename_map: dict[str, str],
+    local_path_to_storage: Optional[dict[str, str]] = None,
+    filename_ext_map: Optional[dict[str, str]] = None,
+) -> tuple[
+    dict[str, str],
+    dict[str, str],
+    dict[str, str],
+    dict[str, str],
+]:
+    """Deterministically deduplicate colliding archive paths (3.7).
+
+    Two distinct resources can resolve to the same archive path (e.g., two
+    source URLs whose ``local_path``/ZIP path is identical). Left as-is, the
+    second ZIP write silently overwrites (or duplicates) the first and HTML
+    references cannot tell the two apart.
+
+    Strategy (mirrors the linked-page collision handling in
+    ``assemble_session``): the first resource in a deterministic order keeps
+    the original path; each later collision gets a stable hash suffix
+    (``name-a1b2c3d4.ext``, sha256 of the resource's stable identity — no
+    timestamp/randomness, so re-assembly produces identical paths). The
+    conversion maps are rewritten so HTML/CSS references point at the
+    suffixed entry and disk lookups resolve to the correct file.
+
+    Args:
+        resources: Resource rows (needs id/local_path; original_url or
+            storage_path used as stable identity when present).
+        filename_map: URL → local filename map used for HTML conversion.
+        local_path_to_storage: local_path → disk storage path map.
+        filename_ext_map: image basename → extension fallback map.
+
+    Returns:
+        Tuple of:
+          archive_path_by_resource_id — resource id → final archive path
+          conv_filename_map — URL → final archive path (references rewritten)
+          conv_local_path_to_storage — final archive path → storage path
+          conv_filename_ext_map — suffixed basenames preserved for fallback
+    """
+    archive_path_by_id: dict[str, str] = {}
+    used_paths: dict[str, str] = {}  # archive path → resource id (owner)
+
+    conv_filename_map = dict(filename_map or {})
+    conv_local_path_to_storage = dict(local_path_to_storage or {})
+    conv_filename_ext_map = dict(filename_ext_map or {})
+
+    # URL → resource resolution for reference rewriting
+    url_to_resource: dict[str, object] = {}
+    for r in resources:
+        r_url = getattr(r, "original_url", None)
+        if r_url:
+            url_to_resource.setdefault(r_url, r)
+
+    # Deterministic owner order: first by archive path wins collisions.
+    ordered = sorted(
+        resources,
+        key=lambda r: (
+            getattr(r, "local_path", "") or "",
+            getattr(r, "original_url", "") or "",
+            getattr(r, "id", "") or "",
+        ),
+    )
+
+    for r in ordered:
+        raw_path = getattr(r, "local_path", None)
+        if not raw_path:
+            continue
+        safe = sanitize_zip_path(raw_path)
+        if not safe:
+            continue
+
+        r_id = getattr(r, "id", "") or str(id(r))
+        if safe in used_paths:
+            # Collision — stable hash suffix derived from the resource's
+            # identity (original_url, falling back to storage path / id).
+            stable = (
+                getattr(r, "original_url", None)
+                or getattr(r, "storage_path", None)
+                or r_id
+            )
+            digest = hashlib.sha256(str(stable).encode("utf-8")).hexdigest()
+            base, dot, ext = safe.rpartition(".")
+            if not dot:
+                base, ext = safe, ""
+            else:
+                ext = f".{ext}" if ext else ""
+            suffix_len = 8
+            while True:
+                candidate = f"{base}-{digest[:suffix_len]}{ext}"
+                if candidate not in used_paths:
+                    break
+                suffix_len += 2  # extend until unique (theoretically never)
+            safe = candidate
+
+        used_paths[safe] = r_id
+        archive_path_by_id[r_id] = safe
+
+    # Rewrite conversion maps so references point at the final archive paths.
+    # Every resource writes final→storage, which (a) adds the suffixed
+    # entries for collision losers and (b) REPLACES the ambiguous raw-path
+    # entry — when N resources share one local_path, the original
+    # local_path_to_storage map pointed at whichever resource the DB query
+    # returned last; now it deterministically points at the owner.
+    for r in ordered:
+        r_id = getattr(r, "id", "") or ""
+        final = archive_path_by_id.get(r_id)
+        if final is None:
+            continue
+        storage = getattr(r, "storage_path", None)
+        if storage:
+            conv_local_path_to_storage[final] = storage
+
+        raw_path = getattr(r, "local_path", None)
+        if not raw_path or final == raw_path:
+            continue
+
+        # filename_map: URL → suffixed archive path
+        r_url = getattr(r, "original_url", None)
+        if r_url and url_to_resource.get(r_url) is r and r_url in conv_filename_map:
+            conv_filename_map[r_url] = final
+
+        # image-extension fallback keyed by basename
+        if raw_path.startswith("images/"):
+            base = os.path.splitext(os.path.basename(raw_path))[0]
+            if base in conv_filename_ext_map:
+                new_base = os.path.splitext(os.path.basename(final))[0]
+                conv_filename_ext_map[new_base] = conv_filename_ext_map[base]
+
+    return (
+        archive_path_by_id,
+        conv_filename_map,
+        conv_local_path_to_storage,
+        conv_filename_ext_map,
+    )
 
 
 # ---------------------------------------------------------------------------

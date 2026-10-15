@@ -25,7 +25,7 @@ async def create_collection(request: Request, body: dict):
             description=body.get("description", ""),
             parent_id=body.get("parent_id", ""),
             color=body.get("color", ""),
-        ))
+        ), timeout=30)
         return _coll_to_dict(resp)
     except grpc.RpcError as e:
         handle_grpc_error(e)
@@ -37,7 +37,7 @@ async def list_collections(request: Request, parent_id: str = ""):
         resp = library_stub().ListCollections(library_pb2.ListCollectionsRequest(
             user_id=request.state.user_id,
             parent_id=parent_id,
-        ))
+        ), timeout=30)
         return {"collections": [_coll_to_dict(c) for c in resp.collections]}
     except grpc.RpcError as e:
         handle_grpc_error(e)
@@ -49,7 +49,7 @@ async def get_collection(request: Request, collection_id: str):
         resp = library_stub().GetCollection(library_pb2.GetCollectionRequest(
             collection_id=collection_id,
             user_id=request.state.user_id,
-        ))
+        ), timeout=30)
         return _coll_to_dict(resp)
     except grpc.RpcError as e:
         handle_grpc_error(e)
@@ -64,7 +64,7 @@ async def update_collection(request: Request, collection_id: str, body: dict):
             name=body.get("name", ""),
             description=body.get("description", ""),
             color=body.get("color", ""),
-        ))
+        ), timeout=30)
         return _coll_to_dict(resp)
     except grpc.RpcError as e:
         handle_grpc_error(e)
@@ -76,7 +76,7 @@ async def delete_collection(request: Request, collection_id: str):
         resp = library_stub().DeleteCollection(library_pb2.DeleteCollectionRequest(
             collection_id=collection_id,
             user_id=request.state.user_id,
-        ))
+        ), timeout=30)
         return {"success": resp.success}
     except grpc.RpcError as e:
         handle_grpc_error(e)
@@ -89,7 +89,7 @@ async def add_page_to_collection(request: Request, collection_id: str, page_id: 
             user_id=request.state.user_id,
             page_id=page_id,
             collection_id=collection_id,
-        ))
+        ), timeout=30)
         return {"success": resp.success}
     except grpc.RpcError as e:
         handle_grpc_error(e)
@@ -102,7 +102,7 @@ async def remove_page_from_collection(request: Request, collection_id: str, page
             user_id=request.state.user_id,
             page_id=page_id,
             collection_id=collection_id,
-        ))
+        ), timeout=30)
         return {"success": resp.success}
     except grpc.RpcError as e:
         handle_grpc_error(e)

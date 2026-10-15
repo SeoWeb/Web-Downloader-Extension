@@ -18,6 +18,15 @@ _channels: dict[str, grpc.Channel] = {}
 _stubs: dict[str, object] = {}
 _creds: grpc.ChannelCredentials | None = None
 
+# Match the archive service's server-side limits (archive-service/main.py) so
+# large legitimate payloads are not rejected client-side at the gRPC default.
+GRPC_MAX_MESSAGE_LENGTH = 256 * 1024 * 1024  # 256 MB
+
+CHANNEL_OPTIONS = [
+    ("grpc.max_receive_message_length", GRPC_MAX_MESSAGE_LENGTH),
+    ("grpc.max_send_message_length", GRPC_MAX_MESSAGE_LENGTH),
+]
+
 
 def _get_credentials() -> grpc.ChannelCredentials | None:
     global _creds
@@ -34,9 +43,9 @@ def _get_channel(addr: str) -> grpc.Channel:
     if addr not in _channels:
         creds = _get_credentials()
         if creds is not None:
-            _channels[addr] = grpc.secure_channel(addr, creds)
+            _channels[addr] = grpc.secure_channel(addr, creds, options=CHANNEL_OPTIONS)
         else:
-            _channels[addr] = grpc.insecure_channel(addr)
+            _channels[addr] = grpc.insecure_channel(addr, options=CHANNEL_OPTIONS)
     return _channels[addr]
 
 

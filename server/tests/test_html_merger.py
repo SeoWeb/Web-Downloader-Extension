@@ -729,6 +729,113 @@ def test_analyze_job_complexity_per_document_large_table():
 
     print("  PASS: test_analyze_job_complexity_per_document_large_table")
 
+# ---------------------------------------------------------------------------
+# 3.6 – Restart-during-upload: first-scroll chunk must not be emitted twice
+# ---------------------------------------------------------------------------
+
+def test_restart_no_first_scroll_duplication():
+    """Restart recovery: when the skeleton is reconstructed from / already
+    contains the scrollIndex-0 chunk, that chunk is consumed and the merged
+    output contains the first screen exactly once."""
+    storage = make_test_dir()
+    session_id = "restart-session-1"
+    service = HtmlMergerService(storage_root=storage)
+
+    # Upload route behavior: first chunk (scrollIndex 0) initializes the
+    # skeleton and is NOT registered as an incremental chunk.
+    first_screen = (
+        "<!DOCTYPE html><html><head><title>Restart</title></head>"
+        "<body><p>First screen</p></body></html>"
+    )
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+    service.initialize_skeleton(job, first_screen)
+
+    # Chunk files on disk: 0.html (the skeleton source) + subsequent scrolls
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    with open(os.path.join(chunk_dir, "0.html"), "w") as f:
+        f.write(first_screen)
+    with open(os.path.join(chunk_dir, "1.html"), "w") as f:
+        f.write("<html><body><p>Second screen</p></body></html>")
+
+    # Simulate a server restart: a FRESH service instance with no in-memory
+    # jobs must load the job from disk.
+    fresh = HtmlMergerService(storage_root=storage)
+    results = fresh.merge_session(session_id)
+
+    assert "main" in results, "main page must be merged"
+    result = results["main"]
+    assert result.success, f"merge failed: {result.reason}"
+    assert result.html.count("First screen") == 1, (
+        "first-screen content must appear exactly once after restart recovery"
+    )
+    assert result.html.count("Second screen") == 1, (
+        "later scroll content must still be merged in"
+    )
+
+    print("  PASS: test_restart_no_first_scroll_duplication")
+
+
+def test_restart_skeleton_with_differing_first_chunk_still_merged():
+    """A 0.html chunk whose content is NOT part of the skeleton is treated
+    as real chunk content (not consumed)."""
+    storage = make_test_dir()
+    session_id = "restart-session-2"
+    service = HtmlMergerService(storage_root=storage)
+
+    skeleton_html = (
+        "<!DOCTYPE html><html><head><title>Differ</title></head>"
+        "<body><p>Skeleton body</p></body></html>"
+    )
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    with open(os.path.join(chunk_dir, "0.html"), "w") as f:
+        f.write("<html><body><p>Unrelated new content</p></body></html>")
+
+    fresh = HtmlMergerService(storage_root=storage)
+    results = fresh.merge_session(session_id)
+
+    result = results["main"]
+    assert result.success
+    assert "Unrelated new content" in result.html, (
+        "a first chunk that is not contained in the skeleton must be merged"
+    )
+
+    print("  PASS: test_restart_skeleton_with_differing_first_chunk_still_merged")
+
+
+def test_restart_reconstructed_from_first_chunk_emits_once():
+    """The no-skeleton-file recovery path (skeleton rebuilt from 0.html)
+    also emits the first screen exactly once."""
+    storage = make_test_dir()
+    session_id = "restart-session-3"
+
+    # No skeleton file — only chunks on disk. _load_jobs_from_disk must
+    # reconstruct the skeleton from 0.html and consume it.
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    with open(os.path.join(chunk_dir, "0.html"), "w") as f:
+        f.write(
+            "<!DOCTYPE html><html><head><title>Rebuild</title></head>"
+            "<body><p>Rebuilt first screen</p></body></html>"
+        )
+    with open(os.path.join(chunk_dir, "1.html"), "w") as f:
+        f.write("<html><body><p>Rebuilt second screen</p></body></html>")
+
+    fresh = HtmlMergerService(storage_root=storage)
+    results = fresh.merge_session(session_id)
+
+    result = results["main"]
+    assert result.success
+    assert result.html.count("Rebuilt first screen") == 1
+    assert result.html.count("Rebuilt second screen") == 1
+
+    print("  PASS: test_restart_reconstructed_from_first_chunk_emits_once")
+
+
 def main():
     print("HTML Merge Service Verification (task 4.9)")
     print("=" * 50)
@@ -750,6 +857,9 @@ def main():
         test_analyze_job_complexity_early_exit_on_element_threshold,
         test_analyze_job_complexity_per_document_nesting,
         test_analyze_job_complexity_per_document_large_table,
+        test_restart_no_first_scroll_duplication,
+        test_restart_skeleton_with_differing_first_chunk_still_merged,
+        test_restart_reconstructed_from_first_chunk_emits_once,
     ]
 
     passed = 0

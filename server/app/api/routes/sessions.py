@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
+from sqlalchemy import update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_client, require_session_owner
@@ -89,6 +90,9 @@ class SessionStatusResponse(BaseModel):
     total_size: int = 0
     assembly_phase: str | None = None
     assembly_progress_pct: int | None = None
+    finalized_at: datetime | None = None
+    updated_at: datetime | None = None
+    assembly_elapsed_seconds: int | None = None
     download_url: str | None = None
     output_type: str | None = None
     output_size: int | None = None
@@ -198,6 +202,36 @@ async def create_session(
         min(settings.max_retention_days, opts.retentionDays),
     )
 
+    # --- Cloud identity binding (harden-backend-security-and-ops 3.1, D4) ---
+    # The cloud push identity is sourced EXCLUSIVELY from the server-side
+    # client binding written by POST /api/v1/cloud/link. A client-supplied
+    # pagepocketUserId is a hint at most: accepted only when it matches the
+    # binding, rejected with 403 otherwise (forged ids must never be able to
+    # target another user's PagePocket archive).
+    bound_user_id = client.pagepocket_user_id
+    if opts.pagepocketUserId is not None:
+        if not bound_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "cloud_not_linked",
+                    "message": "This client has no PagePocket cloud binding. "
+                    "Call POST /api/v1/cloud/link with a PagePocket access "
+                    "token before requesting cloud push.",
+                    "api_version": "v1",
+                },
+            )
+        if opts.pagepocketUserId != bound_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "cloud_identity_mismatch",
+                    "message": "pagepocketUserId does not match this client's "
+                    "bound cloud identity",
+                    "api_version": "v1",
+                },
+            )
+
     now = datetime.now(timezone.utc)
     session = Session(
         client_id=client.id,
@@ -206,10 +240,10 @@ async def create_session(
         options={
             "singleFile": opts.singleFile,
             "retentionDays": retention_days,
-            **({"pagepocketUserId": opts.pagepocketUserId} if opts.pagepocketUserId is not None else {}),
         },
         expires_at=now + timedelta(days=retention_days),
-        pagepocket_user_id=opts.pagepocketUserId if opts.pagepocketUserId is not None else client.pagepocket_user_id,
+        pagepocket_user_id=bound_user_id,
+        pagepocket_plan=client.pagepocket_plan,
     )
     db.add(session)
     await db.flush()
@@ -318,6 +352,19 @@ async def get_session_status(
         cloud_page_id_val = session.cloud_page_id
         cloud_error_val = session.cloud_error
 
+    # Assembly envelope fields (6.1, additive): let clients distinguish an
+    # actively progressing assembly from a stalled one by surfacing when
+    # finalization happened and how long the assembly has been running.
+    finalized_at = session.finalized_at
+    updated_at = session.updated_at
+    elapsed_seconds = None
+    if finalized_at is not None and session.status == SessionStatus.ASSEMBLING:
+        reference = updated_at or finalized_at
+        now = datetime.now(timezone.utc)
+        if reference.tzinfo is None:
+            reference = reference.replace(tzinfo=timezone.utc)
+        elapsed_seconds = max(0, int((now - reference).total_seconds()))
+
     return SessionStatusResponse(
         id=session.id,
         status=status_value,
@@ -328,6 +375,9 @@ async def get_session_status(
         total_size=total_size,
         assembly_phase=session.assembly_phase,
         assembly_progress_pct=session.assembly_progress_pct,
+        finalized_at=finalized_at,
+        updated_at=updated_at,
+        assembly_elapsed_seconds=elapsed_seconds,
         download_url=download_url,
         output_type=output_type,
         output_size=output_size,
@@ -564,31 +614,65 @@ async def finalize_session(
                 },
             )
 
-    # Transition to assembling
-    session.status = SessionStatus.ASSEMBLING
-    session.assembly_phase = "merging_html"
-    session.assembly_progress_pct = 0
-    session.finalized_at = datetime.now(timezone.utc)
-    await db.flush()
+    # Transition to assembling with a single guarded UPDATE (3.4):
+    # `WHERE status = 'uploading'` makes the transition atomic — a concurrent
+    # finalize blocks on the InnoDB row lock, re-evaluates the predicate after
+    # the first commit, matches zero rows (rowcount == 0) and receives 409.
+    # This guarantees exactly one assembly task is ever registered.
+    now = datetime.now(timezone.utc)
+    transition = await db.execute(
+        sa_update(Session)
+        .where(
+            Session.id == session_id,
+            Session.status == SessionStatus.UPLOADING,
+        )
+        .values(
+            status=SessionStatus.ASSEMBLING,
+            assembly_phase="merging_html",
+            assembly_progress_pct=0,
+            finalized_at=now,
+        )
+    )
+    if transition.rowcount == 0:
+        # Another request won the transition (or the status changed between
+        # the read above and this write). Report the authoritative status.
+        await db.rollback()
+        current = await _get_session_or_404(session_id, db)
+        current_status = (
+            current.status.value
+            if isinstance(current.status, SessionStatus)
+            else current.status
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "invalid_status",
+                "message": f"Session is already in '{current_status}' status",
+                "current_status": current_status,
+                "api_version": "v1",
+            },
+        )
+
     # Commit immediately so that polling requests see "assembling" status
-    # right away, instead of waiting for the get_db() post-yield commit.
+    # right away, and so the row lock is released for other workers.
     await db.commit()
-    
+
     # Trigger the assembly pipeline as a background task
     import asyncio
-    from app.services.zip_assembler import zip_assembler_service
+
     from app.db.database import async_session_factory
-    
+    from app.services.zip_assembler import zip_assembler_service
+
     async def _run_assembly() -> None:
         async with assembly_task_manager.semaphore:
             await zip_assembler_service.assemble_session(session_id, async_session_factory)
-    
+
     task = asyncio.create_task(_run_assembly())
     assembly_task_manager.register(session_id, task)
     logger.info("Session finalized: id=%s — assembly pipeline triggered", session_id)
-    
+
     return FinalizeResponse(
-        id=session.id,
+        id=session_id,
         status=SessionStatus.ASSEMBLING.value,
         message="Assembly pipeline started",
     )

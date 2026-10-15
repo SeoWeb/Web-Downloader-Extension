@@ -1,5 +1,6 @@
 """Client (API key holder) database model."""
 
+import hashlib
 import secrets
 import uuid
 from datetime import datetime, timezone
@@ -15,6 +16,11 @@ def _generate_api_key() -> str:
     return secrets.token_hex(32)
 
 
+def hash_api_key(api_key: str) -> str:
+    """SHA-256 hex digest of an API key (at-rest lookup hash, 7.5)."""
+    return hashlib.sha256(api_key.encode("utf-8")).hexdigest()
+
+
 class Client(Base):
     """Registered extension client identified by API key.
 
@@ -26,6 +32,7 @@ class Client(Base):
 
     __table_args__ = (
         Index("ix_clients_api_key", "api_key", unique=True),
+        Index("ix_clients_api_key_hash", "api_key_hash"),
         Index("ix_clients_extension_instance_id", "extension_instance_id", unique=True),
         Index("ix_clients_created_at", "created_at"),
         {
@@ -53,6 +60,12 @@ class Client(Base):
         default=_generate_api_key,
         comment="Cryptographically random API key for authentication",
     )
+    api_key_hash: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        comment="SHA-256 of api_key for at-rest hash lookup (7.5); "
+        "legacy rows have this populated lazily on first successful auth",
+    )
     name: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
@@ -63,12 +76,34 @@ class Client(Base):
         nullable=True,
         comment="PagePocket cloud user ID for cloud archive push",
     )
+    pagepocket_plan: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+        comment="PagePocket plan recorded at binding time (free/pro); "
+        "authoritative plan for cloud push billing",
+    )
+    pagepocket_linked_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+        comment="When the cloud binding was last (re-)verified via AuthService.Verify",
+    )
+    last_auth_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+        comment="Last successful API-key authentication (throttled writes); "
+        "drives orphan-client cleanup (6.4)",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         server_default="CURRENT_TIMESTAMP",
     )
+
+    @staticmethod
+    def hash_key(api_key: str) -> str:
+        """Return the at-rest lookup hash for an API key."""
+        return hash_api_key(api_key)
 
     def __repr__(self) -> str:
         return f"<Client id={self.id} api_key={self.api_key[:8]}...>"

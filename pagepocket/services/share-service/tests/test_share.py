@@ -20,11 +20,22 @@ sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), ".."
 
 os.environ.setdefault("BASE_URL", "http://localhost:8000")
 
+# Per-service module names (models/servicer) exist in every service. Import
+# this suite's copies ONCE under an alias; tests/conftest.py re-points the
+# shared sys.modules names per test for combined multi-suite runs.
+_PP_ALIAS = "_ppsvc_share-service_"
+if _PP_ALIAS + "models" not in sys.modules:
+    for _name in ("models", "servicer"):
+        sys.modules.pop(_name, None)
+
 import grpc
 import servicer as _servicer_mod
 import share_pb2
 from db import Base, db_session, get_engine
 from models import ShareLink
+
+sys.modules[_PP_ALIAS + "models"] = sys.modules["models"]
+sys.modules[_PP_ALIAS + "servicer"] = sys.modules["servicer"]
 
 
 class _FakeRpcContext:
@@ -205,7 +216,25 @@ class TestShareServicer(unittest.TestCase):
             resp, ctx = self._validate(token)
             self.assertFalse(resp.valid, f"{desc} should be invalid")
             self.assertEqual(resp.page_id, "", f"{desc} should not leak page_id")
+            self.assertEqual(resp.owner_user_id, "", f"{desc} should not leak owner_user_id")
             self.assertIsNone(ctx.code, f"{desc} should not set gRPC error code")
+
+    # -- owner_user_id resolution (2.2) --
+
+    def test_validate_returns_owner_user_id(self):
+        created, _ = self._create(user_id=USER_A, page_id=PAGE_1)
+        resp, _ctx = self._validate(created.token)
+        self.assertTrue(resp.valid)
+        self.assertEqual(resp.owner_user_id, USER_A)
+        self.assertEqual(resp.page_id, PAGE_1)
+
+    def test_validate_owner_user_id_from_cache_path(self):
+        """Second validation hits the cached-token path — owner still resolved."""
+        created, _ = self._create(user_id=USER_A)
+        self._validate(created.token)  # prime the cache
+        resp, _ctx = self._validate(created.token)
+        self.assertTrue(resp.valid)
+        self.assertEqual(resp.owner_user_id, USER_A)
 
     # -- GetShareLink --
 
@@ -219,6 +248,115 @@ class TestShareServicer(unittest.TestCase):
     def test_get_nonexistent_link(self):
         _, ctx = self._get("nonexistent")
         self.assertEqual(ctx.code, grpc.StatusCode.NOT_FOUND)
+
+
+# ---------------------------------------------------------------------------
+# CreateShareLink page-ownership checks (2.4) — defense-in-depth via the
+# archive service when ARCHIVE_SERVICE_ADDR is configured.
+# ---------------------------------------------------------------------------
+
+class _FakeOwnershipError(grpc.RpcError):
+    def __init__(self, code):
+        self._code = code
+
+    def code(self):
+        return self._code
+
+    def details(self):
+        return "fake"
+
+
+class TestCreateShareLinkOwnership(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.engine = _init_db()
+        cls._engine_patcher = unittest.mock.patch.object(
+            _servicer_mod, "get_engine", return_value=cls.engine
+        )
+        cls._engine_patcher.start()
+
+        orig_db_session = _servicer_mod.db_session
+
+        def _bound_session(engine_arg=None):
+            return orig_db_session(engine_arg or cls.engine)
+
+        cls._session_patcher = unittest.mock.patch.object(
+            _servicer_mod, "db_session", _bound_session
+        )
+        cls._session_patcher.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._engine_patcher.stop()
+        cls._session_patcher.stop()
+
+    def setUp(self):
+        with db_session(self.engine) as s:
+            s.query(ShareLink).delete()
+        self.svc = _servicer_mod.ShareServicer()
+
+    def _set_archive_stub(self, stub):
+        p = unittest.mock.patch.object(_servicer_mod, "_get_archive_stub", return_value=stub)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def _owned_stub(self):
+        """Archive service confirming the page is owned by the caller."""
+        stub = unittest.mock.MagicMock()
+        stub.GetPage.return_value = unittest.mock.MagicMock()
+        return stub
+
+    def _create(self, user_id=USER_A, page_id=PAGE_1):
+        ctx = _FakeRpcContext()
+        req = share_pb2.CreateShareLinkRequest(user_id=user_id, page_id=page_id)
+        return self.svc.CreateShareLink(req, ctx), ctx
+
+    def _link_count(self):
+        with db_session(self.engine) as s:
+            return s.query(ShareLink).count()
+
+    def test_owned_page_creates_link(self):
+        self._set_archive_stub(self._owned_stub())
+        resp, ctx = self._create()
+        self.assertIsNone(ctx.code)
+        self.assertTrue(resp.token)
+        self.assertEqual(self._link_count(), 1)
+
+    def test_foreign_page_rejected_not_found(self):
+        stub = self._owned_stub()
+        stub.GetPage.side_effect = _FakeOwnershipError(grpc.StatusCode.NOT_FOUND)
+        self._set_archive_stub(stub)
+
+        _resp, ctx = self._create(user_id=USER_B, page_id="someone-elses-page")
+        self.assertEqual(ctx.code, grpc.StatusCode.NOT_FOUND)
+        self.assertEqual(self._link_count(), 0)
+
+    def test_missing_page_rejected_not_found(self):
+        stub = self._owned_stub()
+        stub.GetPage.side_effect = _FakeOwnershipError(grpc.StatusCode.NOT_FOUND)
+        self._set_archive_stub(stub)
+
+        _, ctx = self._create(page_id="does-not-exist")
+        self.assertEqual(ctx.code, grpc.StatusCode.NOT_FOUND)
+        self.assertEqual(self._link_count(), 0)
+
+    def test_archive_unavailable_fails_closed(self):
+        """The check must not be bypassable by taking the archive service down."""
+        stub = self._owned_stub()
+        stub.GetPage.side_effect = _FakeOwnershipError(grpc.StatusCode.UNAVAILABLE)
+        self._set_archive_stub(stub)
+
+        _, ctx = self._create()
+        self.assertEqual(ctx.code, grpc.StatusCode.NOT_FOUND)
+        self.assertEqual(self._link_count(), 0)
+
+    def test_no_archive_configured_gateway_is_enforcement_point(self):
+        """Without ARCHIVE_SERVICE_ADDR the gateway pre-check enforces ownership;
+        the share service proceeds as before."""
+        self._set_archive_stub(None)
+        resp, ctx = self._create()
+        self.assertIsNone(ctx.code)
+        self.assertTrue(resp.token)
 
 
 if __name__ == "__main__":

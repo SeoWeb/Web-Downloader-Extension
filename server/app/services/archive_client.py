@@ -50,8 +50,9 @@ def _get_stub():
     if _stub is not None:
         return _stub
 
-    import grpc
     import sys
+
+    import grpc
 
     # Resolve proto_generated directory:
     # 1. PROTO_DIR env var (explicit, used in Docker)
@@ -90,16 +91,19 @@ def push_to_archive(
     title: str,
     html_content: bytes,
     assets: list[tuple[str, str, bytes]],
+    plan: str = "free",
 ) -> CloudPushResult:
     """Push a finalized page to the archive service.
 
     Args:
-        user_id: PagePocket user ID
+        user_id: PagePocket user ID (from the server-side client binding)
         session_id: Extension server session UUID (used as extension_job_id)
         url: Original page URL
         title: Page title
         html_content: Merged HTML bytes
         assets: List of (filename, content_type, data) tuples
+        plan: User's plan from the binding (3.2) — NEVER omitted; defaults
+            to "free" so a missing binding plan cannot escalate quota.
 
     Returns:
         CloudPushResult with page_id on success or error details on failure.
@@ -115,6 +119,9 @@ def push_to_archive(
         for fn, ct, data in assets
     ]
 
+    # Identity + plan always travel with the request (3.2 / D4): user_id and
+    # plan are resolved server-side from the client binding — never omitted,
+    # never taken from extension-supplied data.
     request = archive_pb2.IngestPageRequest(
         user_id=user_id,
         url=url,
@@ -122,6 +129,7 @@ def push_to_archive(
         html_content=html_content,
         assets=asset_msgs,
         extension_job_id=session_id,
+        plan=plan or "free",
     )
 
     max_retries = 3

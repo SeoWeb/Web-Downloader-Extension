@@ -1,0 +1,9 @@
+# Test-only dependencies for the pagepocket backend test suites.
+# Not installed into service images (service runtime deps live in each
+# service's requirements.txt). Used by services/*/tests and CI.
+#
+#   pip install -r requirements-dev.txt
+#
+fakeredis>=2.20.0     # api-gateway rate-limiter unit tests (Redis backend)
+pytest>=8.0.0
+httpx>=0.27.0         # gateway integration suite + TestClient-based unit tests

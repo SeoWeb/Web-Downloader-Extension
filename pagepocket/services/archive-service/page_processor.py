@@ -8,6 +8,50 @@ _STRIP_PREFIX = re.compile(r"^\./+")
 # URLs that must never be rewritten to archive-relative paths.
 _EXTERNAL_PREFIXES = ("http://", "https://", "//", "data:", "blob:", "mailto:", "tel:")
 
+# ---------------------------------------------------------------------------
+# Sanitisation policy (archived-html-serving / D6 layer 1):
+# - <script> elements are removed entirely;
+# - every `on*` event-handler attribute is stripped from all elements;
+# - URI-bearing attributes (href, src, action, formaction, xlink:href) with a
+#   `javascript:` or `data:text/html` value are neutralised (rewritten to an
+#   inert "#" for link-class attributes, dropped for src);
+# - other `data:` URIs are allowed — archived pages legitimately embed
+#   inline data:image/* payloads;
+# - `srcdoc` embeds are dropped (HTML-in-HTML vector from the audit).
+# Comparison normalises case and strips whitespace/control characters, so
+# evasions like "JaVaScRiPt:" or "java\tscript:" are caught.
+# ---------------------------------------------------------------------------
+_URI_ATTRS = ("href", "src", "action", "formaction", "xlink:href")
+_URI_ATTRS_REWRITE_TO_INERT = ("href", "action", "formaction", "xlink:href")
+_CONTROL_AND_WS = re.compile(r"[\x00-\x20\x7f]")
+
+
+def _is_dangerous_uri(value: str) -> bool:
+    """True for javascript: and data:text/html URIs (evasion-normalised)."""
+    normalized = _CONTROL_AND_WS.sub("", value).lower()
+    return normalized.startswith(("javascript:", "data:text/html"))
+
+
+def _sanitize_elements(soup) -> None:
+    """Strip event handlers, dangerous URIs, and srcdoc embeds in place."""
+    for tag in soup.find_all(True):
+        # on* event handlers: nothing legitimate starts with "on".
+        for attr in [a for a in tag.attrs if a.lower().startswith("on")]:
+            del tag.attrs[attr]
+
+        # srcdoc embeds a full HTML document — dropped outright.
+        if "srcdoc" in tag.attrs:
+            del tag.attrs["srcdoc"]
+
+        for attr in _URI_ATTRS:
+            val = tag.get(attr)
+            if not isinstance(val, str) or not _is_dangerous_uri(val):
+                continue
+            if attr in _URI_ATTRS_REWRITE_TO_INERT:
+                tag.attrs[attr] = "#"  # inert value, element content preserved
+            else:
+                del tag.attrs[attr]
+
 
 def _rewrite_asset_url(val: str, asset_map: dict[str, str]) -> str | None:
     """Resolve an asset reference to an archive-relative path.
@@ -82,6 +126,11 @@ def sanitise_and_rewrite(html_bytes: bytes, asset_map: dict[str, str]) -> tuple[
     # avoid "blocked script execution" console errors and save storage
     for script in soup.find_all("script"):
         script.decompose()
+
+    # Strip event handlers, javascript:/data:text/html URIs, and srcdoc
+    # embeds from everything that remains (D6 layer 1 — runs BEFORE the
+    # HTML is persisted, so no stored page contains executable payload).
+    _sanitize_elements(soup)
 
     rewritten = str(soup).encode("utf-8")
 

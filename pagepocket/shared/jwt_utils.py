@@ -8,7 +8,7 @@ import time
 import jwt
 
 JWT_SECRET = os.environ["JWT_SECRET"]
-ACCESS_TOKEN_EXPIRY = 7 * 24 * 3600  # 7 days
+ACCESS_TOKEN_EXPIRY = 1 * 3600  # 1 hour — short-lived; clients refresh on 401
 REFRESH_TOKEN_EXPIRY = 30 * 24 * 3600  # 30 days
 
 

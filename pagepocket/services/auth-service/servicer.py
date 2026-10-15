@@ -125,11 +125,25 @@ class AuthServicer(auth_pb2_grpc.AuthServiceServicer):
         payload = verify_access_token(request.token)
         if payload is None:
             return auth_pb2.VerifyResponse(valid=False)
+        # The plan claim in the JWT is refreshed at issue time, but a user can
+        # change plan mid-token. Read the CURRENT plan from the users table so
+        # callers (e.g. the monolith cloud binding) always store the real plan;
+        # fall back to the token claims if the user row is gone.
+        plan = payload.get("plan", "")
+        try:
+            with db_session(self.engine) as session:
+                user = session.execute(
+                    select(User).where(User.id == payload["sub"])
+                ).scalar_one_or_none()
+                if user is not None:
+                    plan = user.plan
+        except Exception:
+            pass  # DB unavailable — serve the token claims rather than fail
         return auth_pb2.VerifyResponse(
             valid=True,
             user_id=payload["sub"],
             email=payload["email"],
-            plan=payload["plan"],
+            plan=plan,
         )
 
     def Refresh(self, request, context):

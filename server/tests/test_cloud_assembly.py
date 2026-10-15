@@ -208,7 +208,7 @@ class TestCloudOn:
         async def mock_update_progress(db, sess, phase, pct, **kwargs):
             pass
 
-        async def mock_build_assets(sid, db):
+        async def mock_build_assets(sid, db, archive_paths=None):
             return [
                 (r.local_path, r.content_type, b"\x00" * r.size)
                 for r in resources
@@ -261,7 +261,7 @@ class TestCloudOn:
         async def mock_update_progress(db, sess, phase, pct, **kwargs):
             pass
 
-        async def mock_build_assets(sid, db):
+        async def mock_build_assets(sid, db, archive_paths=None):
             return []
 
         assembler._update_progress = mock_update_progress
@@ -312,7 +312,7 @@ class TestCloudOn:
         async def mock_update_progress(db, sess, phase, pct, **kwargs):
             pass
 
-        async def mock_build_assets(sid, db):
+        async def mock_build_assets(sid, db, archive_paths=None):
             return []
 
         assembler._update_progress = mock_update_progress
@@ -367,7 +367,7 @@ class TestCloudOnPushFailure:
         async def mock_update_progress(db, sess, phase, pct, **kwargs):
             pass
 
-        async def mock_build_assets(sid, db):
+        async def mock_build_assets(sid, db, archive_paths=None):
             return []
 
         assembler._update_progress = mock_update_progress
@@ -407,7 +407,7 @@ class TestCloudOnPushFailure:
         async def mock_update_progress(db, sess, phase, pct, **kwargs):
             pass
 
-        async def mock_build_assets(sid, db):
+        async def mock_build_assets(sid, db, archive_paths=None):
             return []
 
         assembler._update_progress = mock_update_progress
