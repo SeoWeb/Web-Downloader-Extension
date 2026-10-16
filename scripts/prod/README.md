@@ -7,14 +7,15 @@ workflow, never ad-hoc.**
 
 ## 1. Routing contract (spike, 2026-10-15 — authoritative topology)
 
-| Public name | Path | Backend |
-|---|---|---|
-| `server.pagepocket.app` | Cloudflare (proxied) → nginx :443 (`/etc/nginx/sites-enabled/server.pagepocket.app`) → `127.0.0.1:8000` | monolith (`server-app-1`) |
-| `pagepocket.app` | Cloudflare → nginx :443 → `127.0.0.1:3000` | Next.js frontend (plain `next start`, **no pm2**) |
-| `app.pagepocket.app` | falls through to the same frontend via nginx's implicit default-server block (works by accident — one explicit `server_name` block would make it intentional) | Next.js frontend |
-| (none) | gateway `127.0.0.1:8090` — **no public hostname**; nginx does not front it today | pagepocket api-gateway |
+| Public name             | Path                                                                                                                                                          | Backend                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `server.pagepocket.app` | Cloudflare (proxied) → nginx :443 (`/etc/nginx/sites-enabled/server.pagepocket.app`) → `127.0.0.1:8000`                                                       | monolith (`server-app-1`)                         |
+| `pagepocket.app`        | Cloudflare → nginx :443 → `127.0.0.1:3000`                                                                                                                    | Next.js frontend (plain `next start`, **no pm2**) |
+| `app.pagepocket.app`    | falls through to the same frontend via nginx's implicit default-server block (works by accident — one explicit `server_name` block would make it intentional) | Next.js frontend                                  |
+| (none)                  | gateway `127.0.0.1:8090` — **no public hostname**; nginx does not front it today                                                                              | pagepocket api-gateway                            |
 
 Header provenance:
+
 - `X-Forwarded-For` / `X-Forwarded-Proto` / `X-Real-IP` / `Host` are set by **nginx**.
 - `CF-Connecting-IP` is set by the **Cloudflare edge** (real client IP — this is
   what the gateway rate limiter keys on).
@@ -28,6 +29,7 @@ the 5.11 compose changes all three are loopback-only/unpublished; the
 first deploy that lands them closes the exposure.
 
 Health endpoints (both **GET only** — the monolith returns 405 for HEAD):
+
 - monolith `GET http://127.0.0.1:8000/api/v1/health` → `{"status":"ok","mysql":"ok",...}`
 - gateway `GET http://127.0.0.1:8090/api/v1/health` → `{"status":"ok","api_version":"v1","rate_limiter":"ok"}`
 
@@ -35,26 +37,26 @@ Health endpoints (both **GET only** — the monolith returns 405 for HEAD):
 
 `pagepocket/.env` (0600):
 
-| Variable | Required? | Notes |
-|---|---|---|
-| `REDIS_PASSWORD` | **REQUIRED** — prod compose refuses to render without it (5.10) | generate: `openssl rand -hex 24`; or run `scripts/prod/roll-redis-password.sh` |
-| `JWT_SECRET` | REQUIRED in practice | gateway refuses to boot in prod with unset/dev-default (4.6); already differs from the default per the spike |
-| `MYSQL_ROOT_PASSWORD` | REQUIRED by 5.12 | rotated off the committed default by `scripts/prod/rotate-credentials.sh` |
-| `CORS_ALLOW_ORIGINS` | optional | default `https://pagepocket.app,https://app.pagepocket.app`; append published `chrome-extension://` origins |
-| `TRUSTED_PROXIES` | optional (NARROWED default in compose) | default `172.18.0.1,172.17.0.1` — only the docker bridge gateway IPs a host→`127.0.0.1:8090` connection can be source-NATed to (nginx AND the host-side Next.js server both traverse docker-proxy). Verify the actual value on the host (see §TRUSTED_PROXIES rollout) and set it here |
-| `BASE_URL` | **REQUIRED** (share arming, 4.8) | prod overlay refuses to render without it; the share-service fail-fast now actually runs (`ENVIRONMENT=production` is armed). Expected: `https://pagepocket.app` — confirm the public short-link host before the deploy |
-| `DB_PASSWORD_AUTH` / `DB_PASSWORD_ARCHIVE` / `DB_PASSWORD_LIBRARY` / `DB_PASSWORD_SEARCH` / `DB_PASSWORD_SHARE` | **REQUIRED** (D12/2.16) | prod overlay refuses to render without them; the scoped users `pagepocket_<svc>` are created/rotated by `scripts/prod/rotate-db-users.sh`, which generates + writes these. Run it BEFORE the first deploy carrying the overlay (the render fails fast otherwise) |
-| `MAX_UPLOAD_BYTES` | optional | default `268435456` (256 MB, matching the gRPC limit) |
-| `MAX_INGEST_ASSETS` | optional | default `200` — per-ingest asset-count cap (D2) |
-| `GATEWAY_WORKERS` | optional | default `2` — uvicorn workers for the gateway (D1); Redis-backed limiter makes multi-worker safe |
-| `R2_*` | as before | unchanged |
+| Variable                                                                                                        | Required?                                                       | Notes                                                                                                                                                                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REDIS_PASSWORD`                                                                                                | **REQUIRED** — prod compose refuses to render without it (5.10) | generate: `openssl rand -hex 24`; or run `scripts/prod/roll-redis-password.sh`                                                                                                                                                                                                         |
+| `JWT_SECRET`                                                                                                    | REQUIRED in practice                                            | gateway refuses to boot in prod with unset/dev-default (4.6); already differs from the default per the spike                                                                                                                                                                           |
+| `MYSQL_ROOT_PASSWORD`                                                                                           | REQUIRED by 5.12                                                | rotated off the committed default by `scripts/prod/rotate-credentials.sh`                                                                                                                                                                                                              |
+| `CORS_ALLOW_ORIGINS`                                                                                            | optional                                                        | default `https://pagepocket.app,https://app.pagepocket.app`; append published `chrome-extension://` origins                                                                                                                                                                            |
+| `TRUSTED_PROXIES`                                                                                               | optional (NARROWED default in compose)                          | default `172.18.0.1,172.17.0.1` — only the docker bridge gateway IPs a host→`127.0.0.1:8090` connection can be source-NATed to (nginx AND the host-side Next.js server both traverse docker-proxy). Verify the actual value on the host (see §TRUSTED_PROXIES rollout) and set it here |
+| `BASE_URL`                                                                                                      | **REQUIRED** (share arming, 4.8)                                | prod overlay refuses to render without it; the share-service fail-fast now actually runs (`ENVIRONMENT=production` is armed). Expected: `https://pagepocket.app` — confirm the public short-link host before the deploy                                                                |
+| `DB_PASSWORD_AUTH` / `DB_PASSWORD_ARCHIVE` / `DB_PASSWORD_LIBRARY` / `DB_PASSWORD_SEARCH` / `DB_PASSWORD_SHARE` | **REQUIRED** (D12/2.16)                                         | prod overlay refuses to render without them; the scoped users `pagepocket_<svc>` are created/rotated by `scripts/prod/rotate-db-users.sh`, which generates + writes these. Run it BEFORE the first deploy carrying the overlay (the render fails fast otherwise)                       |
+| `MAX_UPLOAD_BYTES`                                                                                              | optional                                                        | default `268435456` (256 MB, matching the gRPC limit)                                                                                                                                                                                                                                  |
+| `MAX_INGEST_ASSETS`                                                                                             | optional                                                        | default `200` — per-ingest asset-count cap (D2)                                                                                                                                                                                                                                        |
+| `GATEWAY_WORKERS`                                                                                               | optional                                                        | default `2` — uvicorn workers for the gateway (D1); Redis-backed limiter makes multi-worker safe                                                                                                                                                                                       |
+| `R2_*`                                                                                                          | as before                                                       | unchanged                                                                                                                                                                                                                                                                              |
 
 `server/.env` (0600) — new interpolated keys (5.12):
 
-| Variable | Required? | Notes |
-|---|---|---|
-| `MYSQL_ROOT_PASSWORD` | REQUIRED by 5.12 | legacy default `root_password` remains only as a dev fallback |
-| `MYSQL_USER` / `MYSQL_PASSWORD` | REQUIRED by 5.12 | feed `MYSQL_CONNECTION_STRING` + the db container |
+| Variable                        | Required?        | Notes                                                         |
+| ------------------------------- | ---------------- | ------------------------------------------------------------- |
+| `MYSQL_ROOT_PASSWORD`           | REQUIRED by 5.12 | legacy default `root_password` remains only as a dev fallback |
+| `MYSQL_USER` / `MYSQL_PASSWORD` | REQUIRED by 5.12 | feed `MYSQL_CONNECTION_STRING` + the db container             |
 
 The monolith's MySQL credential is no longer only a committed literal:
 `server/docker-compose.yml` interpolates `${MYSQL_*}` from `server/.env`.
@@ -85,7 +87,7 @@ and the compose changes interlock (prod compose requires `REDIS_PASSWORD`).
    first migration pass is a no-op — nothing to stamp.
    Verify the exposure closure: external probe of 33060/8000/8090 must now
    REFUSE connections.
-3b. **Rebuild the monolith** (user-ordered 2026-10-16 — IN scope for deploy
+   3b. **Rebuild the monolith** (user-ordered 2026-10-16 — IN scope for deploy
    day; the only consumer of the monolith today is the operator's own
    extension build, so no legacy-behavior contract applies): from
    `/var/www/Web-Downloader-Extension/server` with the pagepocket stack
@@ -149,21 +151,21 @@ and the compose changes interlock (prod compose requires `REDIS_PASSWORD`).
    created short link points at the public host (NOT `http://localhost:8090`):
    `docker compose -f docker-compose.yml -f docker-compose.prod.yml exec share-service printenv BASE_URL` + create a share link via the UI and open it.
 10. **Restore drill** (5.5, fixed by D13/4.1): `scripts/prod/restore-drill.sh --db auth_db --yes`
-   (default is a dry-run plan; `--yes` explicitly CREATEs the scratch DB —
-   dumps carry no CREATE DATABASE/USE anymore — restores into it, compares
-   exact row counts per table + alembic_version against the source, then
-   runs the **canary**: a marker row inserted into
-   `<scratch>.__restore_drill_canary` that is asserted to be ABSENT from
-   the source DB (proof the restore targeted scratch only), and drops the
-   scratch DB). Record the run INCLUDING the canary line below.
+    (default is a dry-run plan; `--yes` explicitly CREATEs the scratch DB —
+    dumps carry no CREATE DATABASE/USE anymore — restores into it, compares
+    exact row counts per table + alembic_version against the source, then
+    runs the **canary**: a marker row inserted into
+    `<scratch>.__restore_drill_canary` that is asserted to be ABSENT from
+    the source DB (proof the restore targeted scratch only), and drops the
+    scratch DB). Record the run INCLUDING the canary line below.
 11. **Monolith network confinement — verification** (D12/2.17): if step 3b
-   rebuilt the monolith on the new compose, the switch already happened —
-   run §Monolith network confinement's reachability checks (archive/auth
-   connect, search/library/share FAIL, monolith + frontend healthy) and
-   record the output.
+    rebuilt the monolith on the new compose, the switch already happened —
+    run §Monolith network confinement's reachability checks (archive/auth
+    connect, search/library/share FAIL, monolith + frontend healthy) and
+    record the output.
 12. **CI-gated deploys from here on.** Nothing deploys the monolith
-   automatically — after step 3b it runs current code; subsequent monolith
-   rebuilds stay deliberate, operator-driven acts (see §10).
+    automatically — after step 3b it runs current code; subsequent monolith
+    rebuilds stay deliberate, operator-driven acts (see §10).
 
 ### Restore-drill log (spec: recorded evidence)
 
@@ -173,9 +175,9 @@ and the compose changes interlock (prod compose requires `REDIS_PASSWORD`).
   matches; **canary: marker row present in scratch, ABSENT from source** (restore
   targeted scratch only). Scratch dropped. Operator: coordinator agent.
 
-| Date | Backup used | DB | Result | Canary evidence |
-|---|---|---|---|---|
-| _(pending — execute step 10 and record here)_ | | | | |
+| Date                                          | Backup used | DB  | Result | Canary evidence |
+| --------------------------------------------- | ----------- | --- | ------ | --------------- |
+| _(pending — execute step 10 and record here)_ |             |     |        |                 |
 
 ## 4. Regular deploy flow (backend)
 
@@ -361,15 +363,15 @@ rotation.
 - **Frontend:** each deploy keeps exactly one rollback copy:
   `rm -rf .next.bak-* && cp -al .next ".next.bak-$(date +%s)"`. Rollback =
   `rm -rf .next && mv .next.bak-<ts> .next` + restart (`nohup npm run start >
-  next.log 2>&1 &`, or pm2 if it ever returns).
+next.log 2>&1 &`, or pm2 if it ever returns).
 - **Redis password:** `pagepocket/.env.bak-<ts>` + re-run
   `roll-redis-password.sh --password "<old>"`.
 - **MySQL credentials:** `server/.env.bak-<ts>` / `pagepocket/.env.bak-<ts>`
-  + ALTER USER back + recreate (see the summary output of
-  `rotate-credentials.sh`).
+  - ALTER USER back + recreate (see the summary output of
+    `rotate-credentials.sh`).
 - **DB users (D12/2.16):** `pagepocket/.env.bak-<ts>` holds the pre-run
   `DB_PASSWORD_*`; restore it, re-run `rotate-db-users.sh --yes` (re-grants
-  + rotates back to those values), and the services come up as before.
+  - rotates back to those values), and the services come up as before.
 - **Rootless containers (4.9):** service images run as user `app` (uid 999).
   If a recreated service cannot read its mTLS material, the mounted
   `pagepocket/certs/*.pem` are too restrictive on the host — make them
@@ -407,15 +409,68 @@ rotation.
       and smoke-test deliberately; nothing deploys it automatically
 - [ ] Deploy-gate runs `git reset --hard origin/pagepocket` on the host —
       confirmed safe (tree clean apart from untracked `pagepocket/frontend/
-      .next.bak-*` and `next.log`)
+    .next.bak-*` and `next.log`)
 
 ## 12. Script inventory (`scripts/prod/`)
 
-| Script | Purpose |
-|---|---|
-| `backup-mysql.sh` | nightly per-DB `--single-transaction` dumps (5 pagepocket DBs + monolith) → `BACKUP_DIR` (default `/var/backups/mysql`; **prod uses `/home/siim/backups/mysql`** — user decision 2026-10-16, no sudo), log + freshness marker, 14-day pruning, optional rclone off-host copy. Dumps carry NO `CREATE DATABASE`/`USE` (D13/4.1) — restores must target an explicitly created scratch DB |
-| `restore-drill.sh` | restore a backup into `<db>_drill_<ts>` (explicitly CREATEd), verify row counts vs source, run the scratch-only canary (marker row asserted ABSENT from the source DB), drop scratch (dry-run by default) |
-| `rotate-credentials.sh` | generate + install MySQL credentials in host env files, ALTER USER in both containers, scoped recreates, health verification (dry-run by default) |
-| `rotate-db-users.sh` | create/rotate the per-service least-privilege users (`pagepocket_<svc>` → own schema only), write `DB_PASSWORD_*` into `pagepocket/.env`, cutover recreate + health verification (dry-run by default; D12/2.16) |
-| `roll-redis-password.sh` | set `REDIS_PASSWORD`, coordinated redis-first rolling restart, AUTH + health verification (dry-run by default) |
-| `archive-maintenance/loop.py` | the 5.9 sidecar loop (RetryPendingIndexing / SweepOrphanR2Objects over mTLS) |
+| Script                        | Purpose                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backup-mysql.sh`             | nightly per-DB `--single-transaction` dumps (5 pagepocket DBs + monolith) → `BACKUP_DIR` (default `/var/backups/mysql`; **prod uses `/home/siim/backups/mysql`** — user decision 2026-10-16, no sudo), log + freshness marker, 14-day pruning, optional rclone off-host copy. Dumps carry NO `CREATE DATABASE`/`USE` (D13/4.1) — restores must target an explicitly created scratch DB |
+| `restore-drill.sh`            | restore a backup into `<db>_drill_<ts>` (explicitly CREATEd), verify row counts vs source, run the scratch-only canary (marker row asserted ABSENT from the source DB), drop scratch (dry-run by default)                                                                                                                                                                              |
+| `rotate-credentials.sh`       | generate + install MySQL credentials in host env files, ALTER USER in both containers, scoped recreates, health verification (dry-run by default)                                                                                                                                                                                                                                      |
+| `rotate-db-users.sh`          | create/rotate the per-service least-privilege users (`pagepocket_<svc>` → own schema only), write `DB_PASSWORD_*` into `pagepocket/.env`, cutover recreate + health verification (dry-run by default; D12/2.16)                                                                                                                                                                        |
+| `roll-redis-password.sh`      | set `REDIS_PASSWORD`, coordinated redis-first rolling restart, AUTH + health verification (dry-run by default)                                                                                                                                                                                                                                                                         |
+| `archive-maintenance/loop.py` | the 5.9 sidecar loop (RetryPendingIndexing / SweepOrphanR2Objects over mTLS)                                                                                                                                                                                                                                                                                                           |
+
+## 13. close-cloud-lifecycle-gaps deploy record (2026-10-16)
+
+Shipped: `DELETE /api/v1/cloud/link` (idempotent unbind), opt-in federated
+delete (`DELETE /api/v1/sessions/{id}?delete_cloud=true`, binding-gated,
+locally authoritative), `CLOUD_MAX_ASSETS` (default 200) stat-only push
+pre-flight, gateway trusted-proxy drift alarm + `health.trusted_proxies`.
+Final SHA `5d373f2` (local `main` == `pagepocket` == host checkout).
+
+Deploy mechanics learned (add to the §4 path-filter notes):
+
+- **`server/**`is NOT in the deploy-backend path filter (by design — the
+monolith is manual-only).** A server-only push therefore deploys NOTHING
+and leaves the host checkout behind. For a monolith fix: fetch +`git
+  reset --hard origin/pagepocket` on the host by hand, then rebuild
+  (§3 step 3b). Learned the hard way: rebuilt from a stale tree and the
+  422→401 header fix wasn't in the image.
+- Backend deploy marker comment used again in `pagepocket/docker-compose.yml`
+  (third time) to make an otherwise non-backend push deploy the gateway.
+
+Verification evidence (all 2026-10-16, all green):
+
+- **Gateway:** health now reports `"trusted_proxies":"ok"` (field shipped
+  with this change; covered-config case silent). Compose recreate came from
+  the gated deploy run 38938768180 (`deploy-backend: success` on `999ab55`,
+  then monolith rebuilt manually at `5d373f2`).
+- **Unbind (wire):** scratch client → `curl -X DELETE .../cloud/link` →
+  `{"bound":false,"api_version":"v1"}`, repeated → identical (idempotent).
+  Missing/unknown key → **401** (a required-`Header(...)` previously let
+  FastAPI answer 422 before the dependency's 401 — fixed in
+  `get_current_client`; HTTP-layer regression tests pin it).
+- **Federated delete (wire):** `?delete_cloud=true` on a non-cloud session →
+  `{"deleted":true,"cloud":{"deleted":false,"reason":"not_cloud"},...}`;
+  default delete → `reason:"not_requested"`.
+- **Asset cap (live, no RPC):** in-container `push_to_archive` with 201
+  assets → `error: session exceeds cloud asset limit: 201 assets (max 200)`,
+  `page_id: None`, and **zero** ingest lines in archive-service logs during
+  the window — pre-flight rejects before any gRPC traffic (no retry burn).
+- **Drift alarm (scratch run, incident shape):** `TRUSTED_PROXIES=172.18.0.1`
+  - gateway recreate → health `"trusted_proxies":"drift"` (gateway still
+    boots/serves) and one structured ERROR per worker: `TRUSTED_PROXIES drift:
+derived default-route gateway 172.19.0.1 matches none of the configured
+entries ['172.18.0.1'] — XFF is distrusted...Remediation: docker network
+inspect pagepocket_default ...`. Restored
+    `172.19.0.1,172.18.0.1,172.17.0.1` → health `"ok"`.
+- **Bucketing re-verified after restore (§5):** 21 register calls with the
+  same XFF → 20×400 then **429** (shared bucket trips at the limit); a
+  distinct XFF immediately after → not-429 (isolated bucket).
+
+Still operator-side (needs a PagePocket-bound client, i.e. the extension
+smoke): real bind → cloud push → checkbox delete removes the PP page
+(7.3), the bound→unbind transition on PP logout (7.2's second half), and a
+real >200-asset page end-to-end (7.4's wire path is proven above).
