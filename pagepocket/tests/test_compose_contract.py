@@ -268,7 +268,24 @@ def test_integration_project_is_isolated(tmp_path: Path) -> None:
 )
 def test_monolith_compose_is_confined(tmp_path: Path) -> None:
     """2.17: the monolith attaches to the confined network, not pagepocket_default."""
-    cfg = _render(tmp_path, SERVER_COMPOSE, project="server-contract-probe")
+    # server/docker-compose.yml declares `env_file: .env` (gitignored, present
+    # on dev/prod hosts but NOT on CI runners) — `docker compose config` fails
+    # outright when it's missing, so provision a minimal dummy for the render.
+    env_path = SERVER_COMPOSE.parent / ".env"
+    created_dummy = False
+    if not env_path.exists():
+        env_path.write_text(
+            "SERVER_HOST=127.0.0.1\n"
+            "SERVER_PORT=8000\n"
+            "MYSQL_CONNECTION_STRING=mysql+aiomysql://dummy:dummy@db:3306/website_downloader\n"
+            "STORAGE_ROOT=/tmp/monolith-contract-probe\n"
+        )
+        created_dummy = True
+    try:
+        cfg = _render(tmp_path, SERVER_COMPOSE, project="server-contract-probe")
+    finally:
+        if created_dummy:
+            env_path.unlink()
     app = cfg["services"]["app"]
     attached = set((app.get("networks") or {}).keys())
     assert "pagepocket-monolith" in attached, (
