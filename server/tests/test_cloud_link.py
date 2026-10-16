@@ -621,3 +621,58 @@ class TestPushCarriesIdentityAndPlan:
             )
 
         assert mock_push.call_args.kwargs["plan"] == "free"
+
+
+# ---------------------------------------------------------------------------
+# HTTP-layer auth-header contract (close-cloud-lifecycle-gaps 7.2 shakedown).
+# ---------------------------------------------------------------------------
+
+
+class TestAuthHeaderWireContract:
+    """A MISSING X-API-Key header must yield 401, not FastAPI's 422.
+
+    Shakedown finding (prod, 2026-10-16): ``Header(...)`` made the framework
+    reject a request without the header with 422 before the dependency's 401
+    logic could run — violating the spec scenario "no API key → 401".
+    ``get_current_client`` now declares the header optional and raises 401
+    itself (matching its docstring). These tests pin the wire contract for
+    both cloud routes; direct-call tests above cannot see this failure mode.
+    """
+
+    async def _build_app(self, sqlite_db):
+        from fastapi import FastAPI
+
+        from app.api.dependencies import get_db
+        from app.api.routes import cloud
+
+        _, factory = sqlite_db
+
+        app = FastAPI()
+        app.include_router(cloud.router)
+
+        async def _override_db():
+            async with factory() as session:
+                yield session
+
+        app.dependency_overrides[get_db] = _override_db
+        return app
+
+    @pytest.mark.asyncio
+    async def test_unbind_missing_api_key_is_401_not_422(self, sqlite_db):
+        import httpx
+
+        app = await self._build_app(sqlite_db)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            resp = await c.delete("/api/v1/cloud/link")
+        assert resp.status_code == 401, resp.status_code
+
+    @pytest.mark.asyncio
+    async def test_bind_missing_api_key_is_401_not_422(self, sqlite_db):
+        import httpx
+
+        app = await self._build_app(sqlite_db)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            resp = await c.post("/api/v1/cloud/link")
+        assert resp.status_code == 401, resp.status_code

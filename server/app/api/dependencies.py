@@ -91,7 +91,7 @@ async def authenticate_client(db: AsyncSession, api_key: str) -> Client | None:
 
 
 async def get_current_client(
-    x_api_key: str = Header(..., alias="X-API-Key"),
+    x_api_key: str | None = Header(None, alias="X-API-Key"),
     db: AsyncSession = Depends(get_db),
 ) -> Client:
     """Validate X-API-Key header and return the authenticated client.
@@ -99,6 +99,9 @@ async def get_current_client(
     Raises:
         HTTPException: 401 if the API key is missing or invalid.
     """
+    if x_api_key is None:
+        raise _invalid_key_error()
+
     client = await authenticate_client(db, x_api_key)
 
     if client is None:
