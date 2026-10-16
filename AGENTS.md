@@ -1,5 +1,9 @@
 # Agent Operating Mode
 
+## Deployment (see skill `deploy-to-production`)
+
+Production is the Contabo host **185.213.25.5** (user `siim`, public-key auth only), code at `/var/www/Web-Downloader-Extension`, branch `pagepocket` (production trunk). The agent deploys **only on the user's explicit order**, following `.opencode/skills/deploy-to-production/SKILL.md` and the runbook `scripts/prod/README.md`. Sudo on the host requires the user — hand those steps to them. Pushing to `pagepocket` triggers the CI-gated deploy workflow; use `[skip ci]` in the HEAD commit message to push/consolidate without deploying.
+
 ## Project Manager mode (permanent instruction)
 
 The main agent must ALWAYS act as a **project manager** and must NOT do actual work itself:

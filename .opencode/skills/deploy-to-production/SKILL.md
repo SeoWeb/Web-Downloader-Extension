@@ -5,64 +5,48 @@ description: Deploy or release this project to production on the Contabo server 
 
 # Deploy to Production
 
-Verified production topology (verified 2026-10-02). Follow these procedures exactly — several parts of the server are fragile in non-obvious ways.
+**The user orders deploys explicitly.** Never deploy, push to production branches without `[skip ci]`, or mutate the production host unless the user asked for it in the current conversation. When the user does order a deploy, follow `scripts/prod/README.md` (the authoritative runbook) in order — this skill carries the connection facts, the non-negotiable safety rules, and the current-state notes the runbook assumes.
 
-## Connection & secrets
+## Connection
 
-- SSH one-shots (BatchMode, no password prompt): `ssh -o BatchMode=yes siim@185.213.25.5 '<cmd>'`
-- Key: `~/.ssh/id_rsa` (RSA), fingerprint `SHA256:DYj4iF797Xzx+idp1eNF/8fFOuR/6DO5Z2eEBwA9srA`
-- Credentials are also stored gitignored in `.deploy.env` at the repo root (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY_PATH`, `DEPLOY_KEY_FINGERPRINT`, `DEPLOY_APP_DIR`, `DEPLOY_BRANCH`)
-- Repo on server: `/var/www/Web-Downloader-Extension`, branch `pagepocket` — **this is THE production trunk**. `main` only advances via GitHub PR merge; never push to `main` directly.
-- GitHub secrets `CONTABO_HOST` / `CONTABO_USER` / `CONTABO_SSH_KEY` are configured for `deploy.yml` (GitHub Actions deploy workflow).
+- Host: `185.213.25.5` (Contabo, pagepocket.app)
+- User: `siim` — **public-key auth only**, no password prompts:
+  `ssh -o BatchMode=yes siim@185.213.25.5 '<cmd>'`
+- Key: `~/.ssh/id_rsa` (RSA), fingerprint `SHA256:DYj4iF797Xzx+idp1eNF/8fFOuR/6DO5Z2eEBwA9srA`; also gitignored at repo root `.deploy.env` (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY_PATH`, `DEPLOY_KEY_FINGERPRINT`, `DEPLOY_APP_DIR`, `DEPLOY_BRANCH`)
+- **Sudo on the host needs the user's password** — hand interactive/sudo steps to the user, or ask them to run the exact command and paste output. Never assume passwordless sudo.
+- Code path on server: `/var/www/Web-Downloader-Extension`, branch `pagepocket` — **this is the production trunk**. `main` is the GitHub-side line (advances via PR merge or explicit user-ordered consolidation; it does not deploy anything).
 
-## Server topology (verified 2026-10-02)
+## What a deploy IS now (post-hardening, 2026-10)
 
-- **Cloudflare proxies pagepocket.app.** Cloudflare edge transforms apply to HTML responses: Email Obfuscation was observed injecting scripts into `/api/sc/*` responses. A CF config rule to disable Email Obfuscation for `/api/sc/*` + `/api/pp/*` was recommended — keep this in mind when debugging "impossible" HTML mutations of API responses.
-- **Frontend:** runs under **PM2 v7** as app `pagepocket-frontend` (created 2026-06-07), serving host port `:3000`. Rebuild with `pnpm install --frozen-lockfile && pnpm build` (node via nvm — source nvm in non-login shells; pnpm 10 via corepack), keeping a hardlink backup `cp -al .next .next.bak-$(date +%s)` before the build. Restart flow: `pm2 stop pagepocket-frontend` → `pkill -f 'next[-]server'` (clean orphan processes) → `pm2 restart pagepocket-frontend` → verify `pm2 status` shows online with a frozen restart counter + `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/`. `.github/workflows/deploy.yml` automates this (deploy-frontend job); manual trigger: `gh workflow run deploy.yml --ref pagepocket`.
-- **Backend:** docker compose project `pagepocket`, run from `/var/www/Web-Downloader-Extension/pagepocket` with **BOTH files**:
-  `docker compose -f docker-compose.yml -f docker-compose.prod.yml ...`
-  Services: `api-gateway` (8090 — the only host-published port), `auth` (50051), `archive` (50052), `library` (50053), `search` (50054), `share` (50055) — all internal-only, mTLS on — plus `mysql` and `redis` (internal).
-- `restart-prod.sh` exists in `pagepocket/` (full `up -d --build` of everything). `scripts/deploy-contabo.sh` is **DRIFTED** (assumes pm2 + `main` branch) — do not trust it blindly.
+- `deploy.yml` fires on **every push to `pagepocket`**: path-filtered jobs, a **CI gate** (backend + frontend deploys require a green `ci.yml` run of the exact pushed SHA), SHA-pinned checkout (`DEPLOY_SHA`; aborts on queue-race), alembic per service, **GET** (never HEAD) health polls with bounded retries.
+- To push code **without** deploying (consolidation), put `[skip ci]` in the HEAD commit message of the push (done 2026-10-16 for the main fast-forward).
+- Backend = docker compose project `pagepocket` from `/var/www/Web-Downloader-Extension/pagepocket`, **always both files** (`-f docker-compose.yml -f docker-compose.prod.yml`). `api-gateway` :8090 is the only host-published port (bound to 127.0.0.1); MySQL :33060 is **not** published anymore; internal services are mTLS-only.
+- Frontend = nohup `next start` on :3000 (**no pm2 on the host** — deploy.yml handles both, prefers the no-pm2 path; if you see pm2 output, fine, but do not "restore" pm2).
+- The **monolith** (`server/`, compose project `server`, port 8000) is deployed **manually, outside CI — by design**. Never let a pagepocket deploy touch it; the monolith's first rebuild is its own documented procedure.
 
-### Gotchas
+## Non-negotiable safety rules
 
-- After recreating any backend services, **RESTART api-gateway too** — stale gRPC channels caused transient 500s last time.
-- Always use **BOTH compose files** (`-f docker-compose.yml -f docker-compose.prod.yml`), **`--no-deps`**, and run **from the `pagepocket` dir**. Wrong dir or missing override flips mTLS off and republishes internal ports to the host.
-- `/etc/hosts` on the server maps `api-gateway` → `127.0.0.1` for the frontend — do not remove or "fix" this.
-- **pkill self-match hazard:** when killing orphan frontend processes, write the pattern as `pkill -f 'next[-]server'` — never the literal `next-server`. A matchable literal inside the command text (SSH one-shot, script, heredoc) makes pkill match and kill its own shell/ssh process.
-- **PM2 crash-loop history:** PM2 previously crash-looped (~1178 restarts) against orphan `next-server` processes (EADDRINUSE), which is why the frontend served a stale build from Jun 7 until 2026-10-02. Resolved; `pm2 save` done. Always kill orphans *before* `pm2 restart`, and afterwards confirm the restart counter is frozen (not climbing) in `pm2 status`.
+1. **Both compose files, from the `pagepocket` dir, `--no-deps` for scoped recreates.** Missing the prod overlay flips mTLS off and republishes internal ports to the host.
+2. **After recreating ANY backend service, restart `api-gateway`** (stale gRPC channels caused transient 500s).
+3. **pkill self-match hazard:** write `pkill -f 'next[-]server'` — a matchable literal kills its own SSH shell.
+4. **Do not remove or "fix" `/etc/hosts` on the server** (`api-gateway` → 127.0.0.1 for the frontend is intentional).
+5. **Never copy locally generated certs to prod.** Host PKI is authoritative (valid to 2036; see runbook §9). After the rootless-container change, host `pagepocket/certs/*.pem` keys must be `chmod 0644` or services can't read them.
+6. **Order matters on the first hardened deploy:** run `scripts/prod/rotate-db-users.sh --yes` and set `BASE_URL` **before** the first deploy carrying the new prod overlay (its compose render hard-fails without `DB_PASSWORD_*` / `BASE_URL`). Full sequence: runbook §2 → §3.
+7. **Backend + frontend ship atomically.** The frontend (by-id page fetch, proxy contracts) assumes the new gateway. Never hand-deploy one side against the other.
+8. If a deploy fails mid-way, **stop and reconcile with runbook §10 (rollback) before retrying** — don't stack fixes on a half-deployed host.
 
-## Standard procedures
+## Deploy-day sequence (summary — runbook is authoritative)
 
-### Verify before deploying
+1. Read `scripts/prod/README.md` §2–§3; verify host `.env` has every var in its table (incl. `DB_PASSWORD_*`, `BASE_URL`, `REDIS_PASSWORD`, `TRUSTED_PROXIES`, `GATEWAY_WORKERS`).
+2. Prep scripts (prepared, never yet executed): `rotate-db-users.sh` → `rotate-credentials.sh` → `roll-redis-password.sh` — each has a `--dry-run` default; run dry first, show the user the plan, then `--yes` on their go.
+3. Trigger the gated deploy: push `pagepocket` (or `gh workflow run deploy.yml --ref pagepocket`), watch `gh run list`, then the deploy job logs.
+4. Post-deploy verification: `GET http://127.0.0.1:8090/api/v1/health` (expect `"status":"ok"`, rate_limiter not degraded), `curl` :3000 for 200, `docker compose ps` all healthy, external port scan (:33060/:8000/:8090 must now be CLOSED).
+5. Deploy-gated verifications still open: monolith confinement (§7), share-service short-URL check (§3 step 9), TRUSTED_PROXIES bucketing (§5), restore drill + canary evidence (`scripts/prod/restore-drill.sh`), E2E smoke against prod.
+6. Record results in the runbook (§ restore-drill log) so the OpenSpec deploy-gated tasks can be ticked and the remaining change archived.
 
-- Local CI-equivalent checks green (build + tests for the changed components).
-- CI on GitHub green (PR flow: `pagepocket` → `main`, PR #2-style merge gate).
+## Known gotchas (earned, keep)
 
-### Deploy backend
-
-1. Assess which services actually changed (assess first, deploy second).
-2. On the server: `git pull --ff-only` in `/var/www/Web-Downloader-Extension` (on branch `pagepocket`).
-3. From the `pagepocket` dir, recreate only the changed services:
-   `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --no-deps <changed services>`
-4. **Restart api-gateway as well** (stale gRPC channels otherwise).
-5. Verify: `docker ps` health status + `curl https://pagepocket.app` smoke tests (frontend loads, API endpoints respond).
-6. If unhealthy: roll back via `git revert` of the offending commit(s) + rebuild the affected services.
-
-### Deploy frontend
-
-1. In `pagepocket/frontend` on the server: source nvm (non-login shells don't have it), then `pnpm install --frozen-lockfile && pnpm build` (pnpm 10 via corepack).
-   The real env file **must be present** — Zod env validation fails without it, and `NEXT_PUBLIC_*` values are baked at build time.
-2. Back up the existing `.next` directory first: `cp -al .next .next.bak-$(date +%s)` (hardlink backup).
-3. Restart via PM2: `pm2 stop pagepocket-frontend` → `pkill -f 'next[-]server'` (clean orphan `next-server` processes; mind the pkill self-match hazard above) → `pm2 restart pagepocket-frontend`.
-4. Verify: `pm2 status` shows `pagepocket-frontend` **online** with a frozen restart counter, `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/` returns 200, and `https://pagepocket.app` renders correctly.
-5. Or let CI do it: the `deploy-frontend` job in `.github/workflows/deploy.yml` automates the nvm/pnpm build + pm2 restart — `gh workflow run deploy.yml --ref pagepocket`.
-
-## Safety rules
-
-- **Assess first, deploy second.** Confirm what changed and what needs rebuilding before touching production.
-- **Ask the user when unsure or when the change is risky** — DB migrations, destructive operations, or anything with expected downtime. Never guess on production.
-- **Never print private keys** or log secrets. Use env files already present on the server.
-- **Never push to `main` directly.** Production trunk is `pagepocket`; `main` advances only via GitHub PR merge.
-- Prefer incremental deploys (`--no-deps <services>`) over full rebuilds; `restart-prod.sh` rebuilds everything and should be a last resort.
-- If a deploy fails, restore the previous working state (rollback) and report what happened.
+- Cloudflare edge mutates HTML (Email Obfuscation injected scripts into `/api/sc/*` once) — when API responses look "impossibly" mutated, suspect CF, not the app.
+- `scripts/deploy-contabo.sh` is a drifted stub — do not trust; `restart-prod.sh` in `pagepocket/` does a full `up -d --build` (blunt but real).
+- MySQL boot race is fixed in code (`shared/db.py` bounded connect-retry); if a service still exit-loops on fresh volumes, check `docker logs` for the retry lines before restarting blind.
+- `make test-integration` uses project `-p pagepocket-it` and needs :3306/:8090 free — never run it against the prod stack's ports.
