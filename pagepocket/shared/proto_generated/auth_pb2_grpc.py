@@ -4,6 +4,7 @@ import grpc
 import warnings
 
 import auth_pb2 as auth__pb2
+import common_pb2 as common__pb2
 
 GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
@@ -57,7 +58,7 @@ class AuthServiceStub(object):
         self.Logout = channel.unary_unary(
                 '/auth.AuthService/Logout',
                 request_serializer=auth__pb2.LogoutRequest.SerializeToString,
-                response_deserializer=auth__pb2.StatusResponse.FromString,
+                response_deserializer=common__pb2.StatusResponse.FromString,
                 _registered_method=True)
 
 
@@ -120,7 +121,7 @@ def add_AuthServiceServicer_to_server(servicer, server):
             'Logout': grpc.unary_unary_rpc_method_handler(
                     servicer.Logout,
                     request_deserializer=auth__pb2.LogoutRequest.FromString,
-                    response_serializer=auth__pb2.StatusResponse.SerializeToString,
+                    response_serializer=common__pb2.StatusResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -257,7 +258,7 @@ class AuthService(object):
             target,
             '/auth.AuthService/Logout',
             auth__pb2.LogoutRequest.SerializeToString,
-            auth__pb2.StatusResponse.FromString,
+            common__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,

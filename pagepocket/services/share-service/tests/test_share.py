@@ -125,9 +125,18 @@ class TestShareServicer(unittest.TestCase):
         self.assertEqual(resp.view_count, 0)
 
     def test_create_returns_existing_active_link(self):
+        """2.15: an existing active link is returned, never duplicated. With
+        hash-only storage the plaintext token of an existing link cannot be
+        re-derived — it is served from the creation-time cache when present
+        (fakeredis cases in test_share_hardening.py) and metadata-only
+        otherwise."""
         resp1, _ = self._create()
         resp2, _ = self._create()
-        self.assertEqual(resp1.token, resp2.token)
+        self.assertEqual(resp1.page_id, resp2.page_id)
+        self.assertEqual(resp1.user_id, resp2.user_id)
+        # No second row was created.
+        with db_session(self.engine) as s:
+            self.assertEqual(s.query(ShareLink).count(), 1)
 
     def test_create_with_expiry(self):
         exp = int(time.time()) + 3600

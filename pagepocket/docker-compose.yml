@@ -7,19 +7,40 @@
 #   JWT_SECRET           (default: dev-secret-change-me — dev only)
 #   REDIS_PASSWORD       (default: dev-redis-change-me — dev only; REQUIRED in prod)
 #   R2_ENDPOINT_URL / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME
-#   BASE_URL             (share short-URL base; http://localhost:8090 in dev)
+#   BASE_URL             (share short-URL base; http://localhost:8090 in dev; REQUIRED in prod)
 #   MAX_UPLOAD_BYTES     (gateway ingest cap, bytes; default 268435456 = 256 MB)
+#   MAX_INGEST_ASSETS    (gateway per-ingest asset-count cap; default 200 — D2)
+#   GATEWAY_WORKERS      (uvicorn worker count for api-gateway; default 2 — D1)
+#   TRUSTED_PROXIES      (proxy addrs whose X-Forwarded-For is trusted; default is
+#                         the docker bridge gateways only — D3/1.9, see
+#                         scripts/prod/README.md before overriding)
+#   DB_USER_<SVC> / DB_PASSWORD_<SVC>  (per-service least-privilege MySQL
+#                         credentials, <SVC> in AUTH/ARCHIVE/LIBRARY/SEARCH/SHARE —
+#                         D12/2.16; dev default falls back to root, prod overlay
+#                         requires the scoped users)
 
 services:
   mysql:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-pagepocket}
+      # 2.16: seed the per-service least-privilege users on a FRESH datadir
+      # (pagepocket/init-users.sh runs from docker-entrypoint-initdb.d right
+      # after init.sql and reads exactly these vars, so the credentials the
+      # services use in DB_URL are the credentials the users are created
+      # with). Existing volumes are rotated by scripts/prod/rotate-db-users.sh
+      # instead — initdb.d scripts never run on an existing datadir.
+      DB_PASSWORD_AUTH: ${DB_PASSWORD_AUTH:-pp-auth-dev}
+      DB_PASSWORD_ARCHIVE: ${DB_PASSWORD_ARCHIVE:-pp-archive-dev}
+      DB_PASSWORD_LIBRARY: ${DB_PASSWORD_LIBRARY:-pp-library-dev}
+      DB_PASSWORD_SEARCH: ${DB_PASSWORD_SEARCH:-pp-search-dev}
+      DB_PASSWORD_SHARE: ${DB_PASSWORD_SHARE:-pp-share-dev}
     ports:
       - "127.0.0.1:3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init-users.sh:/docker-entrypoint-initdb.d/20-init-users.sh:ro
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -48,7 +69,11 @@ services:
       context: .
       dockerfile: services/auth-service/Dockerfile
     environment:
-      DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/auth_db
+      # D12/2.16: per-service least-privilege credentials. Dev default stays
+      # root (convenience); setting DB_USER_AUTH/DB_PASSWORD_AUTH (and the
+      # matching init-users.sh seeding) scopes auth-service to auth_db only.
+      # The prod overlay hard-requires the scoped user.
+      DB_URL: mysql+pymysql://${DB_USER_AUTH:-root}:${DB_PASSWORD_AUTH:-${MYSQL_ROOT_PASSWORD:-pagepocket}}@mysql:3306/auth_db
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       REDIS_URL: redis://:${REDIS_PASSWORD:-dev-redis-change-me}@redis:6379/0
       MTLS_ENABLED: "false"
@@ -57,6 +82,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # 2.17: also attached to the confined monolith network — the ONLY
+    # services the legacy monolith can reach (D12).
+    networks:
+      - default
+      - monolith
     ports:
       - "127.0.0.1:50051:50051"
     healthcheck:
@@ -70,7 +100,9 @@ services:
       context: .
       dockerfile: services/archive-service/Dockerfile
     environment:
-      DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/archive_db
+      # D12/2.16: see auth-service above — archive-service is scoped to
+      # archive_db only.
+      DB_URL: mysql+pymysql://${DB_USER_ARCHIVE:-root}:${DB_PASSWORD_ARCHIVE:-${MYSQL_ROOT_PASSWORD:-pagepocket}}@mysql:3306/archive_db
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       R2_ENDPOINT_URL: ${R2_ENDPOINT_URL:-}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
@@ -85,6 +117,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # 2.17: confined monolith network (see auth-service).
+    networks:
+      - default
+      - monolith
     ports:
       - "127.0.0.1:50052:50052"
     healthcheck:
@@ -98,7 +134,8 @@ services:
       context: .
       dockerfile: services/library-service/Dockerfile
     environment:
-      DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/library_db
+      # D12/2.16: scoped to library_db only.
+      DB_URL: mysql+pymysql://${DB_USER_LIBRARY:-root}:${DB_PASSWORD_LIBRARY:-${MYSQL_ROOT_PASSWORD:-pagepocket}}@mysql:3306/library_db
       REDIS_URL: redis://:${REDIS_PASSWORD:-dev-redis-change-me}@redis:6379/2
       # 5.10 (wave-1 follow-up): defense-in-depth page-ownership checks —
       # library-service verifies page ownership against archive-service
@@ -123,7 +160,8 @@ services:
       context: .
       dockerfile: services/search-service/Dockerfile
     environment:
-      DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/search_db
+      # D12/2.16: scoped to search_db only.
+      DB_URL: mysql+pymysql://${DB_USER_SEARCH:-root}:${DB_PASSWORD_SEARCH:-${MYSQL_ROOT_PASSWORD:-pagepocket}}@mysql:3306/search_db
       REDIS_URL: redis://:${REDIS_PASSWORD:-dev-redis-change-me}@redis:6379/3
       MTLS_ENABLED: "false"
     depends_on:
@@ -144,7 +182,8 @@ services:
       context: .
       dockerfile: services/share-service/Dockerfile
     environment:
-      DB_URL: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-pagepocket}@mysql:3306/share_db
+      # D12/2.16: scoped to share_db only.
+      DB_URL: mysql+pymysql://${DB_USER_SHARE:-root}:${DB_PASSWORD_SHARE:-${MYSQL_ROOT_PASSWORD:-pagepocket}}@mysql:3306/share_db
       BASE_URL: ${BASE_URL:-http://localhost:8090}
       REDIS_URL: redis://:${REDIS_PASSWORD:-dev-redis-change-me}@redis:6379/4
       # 5.10 (wave-1 follow-up): defense-in-depth page-ownership checks.
@@ -180,6 +219,23 @@ services:
       # 5.10/4.4: bounded multipart ingest buffering (bytes; 256 MB default
       # matching the gRPC message-size limit).
       MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-268435456}
+      # D2/1.x compose part: cap the NUMBER of assets per ingest (D2's
+      # cumulative-bytes bound lives in the gateway; this is its config knob).
+      MAX_INGEST_ASSETS: ${MAX_INGEST_ASSETS:-200}
+      # D1/1.4 compose part: uvicorn runs multi-worker (safe — the limiter is
+      # Redis-backed, not per-process). Raise via .env for bigger hosts.
+      GATEWAY_WORKERS: ${GATEWAY_WORKERS:-2}
+      # D3/1.9 compose part: narrowed default — ONLY the docker bridge
+      # gateway addresses a host->127.0.0.1:8090 connection can be
+      # source-NATed to (nginx and the host-side Next.js server both reach
+      # the gateway through docker-proxy, so the immediate peer is the
+      # bridge gateway IP, not "the whole RFC1918 bridge"). Verify the real
+      # value on the host with:
+      #   docker network inspect pagepocket_default \
+      #     --format '{{(index .IPAM.Config 0).Gateway}}'
+      # and override TRUSTED_PROXIES in pagepocket/.env if it differs —
+      # rollout caution in scripts/prod/README.md §TRUSTED_PROXIES.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.18.0.1,172.17.0.1}
       MTLS_ENABLED: "false"
     ports:
       # 5.11 (dev): loopback-only — convenient for local dev, never exposed
@@ -235,6 +291,17 @@ networks:
   default:
     name: pagepocket_default
     external: true
+  # D12/2.17: confined attachment network for the legacy monolith. The
+  # monolith container (server/docker-compose.yml) joins THIS network
+  # instead of pagepocket_default, so it can resolve/reach only the
+  # services attached here — archive-service and auth-service. search-,
+  # library- and share-service stay on pagepocket_default only and are
+  # unreachable from the monolith (docker DNS simply does not resolve them
+  # on this network — no iptables needed). Compose creates it on the first
+  # `make dev`/`up`; the monolith recreate is deploy-gated — see
+  # scripts/prod/README.md §Monolith network confinement.
+  monolith:
+    name: pagepocket-monolith
 
 volumes:
   mysql_data:

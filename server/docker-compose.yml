@@ -34,7 +34,16 @@ services:
     command: ["sh", "-c", "i=0; until python -c 'import socket; socket.create_connection((\"db\",3306),timeout=1)' 2>/dev/null; do sleep 1; i=$$((i+1)); if [ $$i -ge 120 ]; then echo 'Timed out waiting for db:3306' >&2; exit 1; fi; done; exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     networks:
       - default
-      - pagepocket_default
+      # D12/2.17 (confinement): the monolith joins pagepocket-monolith —
+      # the network that carries ONLY archive-service and auth-service —
+      # instead of pagepocket_default. On pagepocket-monolith the docker
+      # embedded DNS does not resolve search-/library-/share-service, so
+      # they are unreachable from here (no iptables involved). Requires the
+      # pagepocket stack to be up once (compose creates the named network;
+      # it is declared external below). Applying the switch to the RUNNING
+      # monolith is a deploy-gated operator action — apply + verification:
+      # scripts/prod/README.md §Monolith network confinement.
+      - pagepocket-monolith
     restart: always
     depends_on:
       db:
@@ -84,5 +93,9 @@ volumes:
   mysql_data:
 
 networks:
-  pagepocket_default:
+  # D12/2.17: confined monolith attachment (archive-service + auth-service
+  # only). Created by the pagepocket compose project (see
+  # pagepocket/docker-compose.yml) — bring the pagepocket stack up first,
+  # or create it manually: docker network create pagepocket-monolith.
+  pagepocket-monolith:
     external: true

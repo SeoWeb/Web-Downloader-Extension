@@ -13,6 +13,11 @@ JWT_SECRET = "JWT_SECRET"
 CORS_ALLOW_ORIGINS = "CORS_ALLOW_ORIGINS"
 TRUSTED_PROXIES = "TRUSTED_PROXIES"
 REDIS_URL = "REDIS_URL"
+GATEWAY_WORKERS = "GATEWAY_WORKERS"
+
+# uvicorn worker processes (D1). >1 is safe: rate limiting and session state
+# are Redis-backed, not in-process memory.
+DEFAULT_GATEWAY_WORKERS = 2
 
 # The development default baked into docker-compose.yml — must never reach
 # production.
@@ -90,6 +95,22 @@ def allowed_origins(raw: str | None = None) -> list[str]:
         origins.append(entry)
 
     return origins or list(DEFAULT_ALLOWED_ORIGINS)
+
+
+def gateway_workers(raw: str | None = None) -> int:
+    """Parse GATEWAY_WORKERS (uvicorn worker processes). Defaults to 2.
+
+    Non-integer or <1 values fall back to the default; an operator can always
+    pin a single worker with GATEWAY_WORKERS=1.
+    """
+    source = os.environ.get(GATEWAY_WORKERS) if raw is None else raw
+    if not source or not source.strip():
+        return DEFAULT_GATEWAY_WORKERS
+    try:
+        value = int(source)
+    except ValueError:
+        return DEFAULT_GATEWAY_WORKERS
+    return value if value >= 1 else DEFAULT_GATEWAY_WORKERS
 
 
 def trusted_proxies(raw: str | None = None) -> tuple[str, ...]:

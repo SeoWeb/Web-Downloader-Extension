@@ -16,7 +16,7 @@ The frontend SHALL expose `/app/pages/[pageId]` that renders a saved page for it
 
 #### Scenario: Iframe sandbox attributes
 - **WHEN** the viewer renders the content iframe
-- **THEN** `sandbox` MUST be set to `allow-same-origin allow-popups allow-forms`
+- **THEN** `sandbox` MUST be set to `allow-popups allow-forms` (origin-isolated — archived pages are attacker-controlled; `allow-same-origin` MUST be absent, matching the shell-level CSP sandbox on the proxy response)
 - **AND** the iframe `src` MUST be same-origin (the proxy path), never a presigned R2 URL
 
 #### Scenario: Top-frame navigation blocked

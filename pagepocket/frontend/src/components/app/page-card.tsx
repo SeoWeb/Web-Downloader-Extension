@@ -4,7 +4,6 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { MoreVertical, Share2, FolderInput, Trash2 } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -44,9 +43,9 @@ export function PageCard({ page, onDelete, onShare, onMove }: PageCardProps) {
     }
   })();
 
-  const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
-  const [faviconError, setFaviconError] = useState(false);
-
+  // Favicon privacy (pagepocket-frontend-shell): archived hostnames are never
+  // sent to third-party favicon providers (previously google.com/s2). Cards
+  // render a local letter avatar — zero outbound requests.
   const initial = page.title.charAt(0).toUpperCase();
 
   return (
@@ -58,17 +57,8 @@ export function PageCard({ page, onDelete, onShare, onMove }: PageCardProps) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-3 min-w-0">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold overflow-hidden">
-            {faviconError ? (
-              initial
-            ) : (
-              <img
-                src={faviconUrl}
-                alt=""
-                className="h-5 w-5"
-                onError={() => setFaviconError(true)}
-              />
-            )}
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
+            {initial}
           </div>
           <div className="min-w-0">
             <Link

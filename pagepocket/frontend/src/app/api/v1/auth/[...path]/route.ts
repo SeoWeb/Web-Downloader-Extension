@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_GATEWAY_URL } from "@/lib/env";
+import { forwardedClientIpHeadersFrom } from "@/lib/api/client-ip";
 
 /**
  * Proxy route for extension auth requests.
@@ -35,9 +36,11 @@ export async function POST(
 
   const gatewayUrl = `${API_BASE}/auth/${subPath}`;
 
-  // Build headers — forward Authorization if present (needed for logout)
+  // Build headers — forward Authorization if present (needed for logout) and
+  // the inbound client IP chain (rate-limit identity).
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...forwardedClientIpHeadersFrom(request.headers),
   };
   const authHeader = request.headers.get("Authorization");
   if (authHeader) {

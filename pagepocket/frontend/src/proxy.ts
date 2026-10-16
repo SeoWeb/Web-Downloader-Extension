@@ -15,8 +15,16 @@ function isTokenExpired(token: string): boolean {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const accessCookie = request.cookies.get("pp_access");
+  const hasRefresh = Boolean(request.cookies.get("pp_refresh")?.value);
 
-  if (!accessCookie?.value || isTokenExpired(accessCookie.value)) {
+  const accessMissingOrExpired =
+    !accessCookie?.value || isTokenExpired(accessCookie.value);
+
+  // A present refresh token is pass-worthy (design D10): the /api/pp refresh
+  // primitive rotates the access token on the first API call. Hard-redirecting
+  // here would sign out users with a valid 30-day refresh token and turn RSC
+  // deep-links into 404s.
+  if (accessMissingOrExpired && !hasRefresh) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);

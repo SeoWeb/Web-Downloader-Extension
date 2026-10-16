@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared",
 
 import archive_pb2
 import archive_pb2_grpc
+import common_pb2
 import library_pb2
 import library_pb2_grpc
 from cache import cache_delete, cache_get, cache_invalidate_pattern, cache_set
@@ -24,29 +25,26 @@ from cache_config import (
     pattern_collections,
 )
 from db import db_session, get_engine
-from grpc_mtls import secure_channel_credentials
+from grpc_pool import get_stub
 from models import Collection, PageCollection
 
 logger = logging.getLogger(__name__)
 
 
 def _get_archive_stub():
-    """Optional archive-service client for page-ownership checks (2.5).
+    """Memoized archive-service client via the shared gRPC pool (2.10).
 
-    The library DB has no pages table, so page ownership is verified against
-    the archive service when ARCHIVE_SERVICE_ADDR is configured. The gateway
+    Optional archive-service client for page-ownership checks (2.5): the
+    library DB has no pages table, so page ownership is verified against the
+    archive service when ARCHIVE_SERVICE_ADDR is configured. The gateway
     performs the same check on ingest-serving routes; this is the in-service
-    enforcement for callers that bypass the gateway.
+    enforcement for callers that bypass the gateway. Channels are memoized in
+    the shared pool instead of being opened per call.
     """
     addr = os.environ.get("ARCHIVE_SERVICE_ADDR")
     if not addr:
         return None
-    mtls = os.environ.get("MTLS_ENABLED", "false").lower() == "true"
-    if mtls:
-        channel = grpc.secure_channel(addr, secure_channel_credentials())
-    else:
-        channel = grpc.insecure_channel(addr)
-    return archive_pb2_grpc.ArchiveServiceStub(channel)
+    return get_stub(addr, archive_pb2_grpc.ArchiveServiceStub)
 
 
 def _coll_to_dict(c, page_count):
@@ -235,15 +233,15 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             if not coll or coll.user_id != request.user_id:
                 context.set_code(grpc.StatusCode.NOT_FOUND)
                 context.set_details("Collection not found")
-                return library_pb2.StatusResponse()
+                return common_pb2.StatusResponse()
 
             user_id = coll.user_id
             session.delete(coll)
 
         cache_delete(key_collection(request.collection_id))
-        cache_delete(key_collection_page_ids(request.collection_id))
+        cache_delete(key_collection_page_ids(request.user_id, request.collection_id))
         cache_invalidate_pattern(pattern_collections(user_id))
-        return library_pb2.StatusResponse(success=True)
+        return common_pb2.StatusResponse(success=True)
 
     def AddPageToCollection(self, request, context):
         with db_session(self.engine) as session:
@@ -254,7 +252,7 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             if not coll or coll.user_id != request.user_id:
                 context.set_code(grpc.StatusCode.PERMISSION_DENIED)
                 context.set_details("Collection not owned by user")
-                return library_pb2.StatusResponse()
+                return common_pb2.StatusResponse()
 
             # Page-ownership check (2.5): a page that is missing or owned by
             # another user must never be linked into a collection, otherwise
@@ -263,7 +261,7 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             if not self._page_owned_by_user(request.user_id, request.page_id):
                 context.set_code(grpc.StatusCode.NOT_FOUND)
                 context.set_details("Page not found")
-                return library_pb2.StatusResponse()
+                return common_pb2.StatusResponse()
 
             existing = session.execute(
                 select(PageCollection).where(
@@ -281,9 +279,9 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             user_id = coll.user_id
 
         cache_delete(key_collection(request.collection_id))
-        cache_delete(key_collection_page_ids(request.collection_id))
+        cache_delete(key_collection_page_ids(request.user_id, request.collection_id))
         cache_invalidate_pattern(pattern_collections(user_id))
-        return library_pb2.StatusResponse(success=True)
+        return common_pb2.StatusResponse(success=True)
 
     def RemovePageFromCollection(self, request, context):
         with db_session(self.engine) as session:
@@ -294,13 +292,13 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             if not coll or coll.user_id != request.user_id:
                 context.set_code(grpc.StatusCode.PERMISSION_DENIED)
                 context.set_details("Collection not owned by user")
-                return library_pb2.StatusResponse()
+                return common_pb2.StatusResponse()
 
             # Page-ownership check for symmetry with Add (2.5).
             if not self._page_owned_by_user(request.user_id, request.page_id):
                 context.set_code(grpc.StatusCode.NOT_FOUND)
                 context.set_details("Page not found")
-                return library_pb2.StatusResponse()
+                return common_pb2.StatusResponse()
 
             session.query(PageCollection).filter(
                 PageCollection.page_id == request.page_id,
@@ -309,32 +307,69 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             user_id = coll.user_id
 
         cache_delete(key_collection(request.collection_id))
-        cache_delete(key_collection_page_ids(request.collection_id))
+        cache_delete(key_collection_page_ids(request.user_id, request.collection_id))
         cache_invalidate_pattern(pattern_collections(user_id))
-        return library_pb2.StatusResponse(success=True)
+        return common_pb2.StatusResponse(success=True)
 
     def ListCollectionPageIds(self, request, context):
-        ck = key_collection_page_ids(request.collection_id)
+        # 2.12: ownership is enforced BEFORE the cache is consulted. Key
+        # scoping alone would hide the leak, not close it — a cache entry is
+        # only ever a fast path, never an authorization decision, so a cache
+        # hit can never serve another user's collection id list.
+        with db_session(self.engine) as session:
+            owner = session.execute(
+                select(Collection.user_id).where(Collection.id == request.collection_id)
+            ).scalar_one_or_none()
+
+        if owner is None or owner != request.user_id:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details("Collection not found")
+            return library_pb2.ListCollectionPageIdsResponse()
+
+        ck = key_collection_page_ids(request.user_id, request.collection_id)
         cached = cache_get(ck)
         if cached is not None:
             return library_pb2.ListCollectionPageIdsResponse(page_ids=cached)
 
         with db_session(self.engine) as session:
-            coll = session.execute(
-                select(Collection).where(Collection.id == request.collection_id)
-            ).scalar_one_or_none()
-
-            if not coll or coll.user_id != request.user_id:
-                context.set_code(grpc.StatusCode.NOT_FOUND)
-                context.set_details("Collection not found")
-                return library_pb2.ListCollectionPageIdsResponse()
-
             rows = session.execute(
                 select(PageCollection.page_id).where(
                     PageCollection.collection_id == request.collection_id
                 )
             ).scalars().all()
 
-            page_ids = list(rows)
-            cache_set(ck, page_ids, TTL_SHORT)
-            return library_pb2.ListCollectionPageIdsResponse(page_ids=page_ids)
+        page_ids = list(rows)
+        cache_set(ck, page_ids, TTL_SHORT)
+        return library_pb2.ListCollectionPageIdsResponse(page_ids=page_ids)
+
+    def PurgePageLinks(self, request, context):
+        """Delete every collection-membership row for a page (2.3 / D6).
+
+        Invoked best-effort by the archive service during DeletePage so
+        collection membership and page_count values can never drift from
+        reality. Idempotent: purging a page with no membership rows still
+        succeeds. No user scoping — the archive service calls this for its
+        own deleted pages without user context.
+        """
+        affected = []
+        with db_session(self.engine) as session:
+            if request.page_id:
+                affected = session.execute(
+                    select(PageCollection.collection_id, Collection.user_id)
+                    .join(Collection, Collection.id == PageCollection.collection_id)
+                    .where(PageCollection.page_id == request.page_id)
+                ).all()
+
+                if affected:
+                    session.query(PageCollection).filter(
+                        PageCollection.page_id == request.page_id
+                    ).delete(synchronize_session=False)
+
+        # Membership changed → collection metadata and per-user page-id
+        # caches are stale for every affected collection.
+        for collection_id, user_id in affected:
+            cache_delete(key_collection(collection_id))
+            cache_delete(key_collection_page_ids(user_id, collection_id))
+            cache_invalidate_pattern(pattern_collections(user_id))
+
+        return common_pb2.StatusResponse(success=True)

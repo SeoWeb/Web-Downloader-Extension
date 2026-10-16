@@ -41,9 +41,13 @@ Health endpoints (both **GET only** — the monolith returns 405 for HEAD):
 | `JWT_SECRET` | REQUIRED in practice | gateway refuses to boot in prod with unset/dev-default (4.6); already differs from the default per the spike |
 | `MYSQL_ROOT_PASSWORD` | REQUIRED by 5.12 | rotated off the committed default by `scripts/prod/rotate-credentials.sh` |
 | `CORS_ALLOW_ORIGINS` | optional | default `https://pagepocket.app,https://app.pagepocket.app`; append published `chrome-extension://` origins |
-| `TRUSTED_PROXIES` | optional | default `172.16.0.0/12` (compose bridge gateway — nginx reaches the gateway through docker-proxy); tighten to the actual bridge IP after checking `docker network inspect pagepocket_default` |
+| `TRUSTED_PROXIES` | optional (NARROWED default in compose) | default `172.18.0.1,172.17.0.1` — only the docker bridge gateway IPs a host→`127.0.0.1:8090` connection can be source-NATed to (nginx AND the host-side Next.js server both traverse docker-proxy). Verify the actual value on the host (see §TRUSTED_PROXIES rollout) and set it here |
+| `BASE_URL` | **REQUIRED** (share arming, 4.8) | prod overlay refuses to render without it; the share-service fail-fast now actually runs (`ENVIRONMENT=production` is armed). Expected: `https://pagepocket.app` — confirm the public short-link host before the deploy |
+| `DB_PASSWORD_AUTH` / `DB_PASSWORD_ARCHIVE` / `DB_PASSWORD_LIBRARY` / `DB_PASSWORD_SEARCH` / `DB_PASSWORD_SHARE` | **REQUIRED** (D12/2.16) | prod overlay refuses to render without them; the scoped users `pagepocket_<svc>` are created/rotated by `scripts/prod/rotate-db-users.sh`, which generates + writes these. Run it BEFORE the first deploy carrying the overlay (the render fails fast otherwise) |
 | `MAX_UPLOAD_BYTES` | optional | default `268435456` (256 MB, matching the gRPC limit) |
-| `R2_*`, `BASE_URL` | as before | unchanged |
+| `MAX_INGEST_ASSETS` | optional | default `200` — per-ingest asset-count cap (D2) |
+| `GATEWAY_WORKERS` | optional | default `2` — uvicorn workers for the gateway (D1); Redis-backed limiter makes multi-worker safe |
+| `R2_*` | as before | unchanged |
 
 `server/.env` (0600) — new interpolated keys (5.12):
 
@@ -105,26 +109,51 @@ and the compose changes interlock (prod compose requires `REDIS_PASSWORD`).
    or export it in the cron line. Without it, backup-mysql.sh logs a loud
    WARNING and keeps local-only copies (which the spec does not accept
    long-term).
-8. **Restore drill** (5.5): `scripts/prod/restore-drill.sh --db auth_db --yes`
-   (default is a dry-run plan; `--yes` restores the newest backup into
-   `auth_db_drill_<ts>`, compares exact row counts per table + alembic_version
-   against the source, then drops the scratch DB). Record the run below.
-9. **CI-gated deploys from here on.** Nothing deploys the monolith
+8. **Rotate the per-service DB users + cut services over** (D12/2.16 — run
+   BEFORE the first deploy carrying the prod overlay, whose render FAILS
+   without `DB_PASSWORD_*` in pagepocket/.env):
+   `scripts/prod/rotate-db-users.sh --dry-run` → `--yes`. It generates the
+   `DB_PASSWORD_*` values into pagepocket/.env, creates the
+   `pagepocket_<svc>` users scoped to their own schemas, recreates the
+   services (scoped DB_URLs) and verifies gateway health. See
+   §DB-user rotation. (Never executed by the repo — deploy-gated.)
+9. **Arm the share-service prod config** (4.8): set `BASE_URL` in
+   `pagepocket/.env` (e.g. `https://pagepocket.app`) — the prod overlay
+   hard-requires it. After the deploy that carries the overlay, verify a
+   created short link points at the public host (NOT `http://localhost:8090`):
+   `docker compose -f docker-compose.yml -f docker-compose.prod.yml exec share-service printenv BASE_URL` + create a share link via the UI and open it.
+10. **Restore drill** (5.5, fixed by D13/4.1): `scripts/prod/restore-drill.sh --db auth_db --yes`
+   (default is a dry-run plan; `--yes` explicitly CREATEs the scratch DB —
+   dumps carry no CREATE DATABASE/USE anymore — restores into it, compares
+   exact row counts per table + alembic_version against the source, then
+   runs the **canary**: a marker row inserted into
+   `<scratch>.__restore_drill_canary` that is asserted to be ABSENT from
+   the source DB (proof the restore targeted scratch only), and drops the
+   scratch DB). Record the run INCLUDING the canary line below.
+11. **Monolith network confinement** (D12/2.17 — deploy-gated operator
+   action): after a pagepocket deploy has created the `pagepocket-monolith`
+   network, switch the monolith over and verify reachability — exact
+   commands in §Monolith network confinement.
+12. **CI-gated deploys from here on.** Nothing deploys the monolith
    automatically (it ran untouched for ~4 months, spike finding f) — a
    monolith rebuild ships many accumulated commits at once and stays a
-   deliberate, operator-driven act (see §7).
+   deliberate, operator-driven act (see §10).
 
 ### Restore-drill log (spec: recorded evidence)
 
-| Date | Backup used | DB | Result |
-|---|---|---|---|
-| _(pending — execute step 8 and record here)_ | | | |
+| Date | Backup used | DB | Result | Canary evidence |
+|---|---|---|---|---|
+| _(pending — execute step 10 and record here)_ | | | | |
 
 ## 4. Regular deploy flow (backend)
 
 `git push origin pagepocket` → CI (same SHA) must be green → `deploy.yml`:
 
-1. `git fetch origin && git reset --hard origin/pagepocket` on the host
+1. `git fetch origin` on the host, then **SHA pinning (D13/4.2)**: the job
+   aborts unless `git rev-parse origin/pagepocket` equals the gated
+   `DEPLOY_SHA` (a newer commit landing mid-queue is NOT shipped — re-run
+   the deploy for the newer SHA), then `git reset --hard "$DEPLOY_SHA"`.
+   The host tree is therefore always EXACTLY the commit CI gated.
 2. `docker compose -f docker-compose.yml -f docker-compose.prod.yml build <services>`
 3. `up -d --no-deps mysql redis` (idempotent)
 4. per service: `docker compose run --rm --no-deps <svc> python -m alembic -c /app/alembic.ini upgrade head`
@@ -136,7 +165,98 @@ and the compose changes interlock (prod compose requires `REDIS_PASSWORD`).
    re-dials; do not skip it)
 7. poll `GET http://127.0.0.1:8090/api/v1/health` 30×2s — non-200 fails the job
 
-## 5. Archive maintenance sidecar (5.9)
+Frontend deploys are CI-gated too (D13/4.3): `deploy-frontend` needs the
+same always-on `ci-gate` job, so a frontend-only push can no longer ship
+with red or missing CI.
+
+## 5. TRUSTED_PROXIES rollout (D3/1.9 — deploy-gated, coordinate first)
+
+The compose default (both files) narrowed from the whole RFC1918 bridge
+(`172.16.0.0/12`) to the two usual docker bridge **gateway** addresses:
+`172.18.0.1,172.17.0.1`. Rationale: nginx (host) and the Next.js server
+(host, plain `next start`) both reach the gateway via `127.0.0.1:8090`, so
+the gateway's immediate peer is always the docker-proxy's source-NAT
+address — the bridge gateway IP — never the proxy itself and never any
+container.
+
+Apply + verify:
+
+```bash
+# 1. What is the REAL gateway address of the prod network?
+docker network inspect pagepocket_default --format '{{(index .IPAM.Config 0).Gateway}}'
+# 2. If it differs from the default, set it in pagepocket/.env (comma-sep):
+#      TRUSTED_PROXIES=<gateway-ip>
+#    then recreate the gateway:
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps --force-recreate api-gateway
+# 3. Verify limiter bucketing: two requests with the SAME
+#    X-Forwarded-For behind a trusted proxy must share a bucket; requests
+#    arriving directly on :8090 (peer = bridge gateway, now untrusted-
+#    -header-wise) must key on the peer, not a spoofable header.
+```
+
+**Rollout caution:** if the configured value does NOT include the real
+bridge gateway, every request appears to come from an untrusted peer and
+the client identity degenerates to the gateway IP — all clients share one
+rate-limit bucket (over-throttling, fail-closed direction). If it is too
+broad, in-network peers can spoof `X-Forwarded-For` again. Verify with a
+couple of authenticated 401/429 probes immediately after the change, and
+coordinate the change with the nginx operator.
+
+## 6. DB-user rotation (D12/2.16 — deploy-gated)
+
+`scripts/prod/rotate-db-users.sh [--dry-run|--yes]`:
+
+1. reads `DB_PASSWORD_*` from `pagepocket/.env`, generating any missing
+   value (`openssl rand -hex 24`) and writing it back (0600, `.bak-<ts>`)
+2. inside the pagepocket mysql container (credentials via short-lived 0600
+   defaults file — never argv):
+   `CREATE USER IF NOT EXISTS 'pagepocket_<svc>'@'%'` → `ALTER USER` (rotate)
+   → `GRANT ALL PRIVILEGES ON <schema>.*` → `FLUSH PRIVILEGES`
+3. prints `SHOW GRANTS` per user as evidence (each user must show usage +
+   ALL on its own schema ONLY)
+4. recreates the 5 services (`--no-deps --force-recreate`) + gateway
+   restart so the overlay's scoped `DB_URL`s go live
+5. verifies gateway `GET /api/v1/health` + no unhealthy containers
+
+Cross-schema access then FAILS at the database level (grants are the
+boundary, not convention). Fresh datadirs are seeded by the mysql
+container's `init-users.sh` from the same env values — no drift.
+
+## 7. Monolith network confinement (D12/2.17 — deploy-gated)
+
+The monolith attaches to `pagepocket-monolith` — the network that carries
+ONLY archive-service and auth-service — instead of `pagepocket_default`
+(`server/docker-compose.yml`). Docker's embedded DNS does not resolve
+search-/library-/share-service on that network, so they are unreachable
+from the monolith; no iptables involved. Applying the switch to the
+RUNNING monolith is an operator action:
+
+```bash
+# 0. precondition: the pagepocket stack is up (creates pagepocket-monolith)
+docker network inspect pagepocket-monolith >/dev/null && echo "network exists"
+
+# 1. switch the monolith (recreate with the new networks config)
+cd /var/www/Web-Downloader-Extension/server
+docker compose up -d --no-deps --force-recreate app
+
+# 2. verify ALLOWED services resolve and connect
+docker exec server-app-1 python -c "import socket;socket.create_connection(('archive-service',50052),timeout=3);print('archive OK')"
+docker exec server-app-1 python -c "import socket;socket.create_connection(('auth-service',50051),timeout=3);print('auth OK')"
+
+# 3. verify FOREIGN services are unreachable (all three must FAIL)
+docker exec server-app-1 python -c "import socket;socket.getaddrinfo('search-service',50054)" && echo "LEAK: search resolvable" || echo "search blocked OK"
+docker exec server-app-1 python -c "import socket;socket.getaddrinfo('library-service',50053)" && echo "LEAK: library resolvable" || echo "library blocked OK"
+docker exec server-app-1 python -c "import socket;socket.getaddrinfo('share-service',50055)" && echo "LEAK: share resolvable" || echo "share blocked OK"
+
+# 4. regression check: monolith + its own db + frontend still healthy
+curl -s http://127.0.0.1:8000/api/v1/health | grep '"mysql":"ok"'
+```
+
+Rollback: `cd server && git checkout <previous-commit> -- docker-compose.yml
+&& docker compose up -d --no-deps --force-recreate app` (or revert the
+commit and recreate) — the monolith rejoins `pagepocket_default`.
+
+## 8. Archive maintenance sidecar (5.9)
 
 Implemented as a compose service (`archive-maintenance`, reusing the
 archive-service image) rather than host cron — it deploys with the stack,
@@ -158,7 +278,7 @@ identity on the host; archive-service verifies CA signatures, not CNs). A
 dedicated maintenance cert can replace it at the next coordinated cert
 rotation.
 
-## 6. Certificates (spike finding b — read before touching certs)
+## 9. Certificates (spike finding b — read before touching certs)
 
 - **Host PKI is authoritative.** Live certs (repo `pagepocket/certs/` is a
   STALE copy) expire **Jun 7 2036**; two different CAs exist between the
@@ -166,6 +286,9 @@ rotation.
 - The only cert on a sub-year horizon on the host: `extension-client.pem`
   (May 2027) — legacy naming; the monolith actually mounts
   `extension-server-key.pem`/`extension-server.pem`.
+- **Rootless containers (4.9) read these files as uid 999 (`app`)**: the
+  host copies must be readable beyond root (e.g. `chmod 0644` on `*.pem`)
+  or the services come up unable to load their identity — see §10.
 - `make certs` (7.3-fixed) generates the canonical `extension-server-*`
   names **for local dev only**. Regenerated local certs must NEVER be copied
   to prod — that would break every service's mTLS identity at once. Real
@@ -173,7 +296,7 @@ rotation.
   coordinated sequence: CA → service certs → api-gateway → monolith client
   cert, recreating the stack once.
 
-## 7. Rollback notes
+## 10. Rollback notes
 
 - **Backend services:** `git reset --hard <previous-commit>` on the host,
   then re-run the deploy sequence (build → alembic → up → gateway restart →
@@ -193,8 +316,17 @@ rotation.
 - **MySQL credentials:** `server/.env.bak-<ts>` / `pagepocket/.env.bak-<ts>`
   + ALTER USER back + recreate (see the summary output of
   `rotate-credentials.sh`).
+- **DB users (D12/2.16):** `pagepocket/.env.bak-<ts>` holds the pre-run
+  `DB_PASSWORD_*`; restore it, re-run `rotate-db-users.sh --yes` (re-grants
+  + rotates back to those values), and the services come up as before.
+- **Rootless containers (4.9):** service images run as user `app` (uid 999).
+  If a recreated service cannot read its mTLS material, the mounted
+  `pagepocket/certs/*.pem` are too restrictive on the host — make them
+  group/other-readable (`chmod 0644 pagepocket/certs/*.pem`; the directory
+  is loopback-mounted only) and recreate. Rolling back to root containers =
+  rebuild from a pre-4.9 commit.
 
-## 8. Ops actions requiring user confirmation (from the spike — checklist)
+## 11. Ops actions requiring user confirmation (from the spike — checklist)
 
 - [ ] Close 33060 / 8000 / 8090 to the internet (lands via 5.11 compose
       changes on the first deploy) **and** rotate the monolith MySQL root
@@ -204,6 +336,19 @@ rotation.
 - [ ] Install the nightly backup cron (5.4) and pick the off-host target
       (R2 / B2 / remote ssh — see §3 step 7)
 - [ ] Execute one restore drill into a scratch DB and record it in §3
+      (post-D13/4.1 the drill also proves the canary: marker row present in
+      the scratch DB and ABSENT from the source DB — record that line too)
+- [ ] Rotate the per-service DB users + cut services over to scoped
+      credentials (§6 / D12/2.16) — run BEFORE the first deploy carrying
+      the new prod overlay (its render hard-fails without `DB_PASSWORD_*`)
+- [ ] Arm share-service `ENVIRONMENT=production` + public `BASE_URL`
+      (lands via the overlay; verify a short link uses the public host)
+- [ ] Apply the monolith network confinement + run the reachability
+      verification (§7 / D12/2.17)
+- [ ] Roll out the narrowed `TRUSTED_PROXIES` after verifying the host's
+      real bridge gateway address (§5 / D3/1.9)
+- [ ] Make the mounted mTLS material readable by the rootless service
+      containers (`chmod 0644 pagepocket/certs/*.pem` on the host — §10)
 - [ ] Cert expiry work is NOT needed (valid to 2036); the `make certs` rename
       (7.3) only affects local dev naming — no coordinated prod cert change
       required for this change
@@ -213,12 +358,13 @@ rotation.
       confirmed safe (tree clean apart from untracked `pagepocket/frontend/
       .next.bak-*` and `next.log`)
 
-## 9. Script inventory (`scripts/prod/`)
+## 12. Script inventory (`scripts/prod/`)
 
 | Script | Purpose |
 |---|---|
-| `backup-mysql.sh` | nightly per-DB `--single-transaction` dumps (5 pagepocket DBs + monolith) → `/var/backups/mysql`, log + freshness marker, 14-day pruning, optional rclone off-host copy |
-| `restore-drill.sh` | restore a backup into `<db>_drill_<ts>`, verify row counts vs source, drop scratch (dry-run by default) |
+| `backup-mysql.sh` | nightly per-DB `--single-transaction` dumps (5 pagepocket DBs + monolith) → `/var/backups/mysql`, log + freshness marker, 14-day pruning, optional rclone off-host copy. Dumps carry NO `CREATE DATABASE`/`USE` (D13/4.1) — restores must target an explicitly created scratch DB |
+| `restore-drill.sh` | restore a backup into `<db>_drill_<ts>` (explicitly CREATEd), verify row counts vs source, run the scratch-only canary (marker row asserted ABSENT from the source DB), drop scratch (dry-run by default) |
 | `rotate-credentials.sh` | generate + install MySQL credentials in host env files, ALTER USER in both containers, scoped recreates, health verification (dry-run by default) |
+| `rotate-db-users.sh` | create/rotate the per-service least-privilege users (`pagepocket_<svc>` → own schema only), write `DB_PASSWORD_*` into `pagepocket/.env`, cutover recreate + health verification (dry-run by default; D12/2.16) |
 | `roll-redis-password.sh` | set `REDIS_PASSWORD`, coordinated redis-first rolling restart, AUTH + health verification (dry-run by default) |
 | `archive-maintenance/loop.py` | the 5.9 sidecar loop (RetryPendingIndexing / SweepOrphanR2Objects over mTLS) |

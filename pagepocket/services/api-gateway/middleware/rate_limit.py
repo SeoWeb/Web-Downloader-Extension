@@ -6,11 +6,16 @@ is bounded by the window expiry.
 
 Identity:
 - authenticated routes  → ``user:{user_id}`` (600/min)
-- /api/v1/auth/* routes → ``ip:{client}``   (20/min), where the client IP is
-  ``CF-Connecting-IP``, falling back to the first ``X-Forwarded-For`` value
-  (only when the direct peer is a configured TRUSTED_PROXIES entry), then the
-  peer address — behind a proxy the peer is the edge, which would otherwise
-  turn the auth bucket into one global tripwire.
+- /api/v1/auth/* routes → ``ip:{client}``   (20/min)
+- /api/v1/share/public/* routes → ``ip:{client}`` (20/min, same class as auth)
+
+The client IP is derived spoof-proof (D3, mirroring the monolith's
+implementation): walk ``X-Forwarded-For`` right-to-left and take the first
+entry NOT matching TRUSTED_PROXIES (a trusted proxy appends what it observed,
+so attacker-supplied leftmost entries cannot rotate the bucket);
+``CF-Connecting-IP`` is honored only when the immediate peer is trusted AND no
+untrusted XFF entry remains. Without a trusted peer the connection peer address
+is used.
 
 Failure semantics: if Redis is unreachable the limiter fails OPEN (availability
 over strictness), logs an error, reports ``degraded`` via the ``healthy`` flag
@@ -31,6 +36,7 @@ from starlette.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 AUTH_LIMIT_PER_WINDOW = 20
+SHARE_PUBLIC_LIMIT_PER_WINDOW = AUTH_LIMIT_PER_WINDOW  # same 20/min class
 AUTHENTICATED_LIMIT_PER_WINDOW = 600
 WINDOW_SECONDS = 60
 
@@ -43,39 +49,75 @@ _KEY_PREFIX = "ratelimit"
 
 
 def client_ip_for_request(request: Request, trusted_proxies: tuple[str, ...] = ()) -> str:
-    """Best-effort real client IP, trusting proxy headers only when configured."""
-    cf_ip = request.headers.get("cf-connecting-ip")
-    if cf_ip and cf_ip.strip():
-        return cf_ip.strip()
+    """Spoof-proof real client IP (D3, mirrors the monolith's derivation).
 
-    if trusted_proxies and _peer_is_trusted(request, trusted_proxies):
-        xff = request.headers.get("x-forwarded-for")
-        if xff:
-            first = xff.split(",")[0].strip()
-            if first:
-                return first
+    - ``X-Forwarded-For`` is considered only when the immediate peer is a
+      configured TRUSTED_PROXIES entry, and is walked RIGHT to LEFT: the first
+      entry not itself matching TRUSTED_PROXIES is the client. A trusted proxy
+      appends the address it observed, so attacker-supplied leftmost entries
+      cannot rotate the limit key.
+    - ``CF-Connecting-IP`` is honored only when the immediate peer is trusted
+      AND no untrusted XFF entry remains.
+    - Otherwise the connection peer address is used.
+    """
+    peer = request.client.host if request.client else "unknown"
+    peer_trusted = _peer_is_trusted(request, trusted_proxies)
 
-    return request.client.host if request.client else "unknown"
+    cf_ip = (request.headers.get("cf-connecting-ip") or "").strip()
+
+    xff = request.headers.get("x-forwarded-for") or ""
+    entries = [entry.strip() for entry in xff.split(",") if entry.strip()]
+
+    if peer_trusted and entries:
+        untrusted_entry = None
+        for entry in reversed(entries):
+            if not _addr_is_trusted(entry, trusted_proxies):
+                untrusted_entry = entry
+                break
+
+        if untrusted_entry is not None:
+            return untrusted_entry
+
+        # Only trusted proxies appear in XFF: no untrusted entry remains, so
+        # the trusted edge's CF-Connecting-IP wins; without it, the rightmost
+        # entry (what the nearest trusted hop appended) is the best remaining
+        # candidate — never the peer address, which is just the last proxy.
+        if cf_ip:
+            return cf_ip
+        return entries[-1]
+
+    if peer_trusted and cf_ip:
+        return cf_ip
+
+    return peer
+
+
+def _addr_is_trusted(addr: str, trusted_proxies: tuple[str, ...]) -> bool:
+    """Whether an XFF entry (or peer address) matches the trust list.
+
+    Unparseable entries are never trusted — garbage cannot vouch for itself.
+    """
+    try:
+        addr_ip = ipaddress.ip_address(addr)
+    except ValueError:
+        return False
+    for entry in trusted_proxies:
+        try:
+            if "/" in entry:
+                if addr_ip in ipaddress.ip_network(entry, strict=False):
+                    return True
+            elif addr_ip == ipaddress.ip_address(entry):
+                return True
+        except ValueError:
+            continue
+    return False
 
 
 def _peer_is_trusted(request: Request, trusted_proxies: tuple[str, ...]) -> bool:
     peer = request.client.host if request.client else ""
     if not peer:
         return False
-    try:
-        peer_addr = ipaddress.ip_address(peer)
-    except ValueError:
-        return False
-    for entry in trusted_proxies:
-        try:
-            if "/" in entry:
-                if peer_addr in ipaddress.ip_network(entry, strict=False):
-                    return True
-            elif peer_addr == ipaddress.ip_address(entry):
-                return True
-        except ValueError:
-            continue
-    return False
+    return _addr_is_trusted(peer, trusted_proxies)
 
 
 class RedisRateLimiter:
@@ -174,6 +216,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         limiter: RedisRateLimiter | None = None,
         auth_limit: int = AUTH_LIMIT_PER_WINDOW,
         authenticated_limit: int = AUTHENTICATED_LIMIT_PER_WINDOW,
+        share_public_limit: int = SHARE_PUBLIC_LIMIT_PER_WINDOW,
         window: int = WINDOW_SECONDS,
         trusted_proxies: tuple[str, ...] = (),
     ):
@@ -181,6 +224,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.limiter = limiter if limiter is not None else RedisRateLimiter(window=window)
         self.auth_limit = auth_limit
         self.authenticated_limit = authenticated_limit
+        self.share_public_limit = share_public_limit
         self.window = window
         self.trusted_proxies = trusted_proxies if trusted_proxies else parse_trusted_proxies()
 
@@ -202,6 +246,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if path.startswith("/api/v1/auth/"):
             ip = client_ip_for_request(request, self.trusted_proxies)
             if not self.limiter.check("ip", ip, self.auth_limit):
+                return self._rate_limited()
+
+        # Public share routes (D3): unauthenticated asset/viewer traffic with
+        # a DB write per hit — same 20/min per-IP class as the auth routes.
+        elif path.startswith("/api/v1/share/public/"):
+            ip = client_ip_for_request(request, self.trusted_proxies)
+            if not self.limiter.check("ip", ip, self.share_public_limit):
                 return self._rate_limited()
 
         # Authenticated routes: per-user limit

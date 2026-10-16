@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// Shared message definitions imported by every service package (single source
+// of truth — replaces the five per-package StatusResponse duplicates). The
+// wire shape is unchanged: field 1 bool success, field 2 string message, so
+// existing serialized responses remain decodable.
+package common;
+
+message StatusResponse {
+  bool success = 1;
+  string message = 2;
+}

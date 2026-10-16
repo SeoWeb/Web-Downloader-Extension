@@ -1,9 +1,11 @@
 import "server-only";
+import { headers } from "next/headers";
 import type { cookies } from "next/headers";
 import type { ZodType } from "zod";
 import { ZodError } from "zod";
 import { fetch as nativeFetch, type RequestInit as UndiciRequestInit } from "undici";
 import { ApiContractError, NetworkError, throwForStatus } from "./errors";
+import { forwardedClientIpHeadersFrom } from "./client-ip";
 import { API_GATEWAY_URL } from "@/lib/env";
 
 const API_BASE = API_GATEWAY_URL;
@@ -44,6 +46,9 @@ export async function serverFetch<T>({
     cache: "no-store",
     headers: {
       "Content-Type": "application/json",
+      // Forward the inbound client IP chain (server request scope) so the
+      // gateway's per-IP limiter sees the real caller.
+      ...forwardedClientIpHeadersFrom(await headers()),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
   };

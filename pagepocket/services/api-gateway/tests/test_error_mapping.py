@@ -1,18 +1,22 @@
-"""Unit tests for the gRPC → HTTP error translation (tasks 4.2, 4.3).
+"""Unit tests for the gRPC → HTTP error translation (tasks 4.2, 4.3, 1.7, 1.15).
 
-Covers DEADLINE_EXCEEDED → 503 + Retry-After, size-induced RESOURCE_EXHAUSTED
-→ 413, quota → 402 and rate → 429 staying distinct. The detail strings mirror
-what gRPC emits for message-size failures and what the archive service's quota
-checks emit (archive-service/quota.py).
+Covers DEADLINE_EXCEEDED and UNAVAILABLE → 503 + Retry-After, size-induced
+RESOURCE_EXHAUSTED → 413, quota → 402 and rate → 429 staying distinct — via
+the structured `exhausted:<kind>` prefix (D9) and via the legacy prose
+fallback. The detail strings mirror what gRPC emits for message-size failures
+and what the archive service's quota checks emit (archive-service/quota.py).
 """
 
 import unittest
 
 import grpc
+import quota_markers as shared_quota_markers
 from fastapi import HTTPException
 from routers import (
     DEADLINE_RETRY_AFTER_SECONDS,
+    UNAVAILABLE_RETRY_AFTER_SECONDS,
     handle_grpc_error,
+    parse_exhausted_kind,  # the shared-module function, re-exported by use
 )
 
 
@@ -52,6 +56,58 @@ class TestDeadlineExceeded(unittest.TestCase):
         with self.assertRaises(HTTPException) as ctx:
             handle_grpc_error(exc)
         self.assertNotEqual(ctx.exception.status_code, 500)
+
+
+class TestUnavailable(unittest.TestCase):
+    """Task 1.7 / spec "Transient Upstream Outage Semantics"."""
+
+    def test_unavailable_maps_to_503_with_retry_after(self):
+        exc = _rpc(grpc.StatusCode.UNAVAILABLE, "failed to connect to all addresses")
+        with self.assertRaises(HTTPException) as ctx:
+            handle_grpc_error(exc)
+        self.assertEqual(ctx.exception.status_code, 503)
+        self.assertIsNotNone(ctx.exception.headers)
+        self.assertEqual(ctx.exception.headers.get("Retry-After"), str(UNAVAILABLE_RETRY_AFTER_SECONDS))
+
+    def test_unavailable_retry_after_is_positive(self):
+        exc = _rpc(grpc.StatusCode.UNAVAILABLE, "io error")
+        with self.assertRaises(HTTPException) as ctx:
+            handle_grpc_error(exc)
+        self.assertTrue(int(ctx.exception.headers["Retry-After"]) > 0)
+
+    def test_search_service_down_yields_503_not_500(self):
+        # Spec scenario "Search service down": an unreachable upstream is a
+        # retryable 503, never a bare 500.
+        exc = _rpc(grpc.StatusCode.UNAVAILABLE, "failed to connect to all addresses")
+        with self.assertRaises(HTTPException) as ctx:
+            handle_grpc_error(exc)
+        self.assertEqual(ctx.exception.status_code, 503)
+        self.assertNotEqual(ctx.exception.status_code, 500)
+
+
+class TestParseExhaustedKind(unittest.TestCase):
+    """The shared marker parser (pagepocket/shared/quota_markers.py)."""
+
+    def test_gateway_imports_the_shared_module(self):
+        # Shared constants (spec "Shared constants"): the gateway must use the
+        # one shared source, not duplicated literals.
+        self.assertIs(parse_exhausted_kind, shared_quota_markers.parse_exhausted_kind)
+
+    def test_prefix_parsed_to_kind(self):
+        self.assertEqual(parse_exhausted_kind("exhausted:quota|Monthly page limit reached"), "quota")
+        self.assertEqual(parse_exhausted_kind("exhausted:size|payload too large"), "size")
+        self.assertEqual(parse_exhausted_kind("exhausted:rate|slow down"), "rate")
+
+    def test_prefix_without_message(self):
+        self.assertEqual(parse_exhausted_kind("exhausted:size"), "size")
+
+    def test_no_prefix_returns_none(self):
+        self.assertIsNone(parse_exhausted_kind("Storage limit reached"))
+        self.assertIsNone(parse_exhausted_kind(""))
+        self.assertIsNone(parse_exhausted_kind("exhaust:quota"))
+
+    def test_unknown_kind_returns_none(self):
+        self.assertIsNone(parse_exhausted_kind("exhausted:mystery|what"))
 
 
 class TestResourceExhausted(unittest.TestCase):
@@ -114,6 +170,55 @@ class TestResourceExhausted(unittest.TestCase):
                 handle_grpc_error(_rpc(grpc.StatusCode.RESOURCE_EXHAUSTED, detail))
             seen.add(ctx.exception.status_code)
         self.assertEqual(seen, {413, 402, 429})
+
+
+class TestStructuredExhaustedPrefix(unittest.TestCase):
+    """Task 1.15 / spec "Structured Quota Error Mapping": the machine-readable
+    `exhausted:<kind>` prefix decides the status on its own."""
+
+    def test_structured_quota_prefix_maps_to_402(self):
+        exc = _rpc(grpc.StatusCode.RESOURCE_EXHAUSTED, "exhausted:quota|Monthly page limit reached")
+        with self.assertRaises(HTTPException) as ctx:
+            handle_grpc_error(exc)
+        self.assertEqual(ctx.exception.status_code, 402)
+
+    def test_structured_size_prefix_maps_to_413(self):
+        exc = _rpc(grpc.StatusCode.RESOURCE_EXHAUSTED, "exhausted:size|page exceeds storage cap")
+        with self.assertRaises(HTTPException) as ctx:
+            handle_grpc_error(exc)
+        self.assertEqual(ctx.exception.status_code, 413)
+
+    def test_structured_rate_prefix_maps_to_429(self):
+        exc = _rpc(grpc.StatusCode.RESOURCE_EXHAUSTED, "exhausted:rate|too many requests")
+        with self.assertRaises(HTTPException) as ctx:
+            handle_grpc_error(exc)
+        self.assertEqual(ctx.exception.status_code, 429)
+
+    def test_prefix_wins_regardless_of_prose(self):
+        # Spec "Structured prefix wins": decided by the prefix ALONE — the
+        # human message must not be able to steer the mapping.
+        exc = _rpc(grpc.StatusCode.RESOURCE_EXHAUSTED, "exhausted:size|quota and rate mentioned in prose")
+        with self.assertRaises(HTTPException) as ctx:
+            handle_grpc_error(exc)
+        self.assertEqual(ctx.exception.status_code, 413)
+
+    def test_legacy_fallback_still_maps(self):
+        # Spec "Legacy fallback still works": prose-only details keep their
+        # mapping (monolith compatibility).
+        with self.assertRaises(HTTPException) as ctx:
+            handle_grpc_error(_rpc(grpc.StatusCode.RESOURCE_EXHAUSTED, "Storage limit reached"))
+        self.assertEqual(ctx.exception.status_code, 402)
+
+    def test_legacy_fallback_logs_a_warning(self):
+        with self.assertLogs("routers", level="WARNING") as logs, \
+                self.assertRaises(HTTPException):
+            handle_grpc_error(_rpc(grpc.StatusCode.RESOURCE_EXHAUSTED, "Monthly page limit reached"))
+        self.assertTrue(any("legacy" in line.lower() for line in logs.output), logs.output)
+
+    def test_structured_prefix_does_not_trigger_legacy_fallback_log(self):
+        with self.assertNoLogs("routers", level="WARNING"), \
+                self.assertRaises(HTTPException):
+            handle_grpc_error(_rpc(grpc.StatusCode.RESOURCE_EXHAUSTED, "exhausted:quota|Monthly page limit reached"))
 
 
 class TestStandardMapping(unittest.TestCase):

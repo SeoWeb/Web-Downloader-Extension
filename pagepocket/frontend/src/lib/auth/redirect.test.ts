@@ -20,6 +20,13 @@ describe("validateRedirect", () => {
     expect(validateRedirect("//evil.com")).toBe("/app");
   });
 
+  it("rejects backslash bypasses", () => {
+    expect(validateRedirect("/\\evil.com")).toBe("/app");
+    expect(validateRedirect("/\\%5Cevil.com")).toBe("/app");
+    expect(validateRedirect("/app\\/..//evil.com")).toBe("/app");
+    expect(validateRedirect("/\\//evil.com")).toBe("/app");
+  });
+
   it("rejects absolute URLs", () => {
     expect(validateRedirect("https://evil.com")).toBe("/app");
     expect(validateRedirect("http://evil.com")).toBe("/app");

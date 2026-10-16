@@ -3,6 +3,7 @@
 import grpc
 import warnings
 
+import common_pb2 as common__pb2
 import library_pb2 as library__pb2
 
 GRPC_GENERATED_VERSION = '1.78.0'
@@ -57,22 +58,27 @@ class LibraryServiceStub(object):
         self.DeleteCollection = channel.unary_unary(
                 '/library.LibraryService/DeleteCollection',
                 request_serializer=library__pb2.DeleteCollectionRequest.SerializeToString,
-                response_deserializer=library__pb2.StatusResponse.FromString,
+                response_deserializer=common__pb2.StatusResponse.FromString,
                 _registered_method=True)
         self.AddPageToCollection = channel.unary_unary(
                 '/library.LibraryService/AddPageToCollection',
                 request_serializer=library__pb2.PageCollectionRequest.SerializeToString,
-                response_deserializer=library__pb2.StatusResponse.FromString,
+                response_deserializer=common__pb2.StatusResponse.FromString,
                 _registered_method=True)
         self.RemovePageFromCollection = channel.unary_unary(
                 '/library.LibraryService/RemovePageFromCollection',
                 request_serializer=library__pb2.PageCollectionRequest.SerializeToString,
-                response_deserializer=library__pb2.StatusResponse.FromString,
+                response_deserializer=common__pb2.StatusResponse.FromString,
                 _registered_method=True)
         self.ListCollectionPageIds = channel.unary_unary(
                 '/library.LibraryService/ListCollectionPageIds',
                 request_serializer=library__pb2.ListCollectionPageIdsRequest.SerializeToString,
                 response_deserializer=library__pb2.ListCollectionPageIdsResponse.FromString,
+                _registered_method=True)
+        self.PurgePageLinks = channel.unary_unary(
+                '/library.LibraryService/PurgePageLinks',
+                request_serializer=library__pb2.PurgePageLinksRequest.SerializeToString,
+                response_deserializer=common__pb2.StatusResponse.FromString,
                 _registered_method=True)
 
 
@@ -127,6 +133,16 @@ class LibraryServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def PurgePageLinks(self, request, context):
+        """Additive (harden-pagepocket-platform D6/2.3): deletes every
+        page_collections row referencing a page, invoked best-effort by the
+        archive-service when the page is deleted so page_count never drifts
+        from actual membership.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LibraryServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -153,22 +169,27 @@ def add_LibraryServiceServicer_to_server(servicer, server):
             'DeleteCollection': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteCollection,
                     request_deserializer=library__pb2.DeleteCollectionRequest.FromString,
-                    response_serializer=library__pb2.StatusResponse.SerializeToString,
+                    response_serializer=common__pb2.StatusResponse.SerializeToString,
             ),
             'AddPageToCollection': grpc.unary_unary_rpc_method_handler(
                     servicer.AddPageToCollection,
                     request_deserializer=library__pb2.PageCollectionRequest.FromString,
-                    response_serializer=library__pb2.StatusResponse.SerializeToString,
+                    response_serializer=common__pb2.StatusResponse.SerializeToString,
             ),
             'RemovePageFromCollection': grpc.unary_unary_rpc_method_handler(
                     servicer.RemovePageFromCollection,
                     request_deserializer=library__pb2.PageCollectionRequest.FromString,
-                    response_serializer=library__pb2.StatusResponse.SerializeToString,
+                    response_serializer=common__pb2.StatusResponse.SerializeToString,
             ),
             'ListCollectionPageIds': grpc.unary_unary_rpc_method_handler(
                     servicer.ListCollectionPageIds,
                     request_deserializer=library__pb2.ListCollectionPageIdsRequest.FromString,
                     response_serializer=library__pb2.ListCollectionPageIdsResponse.SerializeToString,
+            ),
+            'PurgePageLinks': grpc.unary_unary_rpc_method_handler(
+                    servicer.PurgePageLinks,
+                    request_deserializer=library__pb2.PurgePageLinksRequest.FromString,
+                    response_serializer=common__pb2.StatusResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -305,7 +326,7 @@ class LibraryService(object):
             target,
             '/library.LibraryService/DeleteCollection',
             library__pb2.DeleteCollectionRequest.SerializeToString,
-            library__pb2.StatusResponse.FromString,
+            common__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -332,7 +353,7 @@ class LibraryService(object):
             target,
             '/library.LibraryService/AddPageToCollection',
             library__pb2.PageCollectionRequest.SerializeToString,
-            library__pb2.StatusResponse.FromString,
+            common__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -359,7 +380,7 @@ class LibraryService(object):
             target,
             '/library.LibraryService/RemovePageFromCollection',
             library__pb2.PageCollectionRequest.SerializeToString,
-            library__pb2.StatusResponse.FromString,
+            common__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -387,6 +408,33 @@ class LibraryService(object):
             '/library.LibraryService/ListCollectionPageIds',
             library__pb2.ListCollectionPageIdsRequest.SerializeToString,
             library__pb2.ListCollectionPageIdsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def PurgePageLinks(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/library.LibraryService/PurgePageLinks',
+            library__pb2.PurgePageLinksRequest.SerializeToString,
+            common__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,

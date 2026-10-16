@@ -3,6 +3,7 @@
 import grpc
 import warnings
 
+import common_pb2 as common__pb2
 import share_pb2 as share__pb2
 
 GRPC_GENERATED_VERSION = '1.78.0'
@@ -52,12 +53,17 @@ class ShareServiceStub(object):
         self.RevokeShareLink = channel.unary_unary(
                 '/share.ShareService/RevokeShareLink',
                 request_serializer=share__pb2.RevokeShareLinkRequest.SerializeToString,
-                response_deserializer=share__pb2.StatusResponse.FromString,
+                response_deserializer=common__pb2.StatusResponse.FromString,
                 _registered_method=True)
         self.ValidateToken = channel.unary_unary(
                 '/share.ShareService/ValidateToken',
                 request_serializer=share__pb2.ValidateTokenRequest.SerializeToString,
                 response_deserializer=share__pb2.ValidateShareResponse.FromString,
+                _registered_method=True)
+        self.RevokeLinksForPage = channel.unary_unary(
+                '/share.ShareService/RevokeLinksForPage',
+                request_serializer=share__pb2.RevokeLinksForPageRequest.SerializeToString,
+                response_deserializer=common__pb2.StatusResponse.FromString,
                 _registered_method=True)
 
 
@@ -94,6 +100,15 @@ class ShareServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RevokeLinksForPage(self, request, context):
+        """Additive (harden-pagepocket-platform D6/2.3): revokes every share link
+        referencing a page, invoked best-effort by the archive-service when the
+        page is deleted so no public link outlives its page.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ShareServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -115,12 +130,17 @@ def add_ShareServiceServicer_to_server(servicer, server):
             'RevokeShareLink': grpc.unary_unary_rpc_method_handler(
                     servicer.RevokeShareLink,
                     request_deserializer=share__pb2.RevokeShareLinkRequest.FromString,
-                    response_serializer=share__pb2.StatusResponse.SerializeToString,
+                    response_serializer=common__pb2.StatusResponse.SerializeToString,
             ),
             'ValidateToken': grpc.unary_unary_rpc_method_handler(
                     servicer.ValidateToken,
                     request_deserializer=share__pb2.ValidateTokenRequest.FromString,
                     response_serializer=share__pb2.ValidateShareResponse.SerializeToString,
+            ),
+            'RevokeLinksForPage': grpc.unary_unary_rpc_method_handler(
+                    servicer.RevokeLinksForPage,
+                    request_deserializer=share__pb2.RevokeLinksForPageRequest.FromString,
+                    response_serializer=common__pb2.StatusResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -230,7 +250,7 @@ class ShareService(object):
             target,
             '/share.ShareService/RevokeShareLink',
             share__pb2.RevokeShareLinkRequest.SerializeToString,
-            share__pb2.StatusResponse.FromString,
+            common__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -258,6 +278,33 @@ class ShareService(object):
             '/share.ShareService/ValidateToken',
             share__pb2.ValidateTokenRequest.SerializeToString,
             share__pb2.ValidateShareResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RevokeLinksForPage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/share.ShareService/RevokeLinksForPage',
+            share__pb2.RevokeLinksForPageRequest.SerializeToString,
+            common__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,

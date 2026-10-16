@@ -2,11 +2,13 @@ syntax = "proto3";
 
 package archive;
 
+import "common.proto";
+
 service ArchiveService {
   rpc IngestPage(IngestPageRequest) returns (IngestPageResponse);
   rpc GetPage(GetPageRequest) returns (PageResponse);
   rpc ListPages(ListPagesRequest) returns (ListPagesResponse);
-  rpc DeletePage(DeletePageRequest) returns (StatusResponse);
+  rpc DeletePage(DeletePageRequest) returns (common.StatusResponse);
   rpc GetPageContent(GetPageContentRequest) returns (PageContentResponse);
   rpc GetArchiveFile(GetArchiveFileRequest) returns (ArchiveFileResponse);
   // Additive (harden-backend-security-and-ops 3.8/5.9): internal maintenance
@@ -28,7 +30,9 @@ message IngestPageRequest {
   bytes html_content = 4;
   repeated Asset assets = 5;
   string extension_job_id = 6;
-  string plan = 7; // "free", "pro", or "team"
+  // Deprecated: the service resolves the plan from the user's quota row;
+  // this field is ignored (kept for wire compatibility with older senders).
+  string plan = 7 [deprecated = true]; // historically "free", "pro", or "team"
 }
 
 message IngestPageResponse {
@@ -48,7 +52,10 @@ message PageResponse {
   string url = 3;
   string title = 4;
   string preview_text = 5;
-  string r2_key = 6;
+  // Field 6 previously carried r2_key (internal storage layout leak) —
+  // removed in harden-pagepocket-platform D4; never reuse the tag.
+  reserved 6;
+  reserved "r2_key";
   int64 size_bytes = 7;
   string extension_job_id = 8;
   string archived_at = 9;
@@ -78,18 +85,21 @@ message GetPageContentRequest {
 }
 
 message PageContentResponse {
-  string signed_url = 1;
+  // Field 1 previously carried signed_url (a 1h presigned R2 URL) — removed
+  // in harden-pagepocket-platform D4: archived content is delivered
+  // exclusively via the sandboxed asset-serving path, so this RPC never
+  // mints or returns a storage URL. Never reuse the tag.
+  reserved 1;
+  reserved "signed_url";
   int64 expires_at = 2;
-}
-
-message StatusResponse {
-  bool success = 1;
-  string message = 2;
 }
 
 message GetArchiveFileRequest {
   string page_id = 1;
-  string user_id = 2;   // optional: empty for share-token access
+  // Mandatory: the page owner's user id. Ownership is enforced on every
+  // call — share-token access does NOT bypass user_id scoping (the gateway
+  // resolves the owner from the share token and supplies it here).
+  string user_id = 2;
   string file_path = 3; // e.g. "index.html" or "assets/images/foo.jpg"
 }
 

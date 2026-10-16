@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 import { serverFetch } from "./http";
 import {
   ListPagesResponseSchema,
-  PageContentResponseSchema,
   PageResponseSchema,
 } from "./schemas";
 import type { PageResponse } from "./schemas";
@@ -23,21 +22,15 @@ export const archive = {
   },
 
   async getPage(pageId: string): Promise<PageResponse | null> {
-    const result = await serverFetch({
-      route: "/archive/pages",
-      query: { page_size: 50 },
-      schema: ListPagesResponseSchema,
-      cookieStore: await cookies(),
-    });
-    return result.pages.find((p) => p.id === pageId) ?? null;
-  },
-
-  async viewPage(pageId: string) {
+    // By-id metadata fetch (page-viewer spec): never scan a page-size-limited
+    // list — pages beyond the newest slice stay viewable. The gateway maps
+    // this route to ArchiveService.GetPage (NOT_FOUND for missing/cross-user
+    // ids), which the viewer renders as its "Page not found" state.
     return serverFetch({
-      route: `/archive/pages/${pageId}/view`,
-      schema: PageContentResponseSchema,
+      route: `/archive/pages/${pageId}`,
+      schema: PageResponseSchema,
       cookieStore: await cookies(),
-    });
+    }).catch(() => null);
   },
 
   async deletePage(pageId: string) {

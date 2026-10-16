@@ -2,9 +2,11 @@ syntax = "proto3";
 
 package search;
 
+import "common.proto";
+
 service SearchService {
-  rpc IndexPage(IndexPageRequest) returns (StatusResponse);
-  rpc RemovePage(RemovePageRequest) returns (StatusResponse);
+  rpc IndexPage(IndexPageRequest) returns (common.StatusResponse);
+  rpc RemovePage(RemovePageRequest) returns (common.StatusResponse);
   rpc Search(SearchRequest) returns (SearchResponse);
 }
 
@@ -42,9 +44,4 @@ message SearchResult {
 message SearchResponse {
   repeated SearchResult results = 1;
   int32 total = 2;
-}
-
-message StatusResponse {
-  bool success = 1;
-  string message = 2;
 }

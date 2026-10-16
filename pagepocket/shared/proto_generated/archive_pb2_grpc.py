@@ -4,6 +4,7 @@ import grpc
 import warnings
 
 import archive_pb2 as archive__pb2
+import common_pb2 as common__pb2
 
 GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
@@ -52,7 +53,7 @@ class ArchiveServiceStub(object):
         self.DeletePage = channel.unary_unary(
                 '/archive.ArchiveService/DeletePage',
                 request_serializer=archive__pb2.DeletePageRequest.SerializeToString,
-                response_deserializer=archive__pb2.StatusResponse.FromString,
+                response_deserializer=common__pb2.StatusResponse.FromString,
                 _registered_method=True)
         self.GetPageContent = channel.unary_unary(
                 '/archive.ArchiveService/GetPageContent',
@@ -150,7 +151,7 @@ def add_ArchiveServiceServicer_to_server(servicer, server):
             'DeletePage': grpc.unary_unary_rpc_method_handler(
                     servicer.DeletePage,
                     request_deserializer=archive__pb2.DeletePageRequest.FromString,
-                    response_serializer=archive__pb2.StatusResponse.SerializeToString,
+                    response_serializer=common__pb2.StatusResponse.SerializeToString,
             ),
             'GetPageContent': grpc.unary_unary_rpc_method_handler(
                     servicer.GetPageContent,
@@ -280,7 +281,7 @@ class ArchiveService(object):
             target,
             '/archive.ArchiveService/DeletePage',
             archive__pb2.DeletePageRequest.SerializeToString,
-            archive__pb2.StatusResponse.FromString,
+            common__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,

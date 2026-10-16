@@ -5,6 +5,7 @@ import sys
 
 import grpc
 from fastapi import APIRouter, Request
+from starlette.concurrency import run_in_threadpool
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared", "proto_generated"))
 
@@ -25,13 +26,17 @@ async def search(
     collection_id: str = "",
 ):
     try:
-        resp = search_stub().Search(search_pb2.SearchRequest(
-            user_id=request.state.user_id,
-            query=q,
-            page=page,
-            page_size=page_size,
-            collection_id=collection_id,
-        ), timeout=30)
+        resp = await run_in_threadpool(
+            search_stub().Search,
+            search_pb2.SearchRequest(
+                user_id=request.state.user_id,
+                query=q,
+                page=page,
+                page_size=page_size,
+                collection_id=collection_id,
+            ),
+            timeout=30,
+        )
         return {
             "results": [
                 {

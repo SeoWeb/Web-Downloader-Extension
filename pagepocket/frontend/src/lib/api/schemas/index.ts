@@ -33,11 +33,6 @@ export const ListPagesResponseSchema = z.object({
   page_size: z.number().default(20),
 });
 
-export const PageContentResponseSchema = z.object({
-  url: z.string(),
-  expires_at: z.number(),
-});
-
 export const SuccessResponseSchema = z.object({ success: z.boolean() });
 
 export const CollectionResponseSchema = z.object({
@@ -78,9 +73,17 @@ export const ShareLinkResponseSchema = z.object({
   created_at: z.string(),
 });
 
+/**
+ * Public share validation payload (design D4 — presigned URLs removed from
+ * the REST contract). The validity signal is the gateway's status contract:
+ * 404 for invalid/revoked/expired tokens (surfaced as a thrown error by
+ * serverFetch). Whatever page-reference metadata the gateway returns, the
+ * frontend must not require a URL field here.
+ */
 export const ValidateShareResponseSchema = z.object({
-  url: z.string(),
-  expires_at: z.string().nullable(),
+  valid: z.boolean().optional(),
+  page_id: z.string().optional(),
+  expires_at: z.string().nullable().optional(),
 });
 
 export const StatusResponseSchema = z.object({
@@ -92,7 +95,6 @@ export type User = z.infer<typeof UserSchema>;
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 export type PageResponse = z.infer<typeof PageResponseSchema>;
 export type ListPagesResponse = z.infer<typeof ListPagesResponseSchema>;
-export type PageContentResponse = z.infer<typeof PageContentResponseSchema>;
 export type CollectionResponse = z.infer<typeof CollectionResponseSchema>;
 export type ListCollectionsResponse = z.infer<typeof ListCollectionsResponseSchema>;
 export type SearchResult = z.infer<typeof SearchResultSchema>;

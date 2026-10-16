@@ -1,0 +1,31 @@
+# Integration-test isolation overlay (D13/4.6 — design note b).
+#
+# `make test-integration` runs the stack under a DEDICATED compose project:
+#
+#   docker compose -p pagepocket-it -f docker-compose.yml -f docker-compose.it.yml up -d
+#
+# The overlay exists so the integration stack can NEVER touch the
+# prod-named project's resources:
+#   - project name `pagepocket-it` => own containers
+#     (pagepocket-it-{mysql,services}-1) and own VOLUMES
+#     (pagepocket-it_mysql_data) — `down -v` in the Makefile teardown is
+#     therefore scoped to the integration project and cannot wipe the prod
+#     `pagepocket_mysql_data` volume;
+#   - renamed default network (below) => own DNS namespace; the dev/prod
+#     `pagepocket_default` bridge is not shared, so service-name aliases
+#     (`mysql`, `redis`, `auth-service`, ...) can never round-robin into
+#     the prod containers;
+#   - the confined monolith network gets the same treatment
+#     (pagepocket-it-monolith).
+#
+# NOTE: the published loopback ports (127.0.0.1:{3306,50051..50055,8090})
+# are inherited unchanged, so the dev/prod stack must be STOPPED first —
+# a port-bind failure is the safe, loud outcome of a conflict.
+
+networks:
+  default:
+    name: pagepocket-it_default
+    external: false
+  monolith:
+    name: pagepocket-it-monolith
+    external: false

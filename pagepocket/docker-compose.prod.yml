@@ -5,8 +5,16 @@
 #   REDIS_PASSWORD      prod compose refuses to render without it (5.10)
 #   JWT_SECRET          gateway refuses to boot with the dev default (4.6)
 #   MYSQL_ROOT_PASSWORD no committed default may survive in prod (5.12 rotates)
+#   BASE_URL            share-service refuses to boot without it once
+#                       ENVIRONMENT=production is armed here (4.8/D13-a)
+#   DB_PASSWORD_AUTH / DB_PASSWORD_ARCHIVE / DB_PASSWORD_LIBRARY /
+#   DB_PASSWORD_SEARCH / DB_PASSWORD_SHARE
+#                       D12/2.16 — prod compose refuses to render without
+#                       them; create the users first with
+#                       scripts/prod/rotate-db-users.sh (it writes them)
 # Env vars OPTIONAL (sane pinned defaults in this file):
-#   CORS_ALLOW_ORIGINS, TRUSTED_PROXIES, MAX_UPLOAD_BYTES
+#   CORS_ALLOW_ORIGINS, TRUSTED_PROXIES, MAX_UPLOAD_BYTES,
+#   MAX_INGEST_ASSETS, GATEWAY_WORKERS
 #
 # Loopback port contract (5.11, spike findings a/c): nginx on the host
 # reaches the gateway via 127.0.0.1:8090; NOTHING is published on a public
@@ -37,6 +45,12 @@ services:
   auth-service:
     restart: always
     environment:
+      # D12/2.16: the scoped least-privilege user — never root in prod.
+      # The users + grants are provisioned/rotated by
+      # scripts/prod/rotate-db-users.sh, which writes DB_PASSWORD_* into
+      # pagepocket/.env (the :? guards below make an unprovisioned render
+      # fail fast instead of falling back to root).
+      DB_URL: mysql+pymysql://pagepocket_auth:${DB_PASSWORD_AUTH:?DB_PASSWORD_AUTH must be set in pagepocket/.env - run scripts/prod/rotate-db-users.sh first}
       # 5.6: Alembic is the single authoritative schema mechanism; implicit
       # create_all must never shape prod schema.
       AUTO_CREATE: "false"
@@ -55,6 +69,7 @@ services:
   archive-service:
     restart: always
     environment:
+      DB_URL: mysql+pymysql://pagepocket_archive:${DB_PASSWORD_ARCHIVE:?DB_PASSWORD_ARCHIVE must be set in pagepocket/.env - run scripts/prod/rotate-db-users.sh first}
       AUTO_CREATE: "false"
       MTLS_ENABLED: "true"
       CA_CERT: /certs/ca.pem
@@ -71,6 +86,7 @@ services:
   library-service:
     restart: always
     environment:
+      DB_URL: mysql+pymysql://pagepocket_library:${DB_PASSWORD_LIBRARY:?DB_PASSWORD_LIBRARY must be set in pagepocket/.env - run scripts/prod/rotate-db-users.sh first}
       AUTO_CREATE: "false"
       MTLS_ENABLED: "true"
       CA_CERT: /certs/ca.pem
@@ -87,6 +103,7 @@ services:
   search-service:
     restart: always
     environment:
+      DB_URL: mysql+pymysql://pagepocket_search:${DB_PASSWORD_SEARCH:?DB_PASSWORD_SEARCH must be set in pagepocket/.env - run scripts/prod/rotate-db-users.sh first}
       AUTO_CREATE: "false"
       MTLS_ENABLED: "true"
       CA_CERT: /certs/ca.pem
@@ -103,6 +120,16 @@ services:
   share-service:
     restart: always
     environment:
+      DB_URL: mysql+pymysql://pagepocket_share:${DB_PASSWORD_SHARE:?DB_PASSWORD_SHARE must be set in pagepocket/.env - run scripts/prod/rotate-db-users.sh first}
+      # 4.8/D13-a: arm the share-service prod fail-fast. Its BASE_URL check
+      # used to be dead code (ENVIRONMENT stayed unset here), so prod short
+      # links pointed at the compose default http://localhost:8090. With
+      # ENVIRONMENT=production the service refuses to boot unless BASE_URL
+      # is a real public host — set it in pagepocket/.env (expected:
+      # https://pagepocket.app). Arming + short-link verification is
+      # deploy-gated (task 6.9).
+      ENVIRONMENT: production
+      BASE_URL: ${BASE_URL:?BASE_URL must be set in pagepocket/.env - public share-link base (e.g. https://pagepocket.app), see scripts/prod/README.md}
       AUTO_CREATE: "false"
       MTLS_ENABLED: "true"
       CA_CERT: /certs/ca.pem
@@ -129,12 +156,17 @@ services:
       # 4.6/D12: explicit origin allow-list (never "*"). Override via
       # pagepocket/.env to append published chrome-extension:// origins.
       CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-https://pagepocket.app,https://app.pagepocket.app}
-      # D12/4.5: which proxies may set X-Forwarded-For for rate-limit
-      # identity. The gateway sits behind nginx -> docker-proxy, so the
-      # direct peer is the compose bridge gateway (RFC1918 172.16/12);
-      # tighten via TRUSTED_PROXIES in pagepocket/.env after verifying the
-      # actual bridge gateway address on the host.
-      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+      # D12/4.5 + D13/1.9: which proxies may set X-Forwarded-For for
+      # rate-limit identity. NARROWED default: only the docker bridge
+      # gateway IPs a host->127.0.0.1:8090 connection can be source-NATed
+      # to (nginx AND the host-side Next.js server both traverse
+      # docker-proxy; there is no containerized frontend hop). Verify the
+      # actual gateway address on the host:
+      #   docker network inspect pagepocket_default \
+      #     --format '{{(index .IPAM.Config 0).Gateway}}'
+      # and set TRUSTED_PROXIES in pagepocket/.env accordingly — rollout
+      # caution in scripts/prod/README.md §TRUSTED_PROXIES rollout.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.18.0.1,172.17.0.1}
     volumes:
       - ./certs:/certs:ro
     deploy:

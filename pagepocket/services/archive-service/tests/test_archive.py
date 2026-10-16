@@ -2,6 +2,8 @@
 
 import os
 import sys
+import tempfile
+import threading
 import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
@@ -28,12 +30,14 @@ if _PP_ALIAS + "models" not in sys.modules:
 
 import archive_pb2
 import grpc
+import library_pb2
 import models  # noqa: F401  -- register ORM tables on Base.metadata before create_all
 import page_processor  # noqa: F401
 import quota as _quota_mod  # noqa: F401  -- alias: local `quota` vars shadow the name
-import servicer  # noqa: F401
+import servicer
 from db import Base, db_session
 from page_processor import sanitise_and_rewrite
+from servicer import ArchiveServicer
 
 for _name in ("models", "page_processor", "quota", "servicer"):
     sys.modules[_PP_ALIAS + _name] = sys.modules[_name]
@@ -234,60 +238,125 @@ class _FakeContext:
 # ---------------------------------------------------------------------------
 
 class TestQuota(unittest.TestCase):
-    def test_under_quota_returns_none(self):
-        from quota import check_and_reserve
+    """reserve_quota / confirm_quota / refund_quota (2.14 reserve-then-confirm).
+
+    D9: every exhaustion detail carries the machine-readable ``exhausted:<kind>|``
+    prefix ahead of the unchanged legacy human message (the monolith's
+    fallback matching relies on that wording).
+    """
+
+    def test_reserve_under_quota_increments_counters(self):
+        from quota import reserve_quota
         mock_session = MagicMock()
         quota = _make_quota_dict(pages=10, total_bytes=100)
         mock_session.execute.return_value.scalar_one_or_none.return_value = quota
-        result = check_and_reserve(mock_session, "u1", "free", 1000)
+        result = reserve_quota(mock_session, "u1", "free", 1000)
         self.assertIsNone(result)
+        self.assertEqual(quota.pages_this_month, 11)
+        self.assertEqual(quota.total_bytes, 1100)
 
-    def test_page_limit_exceeded(self):
+    def test_reserve_page_limit_exceeded_prefixed_and_untouched(self):
         from models import PLAN_LIMITS
-        from quota import check_and_reserve
+        from quota import reserve_quota
         mock_session = MagicMock()
         quota = _make_quota_dict(pages=PLAN_LIMITS["free"]["pages_per_month"])
         mock_session.execute.return_value.scalar_one_or_none.return_value = quota
-        result = check_and_reserve(mock_session, "u1", "free", 1000)
-        self.assertEqual(result, "Monthly page limit reached")
+        result = reserve_quota(mock_session, "u1", "free", 1000)
+        self.assertEqual(result, "exhausted:quota|Monthly page limit reached")
+        self.assertEqual(quota.pages_this_month, PLAN_LIMITS["free"]["pages_per_month"])
+        self.assertEqual(quota.total_bytes, 0)
 
-    def test_byte_limit_exceeded(self):
+    def test_reserve_byte_limit_exceeded_prefixed_and_untouched(self):
         from models import PLAN_LIMITS
-        from quota import check_and_reserve
+        from quota import reserve_quota
         mock_session = MagicMock()
         quota = _make_quota_dict(total_bytes=PLAN_LIMITS["free"]["max_bytes"])
         mock_session.execute.return_value.scalar_one_or_none.return_value = quota
-        result = check_and_reserve(mock_session, "u1", "free", 1)
-        self.assertEqual(result, "Storage limit reached")
+        result = reserve_quota(mock_session, "u1", "free", 1)
+        self.assertEqual(result, "exhausted:size|Storage limit reached")
+        self.assertEqual(quota.total_bytes, PLAN_LIMITS["free"]["max_bytes"])
 
-    def test_pro_plan_higher_limits(self):
+    def test_legacy_human_message_preserved_for_monolith_fallback(self):
         from models import PLAN_LIMITS
-        from quota import check_and_reserve
+        from quota import reserve_quota
         mock_session = MagicMock()
         quota = _make_quota_dict(pages=PLAN_LIMITS["free"]["pages_per_month"])
         mock_session.execute.return_value.scalar_one_or_none.return_value = quota
-        result = check_and_reserve(mock_session, "u1", "pro", 1000)
-        self.assertIsNone(result)
+        result = reserve_quota(mock_session, "u1", "free", 1)
+        self.assertIn("Monthly page limit reached", result)
 
-    def test_monthly_rollover(self):
-        from quota import check_and_reserve
+    def test_reserve_pro_plan_higher_limits(self):
+        from models import PLAN_LIMITS
+        from quota import reserve_quota
+        mock_session = MagicMock()
+        quota = _make_quota_dict(pages=PLAN_LIMITS["free"]["pages_per_month"])
+        mock_session.execute.return_value.scalar_one_or_none.return_value = quota
+        result = reserve_quota(mock_session, "u1", "pro", 1000)
+        self.assertIsNone(result)
+        self.assertEqual(quota.pages_this_month, PLAN_LIMITS["free"]["pages_per_month"] + 1)
+
+    def test_reserve_monthly_rollover(self):
+        from quota import reserve_quota
         mock_session = MagicMock()
         quota = _make_quota_dict(
             pages=50,
             reset_at=datetime.now(timezone.utc) - timedelta(days=1),
         )
         mock_session.execute.return_value.scalar_one_or_none.return_value = quota
-        result = check_and_reserve(mock_session, "u1", "free", 1000)
+        result = reserve_quota(mock_session, "u1", "free", 1000)
         self.assertIsNone(result)
-        self.assertEqual(quota.pages_this_month, 0)
+        self.assertEqual(quota.pages_this_month, 1)  # reset to 0, then +1
 
-    def test_new_user_creates_quota(self):
-        from quota import check_and_reserve
+    def test_reserve_new_user_creates_quota(self):
+        from quota import reserve_quota
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
-        result = check_and_reserve(mock_session, "new_user", "free", 1000)
+        result = reserve_quota(mock_session, "new_user", "free", 1000)
         self.assertIsNone(result)
         mock_session.add.assert_called_once()
+
+    def test_confirm_under_limits_keeps_reservation(self):
+        from quota import confirm_quota
+        mock_session = MagicMock()
+        quota = _make_quota_dict(pages=11, total_bytes=1100)
+        mock_session.execute.return_value.scalar_one_or_none.return_value = quota
+        result = confirm_quota(mock_session, "u1", "free", 1000)
+        self.assertIsNone(result)
+        self.assertEqual(quota.pages_this_month, 11)
+        self.assertEqual(quota.total_bytes, 1100)
+
+    def test_confirm_over_page_limit_refunds_reservation(self):
+        """A concurrent ingest consumed the budget while this one uploaded."""
+        from models import PLAN_LIMITS
+        from quota import confirm_quota
+        mock_session = MagicMock()
+        limit = PLAN_LIMITS["free"]["pages_per_month"]
+        quota = _make_quota_dict(pages=limit + 1, total_bytes=100)
+        mock_session.execute.return_value.scalar_one_or_none.return_value = quota
+        result = confirm_quota(mock_session, "u1", "free", 1000)
+        self.assertEqual(result, "exhausted:quota|Monthly page limit reached")
+        self.assertEqual(quota.pages_this_month, limit)  # our +1 refunded
+
+    def test_confirm_over_byte_limit_refunds_reservation(self):
+        from models import PLAN_LIMITS
+        from quota import confirm_quota
+        mock_session = MagicMock()
+        base = PLAN_LIMITS["free"]["max_bytes"] + 500
+        quota = _make_quota_dict(pages=2, total_bytes=base)
+        mock_session.execute.return_value.scalar_one_or_none.return_value = quota
+        result = confirm_quota(mock_session, "u1", "free", 1000)
+        self.assertEqual(result, "exhausted:size|Storage limit reached")
+        self.assertEqual(quota.total_bytes, base - 1000)
+        self.assertEqual(quota.pages_this_month, 2)  # pages fine — untouched
+
+    def test_refund_floors_at_zero(self):
+        from quota import refund_quota
+        mock_session = MagicMock()
+        quota = _make_quota_dict(pages=0, total_bytes=5)
+        mock_session.execute.return_value.scalar_one_or_none.return_value = quota
+        refund_quota(mock_session, "u1", 1000)
+        self.assertEqual(quota.pages_this_month, 0)
+        self.assertEqual(quota.total_bytes, 0)
 
 
 # ---------------------------------------------------------------------------
@@ -307,23 +376,16 @@ def _build_ingest_request(**overrides):
 class TestIngestPage(unittest.TestCase):
     @patch("servicer._get_search_stub", return_value=None)
     @patch("servicer.R2Client")
-    @patch("servicer.check_and_reserve", return_value=None)
+    @patch("servicer.reserve_quota", return_value=None)
+    @patch("servicer.confirm_quota", return_value=None)
     @patch("servicer.db_session")
     @patch("servicer.get_engine", return_value=MagicMock())
-    def test_ingest_success(self, mock_engine, mock_db_session, mock_quota,
-                            mock_r2, mock_search):
+    def test_ingest_success(self, mock_engine, mock_db_session, mock_confirm,
+                            mock_reserve, mock_r2, mock_search):
         from servicer import ArchiveServicer
         mock_session = MagicMock()
         # First execute: idempotency check -> None (new page)
-        # Second execute: quota increment -> quota_row
-        quota_row = _make_quota_dict()
-        call_count = [0]
-        def fake_execute(stmt):
-            call_count[0] += 1
-            result = MagicMock()
-            result.scalar_one_or_none.return_value = None if call_count[0] == 1 else quota_row
-            return result
-        mock_session.execute = fake_execute
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
         mock_db_session.return_value.__enter__ = lambda s: mock_session
         mock_db_session.return_value.__exit__ = lambda s, *a: None
         mock_r2.return_value.upload = MagicMock()
@@ -339,13 +401,15 @@ class TestIngestPage(unittest.TestCase):
         self.assertTrue(resp.page_id)
         # 1 asset + index.html + meta.json = 3 uploads
         self.assertEqual(mock_r2.return_value.upload.call_count, 3)
+        # Reserve runs in its own short transaction before uploads (2.14)
+        mock_reserve.assert_called_once()
+        mock_confirm.assert_called_once()
 
     @patch("servicer._get_search_stub", return_value=None)
     @patch("servicer.R2Client")
-    @patch("servicer.check_and_reserve", return_value=None)
     @patch("servicer.db_session")
     @patch("servicer.get_engine", return_value=MagicMock())
-    def test_idempotent_replay(self, mock_engine, mock_db_session, mock_quota,
+    def test_idempotent_replay(self, mock_engine, mock_db_session,
                                mock_r2, mock_search):
         """Second IngestPage with same extension_job_id returns existing page_id."""
         from servicer import ArchiveServicer
@@ -366,12 +430,14 @@ class TestIngestPage(unittest.TestCase):
 
     @patch("servicer._get_search_stub", return_value=None)
     @patch("servicer.R2Client")
-    @patch("servicer.check_and_reserve", return_value="Monthly page limit reached")
+    @patch("servicer.reserve_quota",
+           return_value="exhausted:quota|Monthly page limit reached")
     @patch("servicer.db_session")
     @patch("servicer.get_engine", return_value=MagicMock())
     def test_quota_exceeded_no_r2_write(self, mock_engine, mock_db_session,
-                                         mock_quota, mock_r2, mock_search):
-        """When quota is exceeded, no R2 upload happens."""
+                                        mock_reserve, mock_r2, mock_search):
+        """When quota is exceeded, no R2 upload happens and the detail carries
+        the machine-readable ``exhausted:quota|`` prefix (D9/1.15)."""
         import grpc
         from servicer import ArchiveServicer
 
@@ -386,7 +452,47 @@ class TestIngestPage(unittest.TestCase):
 
         self.assertFalse(resp.success)
         self.assertEqual(ctx._code, grpc.StatusCode.RESOURCE_EXHAUSTED)
+        self.assertEqual(ctx._details, "exhausted:quota|Monthly page limit reached")
         mock_r2.return_value.upload.assert_not_called()
+
+    @patch("servicer._get_search_stub", return_value=None)
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_invalid_extension_job_id_rejected(self, mock_engine, mock_db_session,
+                                               mock_r2, mock_search):
+        """2.1 defense in depth: malformed job id → INVALID_ARGUMENT, never a
+        column-overflow 500."""
+        import grpc
+        from servicer import ArchiveServicer
+
+        svc = ArchiveServicer()
+
+        for bad in ("x" * 37, "has spaces", "job/id", "üñí"):
+            ctx = _FakeContext()
+            resp = svc.IngestPage(
+                _build_ingest_request(extension_job_id=bad), ctx,
+            )
+            self.assertFalse(resp.success, bad)
+            self.assertEqual(ctx._code, grpc.StatusCode.INVALID_ARGUMENT, bad)
+            mock_r2.return_value.upload.assert_not_called()
+
+        # A 36-char UUID-shaped id passes the guard (reaches the quota path).
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+        with patch("servicer.reserve_quota",
+                   return_value="exhausted:quota|Monthly page limit reached"), \
+             patch("servicer.db_session") as db_session_ctx:
+            db_session_ctx.return_value.__enter__ = lambda s: mock_session
+            db_session_ctx.return_value.__exit__ = lambda s, *a: None
+            svc.IngestPage(
+                _build_ingest_request(
+                    extension_job_id="123e4567-e89b-12d3-a456-426614174000"
+                ),
+                ctx,
+            )
+        # Guard passed — the quota path answered instead of INVALID_ARGUMENT.
+        self.assertEqual(ctx._code, grpc.StatusCode.RESOURCE_EXHAUSTED)
 
 
 class TestCrossUserIsolation(unittest.TestCase):
@@ -965,12 +1071,12 @@ class TestPerUserIdempotency(unittest.TestCase):
 
 class TestFailedIngestCleanup(unittest.TestCase):
     @patch("servicer._get_search_stub", return_value=None)
+    @patch("servicer.refund_quota")
     @patch("servicer.R2Client")
-    @patch("servicer.check_and_reserve", return_value=None)
     @patch("servicer.db_session")
     @patch("servicer.get_engine", return_value=MagicMock())
-    def test_upload_failure_cleans_prefix_and_rolls_back(
-        self, mock_engine, mock_db_session, mock_quota, mock_r2_cls, mock_search
+    def test_upload_failure_cleans_prefix_and_releases_reservation(
+        self, mock_engine, mock_db_session, mock_r2_cls, mock_refund, mock_search
     ):
         from servicer import ArchiveServicer
 
@@ -998,16 +1104,16 @@ class TestFailedIngestCleanup(unittest.TestCase):
         prefix = r2.upload.call_args_list[0].args[0].rsplit("/assets/", 1)[0]
         r2.delete_prefix.assert_called_once_with(prefix)
 
-        # Quota increments were rolled back with the session
-        mock_session.rollback.assert_called()
+        # The reservation was released (2.14)
+        mock_refund.assert_called_once()
 
     @patch("servicer._get_search_stub", return_value=None)
+    @patch("servicer.refund_quota")
     @patch("servicer.R2Client")
-    @patch("servicer.check_and_reserve", return_value=None)
     @patch("servicer.db_session")
     @patch("servicer.get_engine", return_value=MagicMock())
     def test_cleanup_failure_logged_not_fatal(
-        self, mock_engine, mock_db_session, mock_quota, mock_r2_cls, mock_search
+        self, mock_engine, mock_db_session, mock_r2_cls, mock_refund, mock_search
     ):
         """Spec: cleanup failure is logged, not fatal — original error still raised."""
         from servicer import ArchiveServicer
@@ -1054,6 +1160,20 @@ class TestReliableSearchIndexing(unittest.TestCase):
         p = patch("servicer._get_search_stub", return_value=stub)
         p.start()
         self.addCleanup(p.stop)
+
+    def _set_r2_html(self, html: bytes):
+        """Serve `index.html` from the mocked R2 client (2.6 retry path)."""
+        mock_r2 = MagicMock()
+        mock_r2.bucket = "b"
+        body = MagicMock()
+        body.read.return_value = html
+        mock_r2.client.get_object.return_value = {
+            "Body": body, "ContentType": "text/html; charset=utf-8",
+        }
+        # The patcher in setUp already installed a MagicMock for R2Client;
+        # reconfigure that installed mock (reassigning patcher.return_value
+        # after start() does not rebind).
+        servicer.R2Client.return_value = mock_r2
 
     def _ingest(self):
         from servicer import ArchiveServicer
@@ -1113,6 +1233,7 @@ class TestReliableSearchIndexing(unittest.TestCase):
 
         self._set_stub(None)
         resp = self._ingest()  # indexed=False (no search service)
+        self._set_r2_html(b"<html><body><p>hello world</p></body></html>")
         self._set_stub(MagicMock())  # search service back up
 
         svc = ArchiveServicer()
@@ -1128,6 +1249,7 @@ class TestReliableSearchIndexing(unittest.TestCase):
 
         self._set_stub(None)
         self._ingest()
+        self._set_r2_html(b"<html><body><p>hello world</p></body></html>")
         stub = MagicMock()
         stub.IndexPage.side_effect = grpc.RpcError("still down")
         self._set_stub(stub)
@@ -1137,6 +1259,59 @@ class TestReliableSearchIndexing(unittest.TestCase):
         )
         self.assertEqual(result.retried, 1)
         self.assertEqual(result.succeeded, 0)
+
+    def test_retry_reindexes_full_body_from_r2_not_preview(self):
+        """2.6/D7: the retry re-reads the authoritative HTML from R2 and
+        indexes the complete body — never the 500-char preview_text."""
+        from servicer import ArchiveServicer
+
+        marker = "引" * 600  # 1800 bytes — a char-slice preview holds only 500
+        html = f"<html><body><p>{marker}</p></body></html>".encode()
+
+        self._set_stub(None)
+        resp = self._ingest()
+        self.assertFalse(self._page_row(resp.page_id))
+
+        self._set_r2_html(html)
+        stub = MagicMock()
+        self._set_stub(stub)
+
+        result = ArchiveServicer().RetryPendingIndexing(
+            archive_pb2.RetryPendingIndexingRequest(limit=10), _FakeContext()
+        )
+        self.assertEqual((result.retried, result.succeeded), (1, 1))
+
+        sent = stub.IndexPage.call_args.args[0]
+        self.assertIn(marker, sent.body_text)  # full body, not the preview
+        self.assertTrue(self._page_row(resp.page_id))
+
+        # The HTML was fetched from the page's authoritative R2 key
+        servicer.R2Client.return_value.client.get_object.assert_called_once_with(
+            Bucket="b", Key=f"u1/{resp.page_id}/index.html",
+        )
+
+    def test_retry_r2_miss_skips_cleanly_and_stays_pending(self):
+        """2.6: a purged page (R2 miss) is skipped — not indexed from the
+        preview, not marked indexed, no error surfaced."""
+        from servicer import ArchiveServicer
+
+        self._set_stub(None)
+        resp = self._ingest()
+
+        mock_r2 = MagicMock()
+        mock_r2.bucket = "b"
+        mock_r2.client.get_object.side_effect = Exception("NoSuchKey")
+        servicer.R2Client.return_value = mock_r2
+
+        stub = MagicMock()
+        self._set_stub(stub)
+
+        result = ArchiveServicer().RetryPendingIndexing(
+            archive_pb2.RetryPendingIndexingRequest(limit=10), _FakeContext()
+        )
+        self.assertEqual((result.retried, result.succeeded), (1, 0))
+        stub.IndexPage.assert_not_called()
+        self.assertFalse(self._page_row(resp.page_id))
 
 
 # ---------------------------------------------------------------------------
@@ -1283,6 +1458,748 @@ class TestSweepOrphanR2Objects(unittest.TestCase):
         resp = self._sweep(grace_period_seconds=365 * 24 * 3600)
         self.assertEqual(resp.deleted_objects, 0)
         self.assertEqual(self.r2.deleted_keys, [])
+
+
+# ---------------------------------------------------------------------------
+# 2.1/D5 — ingest idempotency race: IntegrityError → re-select → idempotent
+# success; loser's reservation released + R2 prefix cleaned.
+# ---------------------------------------------------------------------------
+
+class TestIngestRace(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory(prefix="pp-archive-race-")
+        self.addCleanup(self._tmp.cleanup)
+        from sqlalchemy import create_engine as ce
+        # A real file DB: the deterministic case needs the loser's INSERT to
+        # hit the committed winner's unique index; the threaded case needs
+        # both threads to share one database (in-memory SQLite would not).
+        self.engine = ce(f"sqlite:///{self._tmp.name}/archive.db")
+        Base.metadata.create_all(self.engine)
+        self.engine_patcher = patch("servicer.get_engine", return_value=self.engine)
+        self.engine_patcher.start()
+        self.r2 = MagicMock()
+        self.r2_patcher = patch("servicer.R2Client", return_value=self.r2)
+        self.r2_patcher.start()
+        self.search_patcher = patch("servicer._get_search_stub", return_value=None)
+        self.search_patcher.start()
+
+    def tearDown(self):
+        self.search_patcher.stop()
+        self.r2_patcher.stop()
+        self.engine_patcher.stop()
+
+    def _rows(self, job_id):
+        from models import Page
+        from sqlalchemy import select
+        with db_session(self.engine) as session:
+            rows = session.execute(
+                select(Page).where(Page.extension_job_id == job_id)
+            ).scalars().all()
+            return [r.id for r in rows]  # read before the session closes
+
+    def test_integrity_error_converges_on_winner(self):
+        """The loser's INSERT hits the unique index at commit → adopt the
+        winner's page_id, release the reservation, clean the loser's prefix."""
+        from models import Page, UserQuota
+        from quota import confirm_quota as real_confirm
+        from sqlalchemy import select
+
+        def racing_confirm(session, user_id, plan, request_size):
+            # The concurrent winner commits its row while this ingest was
+            # uploading; the real confirm then runs and this ingest's page
+            # INSERT collides on (user_id, extension_job_id) at commit.
+            with db_session(self.engine) as s:
+                s.add(Page(id="winner-id", user_id="uA", url="https://winner",
+                           title="w", r2_key="uA/winner-id/index.html",
+                           extension_job_id="job-race"))
+            return real_confirm(session, user_id, plan, request_size)
+
+        with patch("servicer.confirm_quota", side_effect=racing_confirm):
+            resp = ArchiveServicer().IngestPage(
+                _build_ingest_request(user_id="uA", extension_job_id="job-race"),
+                _FakeContext(),
+            )
+
+        self.assertTrue(resp.success)
+        self.assertEqual(resp.page_id, "winner-id")
+        self.assertEqual(len(self._rows("job-race")), 1)
+
+        # The loser's just-uploaded prefix was cleaned up; the winner's kept.
+        self.assertEqual(self.r2.delete_prefix.call_count, 1)
+        loser_prefix = self.r2.delete_prefix.call_args.args[0]
+        self.assertNotIn("winner-id", loser_prefix)
+
+        # The loser's reservation was released (winner inserted raw, no quota).
+        with db_session(self.engine) as session:
+            q = session.execute(
+                select(UserQuota).where(UserQuota.user_id == "uA")
+            ).scalar_one()
+            self.assertEqual((q.pages_this_month, q.total_bytes), (0, 0))
+
+    def test_threads_same_job_converge(self):
+        """Two concurrent ingests of the same (user, job id) → same page_id,
+        one row, exactly one surviving R2 prefix."""
+
+        barrier = threading.Barrier(2)
+        results = []
+
+        def run():
+            barrier.wait()
+            results.append(ArchiveServicer().IngestPage(
+                _build_ingest_request(user_id="uT", extension_job_id="job-t"),
+                _FakeContext(),
+            ))
+
+        threads = [threading.Thread(target=run) for _ in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=60)
+
+        self.assertEqual(len(results), 2)
+        for r in results:
+            self.assertTrue(r.success)
+        self.assertEqual(len({r.page_id for r in results}), 1)
+        self.assertEqual(len(self._rows("job-t")), 1)
+        self.assertEqual(results[0].page_id, self._rows("job-t")[0])
+
+        # Exactly one R2 prefix survives (the winner's); the loser's uploads
+        # were cleaned up — or the loser never got to upload (fast replay).
+        def _prefix(key):
+            parts = key.split("/")
+            return "/".join(parts[:2])
+
+        uploaded = {_prefix(c.args[0]) for c in self.r2.upload.call_args_list}
+        deleted = {c.args[0] for c in self.r2.delete_prefix.call_args_list}
+        survivors = uploaded - deleted
+        self.assertEqual(survivors, {f"uT/{results[0].page_id}"})
+
+
+# ---------------------------------------------------------------------------
+# 2.2/D6 — delete ordering: row deletion + quota decrement commit FIRST, R2
+# deletions afterwards.
+# ---------------------------------------------------------------------------
+
+class TestDeleteOrdering(unittest.TestCase):
+    @patch("servicer._get_search_stub", return_value=None)
+    @patch("servicer._get_share_stub", return_value=None)
+    @patch("servicer._get_library_stub", return_value=None)
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_row_deletion_commits_before_r2_deletions(
+        self, mock_engine, mock_db_session, mock_r2_cls, mock_lib,
+        mock_share, mock_search,
+    ):
+        order = []
+        page = _make_page(page_id="p1", user_id="u1", size_bytes=5000)
+        quota_row = _make_quota_dict(user_id="u1", total_bytes=10000)
+        mock_session = MagicMock()
+        responses = [page, quota_row]
+
+        def fake_execute(stmt):
+            result = MagicMock()
+            result.scalar_one_or_none.return_value = responses.pop(0)
+            return result
+
+        mock_session.execute = fake_execute
+        mock_session.delete.side_effect = lambda p: order.append("row_delete")
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        r2 = mock_r2_cls.return_value
+        r2.delete_prefix.side_effect = lambda p: order.append("r2_prefix")
+        r2.delete.side_effect = lambda k: order.append("r2_thumb")
+
+        svc = ArchiveServicer()
+        resp = svc.DeletePage(
+            archive_pb2.DeletePageRequest(page_id="p1", user_id="u1"), _FakeContext()
+        )
+
+        self.assertTrue(resp.success)
+        self.assertEqual(order[0], "row_delete")
+        self.assertEqual(order[1:], ["r2_prefix", "r2_thumb"])
+        self.assertEqual(quota_row.total_bytes, 5000)  # decremented with the row
+
+    @patch("servicer._get_search_stub", return_value=None)
+    @patch("servicer._get_share_stub", return_value=None)
+    @patch("servicer._get_library_stub", return_value=None)
+    @patch("servicer.R2Client")
+    @patch("servicer.db_session")
+    @patch("servicer.get_engine", return_value=MagicMock())
+    def test_r2_failure_after_commit_still_succeeds(
+        self, mock_engine, mock_db_session, mock_r2_cls, mock_lib,
+        mock_share, mock_search,
+    ):
+        """Once the deletion is committed, an R2 outage must not fail the
+        RPC — leftovers are sweepable orphans (logged)."""
+        page = _make_page(page_id="p1", user_id="u1", size_bytes=5000)
+        quota_row = _make_quota_dict(user_id="u1", total_bytes=10000)
+        mock_session = MagicMock()
+        responses = [page, quota_row]
+
+        def fake_execute(stmt):
+            result = MagicMock()
+            result.scalar_one_or_none.return_value = responses.pop(0)
+            return result
+
+        mock_session.execute = fake_execute
+        mock_db_session.return_value.__enter__ = lambda s: mock_session
+        mock_db_session.return_value.__exit__ = lambda s, *a: None
+
+        mock_r2_cls.return_value.delete_prefix.side_effect = Exception("r2 down")
+
+        resp = ArchiveServicer().DeletePage(
+            archive_pb2.DeletePageRequest(page_id="p1", user_id="u1"), _FakeContext()
+        )
+        self.assertTrue(resp.success)  # no zombie — the row is committed gone
+
+
+# ---------------------------------------------------------------------------
+# 2.4/2.9 — downstream delete notifications with explicit deadlines + pool
+# ---------------------------------------------------------------------------
+
+_RPC_TIMEOUT = 30.0
+
+
+class TestDeleteNotifications(unittest.TestCase):
+    def _delete(self, **stub_kwargs):
+        search_stub = stub_kwargs.get("search", MagicMock())
+        share_stub = stub_kwargs.get("share", MagicMock())
+        library_stub = stub_kwargs.get("library", MagicMock())
+
+        page = _make_page(page_id="p1", user_id="u1", size_bytes=100)
+        quota_row = _make_quota_dict(user_id="u1", total_bytes=100)
+        mock_session = MagicMock()
+        responses = [page, quota_row]
+
+        def fake_execute(stmt):
+            result = MagicMock()
+            result.scalar_one_or_none.return_value = responses.pop(0)
+            return result
+
+        mock_session.execute = fake_execute
+
+        with patch("servicer._get_search_stub", return_value=search_stub), \
+             patch("servicer._get_share_stub", return_value=share_stub), \
+             patch("servicer._get_library_stub", return_value=library_stub), \
+             patch("servicer.R2Client"), \
+             patch("servicer.db_session") as mock_db_session, \
+             patch("servicer.get_engine", return_value=MagicMock()):
+            mock_db_session.return_value.__enter__ = lambda s: mock_session
+            mock_db_session.return_value.__exit__ = lambda s, *a: None
+            resp = ArchiveServicer().DeletePage(
+                archive_pb2.DeletePageRequest(page_id="p1", user_id="u1"),
+                _FakeContext(),
+            )
+        return resp, search_stub, share_stub, library_stub
+
+    def test_all_three_notifications_carry_deadlines(self):
+        resp, search, share, library = self._delete()
+        self.assertTrue(resp.success)
+        self.assertEqual(search.RemovePage.call_args.kwargs.get("timeout"), _RPC_TIMEOUT)
+        self.assertEqual(share.RevokeLinksForPage.call_args.kwargs.get("timeout"), _RPC_TIMEOUT)
+        self.assertEqual(library.PurgePageLinks.call_args.kwargs.get("timeout"), _RPC_TIMEOUT)
+
+    def test_notification_failures_logged_not_fatal(self):
+        search = MagicMock()
+        search.RemovePage.side_effect = Exception("search down")
+        share = MagicMock()
+        share.RevokeLinksForPage.side_effect = grpc.RpcError("share down")
+        library = MagicMock()
+        library.PurgePageLinks.side_effect = RuntimeError("library down")
+
+        resp, *_ = self._delete(search=search, share=share, library=library)
+        self.assertTrue(resp.success)  # best-effort — delete already committed
+
+    def test_revoke_request_carries_page_id(self):
+        _, _, share, library = self._delete()
+        self.assertEqual(share.RevokeLinksForPage.call_args.args[0].page_id, "p1")
+        self.assertEqual(library.PurgePageLinks.call_args.args[0].page_id, "p1")
+
+
+# ---------------------------------------------------------------------------
+# 2.11/D8 — collection-scoped listing outage semantics
+# ---------------------------------------------------------------------------
+
+class TestCollectionOutage(unittest.TestCase):
+    def setUp(self):
+        from sqlalchemy import create_engine as ce
+        self.engine = ce("sqlite://")
+        Base.metadata.create_all(self.engine)
+        p = patch("servicer.get_engine", return_value=self.engine)
+        p.start()
+        self.addCleanup(p.stop)
+        r2p = patch("servicer.R2Client")
+        r2p.start()
+        self.addCleanup(r2p.stop)
+
+        from models import Page
+        with db_session(self.engine) as session:
+            session.add(Page(id="p1", user_id="u1", url="http://a", title="A", r2_key="k"))
+            session.add(Page(id="p2", user_id="u1", url="http://b", title="B", r2_key="k"))
+
+        self.cache_set = patch("servicer.cache_set", return_value=None).start()
+        self.addCleanup(self.cache_set.stop)
+        self.cache_get = patch("servicer.cache_get", return_value=None).start()
+        self.addCleanup(self.cache_get.stop)
+
+    def _list(self, **kw):
+        ctx = _FakeContext()
+        resp = ArchiveServicer().ListPages(
+            archive_pb2.ListPagesRequest(user_id="u1", page=1, page_size=20, **kw), ctx
+        )
+        return resp, ctx
+
+    def test_library_rpc_failure_is_unavailable_and_never_cached(self):
+        stub = MagicMock()
+        stub.ListCollectionPageIds.side_effect = grpc.RpcError("connect failed")
+        with patch("servicer._get_library_stub", return_value=stub), \
+             self.assertLogs("servicer", level="WARNING") as logs:
+            resp, ctx = self._list(collection_id="c1")
+
+        self.assertEqual(ctx._code, grpc.StatusCode.UNAVAILABLE)
+        self.assertEqual(resp.pages, [])
+        self.cache_set.assert_not_called()  # never cache the failed result
+
+        joined = "\n".join(logs.output)
+        self.assertIn("unavailable", joined)  # truthful cause
+        self.assertNotIn("without the collection filter", joined)
+
+        # Explicit deadline on the library call (2.9)
+        self.assertEqual(
+            stub.ListCollectionPageIds.call_args.kwargs.get("timeout"), _RPC_TIMEOUT
+        )
+
+    def test_unconfigured_library_is_unavailable(self):
+        with patch("servicer._get_library_stub", return_value=None), \
+             self.assertLogs("servicer", level="WARNING"):
+            _, ctx = self._list(collection_id="c1")
+        self.assertEqual(ctx._code, grpc.StatusCode.UNAVAILABLE)
+        self.cache_set.assert_not_called()
+
+    def test_healthy_library_serves_filtered_list(self):
+        stub = MagicMock()
+        stub.ListCollectionPageIds.return_value = (
+            library_pb2.ListCollectionPageIdsResponse(page_ids=["p1"])
+        )
+        with patch("servicer._get_library_stub", return_value=stub):
+            resp, ctx = self._list(collection_id="c1")
+        self.assertIsNone(ctx._code)
+        self.assertEqual([p.id for p in resp.pages], ["p1"])
+        self.assertEqual(resp.total, 1)
+        self.cache_set.assert_called_once()  # healthy results are still cached
+
+    def test_unfiltered_list_unaffected_by_library_outage(self):
+        with patch("servicer._get_library_stub", return_value=None):
+            resp, ctx = self._list()
+        self.assertIsNone(ctx._code)
+        self.assertEqual(resp.total, 2)
+
+
+# ---------------------------------------------------------------------------
+# 2.13/design note f — R2 error classification
+# ---------------------------------------------------------------------------
+
+class TestR2ErrorClassification(unittest.TestCase):
+    def _client_error(self, code, http=None):
+        class ClientError(Exception):
+            def __init__(self):
+                super().__init__(
+                    f"An error occurred ({code}) when calling the GetObject operation"
+                )
+                self.response = {
+                    "Error": {"Code": code},
+                    "ResponseMetadata": {"HTTPStatusCode": http or 400},
+                }
+
+        return ClientError()
+
+    def test_missing_object_is_not_found(self):
+        from servicer import _classify_r2_error
+        self.assertEqual(
+            _classify_r2_error(self._client_error("NoSuchKey", 404)),
+            grpc.StatusCode.NOT_FOUND,
+        )
+        self.assertEqual(
+            _classify_r2_error(self._client_error("404", 404)),
+            grpc.StatusCode.NOT_FOUND,
+        )
+        self.assertEqual(
+            _classify_r2_error(Exception("NoSuchKey")), grpc.StatusCode.NOT_FOUND
+        )
+
+    def test_overload_is_unavailable(self):
+        from servicer import _classify_r2_error
+        for exc in (
+            self._client_error("SlowDown", 503),
+            self._client_error("ServiceUnavailable", 503),
+            self._client_error("", 503),
+            Exception("SlowDown"),
+        ):
+            self.assertEqual(_classify_r2_error(exc), grpc.StatusCode.UNAVAILABLE, exc)
+
+    def test_other_errors_are_internal(self):
+        from servicer import _classify_r2_error
+        self.assertEqual(
+            _classify_r2_error(Exception("boom")), grpc.StatusCode.INTERNAL
+        )
+        self.assertEqual(
+            _classify_r2_error(self._client_error("AccessDenied", 403)),
+            grpc.StatusCode.INTERNAL,
+        )
+
+    def test_get_archive_file_slowdown_is_unavailable(self):
+        """R2 throttling must surface UNAVAILABLE so the gateway's assets/
+        fallback does NOT double-fetch or claim 'file not found'."""
+        page = _make_page(page_id="p1", user_id="u1")
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_r2 = MagicMock()
+        mock_r2.bucket = "b"
+        mock_r2.client.get_object.side_effect = self._client_error("SlowDown", 503)
+
+        with patch("servicer.R2Client", return_value=mock_r2), \
+             patch("servicer.db_session") as mock_db_session, \
+             patch("servicer.get_engine", return_value=MagicMock()):
+            mock_db_session.return_value.__enter__ = lambda s: mock_session
+            mock_db_session.return_value.__exit__ = lambda s, *a: None
+            ctx = _FakeContext()
+            ArchiveServicer().GetArchiveFile(
+                archive_pb2.GetArchiveFileRequest(
+                    page_id="p1", user_id="u1", file_path="index.html",
+                ),
+                ctx,
+            )
+        self.assertEqual(ctx._code, grpc.StatusCode.UNAVAILABLE)
+
+
+# ---------------------------------------------------------------------------
+# 2.14 — reserve-then-confirm flow against a real database
+# ---------------------------------------------------------------------------
+
+class TestQuotaReserveConfirmFlow(unittest.TestCase):
+    def setUp(self):
+        from sqlalchemy import create_engine as ce
+        self.engine = ce("sqlite://")
+        Base.metadata.create_all(self.engine)
+
+    def _quota(self, user_id):
+        """Return (pages_this_month, total_bytes) read inside a session —
+        instances are expired on commit, so attributes must not be accessed
+        after the session closes."""
+        from models import UserQuota
+        from sqlalchemy import select
+        with db_session(self.engine) as session:
+            q = session.execute(
+                select(UserQuota).where(UserQuota.user_id == user_id)
+            ).scalar_one()
+            return q.pages_this_month, q.total_bytes
+
+    def test_reserve_commit_then_confirm(self):
+        from quota import confirm_quota, reserve_quota
+
+        with db_session(self.engine) as session:
+            self.assertIsNone(reserve_quota(session, "u1", "free", 1000))
+        # Reservation is durable after the short reserve transaction.
+        self.assertEqual(self._quota("u1"), (1, 1000))
+
+        with db_session(self.engine) as session:
+            self.assertIsNone(confirm_quota(session, "u1", "free", 1000))
+        self.assertEqual(self._quota("u1"), (1, 1000))
+
+    def test_confirm_refunds_when_concurrent_ingest_consumed_budget(self):
+        from models import PLAN_LIMITS, UserQuota
+        from quota import confirm_quota, reserve_quota
+        from sqlalchemy import select
+
+        limit = PLAN_LIMITS["free"]["pages_per_month"]
+        with db_session(self.engine) as session:
+            session.add(UserQuota(user_id="u1", pages_this_month=limit - 1,
+                                  total_bytes=0,
+                                  quota_reset_at=datetime.now(timezone.utc) + timedelta(days=30)))
+        # Our reservation takes the count to the limit exactly.
+        with db_session(self.engine) as session:
+            self.assertIsNone(reserve_quota(session, "u1", "free", 1000))
+        self.assertEqual(self._quota("u1"), (limit, 1000))  # reserved pre-concurrency
+
+        # A concurrent ingest lands while this one "uploads", pushing the
+        # count one past the limit (our reservation is part of the excess).
+        with db_session(self.engine) as session:
+            q = session.execute(
+                select(UserQuota).where(UserQuota.user_id == "u1")
+            ).scalar_one()
+            q.pages_this_month = limit + 1
+
+        with db_session(self.engine) as session:
+            err = confirm_quota(session, "u1", "free", 1000)
+        self.assertEqual(err, "exhausted:quota|Monthly page limit reached")
+        self.assertEqual(self._quota("u1"), (limit, 1000))  # our +1 page refunded
+
+    def test_reservation_committed_before_upload_phase(self):
+        """The lock is never held across R2 uploads (design note e): a second
+        connection sees the committed reservation while uploads run."""
+        from models import UserQuota
+        from quota import reserve_quota
+        from sqlalchemy import create_engine as ce
+        from sqlalchemy import select
+
+        with tempfile.TemporaryDirectory(prefix="pp-archive-quota-") as tmp:
+            eng = ce(f"sqlite:///{tmp}/quota.db")
+            Base.metadata.create_all(eng)
+            with db_session(eng) as session:
+                self.assertIsNone(reserve_quota(session, "u1", "free", 1234))
+
+            seen = {}
+
+            def probe_upload(key, data, content_type=""):
+                if key.endswith("index.html"):
+                    with db_session(eng) as session:  # separate connection
+                        q = session.execute(
+                            select(UserQuota).where(UserQuota.user_id == "u1")
+                        ).scalar_one()
+                        seen["total_bytes"] = q.total_bytes  # read before close
+
+            mock_r2 = MagicMock()
+            mock_r2.upload.side_effect = probe_upload
+            with patch("servicer.get_engine", return_value=eng), \
+                 patch("servicer.R2Client", return_value=mock_r2), \
+                 patch("servicer._get_search_stub", return_value=None):
+                resp = ArchiveServicer().IngestPage(
+                    _build_ingest_request(), _FakeContext()
+                )
+            self.assertTrue(resp.success)
+            # The reservation was already committed when uploads executed:
+            # 1234 (pre-seeded) + 31 (this ingest's html bytes).
+            self.assertEqual(
+                seen["total_bytes"],
+                1234 + len(b"<html><body>Hello</body></html>"),
+            )
+
+
+# ---------------------------------------------------------------------------
+# 2.10/D7 — memoized channel/stub pool
+# ---------------------------------------------------------------------------
+
+class TestStubPoolMemoization(unittest.TestCase):
+    def setUp(self):
+        import grpc_pool
+        grpc_pool.reset_pool()
+        self.addCleanup(grpc_pool.reset_pool)
+
+    def test_channels_created_once_per_address(self):
+        from servicer import _get_library_stub, _get_search_stub
+
+        env = {
+            "SEARCH_SERVICE_ADDR": "search:9999",
+            "LIBRARY_SERVICE_ADDR": "library:9999",
+            "MTLS_ENABLED": "false",
+        }
+        with patch.dict(os.environ, env), \
+             patch("grpc.insecure_channel", return_value=MagicMock()) as mk_channel:
+            s1 = _get_search_stub()
+            s2 = _get_search_stub()
+            l1 = _get_library_stub()
+
+        self.assertIs(s1, s2)  # stub memoized per (factory, address)
+        self.assertIsNot(s1, l1)
+        self.assertEqual(mk_channel.call_count, 2)  # one per address, not per call
+
+        # Channel options mirror the server-side message limits (gateway parity)
+        opts = dict(mk_channel.call_args.kwargs["options"])
+        self.assertEqual(
+            opts["grpc.max_receive_message_length"], 256 * 1024 * 1024
+        )
+
+    def test_unconfigured_address_returns_none(self):
+        from servicer import _get_share_stub
+        env = {k: v for k, v in os.environ.items() if k != "SHARE_SERVICE_ADDR"}
+        with patch.dict(os.environ, env, clear=True):
+            self.assertIsNone(_get_share_stub())
+
+    def test_pool_reset_drops_memoized_stubs(self):
+        import grpc_pool
+        from servicer import _get_search_stub
+
+        env = {"SEARCH_SERVICE_ADDR": "search:9999", "MTLS_ENABLED": "false"}
+        with patch.dict(os.environ, env), \
+             patch("grpc.insecure_channel", return_value=MagicMock()) as mk_channel:
+            _get_search_stub()
+            grpc_pool.reset_pool()
+            _get_search_stub()
+        self.assertEqual(mk_channel.call_count, 2)  # channel rebuilt after reset
+
+
+# ---------------------------------------------------------------------------
+# 2.5/D7 — byte-safe truncation
+# ---------------------------------------------------------------------------
+
+class TestTruncateUtf8(unittest.TestCase):
+    def test_short_text_untouched(self):
+        from text_utils import truncate_utf8
+        self.assertEqual(truncate_utf8("hello", 100), "hello")
+
+    def test_ascii_truncated_by_bytes(self):
+        from text_utils import truncate_utf8
+        self.assertEqual(truncate_utf8("a" * 100, 10), "a" * 10)
+
+    def test_cjk_truncated_by_bytes_not_chars(self):
+        from text_utils import truncate_utf8
+        text = "漢" * 100  # 300 UTF-8 bytes
+        out = truncate_utf8(text, 100)
+        self.assertLessEqual(len(out.encode("utf-8")), 100)
+        self.assertEqual(len(out), 33)  # 33 chars × 3 bytes = 99 ≤ 100 < 102
+
+    def test_split_multibyte_sequence_dropped_cleanly(self):
+        from text_utils import truncate_utf8
+        out = truncate_utf8("漢漢漢", 4)  # byte 4 splits the second char
+        self.assertEqual(out, "漢")
+        out.encode("utf-8")  # valid UTF-8 — no dangling partial sequence
+
+    def test_no_replacement_characters(self):
+        from text_utils import truncate_utf8
+        out = truncate_utf8("é" * 50, 10)  # 2-byte chars → 5 fit exactly
+        self.assertNotIn("\ufffd", out)
+        self.assertEqual(out, "é" * 5)
+
+    def test_default_limit_is_mediumtext_minus_headroom(self):
+        import inspect
+
+        import text_utils
+        default = inspect.signature(text_utils.truncate_utf8).parameters["limit_bytes"].default
+        self.assertEqual(default, 16 * 1024 * 1024 - 4096)
+        self.assertEqual(
+            text_utils.truncate_utf8("a" * (16 * 1024 * 1024 + 1)),
+            "a" * (16 * 1024 * 1024 - 4096),
+        )
+
+
+class TestIndexPageBodyTruncation(unittest.TestCase):
+    """2.5: body_text sent to search is truncated by BYTES (a character slice
+    overflows MEDIUMTEXT for CJK and splits multi-byte sequences)."""
+
+    def _ingest_and_capture_body(self, html, limit):
+        stub = MagicMock()
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = None
+        with patch("servicer._get_search_stub", return_value=stub), \
+             patch("servicer._SEARCH_BODY_LIMIT_BYTES", limit), \
+             patch("servicer.R2Client"), \
+             patch("servicer.db_session") as mock_db_session, \
+             patch("servicer.reserve_quota", return_value=None), \
+             patch("servicer.confirm_quota", return_value=None), \
+             patch("servicer.get_engine", return_value=MagicMock()):
+            mock_db_session.return_value.__enter__ = lambda s: mock_session
+            mock_db_session.return_value.__exit__ = lambda s, *a: None
+            resp = ArchiveServicer().IngestPage(
+                _build_ingest_request(html_content=html), _FakeContext()
+            )
+        return resp, stub
+
+    def test_sent_body_is_byte_truncated_and_valid_utf8(self):
+        body = "漢" * 500  # 1500 UTF-8 bytes
+        html = f"<html><body>{body}</body></html>".encode()
+        resp, stub = self._ingest_and_capture_body(html, limit=64)
+        self.assertTrue(resp.success)
+        sent = stub.IndexPage.call_args.args[0]
+        self.assertLessEqual(len(sent.body_text.encode("utf-8")), 64)
+        sent.body_text.encode("utf-8")  # decodes cleanly — no split sequence
+        self.assertEqual(len(sent.body_text), 21)  # 21×3=63 ≤ 64 < 22×3
+
+    def test_default_limit_constant_matches_mediumtext(self):
+        from servicer import _SEARCH_BODY_LIMIT_BYTES
+        self.assertEqual(_SEARCH_BODY_LIMIT_BYTES, 16 * 1024 * 1024 - 4096)
+
+
+# ---------------------------------------------------------------------------
+# 5.1-5.5 — proto contract guarantees
+# ---------------------------------------------------------------------------
+
+class TestProtoContracts(unittest.TestCase):
+    def test_presigned_and_storage_fields_reserved(self):
+        self.assertFalse(hasattr(archive_pb2.PageResponse(), "r2_key"))
+        self.assertFalse(hasattr(archive_pb2.PageContentResponse(), "signed_url"))
+        self.assertEqual(
+            [f.name for f in archive_pb2.PageContentResponse.DESCRIPTOR.fields],
+            ["expires_at"],
+        )
+
+    def test_plan_field_marked_deprecated(self):
+        field = archive_pb2.IngestPageRequest.DESCRIPTOR.fields_by_name["plan"]
+        self.assertTrue(field.GetOptions().deprecated)
+
+    def test_status_response_deduplicated(self):
+        import auth_pb2
+        import common_pb2
+        import library_pb2
+        import search_pb2
+        import share_pb2
+        for mod in (archive_pb2, auth_pb2, library_pb2, search_pb2, share_pb2):
+            self.assertFalse(hasattr(mod, "StatusResponse"))
+        fields = common_pb2.StatusResponse.DESCRIPTOR.fields_by_name
+        self.assertEqual(fields["success"].number, 1)
+        self.assertEqual(fields["success"].type, fields["success"].TYPE_BOOL)
+        self.assertEqual(fields["message"].number, 2)
+        self.assertEqual(fields["message"].type, fields["message"].TYPE_STRING)
+
+    def test_new_rpc_request_shapes(self):
+        import library_pb2
+        import share_pb2
+        self.assertEqual(
+            [f.name for f in library_pb2.PurgePageLinksRequest.DESCRIPTOR.fields],
+            ["page_id"],
+        )
+        self.assertEqual(
+            [f.name for f in share_pb2.RevokeLinksForPageRequest.DESCRIPTOR.fields],
+            ["page_id"],
+        )
+
+    def test_get_page_content_owner_receives_no_url(self):
+        """D4: even a successful, ownership-verified call returns no presigned
+        URL — delivery is exclusively via the sandboxed asset routes."""
+        page = _make_page(page_id="p1", user_id="u1")
+        mock_session = MagicMock()
+        mock_session.execute.return_value.scalar_one_or_none.return_value = page
+        mock_r2 = MagicMock()
+
+        with patch("servicer.R2Client", return_value=mock_r2), \
+             patch("servicer.db_session") as mock_db_session, \
+             patch("servicer.get_engine", return_value=MagicMock()):
+            mock_db_session.return_value.__enter__ = lambda s: mock_session
+            mock_db_session.return_value.__exit__ = lambda s, *a: None
+            ctx = _FakeContext()
+            resp = ArchiveServicer().GetPageContent(
+                archive_pb2.GetPageContentRequest(page_id="p1", user_id="u1"), ctx
+            )
+        self.assertIsNone(ctx._code)
+        mock_r2.presign.assert_not_called()
+        self.assertFalse(hasattr(resp, "signed_url"))
+
+
+# ---------------------------------------------------------------------------
+# 5.1 follow-on — stale cache entries carrying the removed r2_key must not
+# break GetPage/ListPages (graceful field filtering).
+# ---------------------------------------------------------------------------
+
+class TestStaleCacheEntryTolerance(unittest.TestCase):
+    def test_cached_page_with_removed_r2_key_still_served(self):
+        cached = {
+            "id": "p1", "user_id": "u1", "url": "https://example.com",
+            "title": "Test", "preview_text": "preview",
+            "r2_key": "u1/p1/index.html",  # removed field, still in old entries
+            "size_bytes": 1000, "extension_job_id": "job1",
+            "archived_at": datetime.now(timezone.utc).isoformat(),
+        }
+        with patch("servicer.cache_get", return_value=cached), \
+             patch("servicer.R2Client"), \
+             patch("servicer.get_engine", return_value=MagicMock()):
+            ctx = _FakeContext()
+            resp = ArchiveServicer().GetPage(
+                archive_pb2.GetPageRequest(page_id="p1", user_id="u1"), ctx
+            )
+        self.assertIsNone(ctx._code)
+        self.assertEqual(resp.id, "p1")
+        self.assertFalse(hasattr(resp, "r2_key"))
 
 
 if __name__ == "__main__":

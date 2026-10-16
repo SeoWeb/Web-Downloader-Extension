@@ -1,0 +1,20 @@
+# Build-context hygiene (4.9/D13): the service Dockerfiles COPY shared/ and
+# services/<svc>/ — nothing below may leak secrets or bloat the context.
+
+# Secrets and key material must never enter a build context
+certs/
+.env*
+**/*.pem
+
+# Not needed by any backend image
+frontend/
+node_modules/
+tests/
+**/tests/
+services/*/tests/
+*.md
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.claude/

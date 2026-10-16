@@ -1,4 +1,4 @@
-.PHONY: proto build dev up down migrate test test-integration lint format certs help
+.PHONY: proto build dev up down migrate test test-integration lint format certs network-guard help
 
 PROTO_DIR := proto
 STUBS_DIR := shared/proto_generated
@@ -11,6 +11,13 @@ MIGRATE_SERVICES := auth-service archive-service library-service search-service 
 
 COMPOSE := docker compose
 
+# D13/4.6: the integration suite runs under a DEDICATED compose project
+# (-p pagepocket-it) with its own network (docker-compose.it.yml), so it can
+# never touch the prod-named project's volumes/containers and its
+# `down -v` teardown is scoped to pagepocket-it_* resources only.
+IT_PROJECT := pagepocket-it
+IT_COMPOSE := $(COMPOSE) -p $(IT_PROJECT) -f docker-compose.yml -f docker-compose.it.yml
+
 help:
 	@echo "PagePocket Backend"
 	@echo ""
@@ -20,9 +27,11 @@ help:
 	@echo "  make up                 Alias for dev"
 	@echo "  make down               Stop the dev stack"
 	@echo "  make migrate            Run Alembic migrations for all DB-backed services"
-	@echo "  make test               Run pytest across all services (unit suites)"
-	@echo "  make test-integration   Boot the full compose stack and run the gateway"
-	@echo "                          integration suite against it (17 tests, :8090)"
+	@echo "  make test               Run pytest across all services + the"
+	@echo "                          compose-contract render test"
+	@echo "  make test-integration   Boot an ISOLATED compose stack (project"
+	@echo "                          pagepocket-it) and run the gateway +"
+	@echo "                          search MySQL integration suites (:8090)"
 	@echo "  make lint               Run ruff linter"
 	@echo "  make format             Run ruff + black formatter"
 	@echo "  make certs              Generate mTLS CA + service certificates"
@@ -37,10 +46,17 @@ proto:
 	@touch $(STUBS_DIR)/__init__.py
 	@echo "Proto stubs generated in $(STUBS_DIR)"
 
-build:
+# D13/4.7 (design note c): pagepocket_default is declared `external: true`
+# in docker-compose.yml, so a fresh clone has nothing to attach to until the
+# network exists. Guard dev/build (the guard is idempotent and cheap).
+network-guard:
+	@docker network inspect pagepocket_default >/dev/null 2>&1 || \
+		{ echo "==> creating external network pagepocket_default (fresh-clone one-time setup)"; docker network create pagepocket_default; }
+
+build: network-guard
 	$(COMPOSE) build
 
-dev: build
+dev: network-guard build
 	$(COMPOSE) up -d
 
 up: dev
@@ -64,19 +80,38 @@ test:
 		echo "==> Testing $$svc..."; \
 		( cd services/$$svc && PYTHONPATH=../../shared:../../shared/proto_generated python3 -m pytest tests/ ) || status=1; \
 	done; \
+	echo "==> Compose-contract render test (pagepocket/tests)"; \
+	( python3 -m pytest tests/test_compose_contract.py -q ) || status=1; \
 	if [ $$status -ne 0 ]; then echo "==> make test: FAILURES detected" >&2; else echo "==> make test: all service suites passed"; fi; \
 	exit $$status
 
-# 5.1: boots the complete stack (mysql + redis + 5 services + gateway) with
-# the dev compose file and runs the 17 gateway integration tests against the
-# live gateway on 127.0.0.1:8090 — the same path CI uses, so the tests can
-# never silently self-skip again (they skip only when the gateway is
-# unreachable; here the wait loop guarantees it is up or the target fails).
+# 5.1: boots the complete stack (mysql + redis + 5 services + gateway) and
+# runs the gateway integration tests against the live gateway on
+# 127.0.0.1:8090 — the same path CI uses, so the tests can never silently
+# self-skip again (they skip only when the gateway is unreachable; here the
+# wait loop guarantees it is up or the target fails).
+#
+# D13/4.6 (design note b): the stack runs under the ISOLATED project
+# `pagepocket-it` (own network via docker-compose.it.yml), so a run can
+# never reuse — or `down -v`-wipe — the prod-named project's volumes; the
+# teardown at the bottom is scoped to pagepocket-it_* only. NB: the stack
+# still publishes 127.0.0.1:{3306,50051..50055,8090}, so stop the dev/prod
+# stack first; a port-bind conflict fails loudly at `up`.
+#
+# D13/4.5: after the health wait, SEARCH_TEST_DB_URL points the
+# search-service FULLTEXT/CJK suite at the stack's MySQL (published
+# 127.0.0.1:3306, root — docker-compose.yml) so those tests execute here
+# and in CI instead of skipping forever.
 test-integration:
-	@docker network inspect pagepocket_default >/dev/null 2>&1 || docker network create pagepocket_default
-	$(COMPOSE) up -d --build
 	@status=0; \
 	code=000; \
+	mysql_pw="$${MYSQL_ROOT_PASSWORD:-$$([ -f .env ] && sed -n 's/^MYSQL_ROOT_PASSWORD=//p' .env | head -1)}"; \
+	mysql_pw="$${mysql_pw:-pagepocket}"; \
+	if ! $(IT_COMPOSE) up -d --build; then \
+		echo "==> integration stack failed to start (port conflict with the dev/prod stack on 127.0.0.1:{3306,8090}?)" >&2; \
+		$(IT_COMPOSE) down -v --remove-orphans || true; \
+		exit 1; \
+	fi; \
 	for i in $$(seq 1 60); do \
 		code=$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/v1/health 2>/dev/null || echo 000); \
 		if [ "$$code" = "200" ]; then break; fi; \
@@ -85,8 +120,8 @@ test-integration:
 	warc=000; \
 	if [ "$$code" != "200" ]; then \
 		echo "==> gateway did not become healthy on 127.0.0.1:8090" >&2; \
-		$(COMPOSE) ps; \
-		$(COMPOSE) logs --tail=40 api-gateway; \
+		$(IT_COMPOSE) ps; \
+		$(IT_COMPOSE) logs --tail=40 api-gateway; \
 		status=1; \
 	else \
 		echo "==> gateway healthy — warming the service path (auth -> gateway -> gRPC -> archive)"; \
@@ -103,16 +138,18 @@ test-integration:
 		done; \
 		if [ "$$warc" != "200" ] && [ "$$warc" != "402" ]; then \
 			echo "==> archive service path never warmed up (last=$$warc)" >&2; \
-			$(COMPOSE) ps; \
-			$(COMPOSE) logs --tail=40 archive-service api-gateway; \
+			$(IT_COMPOSE) ps; \
+			$(IT_COMPOSE) logs --tail=40 archive-service api-gateway; \
 			status=1; \
 		fi; \
 	fi; \
 	if [ "$$status" -eq 0 ]; then \
 		echo "==> running integration suite"; \
 		( cd services/api-gateway && PAGEPOCKET_GATEWAY_URL=http://127.0.0.1:8090 python3 -m pytest tests/test_gateway_integration.py -v ) || status=1; \
+		echo "==> running search-service MySQL integration suite (FULLTEXT/CJK, 4.5)"; \
+		( cd services/search-service && SEARCH_TEST_DB_URL="mysql+pymysql://root:$${mysql_pw}@127.0.0.1:3306/search_db" PYTHONPATH=../../shared:../../shared/proto_generated python3 -m pytest tests/test_search_integration.py -v ) || status=1; \
 	fi; \
-	$(COMPOSE) down -v --remove-orphans; \
+	$(IT_COMPOSE) down -v --remove-orphans; \
 	exit $$status
 
 lint:

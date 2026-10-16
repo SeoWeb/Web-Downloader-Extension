@@ -3,6 +3,7 @@
 import grpc
 import warnings
 
+import common_pb2 as common__pb2
 import search_pb2 as search__pb2
 
 GRPC_GENERATED_VERSION = '1.78.0'
@@ -37,12 +38,12 @@ class SearchServiceStub(object):
         self.IndexPage = channel.unary_unary(
                 '/search.SearchService/IndexPage',
                 request_serializer=search__pb2.IndexPageRequest.SerializeToString,
-                response_deserializer=search__pb2.StatusResponse.FromString,
+                response_deserializer=common__pb2.StatusResponse.FromString,
                 _registered_method=True)
         self.RemovePage = channel.unary_unary(
                 '/search.SearchService/RemovePage',
                 request_serializer=search__pb2.RemovePageRequest.SerializeToString,
-                response_deserializer=search__pb2.StatusResponse.FromString,
+                response_deserializer=common__pb2.StatusResponse.FromString,
                 _registered_method=True)
         self.Search = channel.unary_unary(
                 '/search.SearchService/Search',
@@ -78,12 +79,12 @@ def add_SearchServiceServicer_to_server(servicer, server):
             'IndexPage': grpc.unary_unary_rpc_method_handler(
                     servicer.IndexPage,
                     request_deserializer=search__pb2.IndexPageRequest.FromString,
-                    response_serializer=search__pb2.StatusResponse.SerializeToString,
+                    response_serializer=common__pb2.StatusResponse.SerializeToString,
             ),
             'RemovePage': grpc.unary_unary_rpc_method_handler(
                     servicer.RemovePage,
                     request_deserializer=search__pb2.RemovePageRequest.FromString,
-                    response_serializer=search__pb2.StatusResponse.SerializeToString,
+                    response_serializer=common__pb2.StatusResponse.SerializeToString,
             ),
             'Search': grpc.unary_unary_rpc_method_handler(
                     servicer.Search,
@@ -117,7 +118,7 @@ class SearchService(object):
             target,
             '/search.SearchService/IndexPage',
             search__pb2.IndexPageRequest.SerializeToString,
-            search__pb2.StatusResponse.FromString,
+            common__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -144,7 +145,7 @@ class SearchService(object):
             target,
             '/search.SearchService/RemovePage',
             search__pb2.RemovePageRequest.SerializeToString,
-            search__pb2.StatusResponse.FromString,
+            common__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,

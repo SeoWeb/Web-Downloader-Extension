@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink, Share2, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ShareDialog } from "@/components/app/share-dialog";
 import { useHotkeys } from "@/hooks/use-hotkeys";
@@ -37,6 +38,7 @@ export function PageViewerShell({
 }: PageViewerShellProps) {
   const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const iframeSrc = `/api/pp/archive/pages/${pageId}/f/index.html`;
 
   function handleBack() {
@@ -59,9 +61,25 @@ export function PageViewerShell({
   }
 
   async function handleDelete() {
+    if (deleting) return;
     if (!confirm("Delete this page?")) return;
-    await fetch(`/api/pp/archive/pages/${pageId}`, { method: "DELETE" });
-    router.push("/app");
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/pp/archive/pages/${pageId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        // Delete failed — surface it and keep the page viewable. Never
+        // navigate away as if the deletion had succeeded.
+        toast.error("Failed to delete page");
+        return;
+      }
+      router.push("/app");
+    } catch {
+      toast.error("Network error — page not deleted");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   useHotkeys([
@@ -130,6 +148,7 @@ export function PageViewerShell({
               variant="ghost"
               size="icon-sm"
               onClick={handleDelete}
+              disabled={deleting}
               aria-label="Delete"
             >
               <Trash2 className="size-4" />

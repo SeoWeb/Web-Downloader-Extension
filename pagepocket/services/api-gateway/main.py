@@ -4,14 +4,19 @@ import os
 import sys
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import JSONResponse
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared"))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared", "proto_generated"))
+# Make `python main.py` work from a repo checkout (pagepocket/shared next to
+# services/) and keep working in the container, where PYTHONPATH already
+# points at /app/shared. Idempotent: nonexistent entries are harmless.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared", "proto_generated"))
 
 # Fail fast BEFORE importing middleware/routers: jwt_utils reads JWT_SECRET at
 # import time, and a clean configuration error beats a KeyError traceback.
-from config import allowed_origins, enforce_startup_config
+from config import allowed_origins, enforce_startup_config, gateway_workers
 from logging_config import configure_logging
 
 enforce_startup_config()
@@ -28,18 +33,31 @@ from routers import share as share_router
 
 app = FastAPI(title="PagePocket API", version="v1")
 
-# CORS is pinned to an explicit allow-list (never "*"). Published
-# chrome-extension:// origins can be appended via CORS_ALLOW_ORIGINS.
+
+@app.exception_handler(RequestValidationError)
+async def malformed_body_handler(request, exc: RequestValidationError):
+    """Malformed/missing JSON bodies → 400 (never 422-as-500, task 1.14)."""
+    return JSONResponse(
+        status_code=400,
+        content={"detail": "Malformed or missing request body", "api_version": "v1"},
+    )
+
+
+# Middleware order (spec "Middleware Ordering (CORS Outermost)"): Starlette's
+# add_middleware prepends, so the LAST-registered layer is the OUTERMOST.
+# Registering CORS last puts it outside auth + rate limiting, so error
+# responses produced by the inner layers — 401 authentication rejections and
+# 429 rate-limit rejections — carry Access-Control-Allow-Origin. Auth stays
+# outside rate limiting so the per-user bucket sees request.state.user_id.
+limiter = RedisRateLimiter()
+app.add_middleware(RateLimitMiddleware, limiter=limiter)  # innermost
+app.add_middleware(AuthMiddleware)
 app.add_middleware(
-    CORSMiddleware,
+    CORSMiddleware,  # outermost (added last)
     allow_origins=allowed_origins(),
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-limiter = RedisRateLimiter()
-app.add_middleware(RateLimitMiddleware, limiter=limiter)
-app.add_middleware(AuthMiddleware)
 
 app.include_router(auth_router.router)
 app.include_router(archive_router.router)
@@ -51,4 +69,14 @@ app.include_router(health_router.build_health_router(limiter))
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8090)
+
+    workers = gateway_workers()
+    if workers > 1:
+        # Multi-worker mode requires an import string: uvicorn spawns worker
+        # processes that each import the app themselves (D1; the Redis-backed
+        # limiter makes >1 worker safe). The Dockerfile runs from WORKDIR
+        # /app, so "main:app" resolves; a direct `python main.py` also works
+        # because the script's directory is sys.path[0].
+        uvicorn.run("main:app", host="0.0.0.0", port=8090, workers=workers)
+    else:
+        uvicorn.run(app, host="0.0.0.0", port=8090)

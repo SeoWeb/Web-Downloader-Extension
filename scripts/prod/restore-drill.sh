@@ -11,6 +11,13 @@
 # plan (dry-run). The drill creates and drops scratch DBs on the production
 # MySQL instance — run it in a quiet window; it never touches source data.
 #
+# D13/4.1: the dumps no longer contain CREATE DATABASE/USE (backup-mysql.sh
+# dropped --databases), so the drill explicitly CREATEs the scratch DB
+# before piping the dump in. As a canary it then inserts a marker row into
+# a scratch-only table and asserts that this row does NOT exist in the
+# source database — proving the restore (and the canary) targeted the
+# scratch DB, never the live one.
+#
 # Usage:
 #   restore-drill.sh [--db NAME] [--backup FILE] [--container NAME]
 #                    [--keep] [--yes]
@@ -72,20 +79,28 @@ fi
 
 SCRATCH="${DB}_drill_$(date +%s)"
 
-run_mysql() { # run_mysql SQL... (executes mysql inside the container)
-  docker exec -i "$CONTAINER" sh -s -- "$@" <<SQL
-cat > /tmp/.drill.cnf <<'CNF'
-[client]
-user=root
-password=${PW}
-CNF
-chmod 600 /tmp/.drill.cnf
-tool=\$1; shift
-"\$tool" --defaults-extra-file=/tmp/.drill.cnf "\$@"
-rc=\$?
-rm -f /tmp/.drill.cnf
-exit \$rc
-SQL
+# mysql client inside the container, credentials via a short-lived 0600
+# defaults file (never in argv, never in the HOST process list). The script
+# text is passed as an ARGUMENT (sh -c), NOT via stdin — stdin must stay
+# pure SQL for the restore pipe. D13/4.1: the old `sh -s` + heredoc form
+# fed the script's own unread tail to `mysql` as SQL (mysql reads stdin
+# even with a db argument), which is part of why the drill could never
+# succeed.
+run_mysql() { # run_mysql TOOL ARGS...   (SQL, if any, arrives on stdin)
+  local tool="$1"; shift
+  docker exec -i \
+    -e DRILL_PW="$PW" \
+    -e DRILL_TOOL="$tool" \
+    "$CONTAINER" \
+    sh -c '
+      cnf="/tmp/.drill.$$.cnf"
+      umask 077
+      printf "[client]\nuser=root\npassword=%s\n" "$DRILL_PW" > "$cnf"
+      "$DRILL_TOOL" --defaults-extra-file="$cnf" "$@"
+      rc=$?
+      rm -f "$cnf"
+      exit $rc
+    ' drill-sh "$@"
 }
 
 log "restore drill plan:"
@@ -97,14 +112,20 @@ log "  keep      : $KEEP"
 
 if [ "$YES" -ne 1 ]; then
   log "DRY-RUN — re-run with --yes to execute. The drill will:"
-  log "  1. gunzip < backup | mysql  (creates ${SCRATCH})"
-  log "  2. compare table list + exact COUNT(*) per table between ${DB} and ${SCRATCH}"
-  log "  3. compare alembic_version"
-  log "  4. DROP DATABASE ${SCRATCH}   (unless --keep)"
+  log "  1. CREATE DATABASE ${SCRATCH} (utf8mb4) — the dump carries no CREATE DATABASE/USE"
+  log "  2. gunzip < backup | mysql ${SCRATCH}   (restore INTO the scratch DB)"
+  log "  3. compare table list + exact COUNT(*) per table between ${DB} and ${SCRATCH}"
+  log "  4. compare alembic_version"
+  log "  5. canary: insert a marker row into ${SCRATCH}.__restore_drill_canary and"
+  log "     assert it does NOT exist in ${DB} (proves the restore targeted scratch)"
+  log "  6. DROP DATABASE ${SCRATCH}   (unless --keep)"
   exit 0
 fi
 
 docker inspect "$CONTAINER" >/dev/null 2>&1 || { echo "ERROR: container ${CONTAINER} not found" >&2; exit 2; }
+
+log "creating scratch database ${SCRATCH} (dumps carry no CREATE DATABASE/USE) ..."
+run_mysql mysql -e "CREATE DATABASE \`${SCRATCH}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 log "restoring backup into ${SCRATCH} ..."
 gunzip -c "$BACKUP" | run_mysql mysql "$SCRATCH"
@@ -137,6 +158,29 @@ ver_dst="$(run_mysql mysql -N -e "SELECT version FROM \`${SCRATCH}\`.alembic_ver
 log "alembic_version: source=${ver_src} scratch=${ver_dst}"
 [ "$ver_src" = "$ver_dst" ] || fail=1
 
+# ---------------------------------------------------------------------------
+# D13/4.1 canary: a marker row that must exist ONLY in the scratch DB.
+# If the same row turns up in the SOURCE database, the restore (or the
+# canary itself) wrote into the live database — hard failure; the scratch
+# DB is kept for forensics.
+# ---------------------------------------------------------------------------
+CANARY_TABLE="__restore_drill_canary"
+run_mysql mysql "$SCRATCH" -e "CREATE TABLE IF NOT EXISTS \`${CANARY_TABLE}\` (id INT PRIMARY KEY, marker VARCHAR(64) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+run_mysql mysql "$SCRATCH" -e "INSERT INTO \`${CANARY_TABLE}\` (id, marker) VALUES (1, '${SCRATCH}_canary');"
+canary_scratch="$(run_mysql mysql -N -e "SELECT COUNT(*) FROM \`${SCRATCH}\`.\`${CANARY_TABLE}\` WHERE id=1;")"
+canary_source="$(run_mysql mysql -N -e "SELECT COUNT(*) FROM \`${DB}\`.\`${CANARY_TABLE}\` WHERE id=1;" 2>/dev/null || echo 0)"
+log "canary: marker row — scratch=${canary_scratch} (expect 1), source=${canary_source} (expect 0)"
+if [ "$canary_scratch" != "1" ]; then
+  log "CANARY FAILURE: marker row is not in ${SCRATCH} — the restore did not land in the scratch DB"
+  fail=1
+  KEEP=1
+fi
+if [ "$canary_source" != "0" ]; then
+  log "CANARY FAILURE: marker row FOUND IN SOURCE DB ${DB} — the live database was written to! Do NOT run further drills until investigated; scratch DB KEPT for forensics."
+  fail=1
+  KEEP=1
+fi
+
 if [ "$KEEP" -eq 1 ]; then
   log "scratch database KEPT for inspection: ${SCRATCH}"
   log "drop it afterwards with:"
@@ -147,8 +191,9 @@ else
 fi
 
 if [ "$fail" -ne 0 ]; then
-  log "DRILL FAILED — row-count or alembic_version mismatch (see table above)"
+  log "DRILL FAILED — row-count, alembic_version or canary mismatch (see output above)"
   exit 1
 fi
 log "DRILL VERIFIED: ${DB} restored from $(basename "$BACKUP") — all tables and row counts match"
-log "record date / backup used / result in scripts/prod/README.md (restore-drill log)"
+log "canary evidence: marker row present in ${SCRATCH} and ABSENT from source ${DB} (restore targeted scratch only)"
+log "record date / backup used / result / canary evidence in scripts/prod/README.md (restore-drill log)"

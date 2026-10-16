@@ -2,19 +2,62 @@ import { NextRequest } from "next/server";
 import { setAuthCookies, clearAuthCookies } from "@/lib/auth/cookies";
 import { API_GATEWAY_URL } from "@/lib/env";
 import { contentTypeForPath, sandboxHeaders } from "@/lib/serving-headers";
+import { forwardedClientIpHeadersFrom } from "@/lib/api/client-ip";
+import { isSafeSegment } from "@/lib/proxy-path";
 
 const API_BASE = API_GATEWAY_URL;
 
-const refreshPromises = new Map<string, Promise<Response>>();
+const refreshPromises = new Map<string, Promise<RefreshOutcome>>();
 
 // Authenticated archived-file serving route (/api/pp/archive/{page_id}/f/*).
 // Archived content must never leave this proxy without the sandbox header set
 // (archived-html-serving) — same semantics as the gateway's serving.py.
 const ARCHIVE_FILE_ROUTE = /^\/archive\/[^/]+\/f\/(.+)$/;
 
+// Route allow-list (archived-file-proxy / design D11): the COMPOSED upstream
+// path (gateway base path + proxied route) must stay inside these route
+// families after normalization — the gateway's remaining surface (/docs,
+// openapi.json, …) is unreachable through this proxy.
+const ALLOWED_UPSTREAM = /^\/api\/v1\/(archive|library|search|share|auth)\//;
+
+const GATEWAY_BASE_PATH = new URL(API_BASE).pathname.replace(/\/+$/, "");
+
 function archiveFilePath(route: string): string | null {
   const match = route.match(ARCHIVE_FILE_ROUTE);
   return match ? match[1]! : null;
+}
+
+/**
+ * Normalize the catch-all segments into the composed upstream path, or null
+ * when the request must be rejected with 400 without proxying: any segment
+ * failing the dot-segment/escape validation, or any composed path outside
+ * the allowed route families, is rejected.
+ */
+function normalizeUpstreamRoute(segments: string[]): string | null {
+  for (const segment of segments) {
+    if (!isSafeSegment(segment)) return null;
+  }
+  const route = `/${segments.join("/")}`;
+  const upstreamPath = `${GATEWAY_BASE_PATH}${route}`;
+  return ALLOWED_UPSTREAM.test(upstreamPath) ? route : null;
+}
+
+/**
+ * Force the response private for caching (archived-file-proxy "Private
+ * Caching of Cookie-Authenticated Files"): these responses are
+ * cookie-authenticated, so shared caches (Cloudflare) must never store or
+ * reuse them across users. Preserve upstream max-age and other directives;
+ * strip `public`/`immutable`.
+ */
+function privatizeCacheControl(headers: Headers): void {
+  const directives = (headers.get("cache-control") ?? "")
+    .split(",")
+    .map((directive) => directive.trim())
+    .filter((directive) => directive.length > 0 && !/^(public|immutable)$/i.test(directive));
+  if (!directives.some((directive) => directive.toLowerCase() === "private")) {
+    directives.unshift("private");
+  }
+  headers.set("cache-control", directives.join(", "));
 }
 
 function proxyResponse(response: Response, filePath: string | null): Response {
@@ -32,6 +75,7 @@ function proxyResponse(response: Response, filePath: string | null): Response {
   for (const [name, value] of Object.entries(sandbox)) {
     headers.set(name, value);
   }
+  privatizeCacheControl(headers);
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -83,19 +127,97 @@ function responseCookieSetter(response: Response) {
   };
 }
 
-async function refreshTokens(request: NextRequest): Promise<Response> {
+type RefreshOutcome =
+  | { kind: "ok"; accessToken: string; refreshToken?: string }
+  | { kind: "unauthorized" }
+  | { kind: "unavailable" };
+
+/**
+ * Single-flight refresh primitive (pagepocket-frontend-auth "Silent Token
+ * Refresh"). Returns a definite outcome and NEVER throws, so single-flight
+ * waiters are not poisoned by an unhandled rejection: network failures,
+ * non-JSON bodies, and gateway 5xx map to `unavailable`; a 401 (or a missing
+ * refresh cookie) maps to `unauthorized`.
+ */
+async function refreshTokens(request: NextRequest): Promise<RefreshOutcome> {
   const refreshToken = (await request.cookies).get("pp_refresh")?.value;
   if (!refreshToken) {
-    return new Response(JSON.stringify({ error: "No refresh token" }), {
-      status: 401,
-    });
+    return { kind: "unauthorized" };
   }
 
-  return fetch(`${API_BASE}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refreshToken }),
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        ...forwardedClientIpHeadersFrom(request.headers),
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+  } catch {
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401) return { kind: "unauthorized" };
+  if (!response.ok) return { kind: "unavailable" };
+
+  try {
+    const tokens = (await response.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+    };
+    if (!tokens.access_token) return { kind: "unavailable" };
+    return {
+      kind: "ok",
+      accessToken: tokens.access_token,
+      ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
+    };
+  } catch {
+    return { kind: "unavailable" };
+  }
+}
+
+function setAuthCookiesOn(
+  response: Response,
+  outcome: Extract<RefreshOutcome, { kind: "ok" }>,
+) {
+  // An empty/absent rotated refresh token must never be written as an empty
+  // pp_refresh cookie (the session keeps its existing refresh token).
+  setAuthCookies(responseCookieSetter(response), {
+    access: outcome.accessToken,
+    ...(outcome.refreshToken ? { refresh: outcome.refreshToken } : {}),
   });
+}
+
+type UpstreamRequest = {
+  body: BodyInit | undefined;
+  /**
+   * Replay copy for the post-refresh retry: `null` marks a streamed
+   * (non-replayable) request body, an empty string marks "no body", and a
+   * buffered JSON body is replayed verbatim.
+   */
+  replayBody: string | null;
+};
+
+async function prepareUpstreamRequest(
+  request: NextRequest,
+): Promise<UpstreamRequest> {
+  if (request.method === "GET" || !request.body) {
+    return { body: undefined, replayBody: "" };
+  }
+  const contentType = request.headers
+    .get("content-type")
+    ?.split(";", 1)[0]
+    ?.trim()
+    .toLowerCase();
+  if (contentType === "application/json") {
+    const text = await request.text();
+    return { body: text.length > 0 ? text : undefined, replayBody: text };
+  }
+  // Stream everything else (duplex half) instead of buffering it in memory.
+  return { body: request.body, replayBody: null };
 }
 
 export async function GET(
@@ -138,7 +260,13 @@ async function proxyRequest(
   params: Promise<{ path: string[] }>,
 ) {
   const { path } = await params;
-  const route = `/${path.join("/")}`;
+  const route = normalizeUpstreamRoute(path);
+  if (!route) {
+    return new Response(JSON.stringify({ error: "Proxied route not allowed" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   const filePath = archiveFilePath(route);
   const url = new URL(request.url);
   const gatewayUrl = `${API_BASE}${route}?${url.searchParams.toString()}`;
@@ -146,21 +274,34 @@ async function proxyRequest(
   const cookieStore = await request.cookies;
   const accessToken = cookieStore.get("pp_access")?.value;
 
+  // Forward the caller's Content-Type (never hardcode application/json), the
+  // media/conditional headers (Range/Accept/If-*), and the inbound client
+  // IP chain (forwarded verbatim — see client-ip.ts).
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...forwardedClientIpHeadersFrom(request.headers),
   };
+  const callerContentType = request.headers.get("content-type");
+  if (callerContentType) {
+    headers["Content-Type"] = callerContentType;
+  }
   if (accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
+  for (const name of ["Range", "Accept", "If-None-Match", "If-Modified-Since"]) {
+    const value = request.headers.get(name);
+    if (value) {
+      headers[name] = value;
+    }
+  }
 
-  const hasBody = request.method !== "GET" && request.method !== "DELETE";
-  const body = hasBody ? await request.text() : null;
+  const upstream = await prepareUpstreamRequest(request);
 
   let response = await fetch(gatewayUrl, {
     method: request.method,
     headers,
     cache: "no-store",
-    ...(hasBody ? { body: body! } : {}),
+    ...(upstream.body !== undefined ? { body: upstream.body } : {}),
+    ...(upstream.body instanceof ReadableStream ? { duplex: "half" as const } : {}),
   });
 
   if (response.status === 401) {
@@ -174,47 +315,58 @@ async function proxyRequest(
       refreshPromises.set(userId, refreshPromise);
     }
 
+    // The single-flight promise resolves to a plain outcome object, so every
+    // waiter gets a definite answer and no shared Response body is consumed
+    // twice.
+    let outcome: RefreshOutcome;
     try {
-      const refreshRes = await refreshPromise;
-      if (refreshRes.ok) {
-        const tokens = (await refreshRes.json()) as {
-          access_token: string;
-          refresh_token?: string;
-          expires_at?: number;
-        };
-        const newAccess = tokens.access_token;
-
-        response = await fetch(gatewayUrl, {
-          method: request.method,
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${newAccess}`,
-          },
-          cache: "no-store",
-          ...(hasBody ? { body: body! } : {}),
-        });
-
-        const finalResponse = proxyResponse(response, filePath);
-
-        setAuthCookies(responseCookieSetter(finalResponse), {
-          access: newAccess,
-          refresh: tokens.refresh_token ?? "",
-          expiresAt: tokens.expires_at ?? Math.floor(Date.now() / 1000) + 7 * 24 * 3600,
-        });
-
-        return finalResponse;
-      }
+      outcome = await refreshPromise;
     } finally {
       refreshPromises.delete(userId);
     }
 
-    // Refresh failed — sign out
-    const signOutResponse = new Response(
-      JSON.stringify({ error: "Session expired" }),
-      { status: 401, headers: { "Content-Type": "application/json" } },
+    if (outcome.kind === "ok") {
+      headers["Authorization"] = `Bearer ${outcome.accessToken}`;
+      if (upstream.replayBody !== null) {
+        // Retry the original request exactly once with the rotated token.
+        response = await fetch(gatewayUrl, {
+          method: request.method,
+          headers,
+          cache: "no-store",
+          ...(upstream.replayBody.length > 0
+            ? { body: upstream.replayBody }
+            : {}),
+        });
+        const finalResponse = proxyResponse(response, filePath);
+        setAuthCookiesOn(finalResponse, outcome);
+        return finalResponse;
+      }
+
+      // Streamed (non-replayable) request body: rotate the cookies and hand
+      // the caller a definite 503 so it can replay with the fresh token.
+      const replayResponse = new Response(
+        JSON.stringify({ error: "Access token refreshed — replay the request" }),
+        { status: 503, headers: { "Content-Type": "application/json" } },
+      );
+      setAuthCookiesOn(replayResponse, outcome);
+      return replayResponse;
+    }
+
+    if (outcome.kind === "unauthorized") {
+      // Refresh definitively failed — sign out.
+      const signOutResponse = new Response(
+        JSON.stringify({ error: "Session expired" }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+      clearAuthCookies(responseCookieSetter(signOutResponse));
+      return signOutResponse;
+    }
+
+    // Transient refresh failure — keep the session, answer with 503.
+    return new Response(
+      JSON.stringify({ error: "Session refresh unavailable" }),
+      { status: 503, headers: { "Content-Type": "application/json" } },
     );
-    clearAuthCookies(responseCookieSetter(signOutResponse));
-    return signOutResponse;
   }
 
   return proxyResponse(response, filePath);

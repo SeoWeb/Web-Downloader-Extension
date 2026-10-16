@@ -48,17 +48,26 @@ jobs:
               - 'pagepocket/shared/**'
               - 'pagepocket/proto/**'
               - 'pagepocket/docker-compose*.yml'
+              # D13/4.4: keep deploy filters consistent with ci.yml —
+              # maintenance-sidecar, dev-dependency and schema changes must
+              # deploy (the sidecar bind-mounts scripts/prod/archive-maintenance
+              # read-only, and the compose files/init.sql shape the runtime).
+              - 'scripts/prod/archive-maintenance/**'
+              - 'pagepocket/requirements-dev.txt'
+              - 'pagepocket/init.sql'
 
   # ---------------------------------------------------------------------------
-  # 5.8: a deploy must never run untested code. CI (ci.yml) triggers on the
-  # same push to `pagepocket`, so a run for github.sha must exist — this job
-  # waits (poll, 30 min budget) for that run to complete and requires a green
-  # conclusion. Deploys of a SHA that never ran CI (manual dispatch of an old
-  # commit) time out here by design; re-push or run ci.yml manually first.
+  # 5.8 + D13/4.3: a deploy must never run untested code. CI (ci.yml)
+  # triggers on the same push to `pagepocket`, so a run for github.sha must
+  # exist — this job waits (poll, 30 min budget) for that run to complete
+  # and requires a green conclusion. It now ALWAYS runs (no backend
+  # condition): frontend-only changes are CI-gated too, since deploy-
+  # frontend needs this job. A run for a SHA that never had CI (manual
+  # dispatch of an old commit) times out here by design; re-push or
+  # workflow_dispatch ci.yml (D13/4.4) for the commit first.
   # ---------------------------------------------------------------------------
   ci-gate:
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Require green CI for this exact commit
@@ -88,7 +97,7 @@ jobs:
             fi
             sleep 30
           done
-          echo "::error::no completed CI run for $SHA within 30 minutes — deploy blocked. Re-push or trigger ci.yml for this commit first."
+          echo "::error::no completed CI run for $SHA within 30 minutes — deploy blocked. Re-push, or trigger the CI workflow manually for this commit: gh workflow run ci.yml --ref pagepocket (D13/4.4 added workflow_dispatch)."
           exit 1
 
   # ---------------------------------------------------------------------------
@@ -105,7 +114,7 @@ jobs:
         with:
           node-version: lts/*
           cache: pnpm
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - uses: actions/upload-artifact@v4
         with:
@@ -131,16 +140,28 @@ jobs:
     steps:
       - name: Deploy backend to Contabo
         uses: appleboy/ssh-action@v1
+        env:
+          # D13/4.2: pin the deploy to EXACTLY the commit that passed the
+          # gate. Resetting to origin/pagepocket could ship an UNGATED newer
+          # tip that landed while this run queued.
+          DEPLOY_SHA: ${{ github.sha }}
         with:
           host: ${{ secrets.CONTABO_HOST }}
           username: ${{ secrets.CONTABO_USER }}
           key: ${{ secrets.CONTABO_SSH_KEY }}
+          envs: DEPLOY_SHA
           command_timeout: 30m
           script: |
             set -e
             cd /var/www/Web-Downloader-Extension
             git fetch origin
-            git reset --hard origin/pagepocket
+            remote_tip="$(git rev-parse origin/pagepocket)"
+            if [ "$remote_tip" != "$DEPLOY_SHA" ]; then
+              echo "::error::queue-race: origin/pagepocket is ${remote_tip} but this deploy is gated on ${DEPLOY_SHA}. Refusing to ship the ungated tip — re-run the deploy workflow (it will pick up the newer gated SHA)."
+              exit 1
+            fi
+            git reset --hard "$DEPLOY_SHA"
+            echo "==> host tree pinned at gated SHA $(git rev-parse HEAD)"
             cd pagepocket
             COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
             echo "==> Building images (fail fast before touching the runtime)"
@@ -183,22 +204,35 @@ jobs:
   # case pm2 returns) but the fallback now actually starts the server.
   # ---------------------------------------------------------------------------
   deploy-frontend:
-    needs: changes
+    # D13/4.3: CI-gated like the backend — the gate now always runs, so a
+    # frontend-only push (where the old backend-conditioned gate skipped)
+    # can no longer deploy with red or missing CI.
+    needs: [changes, ci-gate]
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy frontend to Contabo
         uses: appleboy/ssh-action@v1
+        env:
+          # D13/4.2: same SHA pinning as deploy-backend.
+          DEPLOY_SHA: ${{ github.sha }}
         with:
           host: ${{ secrets.CONTABO_HOST }}
           username: ${{ secrets.CONTABO_USER }}
           key: ${{ secrets.CONTABO_SSH_KEY }}
+          envs: DEPLOY_SHA
           command_timeout: 30m
           script: |
             set -e
             cd /var/www/Web-Downloader-Extension
             git fetch origin
-            git reset --hard origin/pagepocket
+            remote_tip="$(git rev-parse origin/pagepocket)"
+            if [ "$remote_tip" != "$DEPLOY_SHA" ]; then
+              echo "::error::queue-race: origin/pagepocket is ${remote_tip} but this deploy is gated on ${DEPLOY_SHA}. Refusing to ship the ungated tip — re-run the deploy workflow (it will pick up the newer gated SHA)."
+              exit 1
+            fi
+            git reset --hard "$DEPLOY_SHA"
+            echo "==> host tree pinned at gated SHA $(git rev-parse HEAD)"
             cd pagepocket/frontend
             # node lives under nvm on the server and is absent from
             # non-interactive shells; sourcing nvm.sh activates the default.

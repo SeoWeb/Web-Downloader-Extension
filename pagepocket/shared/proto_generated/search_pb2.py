@@ -22,27 +22,26 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+import common_pb2 as common__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0csearch.proto\x12\x06search\"q\n\x10IndexPageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x0b\n\x03url\x18\x03 \x01(\t\x12\r\n\x05title\x18\x04 \x01(\t\x12\x11\n\tbody_text\x18\x05 \x01(\t\x12\x0c\n\x04tags\x18\x06 \x01(\t\"5\n\x11RemovePageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"g\n\rSearchRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\r\n\x05query\x18\x02 \x01(\t\x12\x0c\n\x04page\x18\x03 \x01(\x05\x12\x11\n\tpage_size\x18\x04 \x01(\x05\x12\x15\n\rcollection_id\x18\x05 \x01(\t\"p\n\x0cSearchResult\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0b\n\x03url\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x0f\n\x07snippet\x18\x04 \x01(\t\x12\r\n\x05score\x18\x05 \x01(\x01\x12\x13\n\x0b\x61rchived_at\x18\x06 \x01(\t\"F\n\x0eSearchResponse\x12%\n\x07results\x18\x01 \x03(\x0b\x32\x14.search.SearchResult\x12\r\n\x05total\x18\x02 \x01(\x05\"2\n\x0eStatusResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t2\xc8\x01\n\rSearchService\x12=\n\tIndexPage\x12\x18.search.IndexPageRequest\x1a\x16.search.StatusResponse\x12?\n\nRemovePage\x12\x19.search.RemovePageRequest\x1a\x16.search.StatusResponse\x12\x37\n\x06Search\x12\x15.search.SearchRequest\x1a\x16.search.SearchResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0csearch.proto\x12\x06search\x1a\x0c\x63ommon.proto\"q\n\x10IndexPageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x0b\n\x03url\x18\x03 \x01(\t\x12\r\n\x05title\x18\x04 \x01(\t\x12\x11\n\tbody_text\x18\x05 \x01(\t\x12\x0c\n\x04tags\x18\x06 \x01(\t\"5\n\x11RemovePageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"g\n\rSearchRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\r\n\x05query\x18\x02 \x01(\t\x12\x0c\n\x04page\x18\x03 \x01(\x05\x12\x11\n\tpage_size\x18\x04 \x01(\x05\x12\x15\n\rcollection_id\x18\x05 \x01(\t\"p\n\x0cSearchResult\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0b\n\x03url\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x0f\n\x07snippet\x18\x04 \x01(\t\x12\r\n\x05score\x18\x05 \x01(\x01\x12\x13\n\x0b\x61rchived_at\x18\x06 \x01(\t\"F\n\x0eSearchResponse\x12%\n\x07results\x18\x01 \x03(\x0b\x32\x14.search.SearchResult\x12\r\n\x05total\x18\x02 \x01(\x05\x32\xc8\x01\n\rSearchService\x12=\n\tIndexPage\x12\x18.search.IndexPageRequest\x1a\x16.common.StatusResponse\x12?\n\nRemovePage\x12\x19.search.RemovePageRequest\x1a\x16.common.StatusResponse\x12\x37\n\x06Search\x12\x15.search.SearchRequest\x1a\x16.search.SearchResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'search_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_INDEXPAGEREQUEST']._serialized_start=24
-  _globals['_INDEXPAGEREQUEST']._serialized_end=137
-  _globals['_REMOVEPAGEREQUEST']._serialized_start=139
-  _globals['_REMOVEPAGEREQUEST']._serialized_end=192
-  _globals['_SEARCHREQUEST']._serialized_start=194
-  _globals['_SEARCHREQUEST']._serialized_end=297
-  _globals['_SEARCHRESULT']._serialized_start=299
-  _globals['_SEARCHRESULT']._serialized_end=411
-  _globals['_SEARCHRESPONSE']._serialized_start=413
-  _globals['_SEARCHRESPONSE']._serialized_end=483
-  _globals['_STATUSRESPONSE']._serialized_start=485
-  _globals['_STATUSRESPONSE']._serialized_end=535
-  _globals['_SEARCHSERVICE']._serialized_start=538
-  _globals['_SEARCHSERVICE']._serialized_end=738
+  _globals['_INDEXPAGEREQUEST']._serialized_start=38
+  _globals['_INDEXPAGEREQUEST']._serialized_end=151
+  _globals['_REMOVEPAGEREQUEST']._serialized_start=153
+  _globals['_REMOVEPAGEREQUEST']._serialized_end=206
+  _globals['_SEARCHREQUEST']._serialized_start=208
+  _globals['_SEARCHREQUEST']._serialized_end=311
+  _globals['_SEARCHRESULT']._serialized_start=313
+  _globals['_SEARCHRESULT']._serialized_end=425
+  _globals['_SEARCHRESPONSE']._serialized_start=427
+  _globals['_SEARCHRESPONSE']._serialized_end=497
+  _globals['_SEARCHSERVICE']._serialized_start=500
+  _globals['_SEARCHSERVICE']._serialized_end=700
 # @@protoc_insertion_point(module_scope)

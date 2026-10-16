@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setAuthCookies } from "@/lib/auth/cookies";
 import { API_GATEWAY_URL } from "@/lib/env";
+import { forwardedClientIpHeadersFrom } from "@/lib/api/client-ip";
 
 const API_BASE = API_GATEWAY_URL;
 
@@ -10,7 +11,10 @@ export async function POST(request: NextRequest) {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: "POST",
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...forwardedClientIpHeadersFrom(request.headers),
+    },
     body: JSON.stringify(body),
   });
 
@@ -25,7 +29,6 @@ export async function POST(request: NextRequest) {
   setAuthCookies(response.cookies, {
     access: data.access_token,
     refresh: data.refresh_token,
-    expiresAt: data.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
   });
 
   return response;

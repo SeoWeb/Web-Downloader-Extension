@@ -9,6 +9,11 @@
 #   pagepocket-mysql-1 : auth_db archive_db library_db search_db share_db
 #   server-db-1        : website_downloader (the legacy monolith DB)
 #
+# Dump contract (D13/4.1): plain `mysqldump <db>` — the output contains NO
+# CREATE DATABASE/USE statements, so a restore can only ever target a
+# database the operator explicitly creates/names (see restore-drill.sh,
+# which CREATEs its scratch DB before piping the dump in).
+#
 # Observable by design:
 #   - per-run log:            /var/backups/mysql/backup.log
 #   - freshness marker:       /var/backups/mysql/last_backup_success (UTC ISO)
@@ -146,7 +151,12 @@ dump_db() { # dump_db CONTAINER PASSWORD DB
     return 0
   fi
   # pipefail: a failed dump must not produce a silently-truncated gzip.
-  if ! run_mysql "$container" "$password" mysqldump --single-transaction --quick --routines --triggers --databases "$db" | gzip > "$out"; then
+  # D13/4.1: plain `mysqldump db` (NO --databases) — the output must NOT
+  # contain CREATE DATABASE/USE, so a restore can only ever land in a
+  # database the restore command explicitly names (the drill creates a
+  # scratch DB first; --databases would embed `USE <db>` and override that
+  # target, which is exactly how the drill used to be unsafe/unsatisfiable).
+  if ! run_mysql "$container" "$password" mysqldump --single-transaction --quick --routines --triggers "$db" | gzip > "$out"; then
     log "ERROR: dump of ${container}/${db} FAILED (partial file kept for forensics: ${out})"
     rm -f "$out"
     FAILED=1

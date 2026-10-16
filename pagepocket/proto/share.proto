@@ -2,12 +2,18 @@ syntax = "proto3";
 
 package share;
 
+import "common.proto";
+
 service ShareService {
   rpc CreateShareLink(CreateShareLinkRequest) returns (ShareLinkResponse);
   rpc GetShareLink(GetShareLinkRequest) returns (ShareLinkResponse);
   rpc GetShareLinkByPage(GetShareLinkByPageRequest) returns (ShareLinkResponse);
-  rpc RevokeShareLink(RevokeShareLinkRequest) returns (StatusResponse);
+  rpc RevokeShareLink(RevokeShareLinkRequest) returns (common.StatusResponse);
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateShareResponse);
+  // Additive (harden-pagepocket-platform D6/2.3): revokes every share link
+  // referencing a page, invoked best-effort by the archive-service when the
+  // page is deleted so no public link outlives its page.
+  rpc RevokeLinksForPage(RevokeLinksForPageRequest) returns (common.StatusResponse);
 }
 
 message CreateShareLinkRequest {
@@ -55,7 +61,6 @@ message ValidateShareResponse {
   string owner_user_id = 3;
 }
 
-message StatusResponse {
-  bool success = 1;
-  string message = 2;
+message RevokeLinksForPageRequest {
+  string page_id = 1;
 }

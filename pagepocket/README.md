@@ -500,7 +500,8 @@ pagepocket/
 ```bash
 # 1. Copy environment config
 cp .env.example .env
-# Edit .env with your R2 credentials and JWT secret
+# Edit .env with your R2 credentials and JWT secret (dev defaults let a
+# fresh clone boot as-is; see the comments in .env.example)
 
 # 2. Generate proto stubs
 make proto
@@ -509,7 +510,8 @@ make proto
 make certs
 
 # 4. Start the stack
-docker compose up -d
+make dev
+# (creates the external `pagepocket_default` network on first run — 4.7)
 
 # 5. Run database migrations
 make migrate
@@ -523,14 +525,17 @@ curl http://localhost:8090/api/v1/health
 
 | Variable               | Used by                   | Description                                        |
 | ---------------------- | ------------------------- | -------------------------------------------------- |
-| `MYSQL_ROOT_PASSWORD`  | mysql                     | Root password for MySQL                            |
+| `MYSQL_ROOT_PASSWORD`  | mysql                     | Root password for MySQL (dev default `pagepocket`; rotate in prod via `scripts/prod/rotate-credentials.sh`) |
+| `DB_USER_<SVC>` / `DB_PASSWORD_<SVC>` | all gRPC services, mysql | Per-service least-privilege MySQL credentials (`<SVC>` = `AUTH`/`ARCHIVE`/`LIBRARY`/`SEARCH`/`SHARE`, users `pagepocket_<svc>` scoped to their own schema — D12). Dev falls back to root; the prod overlay **requires** the scoped passwords (provision via `scripts/prod/rotate-db-users.sh`). On a fresh MySQL volume `init-users.sh` seeds the users from these values |
 | `JWT_SECRET`           | auth-service, api-gateway | HS256 signing key. Required (and must not be the dev default) when `ENVIRONMENT=production` — the gateway fails fast otherwise |
-| `ENVIRONMENT`          | api-gateway, share-service | `development` (default) or `production`. Production enables fail-fast config checks (JWT_SECRET, BASE_URL) |
+| `ENVIRONMENT`          | api-gateway, share-service | `development` (default) or `production`. Production enables fail-fast config checks (JWT_SECRET, BASE_URL). Set by the prod overlay |
 | `CORS_ALLOW_ORIGINS`   | api-gateway               | Comma-separated CORS origin allow-list. `*` is dropped with a warning; defaults to `https://pagepocket.app`, `https://app.pagepocket.app` |
-| `TRUSTED_PROXIES`      | api-gateway               | Comma-separated proxy IPs/CIDRs whose `X-Forwarded-For` is trusted for rate-limit identity (empty = peer address only) |
+| `TRUSTED_PROXIES`      | api-gateway               | Comma-separated proxy IPs/CIDRs whose `X-Forwarded-For` is trusted for rate-limit identity (empty = peer address only). Compose default is the **docker bridge gateways only** (`172.18.0.1,172.17.0.1`) — verify against the host before overriding (`docker network inspect pagepocket_default`); rollout notes in `scripts/prod/README.md` |
 | `MAX_UPLOAD_BYTES`     | api-gateway               | Cap on accepted ingest request size; oversized uploads get 413 |
+| `MAX_INGEST_ASSETS`    | api-gateway               | Cap on the number of assets accepted per ingest request (default `200`); exceeded → 413 |
+| `GATEWAY_WORKERS`      | api-gateway               | uvicorn worker count (default `2`). Multi-worker is safe — the rate limiter is Redis-backed, not per-process |
 | `REDIS_URL`            | api-gateway, services     | Redis address for the rate limiter and cache. Limiter fails open when Redis is down; `/api/v1/health` reports `rate_limiter: ok \| degraded` |
-| `REDIS_PASSWORD`       | redis                     | Password for Redis (rollout requires a coordinated stack restart) |
+| `REDIS_PASSWORD`       | redis                     | Password for Redis (dev default `dev-redis-change-me`; rotate in prod via `scripts/prod/roll-redis-password.sh`) |
 | `AUTO_CREATE`          | gRPC services             | Dev-only: run `Base.metadata.create_all` at startup. Alembic is the authoritative schema mechanism — production must rely on `make migrate` |
 | `BASE_URL`             | share-service             | Public base URL for generating short links. Required (and must not be `http://localhost:8000`) when `ENVIRONMENT=production` — the share service fails fast otherwise |
 | `DB_URL`               | all gRPC services         | SQLAlchemy connection string (auto-set in compose) |
@@ -562,12 +567,13 @@ curl http://localhost:8090/api/v1/health
 | Target         | Description                                      |
 | -------------- | ------------------------------------------------ |
 | `make proto`   | Generate gRPC Python stubs from `.proto` files   |
-| `make build`   | Build all Docker images                          |
-| `make dev`     | Build + start dev stack (`docker compose up -d`) |
+| `make build`   | Build all Docker images (creates `pagepocket_default` if missing) |
+| `make dev`     | Build + start dev stack (`docker compose up -d`); network-guarded for fresh clones |
 | `make up`      | Alias for `dev`                                  |
 | `make down`    | Stop the stack                                   |
 | `make migrate` | Run Alembic migrations for all 5 gRPC services   |
-| `make test`    | Run pytest across all services                   |
+| `make test`    | Run pytest across all services + the compose-contract render test |
+| `make test-integration` | Boot an ISOLATED compose stack (project `pagepocket-it`) and run the gateway + search-service MySQL integration suites against it |
 | `make lint`    | Run ruff linter                                  |
 | `make format`  | Run ruff (fix) + black formatter                 |
 | `make certs`   | Generate CA + per-service mTLS certificates      |
@@ -593,7 +599,8 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 - `server.pagepocket.app` → Cloudflare → nginx → `127.0.0.1:8000` (**the monolith**, not the gateway — the gateway has no public hostname; `:8090` answers only on the host)
 - `pagepocket.app` and `app.pagepocket.app` → nginx → `127.0.0.1:3000` (Next.js frontend). `app.pagepocket.app` currently has **no dedicated nginx server block** — it resolves via nginx's default-server fallthrough; one explicit `server_name` block would make this intentional.
-- nginx sets `X-Forwarded-For`/`X-Forwarded-Proto`, `X-Real-IP` and `Host`; `CF-Connecting-IP` comes from the Cloudflare edge. The gateway's `TRUSTED_PROXIES` must list the nginx host for forwarding headers to be honored.
+- nginx sets `X-Forwarded-For`/`X-Forwarded-Proto`, `X-Real-IP` and `Host`; `CF-Connecting-IP` comes from the Cloudflare edge. The gateway's `TRUSTED_PROXIES` compose default lists ONLY the docker bridge gateway addresses (`172.18.0.1,172.17.0.1`) that host→`127.0.0.1:8090` connections are source-NATed to — verify the real value on the host and override in `pagepocket/.env` if it differs (rollout caution in `scripts/prod/README.md`).
+- **Monolith confinement (D12/2.17):** the monolith container attaches to the confined `pagepocket-monolith` network (archive-service + auth-service only). search-/library-/share-service are unreachable from it. Applying the switch to the running monolith is deploy-gated — see `scripts/prod/README.md` §Monolith network confinement.
 - ⚠️ As of the Oct 2026 audit, monolith `:8000`, gateway `:8090` and monolith MySQL `:33060` are also reachable directly from the internet — closing them (loopback bind / firewall) is the first hardening step in `scripts/prod/README.md`.
 
 ### Systemd unit
@@ -609,7 +616,7 @@ Requires=docker.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=/opt/pagepocket
+WorkingDirectory=/var/www/Web-Downloader-Extension/pagepocket
 ExecStart=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ExecStop=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml down
 TimeoutStartSec=120
@@ -624,7 +631,12 @@ sudo systemctl enable pagepocket
 sudo systemctl start pagepocket
 ```
 
-Certificate rotation: regenerate with `make certs` then `sudo systemctl restart pagepocket`.
+**Certificates are NOT rotated by restarting this unit.** The host PKI is
+authoritative (live certs expire Jun 2036 and differ from anything in the
+repo); `make certs` exists for LOCAL DEV only and its output must NEVER be
+copied to the host — that would break every service's mTLS identity at
+once. Real rotation, if ever needed before 2036, happens ON the host in a
+coordinated sequence: see `scripts/prod/README.md` §Certificates.
 
 ## Frontend
 
@@ -644,11 +656,19 @@ See `frontend/README.md` for frontend-specific setup.
 ## Testing
 
 ```bash
-# Unit tests (per-service pytest)
+# Unit tests (per-service pytest) + the compose-contract render test
 make test
 
-# Integration tests (top-level)
-docker compose exec archive-service python -m pytest tests/ -v
+# Integration tests: boots an ISOLATED compose stack (project
+# `pagepocket-it`, own network + volumes so it can never touch the
+# prod-named project) and runs the gateway suite (17 tests) AND the
+# search-service MySQL FULLTEXT/CJK suite against it; tears the stack
+# down (scoped to pagepocket-it) afterwards.
+make test-integration
+# NB: stop the dev/prod stack first — both bind 127.0.0.1:{3306,8090}.
+# The search suite connects to the stack's MySQL via SEARCH_TEST_DB_URL
+# (set by the make target; defaults to
+# mysql+pymysql://root:pagepocket@127.0.0.1:3306/search_db).
 
 # E2E tests (frontend)
 cd frontend && pnpm exec playwright test

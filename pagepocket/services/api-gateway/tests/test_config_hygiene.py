@@ -17,6 +17,7 @@ from config import (
     ConfigError,
     allowed_origins,
     enforce_startup_config,
+    gateway_workers,
     trusted_proxies,
     validate_prod_config,
 )
@@ -94,6 +95,32 @@ class TestTrustedProxies(unittest.TestCase):
             trusted_proxies("10.0.0.1, 172.16.0.0/12"),
             ("10.0.0.1", "172.16.0.0/12"),
         )
+
+
+class TestGatewayWorkers(unittest.TestCase):
+    """Task 1.4 / spec "Multi-Worker Serving": GATEWAY_WORKERS, default 2."""
+
+    def test_default_is_two(self):
+        self.assertEqual(gateway_workers(None), 2)
+        self.assertEqual(gateway_workers(""), 2)
+        self.assertEqual(gateway_workers("  "), 2)
+
+    def test_env_override_honored(self):
+        self.assertEqual(gateway_workers("4"), 4)
+        self.assertEqual(gateway_workers("1"), 1)
+
+    def test_garbage_and_invalid_values_fall_back_to_default(self):
+        self.assertEqual(gateway_workers("abc"), 2)
+        self.assertEqual(gateway_workers("0"), 2)
+        self.assertEqual(gateway_workers("-3"), 2)
+
+    def test_main_boots_with_the_configured_worker_count(self):
+        # The __main__ block must forward gateway_workers() to uvicorn.
+        with open(os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "main.py"))) as fh:
+            source = fh.read()
+        self.assertIn("gateway_workers", source)
+        self.assertIn("workers=workers", source)
+        self.assertIn('"main:app"', source)  # import-string form for spawn
 
 
 class TestMainAppWiring(unittest.TestCase):

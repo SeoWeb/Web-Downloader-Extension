@@ -20,6 +20,10 @@ agents.config.json
 .rooignore
 .deploy.env
 
+# Python bytecode must never be tracked (4.12 — build artifacts, not source)
+__pycache__/
+*.pyc
+
 # Signing key material and signed CRX artifacts (D11 / task 7.1 — never commit)
 *.pem
 *.crx

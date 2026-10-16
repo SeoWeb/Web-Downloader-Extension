@@ -13,6 +13,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
+      // `server-only` is aliased inside Next builds (webpack-config.js); vitest
+      // needs the same stand-in for server modules imported by route tests.
+      "server-only": resolve(__dirname, "./src/test/server-only-stub.ts"),
     },
   },
 });

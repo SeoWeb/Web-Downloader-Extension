@@ -5,6 +5,9 @@ on:
     branches: [main, pagepocket]
   pull_request:
     branches: [main, pagepocket]
+  # D13/4.2: the deploy gate's failure message tells you to (re-)run CI for
+  # a commit manually — make that possible.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -48,6 +51,12 @@ jobs:
               - 'pagepocket/proto/**'
               - 'pagepocket/Makefile'
               - 'pagepocket/docker-compose*.yml'
+              # D13/4.4: maintenance-sidecar, dev-dependency and schema
+              # changes can never silently skip CI (or deploy — deploy.yml
+              # keeps its filters consistent with these).
+              - 'scripts/prod/archive-maintenance/**'
+              - 'pagepocket/requirements-dev.txt'
+              - 'pagepocket/init.sql'
             server:
               - 'server/**'
 
@@ -69,7 +78,8 @@ jobs:
           cache: pnpm
 
       - name: Install
-        run: pnpm install
+        # 4.11: CI must fail on a pnpm-lock.yaml out of sync with the code.
+        run: pnpm install --frozen-lockfile
 
       - name: Style check
         run: pnpm style
@@ -150,6 +160,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          # 4.11: cache pip downloads keyed on every requirements file.
+          cache: pip
+          cache-dependency-path: pagepocket/**/requirements*.txt
 
       - name: Install tooling
         run: |
@@ -168,6 +181,16 @@ jobs:
       - name: Generate gRPC stubs
         working-directory: pagepocket
         run: make proto
+
+      # 5.6: the generated stubs are tracked in git for reproducibility — a
+      # commit that changes proto/*.proto without regenerating them must
+      # fail here, not surface as a confusing wire-contract drift later.
+      - name: Fail on stale generated stubs
+        run: |
+          if ! git diff --exit-code -- pagepocket/shared/proto_generated; then
+            echo "::error::pagepocket/shared/proto_generated is stale. Run 'make proto' inside pagepocket/ and commit the regenerated stubs."
+            exit 1
+          fi
 
       - name: Lint
         working-directory: pagepocket
@@ -200,6 +223,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          # 4.11: pip download cache (server deps + the shared test extras).
+          cache: pip
+          cache-dependency-path: server/requirements.txt
 
       - name: Install dependencies
         run: |

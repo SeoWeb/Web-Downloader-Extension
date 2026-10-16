@@ -2,15 +2,22 @@ syntax = "proto3";
 
 package library;
 
+import "common.proto";
+
 service LibraryService {
   rpc CreateCollection(CreateCollectionRequest) returns (CollectionResponse);
   rpc GetCollection(GetCollectionRequest) returns (CollectionResponse);
   rpc ListCollections(ListCollectionsRequest) returns (ListCollectionsResponse);
   rpc UpdateCollection(UpdateCollectionRequest) returns (CollectionResponse);
-  rpc DeleteCollection(DeleteCollectionRequest) returns (StatusResponse);
-  rpc AddPageToCollection(PageCollectionRequest) returns (StatusResponse);
-  rpc RemovePageFromCollection(PageCollectionRequest) returns (StatusResponse);
+  rpc DeleteCollection(DeleteCollectionRequest) returns (common.StatusResponse);
+  rpc AddPageToCollection(PageCollectionRequest) returns (common.StatusResponse);
+  rpc RemovePageFromCollection(PageCollectionRequest) returns (common.StatusResponse);
   rpc ListCollectionPageIds(ListCollectionPageIdsRequest) returns (ListCollectionPageIdsResponse);
+  // Additive (harden-pagepocket-platform D6/2.3): deletes every
+  // page_collections row referencing a page, invoked best-effort by the
+  // archive-service when the page is deleted so page_count never drifts
+  // from actual membership.
+  rpc PurgePageLinks(PurgePageLinksRequest) returns (common.StatusResponse);
 }
 
 message CreateCollectionRequest {
@@ -66,11 +73,6 @@ message ListCollectionsResponse {
   repeated CollectionResponse collections = 1;
 }
 
-message StatusResponse {
-  bool success = 1;
-  string message = 2;
-}
-
 message ListCollectionPageIdsRequest {
   string collection_id = 1;
   string user_id = 2;
@@ -78,4 +80,8 @@ message ListCollectionPageIdsRequest {
 
 message ListCollectionPageIdsResponse {
   repeated string page_ids = 1;
+}
+
+message PurgePageLinksRequest {
+  string page_id = 1;
 }

@@ -8,15 +8,18 @@ populates from the verified JWT.
 
 import asyncio
 import io
+import os
 import types
 import unittest
 from unittest.mock import MagicMock, patch
 
 import archive_pb2
+import common_pb2
 import grpc
 import share_pb2
 from fastapi import HTTPException
 from routers import archive as archive_routes
+from routers import auth as auth_routes
 from routers import share as share_routes
 
 
@@ -34,9 +37,11 @@ class _FakeRpcError(grpc.RpcError):
 
 def _fake_request(user_id="u1", plan="free", headers=None):
     """Stand-in for a Request after the auth middleware ran."""
+    all_headers = {"content-length": "1024"}  # ingest requires a declared length
+    all_headers.update(headers or {})
     return types.SimpleNamespace(
         state=types.SimpleNamespace(user_id=user_id, plan=plan),
-        headers=headers or {},
+        headers=all_headers,
     )
 
 
@@ -153,20 +158,29 @@ class TestShareRouterOwnership(unittest.TestCase):
     # -- Public viewer route uses the resolved owner (2.3) --
 
     def test_validate_share_link_passes_owner_user_id(self):
+        """D4: the public route returns page-reference metadata only — no
+        presigned `url`, and no GetPageContent round trip at all."""
         self.share_stub.ValidateToken.return_value = share_pb2.ValidateShareResponse(
             valid=True, page_id="p1", owner_user_id="owner-u1",
         )
-        self.archive_stub.GetPageContent.return_value = (
-            archive_pb2.PageContentResponse(
-                signed_url="https://r2/signed", expires_at=123,
-            )
-        )
 
         resp = _run(share_routes.validate_share_link("tok"))
-        self.assertEqual(resp["url"], "https://r2/signed")
+        self.assertEqual(resp, {"page_id": "p1"})
+        self.assertNotIn("url", resp)
+        self.assertNotIn("signed_url", resp)
+        self.archive_stub.GetPageContent.assert_not_called()
 
-        sent = self.archive_stub.GetPageContent.call_args.args[0]
-        self.assertEqual(sent.user_id, "owner-u1")  # owner, not ""
+    def test_validate_share_link_response_carries_no_presigned_fields(self):
+        self.share_stub.ValidateToken.return_value = share_pb2.ValidateShareResponse(
+            valid=True, page_id="p1", owner_user_id="owner-u1",
+        )
+        # Even a stub response still carrying legacy fields must not leak them:
+        # the gateway response shaping is what defines the REST contract.
+        self.archive_stub.GetPageContent.return_value = archive_pb2.PageContentResponse(
+            expires_at=123,
+        )
+        resp = _run(share_routes.validate_share_link("tok"))
+        self.assertFalse({"url", "signed_url"} & resp.keys())
 
     def test_validate_share_link_invalid_token_404_without_archive_call(self):
         self.share_stub.ValidateToken.return_value = share_pb2.ValidateShareResponse(valid=False)
@@ -214,8 +228,8 @@ class TestGatewayCallDeadlines(unittest.TestCase):
     def _archive_stub(self):
         stub = MagicMock()
         stub.ListPages.return_value = archive_pb2.ListPagesResponse(total=0)
-        stub.GetPageContent.return_value = archive_pb2.PageContentResponse(signed_url="u")
-        stub.DeletePage.return_value = archive_pb2.StatusResponse(success=True)
+        stub.GetPageContent.return_value = archive_pb2.PageContentResponse()
+        stub.DeletePage.return_value = common_pb2.StatusResponse(success=True)
         stub.GetArchiveFile.return_value = archive_pb2.ArchiveFileResponse(data=b"x")
         return stub
 
@@ -248,6 +262,177 @@ class TestGatewayCallDeadlines(unittest.TestCase):
                 self.assertRaises(HTTPException):
             _run(share_routes.get_share_file("tok", "index.html"))
         self.assertEqual(stub.ValidateToken.call_args.kwargs.get("timeout"), 30)
+
+
+class TestViewPageResponseShaping(unittest.TestCase):
+    """Task 1.16 / spec "View page (no presigned URL)"."""
+
+    def test_view_page_response_has_no_presigned_fields(self):
+        stub = MagicMock()
+        stub.GetPageContent.return_value = archive_pb2.PageContentResponse(
+            expires_at=1700000000,
+        )
+        with patch.object(archive_routes, "archive_stub", return_value=stub):
+            resp = _run(archive_routes.view_page(_fake_request(), "p1"))
+        self.assertFalse({"url", "signed_url"} & resp.keys(), resp)
+        self.assertEqual(resp["page_id"], "p1")
+        self.assertEqual(resp["expires_at"], 1700000000)
+        # The route still resolves ownership downstream via the caller identity.
+        sent = stub.GetPageContent.call_args.args[0]
+        self.assertEqual(sent.user_id, "u1")
+        self.assertEqual(sent.page_id, "p1")
+
+    def test_view_page_zero_expiry_is_null(self):
+        stub = MagicMock()
+        stub.GetPageContent.return_value = archive_pb2.PageContentResponse()
+        with patch.object(archive_routes, "archive_stub", return_value=stub):
+            resp = _run(archive_routes.view_page(_fake_request(), "p1"))
+        self.assertIsNone(resp["expires_at"])
+
+
+class TestExtensionJobIdValidation(unittest.TestCase):
+    """Task 1.6 / spec "Ingest Parameter Validation"."""
+
+    def setUp(self):
+        self.stub = MagicMock()
+        self.stub.IngestPage.return_value = archive_pb2.IngestPageResponse(success=True, page_id="p1")
+        p = patch.object(archive_routes, "archive_stub", return_value=self.stub)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def _ingest(self, extension_job_id):
+        return _run(archive_routes.ingest_page(
+            _fake_request(),
+            url="https://example.com",
+            title="T",
+            html_content=_fake_upload(b"<html></html>"),
+            extension_job_id=extension_job_id,
+            plan="",
+            assets=[],
+        ))
+
+    def test_oversized_job_id_rejected_without_upstream_call(self):
+        with self.assertRaises(HTTPException) as cm:
+            self._ingest("j" * 37)
+        self.assertEqual(cm.exception.status_code, 400)
+        self.stub.IngestPage.assert_not_called()
+
+    def test_illegal_charset_rejected(self):
+        for bad in ("job id", "job/id", "job;id", "jöb", "job#1"):
+            with self.assertRaises(HTTPException) as cm:
+                self._ingest(bad)
+            self.assertEqual(cm.exception.status_code, 400, bad)
+        self.stub.IngestPage.assert_not_called()
+
+    def test_valid_job_id_shapes_pass_through(self):
+        for ok in ("", "job-1", "a" * 36, "Job._-9"):
+            self._ingest(ok)
+        self.assertEqual(self.stub.IngestPage.call_count, 4)
+        self.assertEqual(self.stub.IngestPage.call_args.args[0].extension_job_id, "Job._-9")
+
+    def test_rejection_detail_carries_api_version(self):
+        with self.assertRaises(HTTPException) as cm:
+            self._ingest("j" * 37)
+        self.assertEqual(cm.exception.detail.get("api_version"), "v1")
+
+
+class TestMissingBodyFieldsReturn400(unittest.TestCase):
+    """Task 1.14: unguarded `body[...]` indexing must never 500."""
+
+    def setUp(self):
+        self.stub = MagicMock()
+        p = patch.object(auth_routes, "auth_stub", return_value=self.stub)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_register_without_email_returns_400(self):
+        with self.assertRaises(HTTPException) as cm:
+            _run(auth_routes.register({"password": "pw", "name": "n"}))
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertIn("email", cm.exception.detail["detail"])
+        self.stub.Register.assert_not_called()
+
+    def test_register_with_empty_body_returns_400(self):
+        with self.assertRaises(HTTPException) as cm:
+            _run(auth_routes.register({}))
+        self.assertEqual(cm.exception.status_code, 400)
+
+    def test_login_without_password_returns_400(self):
+        with self.assertRaises(HTTPException) as cm:
+            _run(auth_routes.login({"email": "a@b.c"}))
+        self.assertEqual(cm.exception.status_code, 400)
+        self.stub.Login.assert_not_called()
+
+    def test_refresh_without_token_returns_400(self):
+        with self.assertRaises(HTTPException) as cm:
+            _run(auth_routes.refresh({}))
+        self.assertEqual(cm.exception.status_code, 400)
+        self.stub.Refresh.assert_not_called()
+
+    def test_create_share_without_page_id_returns_400(self):
+        with patch.object(share_routes, "share_stub", return_value=MagicMock()), \
+                patch.object(share_routes, "archive_stub", return_value=MagicMock()), \
+                self.assertRaises(HTTPException) as cm:
+            _run(share_routes.create_share_link(_fake_request(), {"is_public": True}))
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertIn("page_id", cm.exception.detail["detail"])
+
+
+class TestLogoutEndpoint(unittest.TestCase):
+    """Task 1.13: the typed-Request handler reaches AuthService.Logout."""
+
+    def setUp(self):
+        self.stub = MagicMock()
+        p = patch.object(auth_routes, "auth_stub", return_value=self.stub)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_logout_handler_reaches_the_rpc(self):
+        request = _fake_request(user_id="u1")
+        resp = _run(auth_routes.logout(request))
+        self.assertEqual(resp, {"success": True})
+        sent = self.stub.Logout.call_args.args[0]
+        self.assertEqual(sent.user_id, "u1")
+        self.assertEqual(self.stub.Logout.call_args.kwargs.get("timeout"), 30)
+
+    def test_logout_with_no_session_is_401_via_middleware(self):
+        """Regression: the endpoint must 401 (middleware) — never 422 from the
+        old untyped `request` query-param binding."""
+        main = _load_main_module()
+        with patch.object(auth_routes, "auth_stub", return_value=self.stub):
+            from fastapi.testclient import TestClient
+
+            with TestClient(main.app) as client:
+                r = client.post("/api/v1/auth/logout")
+        self.assertEqual(r.status_code, 401)
+        self.stub.Logout.assert_not_called()
+
+    def test_logout_with_valid_session_reaches_rpc_and_returns_200(self):
+        from jwt_utils import issue_access_token
+
+        token, _ = issue_access_token("u1", "u1@example.com", "free")
+        main = _load_main_module()
+        with patch.object(auth_routes, "auth_stub", return_value=self.stub):
+            from fastapi.testclient import TestClient
+
+            with TestClient(main.app) as client:
+                r = client.post("/api/v1/auth/logout", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json(), {"success": True})
+        self.assertEqual(self.stub.Logout.call_args.args[0].user_id, "u1")
+
+
+def _load_main_module():
+    """Load main.py by explicit path (same pattern as test_config_hygiene)."""
+    import importlib.util
+    import sys
+
+    main_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "main.py"))
+    spec = importlib.util.spec_from_file_location("api_gateway_main_routes", main_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["api_gateway_main_routes"] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 if __name__ == "__main__":

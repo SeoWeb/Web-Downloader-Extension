@@ -5,8 +5,8 @@ Shared helper for the ingest route's multipart cap (tasks 4.4 / spec
 a single upload can never buffer unboundedly in RAM, regardless of the gRPC
 channel limit.
 
-NOTE: the ingest route in ``routers/archive.py`` is wired by the owning agent;
-this module only provides the shared primitive.
+NOTE: the ingest route in ``routers/archive.py`` consumes these primitives and
+adds the cumulative (html + all assets) bound and the asset-count cap on top.
 """
 
 import os
@@ -18,6 +18,11 @@ DEFAULT_MAX_UPLOAD_BYTES = 256 * 1024 * 1024
 READ_CHUNK_SIZE = 1024 * 1024
 
 MAX_UPLOAD_BYTES_ENV = "MAX_UPLOAD_BYTES"
+
+# Cumulative ingest bound (D2): the number of asset parts an ingest request
+# may carry, on top of the shared byte cap for html + all assets.
+MAX_INGEST_ASSETS_ENV = "MAX_INGEST_ASSETS"
+DEFAULT_MAX_INGEST_ASSETS = 200
 
 
 class PayloadTooLarge(Exception):
@@ -34,6 +39,18 @@ def max_upload_bytes() -> int:
     except ValueError:
         return DEFAULT_MAX_UPLOAD_BYTES
     return value if value > 0 else DEFAULT_MAX_UPLOAD_BYTES
+
+
+def max_ingest_assets(raw: str | None = None) -> int:
+    """Configured asset-count cap for ingest (MAX_INGEST_ASSETS, default 200)."""
+    source = os.environ.get(MAX_INGEST_ASSETS_ENV) if raw is None else raw
+    if not source or not source.strip():
+        return DEFAULT_MAX_INGEST_ASSETS
+    try:
+        value = int(source)
+    except ValueError:
+        return DEFAULT_MAX_INGEST_ASSETS
+    return value if value > 0 else DEFAULT_MAX_INGEST_ASSETS
 
 
 def content_length_exceeds(content_length: int | None, max_bytes: int) -> bool:

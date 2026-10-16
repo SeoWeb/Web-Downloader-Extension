@@ -15,7 +15,6 @@ import {
 } from "./api/errors";
 import {
   ListPagesResponseSchema,
-  PageContentResponseSchema,
   PageResponseSchema,
   ListCollectionsResponseSchema,
   CollectionResponseSchema,
@@ -115,12 +114,6 @@ export const clientApi = {
       route: "/archive/pages",
       query: params,
       schema: ListPagesResponseSchema,
-    }),
-
-  viewPage: (pageId: string) =>
-    clientFetch({
-      route: `/archive/pages/${pageId}/view`,
-      schema: PageContentResponseSchema,
     }),
 
   deletePage: (pageId: string) =>
