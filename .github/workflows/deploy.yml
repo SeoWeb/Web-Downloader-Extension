@@ -173,6 +173,14 @@ jobs:
             $COMPOSE build auth-service archive-service library-service search-service share-service archive-maintenance api-gateway
             echo "==> Ensuring infra (mysql, redis) is up for migrations"
             $COMPOSE up -d --no-deps mysql redis
+            echo "==> Waiting for mysql to be HEALTHY (infra-up may have recreated it; alembic one-shots have no retry — deploy-day incident 2026-10-16)"
+            mysql_ok=0
+            for i in $(seq 1 45); do
+              st=$(docker inspect --format '{{.State.Health.Status}}' pagepocket-mysql-1 2>/dev/null || echo missing)
+              if [ "$st" = "healthy" ]; then mysql_ok=1; echo "==> mysql healthy after ${i}s"; break; fi
+              sleep 2
+            done
+            if [ "$mysql_ok" != "1" ]; then echo "==> mysql not healthy in 90s"; docker logs --tail=30 pagepocket-mysql-1; exit 1; fi
             echo "==> Alembic upgrade head per service (5.6: authoritative schema mechanism)"
             for svc in auth-service archive-service library-service search-service share-service; do
               echo "---- alembic: $svc"

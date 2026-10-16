@@ -35,3 +35,4 @@ export default nextConfig;
 // deploy-day rollout marker (2026-10-16): frontend path — atomic pair with the backend marker
 
 // atomicity marker: see scripts/prod/README.md §4 — frontend paths must ship with backend paths
+// atomicity marker (2): mysql-readiness fix ships together with the frontend
