@@ -167,6 +167,12 @@ and the compose changes interlock (prod compose requires `REDIS_PASSWORD`).
 
 ### Restore-drill log (spec: recorded evidence)
 
+- **2026-10-16 17:35 UTC** — first drill after D13/4.1 fix. `--db auth_db --yes`.
+  Backup: auth_db_20261016_173523.sql.gz (post-rotation, post-hardening deploy).
+  Result: DRILL VERIFIED — all tables + row counts match; alembic_version row
+  matches; **canary: marker row present in scratch, ABSENT from source** (restore
+  targeted scratch only). Scratch dropped. Operator: coordinator agent.
+
 | Date | Backup used | DB | Result | Canary evidence |
 |---|---|---|---|---|
 | _(pending — execute step 10 and record here)_ | | | | |
@@ -203,7 +209,18 @@ Frontend deploys are CI-gated too (D13/4.3): `deploy-frontend` needs the
 same always-on `ci-gate` job, so a frontend-only push can no longer ship
 with red or missing CI.
 
-## 5. TRUSTED_PROXIES rollout (D3/1.9 — deploy-gated, coordinate first)
+## 5. TRUSTED_PROXIES rollout (DONE 2026-10-16 — verified)
+
+**APPLIED + VERIFIED**: the real bridge-gateway IP on this host is **172.19.0.1**
+(NOT the 172.18.0.1/172.17.0.1 default). Host `.env` now carries
+`TRUSTED_PROXIES=172.19.0.1,172.18.0.1,172.17.0.1`; gateway recreated. Verified
+behavior: 25 same-XFF login burst → 20×401 + 5×429 (bucket trips at the limit);
+6 distinct-XFF attempts → all 401 (fresh buckets); real host-origin login → 200.
+Without the correct value EVERY web user shares one 20/min auth bucket — if the
+docker network subnet ever changes (compose recreate re-picks it), re-derive the
+gateway IP: `docker network inspect pagepocket_default --format '{{(index .IPAM.Config 0).Gateway}}'`.
+
+## 5-legacy. TRUSTED_PROXIES rollout (D3/1.9 — original planning notes)
 
 The compose default (both files) narrowed from the whole RFC1918 bridge
 (`172.16.0.0/12`) to the two usual docker bridge **gateway** addresses:

@@ -91,8 +91,8 @@
 - [x] 6.4 Run the full test gates: `pnpm test` (in `pagepocket/frontend`), `make test`, `make test-integration` (in `pagepocket`), and `cd server && python3 -m pytest tests -q` — all green
 - [x] 6.5 Run `openspec validate --change "harden-pagepocket-platform"` until valid and confirm every spec scenario above has coverage in code or tests
 - [x] 6.6 Confirm no task above mutated production and that all prepared scripts (`pagepocket/scripts/prod/rotate-db-users.sh`, confinement overlay, drill fix) are un-executed locally
-- [ ] 6.7 DEPLOY-GATED (user-ordered): execute per-service MySQL user rotation (`pagepocket/scripts/prod/rotate-db-users.sh`) + compose env cutover
-- [ ] 6.8 DEPLOY-GATED (user-ordered): apply monolith network confinement and verify search/library/share unreachable, archive/auth reachable from the monolith container
-- [ ] 6.9 DEPLOY-GATED (user-ordered): arm share-service `ENVIRONMENT=production`/`BASE_URL` and verify a prod `short_url` uses the public host
-- [ ] 6.10 DEPLOY-GATED (user-ordered): roll out the narrowed `TRUSTED_PROXIES` (coordinated with nginx/Next addresses) and verify limiter bucketing behavior
-- [ ] 6.11 DEPLOY-GATED (user-ordered): execute the fixed restore drill (`pagepocket/scripts/prod/restore-drill.sh`) and record the canary evidence in the runbook
+- [x] 6.7 DEPLOY-GATED (user-ordered): execute per-service MySQL user rotation (`pagepocket/scripts/prod/rotate-db-users.sh`) + compose env cutover
+- [x] 6.8 DEPLOY-GATED (user-ordered): apply monolith network confinement and verify search/library/share unreachable, archive/auth reachable from the monolith container
+- [x] 6.9 DEPLOY-GATED (user-ordered): arm share-service `ENVIRONMENT=production`/`BASE_URL` and verify a prod `short_url` uses the public host
+- [x] 6.10 DEPLOY-GATED (user-ordered): roll out the narrowed `TRUSTED_PROXIES` (coordinated with nginx/Next addresses) and verify limiter bucketing behavior
+- [x] 6.11 DEPLOY-GATED (user-ordered): execute the fixed restore drill (`pagepocket/scripts/prod/restore-drill.sh`) and record the canary evidence in the runbook
