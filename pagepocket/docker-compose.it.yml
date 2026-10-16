@@ -44,9 +44,13 @@ services:
       - default
 
   s3mock-init:
-    # One-shot bucket creation, reusing the built archive image (has boto3).
-    # NOTE: the make target pre-builds archive-service so this image exists.
-    image: pagepocket-it-archive-service
+    # One-shot bucket creation, reusing the archive image contents (boto3).
+    # Same build spec as archive-service so compose BUILDS this instead of
+    # trying to pull a project-local image name that doesn't exist yet.
+    build:
+      context: .
+      dockerfile: services/archive-service/Dockerfile
+    image: pagepocket-it-s3mock-init
     depends_on:
       - s3mock
     environment:
