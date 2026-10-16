@@ -307,3 +307,5 @@ volumes:
   mysql_data:
 
 # deploy-day rollout marker (2026-10-16): backend path — keeps deploy-backend in the paths-filter
+# close-cloud-lifecycle-gaps marker (2026-10-16): ships unbind endpoint + opt-in federated delete
+# + CLOUD_MAX_ASSETS pre-flight (monolith, manual rebuild) + gateway trusted-proxy drift alarm.
