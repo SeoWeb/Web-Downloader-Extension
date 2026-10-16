@@ -7,6 +7,11 @@ on:
 
 permissions:
   contents: read
+  # ci-gate polls the Actions API for the ci.yml run of the gated SHA;
+  # `contents: read` alone strips that scope → 403 "Resource not accessible
+  # by integration" on the very first gated run (found in the 2026-10-16
+  # params audit).
+  actions: read
 
 # Never overlap deploys; queue instead of cancelling a running deploy.
 concurrency:
