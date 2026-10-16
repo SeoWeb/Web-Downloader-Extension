@@ -3,7 +3,7 @@
 import os
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import sqlalchemy.dialects.mysql
 from sqlalchemy import DateTime, Index, String, Text
@@ -18,7 +18,7 @@ def _uuid():
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class PageIndex(Base):

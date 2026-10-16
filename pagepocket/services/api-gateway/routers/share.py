@@ -3,7 +3,7 @@
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import grpc
 from fastapi import APIRouter, HTTPException, Request
@@ -25,14 +25,14 @@ router = APIRouter(prefix="/api/v1/share", tags=["share"])
 def _format_share_response(resp):
     expires_at = None
     if resp.expires_at:
-        expires_at = datetime.fromtimestamp(resp.expires_at, tz=timezone.utc).isoformat()
+        expires_at = datetime.fromtimestamp(resp.expires_at, tz=UTC).isoformat()
     return {
         "token": resp.token,
         "short_url": resp.short_url,
         "is_public": resp.is_public,
         "expires_at": expires_at,
         "view_count": resp.view_count,
-        "created_at": resp.created_at or datetime.now(timezone.utc).isoformat(),
+        "created_at": resp.created_at or datetime.now(UTC).isoformat(),
     }
 
 

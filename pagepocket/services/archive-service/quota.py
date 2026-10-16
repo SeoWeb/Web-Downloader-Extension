@@ -20,7 +20,7 @@ All RESOURCE_EXHAUSTED detail strings carry the machine-readable
 which the monolith's fallback matching still relies on.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from models import PLAN_LIMITS, UserQuota
 from quota_markers import EXHAUSTED_PREFIX, KIND_QUOTA, KIND_SIZE
@@ -39,7 +39,7 @@ def _locked_quota(session, user_id: str) -> UserQuota:
         select(UserQuota).where(UserQuota.user_id == user_id).with_for_update()
     ).scalar_one_or_none()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     now_naive = now.replace(tzinfo=None)
 
     if quota is None:
@@ -64,7 +64,7 @@ def _locked_quota(session, user_id: str) -> UserQuota:
     # values set programmatically (or legacy rows) may carry tzinfo.
     reset_at = quota.quota_reset_at
     if reset_at.tzinfo is not None:
-        reset_at = reset_at.astimezone(timezone.utc).replace(tzinfo=None)
+        reset_at = reset_at.astimezone(UTC).replace(tzinfo=None)
 
     # Monthly rollover
     if reset_at < now_naive:

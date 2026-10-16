@@ -5,7 +5,7 @@ import sys
 import tempfile
 import threading
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "shared"))
@@ -200,7 +200,7 @@ def _make_quota_dict(user_id="u1", pages=0, total_bytes=0, reset_at=None):
     q.user_id = user_id
     q.pages_this_month = pages
     q.total_bytes = total_bytes
-    q.quota_reset_at = reset_at or datetime.now(timezone.utc) + timedelta(days=30)
+    q.quota_reset_at = reset_at or datetime.now(UTC) + timedelta(days=30)
     return q
 
 
@@ -217,7 +217,7 @@ def _make_page(page_id="p1", user_id="u1", url="https://example.com",
     page.r2_key = r2_key
     page.size_bytes = size_bytes
     page.extension_job_id = extension_job_id
-    page.archived_at = archived_at or datetime.now(timezone.utc)
+    page.archived_at = archived_at or datetime.now(UTC)
     return page
 
 
@@ -300,7 +300,7 @@ class TestQuota(unittest.TestCase):
         mock_session = MagicMock()
         quota = _make_quota_dict(
             pages=50,
-            reset_at=datetime.now(timezone.utc) - timedelta(days=1),
+            reset_at=datetime.now(UTC) - timedelta(days=1),
         )
         mock_session.execute.return_value.scalar_one_or_none.return_value = quota
         result = reserve_quota(mock_session, "u1", "free", 1000)
@@ -1372,7 +1372,7 @@ class TestSweepOrphanR2Objects(unittest.TestCase):
         self.engine_patcher.start()
 
         from datetime import timedelta
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        now = datetime.now(UTC).replace(tzinfo=None)
         self.old = now - timedelta(days=8)      # older than the 7d grace
         self.fresh = now - timedelta(hours=1)   # in-flight ingest territory
 
@@ -1917,7 +1917,7 @@ class TestQuotaReserveConfirmFlow(unittest.TestCase):
         with db_session(self.engine) as session:
             session.add(UserQuota(user_id="u1", pages_this_month=limit - 1,
                                   total_bytes=0,
-                                  quota_reset_at=datetime.now(timezone.utc) + timedelta(days=30)))
+                                  quota_reset_at=datetime.now(UTC) + timedelta(days=30)))
         # Our reservation takes the count to the limit exactly.
         with db_session(self.engine) as session:
             self.assertIsNone(reserve_quota(session, "u1", "free", 1000))
@@ -2188,7 +2188,7 @@ class TestStaleCacheEntryTolerance(unittest.TestCase):
             "title": "Test", "preview_text": "preview",
             "r2_key": "u1/p1/index.html",  # removed field, still in old entries
             "size_bytes": 1000, "extension_job_id": "job1",
-            "archived_at": datetime.now(timezone.utc).isoformat(),
+            "archived_at": datetime.now(UTC).isoformat(),
         }
         with patch("servicer.cache_get", return_value=cached), \
              patch("servicer.R2Client"), \

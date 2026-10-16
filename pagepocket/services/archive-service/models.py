@@ -3,7 +3,7 @@
 import os
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import BigInteger, Boolean, DateTime, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -18,7 +18,7 @@ def _uuid():
 
 def _now():
     # Naive UTC: DateTime columns are timezone-naive, so defaults must match.
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class Page(Base):

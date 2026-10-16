@@ -5,7 +5,7 @@ import logging
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import grpc
 from passlib.context import CryptContext
@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared",
 
 import auth_pb2
 import auth_pb2_grpc
+
 # StatusResponse lives in common.proto (single source of truth since
 # harden-pagepocket-platform): auth.proto no longer defines its own.
 import common_pb2
@@ -75,7 +76,7 @@ class AuthServicer(auth_pb2_grpc.AuthServiceServicer):
             rt = RefreshToken(
                 user_id=user.id,
                 token_hash=refresh_hash,
-                expires_at=datetime.fromtimestamp(refresh_expires, tz=timezone.utc),
+                expires_at=datetime.fromtimestamp(refresh_expires, tz=UTC),
             )
             session.add(rt)
 
@@ -109,7 +110,7 @@ class AuthServicer(auth_pb2_grpc.AuthServiceServicer):
             rt = RefreshToken(
                 user_id=user.id,
                 token_hash=refresh_hash,
-                expires_at=datetime.fromtimestamp(refresh_expires, tz=timezone.utc),
+                expires_at=datetime.fromtimestamp(refresh_expires, tz=UTC),
             )
             session.add(rt)
 
@@ -173,21 +174,21 @@ class AuthServicer(auth_pb2_grpc.AuthServiceServicer):
             if rt.revoked_at is not None:
                 # Reuse detection: revoke all tokens for this user
                 session.query(RefreshToken).filter(RefreshToken.user_id == rt.user_id).update(
-                    {"revoked_at": datetime.now(timezone.utc)}
+                    {"revoked_at": datetime.now(UTC)}
                 )
                 context.set_code(grpc.StatusCode.UNAUTHENTICATED)
                 context.set_details("refresh token reused")
                 return auth_pb2.AuthResponse()
 
             expires_at = rt.expires_at.replace(tzinfo=None) if rt.expires_at.tzinfo else rt.expires_at
-            if expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+            if expires_at < datetime.now(UTC).replace(tzinfo=None):
                 context.set_code(grpc.StatusCode.UNAUTHENTICATED)
                 context.set_details("refresh token expired")
                 return auth_pb2.AuthResponse()
 
             # Rotation: revoke old, create new (keep row for reuse detection)
             user_id = rt.user_id
-            rt.revoked_at = datetime.now(timezone.utc)
+            rt.revoked_at = datetime.now(UTC)
             user = session.execute(select(User).where(User.id == user_id)).scalar_one()
 
             access_token, expires_at = issue_access_token(user.id, user.email, user.plan)
@@ -195,7 +196,7 @@ class AuthServicer(auth_pb2_grpc.AuthServiceServicer):
             new_rt = RefreshToken(
                 user_id=user.id,
                 token_hash=new_hash,
-                expires_at=datetime.fromtimestamp(new_expires, tz=timezone.utc),
+                expires_at=datetime.fromtimestamp(new_expires, tz=UTC),
             )
             session.add(new_rt)
 

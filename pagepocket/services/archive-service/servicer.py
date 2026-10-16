@@ -9,7 +9,7 @@ import sys
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import grpc
 from sqlalchemy import func, select
@@ -349,7 +349,7 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             meta = json.dumps({
                 "title": title,
                 "url": request.url,
-                "archived_at": datetime.now(timezone.utc).isoformat(),
+                "archived_at": datetime.now(UTC).isoformat(),
                 "size_bytes": total_size,
             })
             self.r2.upload(f"{prefix}/meta.json", meta.encode(), "application/json")
@@ -822,7 +822,7 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             # boto3 returns tz-aware UTC; treat naive values as UTC so
             # .timestamp() never misinterprets them as local time.
             if ts_dt.tzinfo is None:
-                ts_dt = ts_dt.replace(tzinfo=timezone.utc)
+                ts_dt = ts_dt.replace(tzinfo=UTC)
             return ts_dt.timestamp()
 
         def _uuid_or_none(value: str):
