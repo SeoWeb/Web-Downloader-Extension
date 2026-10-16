@@ -10,7 +10,9 @@
  *
  * Lifecycle:
  * - login/register  → fire-and-forget `linkCloudAccount()` (never fails login)
- * - logout          → `clearCloudBinding()` (store)
+ * - logout          → `clearCloudBinding()` (store) + fire-and-forget
+ *                     `clearServerBinding()` (DELETE /cloud/link, never
+ *                     blocks logout — close-cloud-lifecycle-gaps D1)
  * - token refresh   → no re-bind needed: the binding lives server-side on the
  *                     client row and is tied to the user identity, not the
  *                     rotating access token
@@ -44,10 +46,10 @@ export interface CloudLinkOutcomeResult {
 async function loadStoredAuth(): Promise<PagePocketAuthState | null> {
   try {
     if (!chrome?.storage?.session) return null;
-    const result = await chrome.storage.session.get(PAGEPOCKET_AUTH_STORAGE_KEY);
-    return (
-      (result[PAGEPOCKET_AUTH_STORAGE_KEY] as PagePocketAuthState) ?? null
+    const result = await chrome.storage.session.get(
+      PAGEPOCKET_AUTH_STORAGE_KEY,
     );
+    return (result[PAGEPOCKET_AUTH_STORAGE_KEY] as PagePocketAuthState) ?? null;
   } catch {
     return null;
   }
@@ -60,9 +62,7 @@ export async function getCloudBinding(): Promise<CloudBindingState | null> {
     const result = await chrome.storage.session.get(
       PAGEPOCKET_CLOUD_BINDING_KEY,
     );
-    return (
-      (result[PAGEPOCKET_CLOUD_BINDING_KEY] as CloudBindingState) ?? null
-    );
+    return (result[PAGEPOCKET_CLOUD_BINDING_KEY] as CloudBindingState) ?? null;
   } catch {
     return null;
   }
@@ -87,6 +87,30 @@ export async function clearCloudBinding(): Promise<void> {
     await chrome.storage.session.remove(PAGEPOCKET_CLOUD_BINDING_KEY);
   } catch {
     // Non-critical
+  }
+}
+
+/**
+ * Unbind the PagePocket identity on the server side (DELETE /api/v1/cloud/link,
+ * close-cloud-lifecycle-gaps D1) and clear the stored binding state ONLY on
+ * success. Called fire-and-forget from the PagePocket logout flow: a network
+ * or server failure is logged and swallowed — logout must complete even if
+ * the monolith is down, and the next successful linkCloudAccount() overwrites
+ * a stale binding anyway (mirrors the login/register failure posture).
+ */
+export async function clearServerBinding(): Promise<void> {
+  try {
+    const unbound = await serverClient.unbindCloudAccount();
+    if (!unbound) {
+      console.warn(
+        "[CloudBinding] server unbind failed — keeping local binding state",
+      );
+      return;
+    }
+    await clearCloudBinding();
+  } catch (err) {
+    // Never let unbind problems surface into the logout flow.
+    console.warn("[CloudBinding] server unbind failed:", err);
   }
 }
 

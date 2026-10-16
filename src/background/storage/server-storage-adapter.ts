@@ -159,8 +159,12 @@ export class ServerStorageAdapter implements IStorageAdapter {
    * server data. Deleting the session without aborting uploads causes
    * 404 errors on in-flight requests. The server's stale-session
    * cleanup (30-min timeout) is a backstop but not a substitute.
+   *
+   * The optional `deleteCloud` flag (close-cloud-lifecycle-gaps D2) opts in
+   * to also removing the archived PagePocket page server-side; when unset
+   * the delete stays local-only.
    */
-  async clear(): Promise<void> {
+  async clear(options?: { deleteCloud?: boolean }): Promise<void> {
     // (a) Immediately abort all pending and in-progress uploads
     this.uploadQueue.cancel();
 
@@ -170,7 +174,13 @@ export class ServerStorageAdapter implements IStorageAdapter {
     // (b) Delete the server session to clean up uploaded data
     if (this.sessionId) {
       try {
-        await this.serverClient.deleteSession(this.sessionId);
+        if (options?.deleteCloud === true) {
+          await this.serverClient.deleteSession(this.sessionId, {
+            deleteCloud: true,
+          });
+        } else {
+          await this.serverClient.deleteSession(this.sessionId);
+        }
       } catch {
         // Best-effort deletion — the server's stale-session cleanup
         // will handle orphaned sessions. Don't block on failures.

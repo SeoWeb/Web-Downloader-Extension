@@ -136,6 +136,17 @@ export interface SessionOptions {
   pagepocketUserId?: string;
 }
 
+/**
+ * Options for deleteSession (close-cloud-lifecycle-gaps D2).
+ */
+export interface DeleteSessionOptions {
+  /**
+   * Opt in to removing the archived PagePocket page alongside the local
+   * session (appends `?delete_cloud=true`). Default: local-only delete.
+   */
+  deleteCloud?: boolean;
+}
+
 export interface CreateSessionResponse {
   id: string;
   url: string;
@@ -660,10 +671,25 @@ export class ServerClient {
     }
   }
 
-  /** Delete a session on the server. */
-  async deleteSession(sessionId: string): Promise<void> {
+  /**
+   * Delete a session on the server.
+   *
+   * The optional `deleteCloud` flag opts in to the federated delete
+   * (close-cloud-lifecycle-gaps D2): the `delete_cloud=true` query parameter
+   * asks the monolith to also remove the archived PagePocket page. It is
+   * omitted by default so the delete stays local-only (opt-in, never
+   * destructive beyond the server session without explicit consent).
+   */
+  async deleteSession(
+    sessionId: string,
+    options?: DeleteSessionOptions,
+  ): Promise<void> {
     this.assertConfigured();
-    const res = await this.authenticatedFetch(`/api/v1/sessions/${sessionId}`, {
+    const path =
+      options?.deleteCloud === true
+        ? `/api/v1/sessions/${sessionId}?delete_cloud=true`
+        : `/api/v1/sessions/${sessionId}`;
+    const res = await this.authenticatedFetch(path, {
       method: "DELETE",
     });
 
@@ -709,7 +735,9 @@ export class ServerClient {
       }
     };
 
-    const readErrorCode = async (res: Response): Promise<string | undefined> => {
+    const readErrorCode = async (
+      res: Response,
+    ): Promise<string | undefined> => {
       try {
         const json = (await res.json()) as { detail?: { error?: unknown } };
         return typeof json?.detail?.error === "string"
@@ -780,6 +808,42 @@ export class ServerClient {
     }
 
     return { outcome: "failed", message: `cloud/link returned ${res.status}` };
+  }
+
+  /**
+   * (close-cloud-lifecycle-gaps D1) Unbind the PagePocket identity from this
+   * API-key client via DELETE /api/v1/cloud/link — the mirror of the binding
+   * endpoint with identical auth semantics (X-API-Key client identity). The
+   * endpoint is idempotent server-side (unbound client → still 2xx).
+   *
+   * Like linkCloudAccount, deliberately does NOT use authenticatedFetch:
+   * its 401 path re-registers the server client, but re-registering here
+   * would mint a fresh client row just to leave it unbound again. A revoked
+   * key simply reports failure — the caller treats unbind as non-blocking
+   * logout hygiene and the next linkCloudAccount() re-binds anyway.
+   *
+   * @returns true only when the server confirmed the unbind (2xx).
+   */
+  async unbindCloudAccount(): Promise<boolean> {
+    this.assertConfigured();
+
+    // Nothing to unbind without the client identity — don't register a
+    // fresh client (and burn registration retries) just to unbind it.
+    const apiKey = this.apiKey ?? (await this.loadApiKeyFromStorage());
+    if (!apiKey) return false;
+
+    try {
+      const res = await fetch(`${this.serverUrl}/api/v1/cloud/link`, {
+        method: "DELETE",
+        headers: { "X-API-Key": apiKey },
+        signal: AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS),
+      });
+      return res.ok;
+    } catch {
+      // Network failure / control-call timeout — reported as failure, the
+      // caller decides what "best-effort" means here.
+      return false;
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -1108,7 +1172,12 @@ export class ServerClient {
     }
 
     // 4xx errors (except 401 and 429 handled above)
-    throw new HttpError(`${operation}: ${status} — ${detail}`, status, undefined, errorCode);
+    throw new HttpError(
+      `${operation}: ${status} — ${detail}`,
+      status,
+      undefined,
+      errorCode,
+    );
   }
 
   /**

@@ -107,7 +107,9 @@ describe("ServerClient", () => {
     fetchSpy = vi.spyOn(globalThis, "fetch");
     vi.clearAllMocks();
     // Clear chrome.storage mock state between tests to prevent key leakage
-    const store = globalThis.chrome?.storage?.local?._store as Record<string, string> | undefined;
+    const store = globalThis.chrome?.storage?.local?._store as
+      | Record<string, string>
+      | undefined;
     if (store) {
       Object.keys(store).forEach((k) => delete store[k]);
     }
@@ -132,21 +134,35 @@ describe("ServerClient", () => {
   // -----------------------------------------------------------------------
   describe("createSession", () => {
     it("POSTs to /api/v1/sessions and returns session ID", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/sessions") && init?.method === "POST") {
-          expect(urlStr).toBe("https://test-server.example.com/api/v1/sessions");
-          const body = JSON.parse(init.body as string);
-          expect(body.url).toBe("https://example.com");
-          // When no options provided, the body has no options field
-          expect(body.options).toBeUndefined();
-          return mockResponse(201, { id: "sess-123", url: "https://example.com", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
-        }
-        return mockResponse(404, { detail: "not found" });
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            expect(urlStr).toBe(
+              "https://test-server.example.com/api/v1/sessions",
+            );
+            const body = JSON.parse(init.body as string);
+            expect(body.url).toBe("https://example.com");
+            // When no options provided, the body has no options field
+            expect(body.options).toBeUndefined();
+            return mockResponse(201, {
+              id: "sess-123",
+              url: "https://example.com",
+              status: "scraping",
+              html_chunks: 0,
+              resources_discovered: null,
+              resources_received: 0,
+              created_at: "",
+              expires_at: "",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, { detail: "not found" });
+        },
+      );
 
       const client = createClient();
       const sessionId = await client.createSession("https://example.com");
@@ -154,19 +170,31 @@ describe("ServerClient", () => {
     });
 
     it("sends singleFile and retentionDays options", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/sessions") && init?.method === "POST") {
-          const body = JSON.parse(init.body as string);
-          expect(body.options.singleFile).toBe(true);
-          expect(body.options.retentionDays).toBe(14);
-          return mockResponse(201, { id: "sess-456", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            const body = JSON.parse(init.body as string);
+            expect(body.options.singleFile).toBe(true);
+            expect(body.options.retentionDays).toBe(14);
+            return mockResponse(201, {
+              id: "sess-456",
+              url: "",
+              status: "scraping",
+              html_chunks: 0,
+              resources_discovered: null,
+              resources_received: 0,
+              created_at: "",
+              expires_at: "",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const id = await client.createSession("https://example.com", {
@@ -182,21 +210,29 @@ describe("ServerClient", () => {
   // -----------------------------------------------------------------------
   describe("uploadHtmlChunk", () => {
     it("POSTs HTML chunk with scrollIndex and linked page metadata", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/html") && init?.method === "POST") {
-          const body = JSON.parse(init.body as string);
-          expect(body.html).toBe("<p>chunk</p>");
-          expect(body.scrollIndex).toBe(3);
-          expect(body.pageType).toBe("linked");
-          expect(body.pageUrl).toBe("https://example.com/page2");
-          return mockResponse(200, { chunk_id: "ch-1", chunk_count: 4, total_size: 1024, deduplicated: false, api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/html") && init?.method === "POST") {
+            const body = JSON.parse(init.body as string);
+            expect(body.html).toBe("<p>chunk</p>");
+            expect(body.scrollIndex).toBe(3);
+            expect(body.pageType).toBe("linked");
+            expect(body.pageUrl).toBe("https://example.com/page2");
+            return mockResponse(200, {
+              chunk_id: "ch-1",
+              chunk_count: 4,
+              total_size: 1024,
+              deduplicated: false,
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const res = await client.uploadHtmlChunk(
@@ -216,18 +252,25 @@ describe("ServerClient", () => {
   // -----------------------------------------------------------------------
   describe("scrapeComplete", () => {
     it("POSTs scrape-complete with resourceCount", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/scrape-complete")) {
-          const body = JSON.parse((init as RequestInit).body as string);
-          expect(body.resourceCount).toBe(42);
-          return mockResponse(200, { id: "sess-1", status: "uploading", message: "Transitioned to uploading", api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/scrape-complete")) {
+            const body = JSON.parse((init as RequestInit).body as string);
+            expect(body.resourceCount).toBe(42);
+            return mockResponse(200, {
+              id: "sess-1",
+              status: "uploading",
+              message: "Transitioned to uploading",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const res = await client.scrapeComplete("sess-1", 42);
@@ -241,47 +284,81 @@ describe("ServerClient", () => {
   describe("uploadResource", () => {
     it("uploads text resources with gzip compression", async () => {
       let capturedHeaders: Record<string, string> = {};
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/resources")) {
-          // Extract custom headers
-          const h = init?.headers as Headers;
-          capturedHeaders = {};
-          h?.forEach?.((v, k) => { capturedHeaders[k] = v; });
-          return mockResponse(200, { resource_id: "res-1", local_path: "styles/main.css", size: 1234, deduplicated: false, api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/resources")) {
+            // Extract custom headers
+            const h = init?.headers as Headers;
+            capturedHeaders = {};
+            h?.forEach?.((v, k) => {
+              capturedHeaders[k] = v;
+            });
+            return mockResponse(200, {
+              resource_id: "res-1",
+              local_path: "styles/main.css",
+              size: 1234,
+              deduplicated: false,
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const blob = new Blob(["body { color: red; }"], { type: "text/css" });
-      await client.uploadResource("sess-1", "styles/main.css", blob, "https://example.com/style.css", "text/css");
+      await client.uploadResource(
+        "sess-1",
+        "styles/main.css",
+        blob,
+        "https://example.com/style.css",
+        "text/css",
+      );
 
       expect(capturedHeaders["x-content-gzipped"]).toBe("true");
     });
 
     it("uploads binary resources without gzip", async () => {
       let capturedHeaders: Record<string, string> = {};
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/resources")) {
-          const h = init?.headers as Headers;
-          capturedHeaders = {};
-          h?.forEach?.((v, k) => { capturedHeaders[k] = v; });
-          return mockResponse(200, { resource_id: "res-2", local_path: "images/photo.jpg", size: 5678, deduplicated: false, api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/resources")) {
+            const h = init?.headers as Headers;
+            capturedHeaders = {};
+            h?.forEach?.((v, k) => {
+              capturedHeaders[k] = v;
+            });
+            return mockResponse(200, {
+              resource_id: "res-2",
+              local_path: "images/photo.jpg",
+              size: 5678,
+              deduplicated: false,
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
-      const blob = new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" });
-      await client.uploadResource("sess-1", "images/photo.jpg", blob, "https://example.com/photo.jpg", "image/png");
+      const blob = new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], {
+        type: "image/png",
+      });
+      await client.uploadResource(
+        "sess-1",
+        "images/photo.jpg",
+        blob,
+        "https://example.com/photo.jpg",
+        "image/png",
+      );
 
       expect(capturedHeaders["x-content-gzipped"]).toBeUndefined();
     });
@@ -292,18 +369,22 @@ describe("ServerClient", () => {
   // -----------------------------------------------------------------------
   describe("uploadFilenameMap", () => {
     it("POSTs filename map JSON", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/filename-map")) {
-          const body = JSON.parse((init as RequestInit).body as string);
-          expect(body.map["https://example.com/img.jpg"]).toBe("images/img.jpg");
-          return mockResponse(200, { mappings_count: 1, api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/filename-map")) {
+            const body = JSON.parse((init as RequestInit).body as string);
+            expect(body.map["https://example.com/img.jpg"]).toBe(
+              "images/img.jpg",
+            );
+            return mockResponse(200, { mappings_count: 1, api_version: "v1" });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const res = await client.uploadFilenameMap("sess-1", {
@@ -318,18 +399,24 @@ describe("ServerClient", () => {
   // -----------------------------------------------------------------------
   describe("uploadContent", () => {
     it("POSTs text content", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/content")) {
-          const body = JSON.parse((init as RequestInit).body as string);
-          expect(body.text).toBe("Page content here");
-          return mockResponse(200, { message: "Content stored", size: 17, api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/content")) {
+            const body = JSON.parse((init as RequestInit).body as string);
+            expect(body.text).toBe("Page content here");
+            return mockResponse(200, {
+              message: "Content stored",
+              size: 17,
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const res = await client.uploadContent("sess-1", "Page content here");
@@ -342,16 +429,23 @@ describe("ServerClient", () => {
   // -----------------------------------------------------------------------
   describe("finalizeSession", () => {
     it("POSTs finalize and returns 202 response", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/finalize")) {
-          return mockResponse(202, { id: "sess-1", status: "assembling", message: "Assembly started", api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/finalize")) {
+            return mockResponse(202, {
+              id: "sess-1",
+              status: "assembling",
+              message: "Assembly started",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const res = await client.finalizeSession("sess-1");
@@ -364,31 +458,33 @@ describe("ServerClient", () => {
   // -----------------------------------------------------------------------
   describe("getSessionStatus", () => {
     it("GETs session status with assembly phase", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/status")) {
-          return mockResponse(200, {
-            id: "sess-1",
-            status: "assembling",
-            url: "https://example.com",
-            html_chunks: 5,
-            resources_discovered: 10,
-            resources_received: 8,
-            total_size: 1024,
-            assembly_phase: "converting_urls",
-            assembly_progress_pct: 45,
-            download_url: null,
-            output_type: null,
-            output_size: null,
-            error_message: null,
-            api_version: "v1",
-          });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/status")) {
+            return mockResponse(200, {
+              id: "sess-1",
+              status: "assembling",
+              url: "https://example.com",
+              html_chunks: 5,
+              resources_discovered: 10,
+              resources_received: 8,
+              total_size: 1024,
+              assembly_phase: "converting_urls",
+              assembly_progress_pct: 45,
+              download_url: null,
+              output_type: null,
+              output_size: null,
+              error_message: null,
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const res = await client.getSessionStatus("sess-1");
@@ -403,25 +499,27 @@ describe("ServerClient", () => {
   // -----------------------------------------------------------------------
   describe("checkHealth", () => {
     it("GETs /api/v1/health without API key", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/health")) {
-          // Verify no X-API-Key header
-          const h = init?.headers as Headers | undefined;
-          const hasApiKey = h?.has?.("X-API-Key") ?? false;
-          expect(hasApiKey).toBe(false);
-          return mockResponse(200, {
-            status: "ok",
-            version: "1.0.0",
-            mysql: "connected",
-            storage_available_mb: 5000,
-            storage_total_mb: 10000,
-            description: null,
-            api_version: "v1",
-          });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/health")) {
+            // Verify no X-API-Key header
+            const h = init?.headers as Headers | undefined;
+            const hasApiKey = h?.has?.("X-API-Key") ?? false;
+            expect(hasApiKey).toBe(false);
+            return mockResponse(200, {
+              status: "ok",
+              version: "1.0.0",
+              mysql: "connected",
+              storage_available_mb: 5000,
+              storage_total_mb: 10000,
+              description: null,
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const res = await client.checkHealth();
@@ -432,7 +530,9 @@ describe("ServerClient", () => {
       fetchSpy.mockRejectedValue(new TypeError("Failed to fetch"));
 
       const client = createClient();
-      await expect(client.checkHealth()).rejects.toThrow(ServerUnavailableError);
+      await expect(client.checkHealth()).rejects.toThrow(
+        ServerUnavailableError,
+      );
     });
   });
 
@@ -443,21 +543,36 @@ describe("ServerClient", () => {
     it("auto-registers on first API call", async () => {
       let registered = false;
       let registeredKey = "";
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          registered = true;
-          registeredKey = "auto-key-1";
-          return mockResponse(200, { api_key: registeredKey, client_id: "c1" });
-        }
-        if (urlStr.includes("/sessions") && init?.method === "POST") {
-          // Verify the API key from registration was used
-          const h = init?.headers as Headers;
-          expect(h?.get?.("X-API-Key")).toBe(registeredKey);
-          return mockResponse(201, { id: "sess-auto", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            registered = true;
+            registeredKey = "auto-key-1";
+            return mockResponse(200, {
+              api_key: registeredKey,
+              client_id: "c1",
+            });
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            // Verify the API key from registration was used
+            const h = init?.headers as Headers;
+            expect(h?.get?.("X-API-Key")).toBe(registeredKey);
+            return mockResponse(201, {
+              id: "sess-auto",
+              url: "",
+              status: "scraping",
+              html_chunks: 0,
+              resources_discovered: null,
+              resources_received: 0,
+              created_at: "",
+              expires_at: "",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       await client.createSession("https://example.com");
@@ -467,23 +582,35 @@ describe("ServerClient", () => {
     it("re-registers on 401 and retries the original request", async () => {
       let callCount = 0;
       let reRegistered = false;
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          reRegistered = true;
-          return mockResponse(200, { api_key: "new-key", client_id: "c1" });
-        }
-        if (urlStr.includes("/sessions")) {
-          callCount++;
-          const h = init?.headers as Headers;
-          if (h?.get?.("X-API-Key") === "new-key") {
-            return mockResponse(201, { id: "sess-retry", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            reRegistered = true;
+            return mockResponse(200, { api_key: "new-key", client_id: "c1" });
           }
-          // First attempt with old key → 401
-          return mockResponse(401, { detail: "Invalid API key" });
-        }
-        return mockResponse(404, {});
-      });
+          if (urlStr.includes("/sessions")) {
+            callCount++;
+            const h = init?.headers as Headers;
+            if (h?.get?.("X-API-Key") === "new-key") {
+              return mockResponse(201, {
+                id: "sess-retry",
+                url: "",
+                status: "scraping",
+                html_chunks: 0,
+                resources_discovered: null,
+                resources_received: 0,
+                created_at: "",
+                expires_at: "",
+                api_version: "v1",
+              });
+            }
+            // First attempt with old key → 401
+            return mockResponse(401, { detail: "Invalid API key" });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const id = await client.createSession("https://example.com");
@@ -500,7 +627,17 @@ describe("ServerClient", () => {
         if (urlStr.includes("/auth/register")) {
           return mockResponse(200, { api_key: "session-key", client_id: "c1" });
         }
-        return mockResponse(201, { id: "sess-1", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
+        return mockResponse(201, {
+          id: "sess-1",
+          url: "",
+          status: "scraping",
+          html_chunks: 0,
+          resources_discovered: null,
+          resources_received: 0,
+          created_at: "",
+          expires_at: "",
+          api_version: "v1",
+        });
       });
 
       const client = createClient();
@@ -521,19 +658,31 @@ describe("ServerClient", () => {
       sessionStore[EXTENSION_INSTANCE_ID_KEY] = "ext-stored";
 
       let registerCalled = false;
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          registerCalled = true;
-          return mockResponse(200, { api_key: "fresh-key", client_id: "c1" });
-        }
-        if (urlStr.includes("/sessions") && init?.method === "POST") {
-          const h = init?.headers as Headers;
-          expect(h?.get?.("X-API-Key")).toBe("stored-session-key");
-          return mockResponse(201, { id: "sess-2", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            registerCalled = true;
+            return mockResponse(200, { api_key: "fresh-key", client_id: "c1" });
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            const h = init?.headers as Headers;
+            expect(h?.get?.("X-API-Key")).toBe("stored-session-key");
+            return mockResponse(201, {
+              id: "sess-2",
+              url: "",
+              status: "scraping",
+              html_chunks: 0,
+              resources_discovered: null,
+              resources_received: 0,
+              created_at: "",
+              expires_at: "",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       await client.createSession("https://example.com");
@@ -547,9 +696,22 @@ describe("ServerClient", () => {
         const urlStr = typeof url === "string" ? url : url.toString();
         if (urlStr.includes("/auth/register")) {
           registerCalled = true;
-          return mockResponse(200, { api_key: "re-registered-key", client_id: "c1" });
+          return mockResponse(200, {
+            api_key: "re-registered-key",
+            client_id: "c1",
+          });
         }
-        return mockResponse(201, { id: "sess-3", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
+        return mockResponse(201, {
+          id: "sess-3",
+          url: "",
+          status: "scraping",
+          html_chunks: 0,
+          resources_discovered: null,
+          resources_received: 0,
+          created_at: "",
+          expires_at: "",
+          api_version: "v1",
+        });
       });
 
       const client = createClient();
@@ -559,7 +721,10 @@ describe("ServerClient", () => {
     });
 
     it("scrubs legacy key material from chrome.storage.local", async () => {
-      const localStore = globalThis.chrome?.storage?.local?._store as Record<string, unknown>;
+      const localStore = globalThis.chrome?.storage?.local?._store as Record<
+        string,
+        unknown
+      >;
       localStore[API_KEY_STORAGE_KEY] = "legacy-local-key";
       localStore[EXTENSION_INSTANCE_ID_KEY] = "legacy-instance";
 
@@ -568,7 +733,17 @@ describe("ServerClient", () => {
         if (urlStr.includes("/auth/register")) {
           return mockResponse(200, { api_key: "new-key", client_id: "c1" });
         }
-        return mockResponse(201, { id: "sess-4", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
+        return mockResponse(201, {
+          id: "sess-4",
+          url: "",
+          status: "scraping",
+          html_chunks: 0,
+          resources_discovered: null,
+          resources_received: 0,
+          created_at: "",
+          expires_at: "",
+          api_version: "v1",
+        });
       });
 
       const client = createClient();
@@ -605,19 +780,24 @@ describe("ServerClient", () => {
   // -----------------------------------------------------------------------
   describe("finalizeSession 409 handling", () => {
     it("treats 409 as success and returns synthetic response", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/finalize")) {
-          return new Response(
-            JSON.stringify({ current_status: "assembling", message: "Already finalizing" }),
-            { status: 409, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/finalize")) {
+            return new Response(
+              JSON.stringify({
+                current_status: "assembling",
+                message: "Already finalizing",
+              }),
+              { status: 409, headers: { "Content-Type": "application/json" } },
+            );
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const res = await client.finalizeSession("sess-1");
@@ -632,23 +812,33 @@ describe("ServerClient", () => {
   describe("withRetry", () => {
     it("retries on 5xx server errors (using statusCode)", async () => {
       let attempts = 0;
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/scrape-complete")) {
-          attempts++;
-          if (attempts < 3) {
-            return new Response(
-              JSON.stringify({ detail: "Internal Server Error" }),
-              { status: 500, headers: { "Content-Type": "application/json" } },
-            );
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
           }
-          return mockResponse(200, { id: "sess-1", status: "uploading", message: "ok", api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+          if (urlStr.includes("/scrape-complete")) {
+            attempts++;
+            if (attempts < 3) {
+              return new Response(
+                JSON.stringify({ detail: "Internal Server Error" }),
+                {
+                  status: 500,
+                  headers: { "Content-Type": "application/json" },
+                },
+              );
+            }
+            return mockResponse(200, {
+              id: "sess-1",
+              status: "uploading",
+              message: "ok",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const res = await client.scrapeComplete("sess-1", 10);
@@ -658,20 +848,27 @@ describe("ServerClient", () => {
 
     it("retries on network-level TypeError (fetch failure)", async () => {
       let attempts = 0;
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/scrape-complete")) {
-          attempts++;
-          if (attempts < 2) {
-            throw new TypeError("Failed to fetch");
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
           }
-          return mockResponse(200, { id: "sess-1", status: "uploading", message: "ok", api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+          if (urlStr.includes("/scrape-complete")) {
+            attempts++;
+            if (attempts < 2) {
+              throw new TypeError("Failed to fetch");
+            }
+            return mockResponse(200, {
+              id: "sess-1",
+              status: "uploading",
+              message: "ok",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const res = await client.scrapeComplete("sess-1", 10);
@@ -681,20 +878,22 @@ describe("ServerClient", () => {
 
     it("does NOT retry on 4xx errors", async () => {
       let attempts = 0;
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/scrape-complete")) {
-          attempts++;
-          return new Response(
-            JSON.stringify({ detail: "Session not found" }),
-            { status: 404, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/scrape-complete")) {
+            attempts++;
+            return new Response(
+              JSON.stringify({ detail: "Session not found" }),
+              { status: 404, headers: { "Content-Type": "application/json" } },
+            );
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       await expect(client.scrapeComplete("sess-1", 10)).rejects.toThrow();
@@ -703,23 +902,27 @@ describe("ServerClient", () => {
 
     it("does NOT retry on AuthenticationError", async () => {
       let scrapeAttempts = 0;
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/scrape-complete")) {
-          scrapeAttempts++;
-          return new Response(
-            JSON.stringify({ detail: "Invalid API key" }),
-            { status: 401, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/scrape-complete")) {
+            scrapeAttempts++;
+            return new Response(JSON.stringify({ detail: "Invalid API key" }), {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
-      await expect(client.scrapeComplete("sess-1", 10)).rejects.toThrow(AuthenticationError);
+      await expect(client.scrapeComplete("sess-1", 10)).rejects.toThrow(
+        AuthenticationError,
+      );
       // 401 triggers re-registration; authenticatedFetch retries once with new key
       // then throws AuthenticationError if retry also returns 401.
       // So scrape-complete is called twice (original + retry-within-authenticatedFetch).
@@ -727,22 +930,26 @@ describe("ServerClient", () => {
     });
 
     it("throws ServerUnavailableError after exhausting retries on 5xx", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
-        }
-        if (urlStr.includes("/scrape-complete")) {
-          return new Response(
-            JSON.stringify({ detail: "Service Unavailable" }),
-            { status: 503, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/scrape-complete")) {
+            return new Response(
+              JSON.stringify({ detail: "Service Unavailable" }),
+              { status: 503, headers: { "Content-Type": "application/json" } },
+            );
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
-      await expect(client.scrapeComplete("sess-1", 10)).rejects.toThrow(ServerUnavailableError);
+      await expect(client.scrapeComplete("sess-1", 10)).rejects.toThrow(
+        ServerUnavailableError,
+      );
     }, 15000);
   });
 
@@ -756,7 +963,9 @@ describe("ServerClient", () => {
   // -----------------------------------------------------------------------
   describe("re-registration deadlock (6.3 / D14)", () => {
     /** Build a fetch mock emulating the monolith's register-by-instance-id semantics. */
-    function mockRevokedKeyServer(opts: { registerAlwaysFails?: boolean } = {}) {
+    function mockRevokedKeyServer(
+      opts: { registerAlwaysFails?: boolean } = {},
+    ) {
       const registerIds: string[] = [];
       const keysByInstance = new Map<string, string>();
       const REVOKED_INSTANCE = "ext-A";
@@ -764,35 +973,53 @@ describe("ServerClient", () => {
       keysByInstance.set(REVOKED_INSTANCE, REVOKED_KEY);
       const sessionCallKeys: string[] = [];
 
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          const body = JSON.parse((init?.body as string) ?? "{}");
-          registerIds.push(body.client_id);
-          if (opts.registerAlwaysFails) {
-            return mockResponse(500, { detail: "registration unavailable" });
-          }
-          // Same instance id → SAME key (the deadlock: the id still resolves
-          // to the revoked credential server-side).
-          let key = keysByInstance.get(body.client_id);
-          if (!key) {
-            key = `fresh-key-${body.client_id}`;
-            keysByInstance.set(body.client_id, key);
-          }
-          return mockResponse(200, { api_key: key, client_id: body.client_id });
-        }
-        if (urlStr.includes("/sessions") && init?.method === "POST") {
-          const key = (init?.headers as Headers)?.get?.("X-API-Key") ?? "";
-          sessionCallKeys.push(key);
-          if (key === REVOKED_KEY) {
-            return mockResponse(401, {
-              detail: { error: "invalid_api_key", message: "Invalid or unrecognized API key" },
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            const body = JSON.parse((init?.body as string) ?? "{}");
+            registerIds.push(body.client_id);
+            if (opts.registerAlwaysFails) {
+              return mockResponse(500, { detail: "registration unavailable" });
+            }
+            // Same instance id → SAME key (the deadlock: the id still resolves
+            // to the revoked credential server-side).
+            let key = keysByInstance.get(body.client_id);
+            if (!key) {
+              key = `fresh-key-${body.client_id}`;
+              keysByInstance.set(body.client_id, key);
+            }
+            return mockResponse(200, {
+              api_key: key,
+              client_id: body.client_id,
             });
           }
-          return mockResponse(201, { id: "sess-ok", url: "", status: "scraping", html_chunks: 0, resources_discovered: null, resources_received: 0, created_at: "", expires_at: "", api_version: "v1" });
-        }
-        return mockResponse(404, {});
-      });
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            const key = (init?.headers as Headers)?.get?.("X-API-Key") ?? "";
+            sessionCallKeys.push(key);
+            if (key === REVOKED_KEY) {
+              return mockResponse(401, {
+                detail: {
+                  error: "invalid_api_key",
+                  message: "Invalid or unrecognized API key",
+                },
+              });
+            }
+            return mockResponse(201, {
+              id: "sess-ok",
+              url: "",
+              status: "scraping",
+              html_chunks: 0,
+              resources_discovered: null,
+              resources_received: 0,
+              created_at: "",
+              expires_at: "",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       return { registerIds, sessionCallKeys, REVOKED_INSTANCE, REVOKED_KEY };
     }
@@ -815,12 +1042,18 @@ describe("ServerClient", () => {
       expect(server.registerIds[0]).not.toBe(server.REVOKED_INSTANCE);
 
       // The retried request used a key that is NOT the revoked one
-      const successKeys = server.sessionCallKeys.filter((k) => k !== server.REVOKED_KEY);
+      const successKeys = server.sessionCallKeys.filter(
+        (k) => k !== server.REVOKED_KEY,
+      );
       expect(successKeys.length).toBeGreaterThanOrEqual(1);
 
       // The fresh instance id is persisted to chrome.storage.session
-      expect(sessionStore[EXTENSION_INSTANCE_ID_KEY]).toBe(server.registerIds[0]);
-      expect(sessionStore[API_KEY_STORAGE_KEY]).toBe(successKeys[successKeys.length - 1]);
+      expect(sessionStore[EXTENSION_INSTANCE_ID_KEY]).toBe(
+        server.registerIds[0],
+      );
+      expect(sessionStore[API_KEY_STORAGE_KEY]).toBe(
+        successKeys[successKeys.length - 1],
+      );
     });
 
     it("shares ONE fresh re-registration across concurrent 401s (single-flight)", async () => {
@@ -880,33 +1113,41 @@ describe("ServerClient", () => {
       const registerIds: string[] = [];
       const linkCalls: Array<{ apiKey: string; body: unknown }> = [];
 
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          const body = JSON.parse((init?.body as string) ?? "{}");
-          registerCount++;
-          registerIds.push(body.client_id);
-          const key =
-            registerCount === 1 && opts.firstKeyRevoked
-              ? "revoked-key"
-              : `key-${registerCount}`;
-          return mockResponse(200, { api_key: key, client_id: body.client_id });
-        }
-        if (urlStr.includes("/cloud/link")) {
-          const apiKey = readApiKey(init);
-          linkCalls.push({
-            apiKey,
-            body: JSON.parse((init?.body as string) ?? "{}"),
-          });
-          if (apiKey === "revoked-key") {
-            return mockResponse(401, {
-              detail: { error: "invalid_api_key", message: "Invalid or unrecognized API key" },
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            const body = JSON.parse((init?.body as string) ?? "{}");
+            registerCount++;
+            registerIds.push(body.client_id);
+            const key =
+              registerCount === 1 && opts.firstKeyRevoked
+                ? "revoked-key"
+                : `key-${registerCount}`;
+            return mockResponse(200, {
+              api_key: key,
+              client_id: body.client_id,
             });
           }
-          return mockResponse(linkResponse.status, linkResponse.body);
-        }
-        return mockResponse(404, {});
-      });
+          if (urlStr.includes("/cloud/link")) {
+            const apiKey = readApiKey(init);
+            linkCalls.push({
+              apiKey,
+              body: JSON.parse((init?.body as string) ?? "{}"),
+            });
+            if (apiKey === "revoked-key") {
+              return mockResponse(401, {
+                detail: {
+                  error: "invalid_api_key",
+                  message: "Invalid or unrecognized API key",
+                },
+              });
+            }
+            return mockResponse(linkResponse.status, linkResponse.body);
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       return { registerCount: () => registerCount, registerIds, linkCalls };
     }
@@ -914,7 +1155,12 @@ describe("ServerClient", () => {
     it("POSTs /api/v1/cloud/link with X-API-Key + access_token and returns the binding", async () => {
       const server = mockCloudLinkServer({
         status: 200,
-        body: { bound: true, pagepocket_user_id: "pp-user-1", plan: "pro", api_version: "v1" },
+        body: {
+          bound: true,
+          pagepocket_user_id: "pp-user-1",
+          plan: "pro",
+          api_version: "v1",
+        },
       });
 
       const client = createClient();
@@ -929,13 +1175,20 @@ describe("ServerClient", () => {
       expect(server.registerCount()).toBe(1);
       expect(server.linkCalls).toHaveLength(1);
       expect(server.linkCalls[0].apiKey).toBe("key-1");
-      expect(server.linkCalls[0].body).toEqual({ access_token: "pp-access-token" });
+      expect(server.linkCalls[0].body).toEqual({
+        access_token: "pp-access-token",
+      });
     });
 
     it("does NOT re-register when the PagePocket token is rejected (invalid_pagepocket_token)", async () => {
       const server = mockCloudLinkServer({
         status: 401,
-        body: { detail: { error: "invalid_pagepocket_token", message: "PagePocket access token could not be verified" } },
+        body: {
+          detail: {
+            error: "invalid_pagepocket_token",
+            message: "PagePocket access token could not be verified",
+          },
+        },
       });
 
       const client = createClient();
@@ -950,7 +1203,15 @@ describe("ServerClient", () => {
 
     it("re-registers once with a fresh instance when the API key is rejected, then links", async () => {
       const server = mockCloudLinkServer(
-        { status: 200, body: { bound: true, pagepocket_user_id: "pp-user-1", plan: "pro", api_version: "v1" } },
+        {
+          status: 200,
+          body: {
+            bound: true,
+            pagepocket_user_id: "pp-user-1",
+            plan: "pro",
+            api_version: "v1",
+          },
+        },
         { firstKeyRevoked: true },
       );
       // Force the first registration to reuse a known instance id
@@ -991,22 +1252,30 @@ describe("ServerClient", () => {
       let registerCount = 0;
       const registerIds: string[] = [];
       const linkCalls: string[] = [];
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          const body = JSON.parse((init?.body as string) ?? "{}");
-          registerCount++;
-          registerIds.push(body.client_id);
-          return mockResponse(200, { api_key: `key-${registerCount}`, client_id: body.client_id });
-        }
-        if (urlStr.includes("/cloud/link")) {
-          linkCalls.push(readApiKey(init));
-          return mockResponse(401, {
-            detail: { error: "invalid_api_key", message: "Invalid or unrecognized API key" },
-          });
-        }
-        return mockResponse(404, {});
-      });
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            const body = JSON.parse((init?.body as string) ?? "{}");
+            registerCount++;
+            registerIds.push(body.client_id);
+            return mockResponse(200, {
+              api_key: `key-${registerCount}`,
+              client_id: body.client_id,
+            });
+          }
+          if (urlStr.includes("/cloud/link")) {
+            linkCalls.push(readApiKey(init));
+            return mockResponse(401, {
+              detail: {
+                error: "invalid_api_key",
+                message: "Invalid or unrecognized API key",
+              },
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
 
       const client = createClient();
       const result = await client.linkCloudAccount("pp-access-token");
@@ -1037,7 +1306,10 @@ describe("ServerClient", () => {
     });
 
     it("returns failed (not thrown) when the server errors with 5xx", async () => {
-      mockCloudLinkServer({ status: 500, body: { detail: { message: "boom" } } });
+      mockCloudLinkServer({
+        status: 500,
+        body: { detail: { message: "boom" } },
+      });
 
       const client = createClient();
       const result = await client.linkCloudAccount("pp-access-token");
@@ -1050,27 +1322,159 @@ describe("ServerClient", () => {
   // -----------------------------------------------------------------------
   describe("HttpError errorCode extraction", () => {
     it("exposes detail.error as errorCode on 403 responses", async () => {
-      fetchSpy.mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            return mockResponse(403, {
+              detail: {
+                error: "cloud_not_linked",
+                message: "This client has no PagePocket cloud binding.",
+              },
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      const err = await client
+        .createSession("https://example.com")
+        .catch((e) => e);
+      expect(err).toBeInstanceOf(HttpError);
+      expect(err.statusCode).toBe(403);
+      expect(err.errorCode).toBe("cloud_not_linked");
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // deleteSession with the opt-in federated delete
+  // (close-cloud-lifecycle-gaps D2 / task 3.3)
+  // -----------------------------------------------------------------------
+  describe("deleteSession (delete_cloud option)", () => {
+    /** Capture the DELETE requests aimed at /api/v1/sessions/{id}. */
+    function mockDeleteServer(): { calls: Array<{ url: string }> } {
+      const calls: Array<{ url: string }> = [];
+      fetchSpy.mockImplementation(async (url: string | URL | Request) => {
         const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/auth/register")) {
-          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+        if (/\/api\/v1\/sessions\/[^/]+$/.test(urlStr)) {
+          calls.push({ url: urlStr });
+          return mockResponse(200, { deleted: true, api_version: "v1" });
         }
-        if (urlStr.includes("/sessions") && init?.method === "POST") {
-          return mockResponse(403, {
-            detail: {
-              error: "cloud_not_linked",
-              message: "This client has no PagePocket cloud binding.",
-            },
-          });
+        return mockResponse(404, {});
+      });
+      return { calls };
+    }
+
+    it("omits the query parameter by default (local-only delete)", async () => {
+      const { calls } = mockDeleteServer();
+      sessionStore[API_KEY_STORAGE_KEY] = "stored-session-key";
+
+      const client = createClient();
+      await client.deleteSession("sess-123");
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0].url).toBe(
+        "https://test-server.example.com/api/v1/sessions/sess-123",
+      );
+    });
+
+    it("appends delete_cloud=true when asked (federated delete)", async () => {
+      const { calls } = mockDeleteServer();
+      sessionStore[API_KEY_STORAGE_KEY] = "stored-session-key";
+
+      const client = createClient();
+      await client.deleteSession("sess-123", { deleteCloud: true });
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0].url).toBe(
+        "https://test-server.example.com/api/v1/sessions/sess-123?delete_cloud=true",
+      );
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // unbindCloudAccount — DELETE /api/v1/cloud/link
+  // (close-cloud-lifecycle-gaps D1 / task 3.1)
+  // -----------------------------------------------------------------------
+  describe("unbindCloudAccount (cloud unbind)", () => {
+    it("DELETEs /api/v1/cloud/link with the stored API key", async () => {
+      const calls: Array<{
+        url: string;
+        method: string;
+        apiKey: string | null;
+      }> = [];
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/cloud/link")) {
+            calls.push({
+              url: urlStr,
+              method: init?.method ?? "GET",
+              apiKey: new Headers(init?.headers).get("X-API-Key"),
+            });
+            return mockResponse(200, { bound: false, api_version: "v1" });
+          }
+          return mockResponse(404, {});
+        },
+      );
+      sessionStore[API_KEY_STORAGE_KEY] = "stored-session-key";
+
+      const client = createClient();
+      const result = await client.unbindCloudAccount();
+
+      expect(result).toBe(true);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].url).toBe(
+        "https://test-server.example.com/api/v1/cloud/link",
+      );
+      expect(calls[0].method).toBe("DELETE");
+      expect(calls[0].apiKey).toBe("stored-session-key");
+    });
+
+    it("reports failure on a non-2xx response without throwing", async () => {
+      fetchSpy.mockImplementation(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/cloud/link")) {
+          return mockResponse(401, { detail: { error: "invalid_api_key" } });
         }
+        return mockResponse(404, {});
+      });
+      sessionStore[API_KEY_STORAGE_KEY] = "stored-session-key";
+
+      const client = createClient();
+      await expect(client.unbindCloudAccount()).resolves.toBe(false);
+    });
+
+    it("reports failure on network errors without throwing", async () => {
+      fetchSpy.mockImplementation(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/cloud/link")) {
+          throw new TypeError("Failed to fetch");
+        }
+        return mockResponse(404, {});
+      });
+      sessionStore[API_KEY_STORAGE_KEY] = "stored-session-key";
+
+      const client = createClient();
+      await expect(client.unbindCloudAccount()).resolves.toBe(false);
+    });
+
+    it("does not call the server when no API key exists", async () => {
+      const fetchCalls: unknown[] = [];
+      fetchSpy.mockImplementation(async (...args: unknown[]) => {
+        fetchCalls.push(args);
         return mockResponse(404, {});
       });
 
       const client = createClient();
-      const err = await client.createSession("https://example.com").catch((e) => e);
-      expect(err).toBeInstanceOf(HttpError);
-      expect(err.statusCode).toBe(403);
-      expect(err.errorCode).toBe("cloud_not_linked");
+      const result = await client.unbindCloudAccount();
+
+      expect(result).toBe(false);
+      expect(fetchCalls).toHaveLength(0);
     });
   });
 });

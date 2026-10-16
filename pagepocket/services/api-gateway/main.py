@@ -16,11 +16,22 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared",
 
 # Fail fast BEFORE importing middleware/routers: jwt_utils reads JWT_SECRET at
 # import time, and a clean configuration error beats a KeyError traceback.
-from config import allowed_origins, enforce_startup_config, gateway_workers
+from config import (
+    allowed_origins,
+    check_trusted_proxy_drift,
+    enforce_startup_config,
+    gateway_workers,
+)
 from logging_config import configure_logging
 
 enforce_startup_config()
 configure_logging()
+
+# D4: trusted-proxy drift alarm — derive the real default-route gateway and
+# compare it with TRUSTED_PROXIES. Runs after configure_logging() so the
+# drift line reaches the configured handlers; the check never raises (it
+# warns and continues), and the verdict lands in module state for /health.
+trusted_proxy_verdict = check_trusted_proxy_drift()
 
 from middleware import AuthMiddleware
 from middleware.rate_limit import RateLimitMiddleware, RedisRateLimiter
@@ -64,7 +75,7 @@ app.include_router(archive_router.router)
 app.include_router(library_router.router)
 app.include_router(search_router.router)
 app.include_router(share_router.router)
-app.include_router(health_router.build_health_router(limiter))
+app.include_router(health_router.build_health_router(limiter, trusted_proxy_verdict))
 
 
 if __name__ == "__main__":

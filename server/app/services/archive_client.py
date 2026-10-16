@@ -1,4 +1,4 @@
-"""Archive service gRPC client for cloud push."""
+"""Archive service gRPC client for cloud push and cloud delete."""
 
 import logging
 import os
@@ -7,6 +7,8 @@ import threading
 import time
 from dataclasses import dataclass
 from typing import Optional
+
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,12 @@ CLOUD_PUSH_MAX_PAYLOAD_BYTES = GRPC_MAX_MESSAGE_BYTES - CLOUD_PUSH_SAFETY_MARGIN
 # case as 3 sequential calls at this budget plus queue wait (≤ 32 min).
 PUSH_TIMEOUT_SECONDS = 600
 
+# Per-attempt unary deadline for the delete RPC. A delete is a cheap metadata
+# operation on the archive service; the short budget keeps the opt-in cloud
+# delete from stalling a session deletion. No retry: a failed delete is
+# reported to the caller and a repeated delete is idempotent.
+DELETE_TIMEOUT_SECONDS = 10
+
 # Max wait for the per-session single-flight lock: covers the worst case of
 # one in-flight push (3 × 600 s) plus margin before giving up.
 PUSH_LOCK_WAIT_SECONDS = PUSH_TIMEOUT_SECONDS * 3 + 120
@@ -55,6 +63,19 @@ class CloudPushResult:
     """Result of a cloud archive push attempt."""
 
     page_id: Optional[str] = None
+    error: Optional[str] = None
+
+
+@dataclass
+class CloudDeleteResult:
+    """Result of a cloud archive page delete attempt.
+
+    ``deleted=True`` covers both a confirmed delete and an already-absent
+    page (NOT_FOUND → idempotent success); ``error`` carries the failure
+    detail when the RPC could not be completed.
+    """
+
+    deleted: bool = False
     error: Optional[str] = None
 
 
@@ -90,6 +111,16 @@ def cloud_size_error(
         f"session exceeds {GRPC_MAX_MESSAGE_BYTES // (1024 * 1024)} MB cloud limit: "
         f"{format_mb(total_bytes)}"
     )
+
+
+def cloud_asset_count_error(count: int, limit: int) -> str:
+    """Precise, non-retryable cloud_error for an over-cap asset count.
+
+    Parity with the gateway's REST ingest rejection (MAX_INGEST_ASSETS,
+    default 200): the push path refuses deterministically instead of
+    shipping an ingest the gateway would reject anyway.
+    """
+    return f"session exceeds cloud asset limit: {count} assets (max {limit})"
 
 
 def _rpc_error_parts(exc: BaseException) -> tuple[Optional[str], str]:
@@ -278,6 +309,19 @@ def push_to_archive(
             error=cloud_size_error(total_bytes, CLOUD_PUSH_MAX_PAYLOAD_BYTES)
         )
 
+    # Pre-flight asset-count gate (cloud-via-server parity, D3): the gateway's
+    # REST ingest rejects sessions over its asset cap (default 200) with a
+    # deterministic 400-class error; pushing 201+ assets would only burn the
+    # 3 × 600 s retry budget on a rejection that can never succeed. The count
+    # is known before anything is built — stat-only, no gRPC traffic.
+    asset_cap = settings.cloud_max_assets
+    if len(assets) > asset_cap:
+        logger.error(
+            "Cloud push rejected pre-flight: session=%s assets=%d limit=%d",
+            session_id, len(assets), asset_cap,
+        )
+        return CloudPushResult(error=cloud_asset_count_error(len(assets), asset_cap))
+
     asset_msgs = [
         archive_pb2.Asset(filename=fn, content_type=ct, data=data)
         for fn, ct, data in assets
@@ -353,6 +397,61 @@ def push_to_archive(
                     return CloudPushResult(error=f"{type(exc).__name__}: {exc}")
     finally:
         lock.release()
+
+
+def delete_page(user_id: str, page_id: str) -> CloudDeleteResult:
+    """Delete an archived page from the archive service (opt-in, D2).
+
+    Thin synchronous wrapper over ``ArchiveService.DeletePage`` reusing the
+    same mTLS channel/identity conventions as ``push_to_archive``. Single
+    attempt with a short unary deadline — the caller owns any retry policy
+    (a repeated delete is idempotent). A page that is already gone maps to
+    deleted success: the archive service signals a missing/foreign page both
+    as a NOT_FOUND abort and as ``success=False, message="not found"``
+    (servicer DeletePage), and both shapes are idempotent success here.
+
+    Args:
+        user_id: PagePocket user ID owning the page (session's cloud identity,
+            verified to match the calling client's binding by the caller)
+        page_id: Cloud archive page ID to delete
+
+    Returns:
+        CloudDeleteResult with deleted=True on success (including
+        already-deleted) or error details on failure.
+    """
+    _ensure_proto_path()
+    stub = _get_stub()
+    if stub is None:
+        return CloudDeleteResult(error="Archive service not configured")
+
+    import archive_pb2
+
+    request = archive_pb2.DeletePageRequest(user_id=user_id, page_id=page_id)
+    try:
+        response = stub.DeletePage(request, timeout=DELETE_TIMEOUT_SECONDS)
+    except Exception as exc:
+        code, _text = _rpc_error_parts(exc)
+        if code == "NOT_FOUND":
+            logger.info(
+                "Cloud delete: page already absent: user=%s page=%s",
+                user_id, page_id,
+            )
+            return CloudDeleteResult(deleted=True)
+        logger.warning(
+            "Cloud delete failed: user=%s page=%s error=%s", user_id, page_id, exc,
+        )
+        return CloudDeleteResult(error=f"{type(exc).__name__}: {exc}")
+
+    if response.success:
+        logger.info("Cloud delete succeeded: user=%s page=%s", user_id, page_id)
+        return CloudDeleteResult(deleted=True)
+    if "not found" in (response.message or "").lower():
+        logger.info(
+            "Cloud delete: page already absent: user=%s page=%s",
+            user_id, page_id,
+        )
+        return CloudDeleteResult(deleted=True)
+    return CloudDeleteResult(error=response.message or "server returned failure")
 
 
 def is_configured() -> bool:

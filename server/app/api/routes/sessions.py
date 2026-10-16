@@ -20,6 +20,7 @@ from app.models.client import Client
 from app.models.html_chunk import HtmlChunk
 from app.models.resource import Resource
 from app.models.session import Session, SessionStatus
+from app.services import archive_client
 from app.services.assembly_manager import assembly_task_manager
 
 logger = logging.getLogger(__name__)
@@ -444,12 +445,45 @@ async def get_session_status(
 )
 async def delete_session(
     session_id: str,
+    delete_cloud: bool = False,
     client: Client = Depends(get_current_client),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> dict:
-    """Cancel or delete a session and all associated files."""
+    """Cancel or delete a session and all associated files.
+
+    The ``delete_cloud`` query parameter opts in to deleting the session's
+    archived PagePocket page as well (cloud-via-server D2) — but the cloud
+    outcome NEVER affects the local deletion: the local removal (files +
+    record) is authoritative and runs first, the cloud RPC is a single
+    attempt with no retries, and every failure mode degrades to
+    ``cloud: {"deleted": false, "reason": ...}`` in a 200 response.
+    """
     session = await _get_session_or_404(session_id, db)
     require_session_owner(client, session.client_id)
+
+    # Resolve the opt-in cloud-delete gate BEFORE the local removal — the
+    # session fields it reads are gone once the row is deleted. Gate (D2):
+    # only a successfully pushed page whose cloud identity still matches the
+    # caller's binding may be deleted; anything else is skipped with a
+    # reason and the local delete proceeds regardless.
+    cloud_outcome: dict = {"deleted": False, "reason": "not_requested"}
+    cloud_identity: str | None = None
+    cloud_page_id: str | None = None
+    if delete_cloud:
+        if session.cloud_status == "success" and session.cloud_page_id:
+            if session.pagepocket_user_id and (
+                client.pagepocket_user_id == session.pagepocket_user_id
+            ):
+                # Opt-in eligible — deleted after the local removal below.
+                cloud_identity = session.pagepocket_user_id
+                cloud_page_id = session.cloud_page_id
+            else:
+                # Caller unbound or re-bound to another PagePocket user —
+                # not the cloud page's owner.
+                cloud_outcome = {"deleted": False, "reason": "binding_mismatch"}
+        else:
+            # cloud_status != "success" or no cloud page to delete.
+            cloud_outcome = {"deleted": False, "reason": "not_cloud"}
 
     # If assembling, cancel the background task before cleanup
     if session.status == SessionStatus.ASSEMBLING:
@@ -466,10 +500,48 @@ async def delete_session(
     await db.flush()
 
     logger.info("Deleted session: id=%s", session_id)
+
+    # Cloud-side delete (D2, opt-in): runs AFTER the authoritative local
+    # removal, off the event loop, and cannot raise — the local delete is
+    # never rolled back by a cloud failure.
+    if cloud_identity and cloud_page_id:
+        cloud_outcome = await _delete_cloud_page(cloud_identity, cloud_page_id)
+
     return {
-        "message": f"Session {session_id} deleted",
+        "deleted": True,
+        "cloud": cloud_outcome,
         "api_version": "v1",
     }
+
+
+async def _delete_cloud_page(user_id: str, page_id: str) -> dict:
+    """Run the blocking cloud DeletePage RPC off the event loop (D2).
+
+    Single attempt (no retry budget) and failure-isolated: every error path
+    returns ``{"deleted": False, "reason": "cloud_error"}`` — this helper
+    never raises, so the already-completed local deletion is never rolled
+    back. NOT_FOUND maps to idempotent success inside ``delete_page``.
+    """
+    try:
+        result = await asyncio.to_thread(
+            archive_client.delete_page, user_id, page_id,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Cloud delete RPC failed (local delete unaffected): "
+            "user=%s page=%s error=%s", user_id, page_id, exc,
+        )
+        return {"deleted": False, "reason": "cloud_error"}
+
+    if result.deleted:
+        logger.info("Cloud page deleted: user=%s page=%s", user_id, page_id)
+        return {"deleted": True}
+
+    logger.warning(
+        "Cloud delete rejected (local delete unaffected): "
+        "user=%s page=%s error=%s", user_id, page_id, result.error,
+    )
+    return {"deleted": False, "reason": "cloud_error"}
 
 
 @router.post(

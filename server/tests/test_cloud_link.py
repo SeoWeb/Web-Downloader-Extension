@@ -233,6 +233,102 @@ class TestCloudLink:
 
 
 # ---------------------------------------------------------------------------
+# close-cloud-lifecycle-gaps 1.1/1.2 — DELETE /api/v1/cloud/link (unbind)
+# ---------------------------------------------------------------------------
+
+
+class TestCloudUnlink:
+    """Unbind flow: clear the binding, keep the client authenticable (D1)."""
+
+    @pytest.mark.asyncio
+    async def test_unbind_clears_binding_keeps_client(self, sqlite_db):
+        """Exactly the three binding columns are cleared; api_key and hash
+        survive, and the client can still authenticate afterwards."""
+        from sqlalchemy import select as sa_select
+
+        from app.api.dependencies import authenticate_client
+        from app.api.routes.cloud import cloud_unlink
+
+        _engine, factory = sqlite_db
+        client = _make_client(
+            pagepocket_user_id="pp-user-1", pagepocket_plan="pro",
+        )
+        client.pagepocket_linked_at = datetime.now(timezone.utc)
+        await _seed_db(factory, client)
+
+        async with factory() as db:
+            attached = (await db.execute(
+                sa_select(Client).where(Client.id == client.id)
+            )).scalar_one()
+            response = await cloud_unlink(client=attached, db=db)
+            await db.commit()
+
+        assert response.bound is False
+        assert response.api_version == "v1"
+
+        async with factory() as db:
+            fresh = (await db.execute(
+                sa_select(Client).where(Client.id == client.id)
+            )).scalar_one()
+            assert fresh.pagepocket_user_id is None
+            assert fresh.pagepocket_plan is None
+            assert fresh.pagepocket_linked_at is None
+            # The client identity itself is untouched
+            assert fresh.api_key == client.api_key
+            assert fresh.api_key_hash == client.api_key_hash
+
+        # Still able to authenticate subsequent requests
+        async with factory() as db:
+            authed = await authenticate_client(db, client.api_key)
+            assert authed is not None
+            assert authed.id == client.id
+
+    @pytest.mark.asyncio
+    async def test_unbind_idempotent_on_unbound_client(self, sqlite_db):
+        """Already-unbound client → still {bound: false} (never 404/409)."""
+        from app.api.routes.cloud import cloud_unlink
+
+        _engine, factory = sqlite_db
+        client = _make_client()  # never bound
+        await _seed_db(factory, client)
+
+        async with factory() as db:
+            response = await cloud_unlink(client=client, db=db)
+            await db.commit()
+
+        assert response.bound is False
+        assert response.api_version == "v1"
+
+    @pytest.mark.asyncio
+    async def test_unbind_unknown_api_key_rejected_401_no_modification(self, sqlite_db):
+        """Unknown X-API-Key → 401 and the binding stays untouched (spec)."""
+        from sqlalchemy import select as sa_select
+
+        from app.api.dependencies import get_current_client
+
+        _engine, factory = sqlite_db
+        client = _make_client(
+            pagepocket_user_id="pp-user-1", pagepocket_plan="pro",
+        )
+        client.pagepocket_linked_at = datetime.now(timezone.utc)
+        await _seed_db(factory, client)
+
+        async with factory() as db:
+            with pytest.raises(HTTPException) as exc:
+                await get_current_client(x_api_key="unknown-key", db=db)
+        assert exc.value.status_code == 401
+
+        # No client row modification
+        async with factory() as db:
+            fresh = (await db.execute(
+                sa_select(Client).where(Client.id == client.id)
+            )).scalar_one()
+            assert fresh.pagepocket_user_id == "pp-user-1"
+            assert fresh.pagepocket_plan == "pro"
+            assert fresh.pagepocket_linked_at is not None
+
+
+# ---------------------------------------------------------------------------
 # 3.1 — Session creation uses only the bound identity
 # ---------------------------------------------------------------------------
 

@@ -12,6 +12,7 @@ import {
 import {
   linkCloudAccount,
   clearCloudBinding,
+  clearServerBinding,
 } from "../background/cloud-binding";
 
 interface PagePocketState {
@@ -105,6 +106,14 @@ export const usePagePocketStore = create<PagePocketState>()(
       // a re-login with a different account re-binds instead of sending a
       // stale bound id.
       await clearCloudBinding();
+      // close-cloud-lifecycle-gaps D1: also unbind the identity on the
+      // server's client row (DELETE /api/v1/cloud/link) so a logout ends the
+      // binding, not just the local session state. Fire-and-forget — logout
+      // must never block or fail on the monolith being unreachable;
+      // clearServerBinding already logs and swallows its own errors.
+      void clearServerBinding().catch((err) => {
+        console.warn("[CloudBinding] server unbind after logout failed:", err);
+      });
       set({ isAuthenticated: false, authUser: null });
     },
 

@@ -54,12 +54,16 @@ vi.mock("../../src/background/server-client", () => {
 });
 
 vi.mock("../../src/background/jobs", () => ({
-  scrollDownAndScrape: vi.fn().mockResolvedValue({ height: 1000, html: "<p>test</p>" }),
+  scrollDownAndScrape: vi
+    .fn()
+    .mockResolvedValue({ height: 1000, html: "<p>test</p>" }),
   startDownload: vi.fn().mockResolvedValue(["file1.zip"]),
 }));
 
 vi.mock("../../src/background/download", () => ({
-  downloadResourcesWithIncrementalAssembly: vi.fn().mockResolvedValue(undefined),
+  downloadResourcesWithIncrementalAssembly: vi
+    .fn()
+    .mockResolvedValue(undefined),
 }));
 
 vi.mock("../../src/background/merge-html", () => ({
@@ -86,7 +90,8 @@ const addMessage = vi.fn();
 
 /** Reset the active server session between tests. */
 async function resetActiveSession() {
-  const { setActiveServerSession } = await import("../../src/background/message");
+  const { setActiveServerSession } =
+    await import("../../src/background/message");
   setActiveServerSession(null);
 }
 
@@ -108,11 +113,18 @@ describe("messageWorker — server-mode message actions", () => {
 
       const result = await messageWorker(
         messageActions.SERVER_CREATE_SESSION,
-        { url: "https://example.com", options: { singleFile: false }, setActive: true },
+        {
+          url: "https://example.com",
+          options: { singleFile: false },
+          setActive: true,
+        },
         addMessage,
       );
 
-      expect(mock("createSession")).toHaveBeenCalledWith("https://example.com", { singleFile: false });
+      expect(mock("createSession")).toHaveBeenCalledWith(
+        "https://example.com",
+        { singleFile: false },
+      );
       expect(result).toEqual({ success: true, sessionId: "sess-123" });
     });
 
@@ -180,7 +192,10 @@ describe("messageWorker — server-mode message actions", () => {
         addMessage,
       );
 
-      expect(result).toEqual({ success: false, error: "No active server session" });
+      expect(result).toEqual({
+        success: false,
+        error: "No active server session",
+      });
       expect(mock("uploadHtmlChunk")).not.toHaveBeenCalled();
     });
   });
@@ -199,7 +214,10 @@ describe("messageWorker — server-mode message actions", () => {
       );
 
       expect(mock("scrapeComplete")).toHaveBeenCalledWith("sess-sc", 42);
-      expect(result).toEqual({ success: true, result: { status: "uploading" } });
+      expect(result).toEqual({
+        success: true,
+        result: { status: "uploading" },
+      });
     });
 
     it("defaults resourceCount to 0 when not provided", async () => {
@@ -259,7 +277,10 @@ describe("messageWorker — server-mode message actions", () => {
         addMessage,
       );
 
-      expect(mock("uploadContent")).toHaveBeenCalledWith("sess-uc", "Page content here");
+      expect(mock("uploadContent")).toHaveBeenCalledWith(
+        "sess-uc",
+        "Page content here",
+      );
       expect(result).toEqual({ success: true, result: { stored: true } });
     });
   });
@@ -278,7 +299,10 @@ describe("messageWorker — server-mode message actions", () => {
       );
 
       expect(mock("finalizeSession")).toHaveBeenCalledWith("sess-fs");
-      expect(result).toEqual({ success: true, result: { status: "assembling" } });
+      expect(result).toEqual({
+        success: true,
+        result: { status: "assembling" },
+      });
     });
 
     it("returns error when finalize fails", async () => {
@@ -319,6 +343,86 @@ describe("messageWorker — server-mode message actions", () => {
   });
 
   // -----------------------------------------------------------------------
+  // SERVER_DELETE_SESSION (close-cloud-lifecycle-gaps D2 / task 3.4) —
+  // the panel delete flow threads the opt-in deleteCloud flag through.
+  // -----------------------------------------------------------------------
+  describe("SERVER_DELETE_SESSION", () => {
+    it("deletes the session without the cloud option by default", async () => {
+      mock("deleteSession").mockResolvedValue(undefined);
+
+      const result = await messageWorker(
+        messageActions.SERVER_DELETE_SESSION,
+        { sessionId: "sess-del", tabId: 424242 },
+        addMessage,
+      );
+
+      expect(mock("deleteSession")).toHaveBeenCalledWith("sess-del", {
+        deleteCloud: false,
+      });
+      expect(result).toEqual({ success: true });
+    });
+
+    it("threads deleteCloud=true into the delete call (federated delete)", async () => {
+      mock("deleteSession").mockResolvedValue(undefined);
+
+      const result = await messageWorker(
+        messageActions.SERVER_DELETE_SESSION,
+        { sessionId: "sess-del", tabId: 424242, deleteCloud: true },
+        addMessage,
+      );
+
+      expect(mock("deleteSession")).toHaveBeenCalledWith("sess-del", {
+        deleteCloud: true,
+      });
+      expect(result).toEqual({ success: true });
+    });
+
+    it("falls back to the active server session for the tab", async () => {
+      mock("deleteSession").mockResolvedValue(undefined);
+      const { setActiveServerSession } =
+        await import("../../src/background/message");
+      setActiveServerSession(424243, "sess-active-del");
+
+      const result = await messageWorker(
+        messageActions.SERVER_DELETE_SESSION,
+        { tabId: 424243, deleteCloud: true },
+        addMessage,
+      );
+
+      expect(mock("deleteSession")).toHaveBeenCalledWith("sess-active-del", {
+        deleteCloud: true,
+      });
+      expect(result).toEqual({ success: true });
+    });
+
+    it("returns error when no session is available", async () => {
+      const result = await messageWorker(
+        messageActions.SERVER_DELETE_SESSION,
+        { tabId: 999999 },
+        addMessage,
+      );
+
+      expect(mock("deleteSession")).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        success: false,
+        error: "No active server session",
+      });
+    });
+
+    it("returns error when the delete fails", async () => {
+      mock("deleteSession").mockRejectedValue(new Error("Network error"));
+
+      const result = await messageWorker(
+        messageActions.SERVER_DELETE_SESSION,
+        { sessionId: "sess-del", tabId: 424242 },
+        addMessage,
+      );
+
+      expect(result).toEqual({ success: false, error: "Network error" });
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // 13.1 — SERVER_HEALTH_CHECK
   // -----------------------------------------------------------------------
   describe("SERVER_HEALTH_CHECK", () => {
@@ -332,7 +436,10 @@ describe("messageWorker — server-mode message actions", () => {
       );
 
       expect(mock("checkHealth")).toHaveBeenCalled();
-      expect(result).toEqual({ success: true, result: { status: "ok", version: "1.0.0" } });
+      expect(result).toEqual({
+        success: true,
+        result: { status: "ok", version: "1.0.0" },
+      });
     });
 
     it("returns error when health check fails", async () => {
@@ -365,10 +472,28 @@ describe("messageWorker — server-mode message actions", () => {
       mock("checkHealth").mockRejectedValue(new Error(errorMsg));
 
       const actions: Array<[string, Record<string, unknown>]> = [
-        [messageActions.SERVER_CREATE_SESSION, { url: "https://example.com", setActive: true }],
-        [messageActions.SERVER_UPLOAD_HTML_CHUNK, { sessionId: "s1", html: "", scrollIndex: 0 }],
-        [messageActions.SERVER_SCRAPE_COMPLETE, { sessionId: "s1", resourceCount: 0 }],
-        [messageActions.SERVER_UPLOAD_RESOURCE, { sessionId: "s1", path: "x", blob: null, originalUrl: "", contentType: "" }],
+        [
+          messageActions.SERVER_CREATE_SESSION,
+          { url: "https://example.com", setActive: true },
+        ],
+        [
+          messageActions.SERVER_UPLOAD_HTML_CHUNK,
+          { sessionId: "s1", html: "", scrollIndex: 0 },
+        ],
+        [
+          messageActions.SERVER_SCRAPE_COMPLETE,
+          { sessionId: "s1", resourceCount: 0 },
+        ],
+        [
+          messageActions.SERVER_UPLOAD_RESOURCE,
+          {
+            sessionId: "s1",
+            path: "x",
+            blob: null,
+            originalUrl: "",
+            contentType: "",
+          },
+        ],
         [messageActions.SERVER_UPLOAD_CONTENT, { sessionId: "s1", text: "" }],
         [messageActions.SERVER_FINALIZE_SESSION, { sessionId: "s1" }],
         [messageActions.SERVER_SESSION_STATUS, { sessionId: "s1" }],

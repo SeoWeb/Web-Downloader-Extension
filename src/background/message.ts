@@ -470,6 +470,31 @@ export async function messageWorker(
         };
       }
 
+    case messageActions.SERVER_DELETE_SESSION:
+      // Delete a server session from the panel's delete flow. The optional
+      // deleteCloud flag opts in to the federated delete — the monolith
+      // then also removes the archived PagePocket page (close-cloud-
+      // lifecycle-gaps D2). Without it the delete stays local-only.
+      try {
+        const dsSessionId =
+          data.sessionId || getActiveServerSessionId(data.tabId);
+        if (!dsSessionId) {
+          return {
+            success: false,
+            error: "No active server session",
+          };
+        }
+        await serverClient.deleteSession(dsSessionId, {
+          deleteCloud: data.deleteCloud === true,
+        });
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+
     case messageActions.SERVER_HEALTH_CHECK:
       // Check server health — no authentication required.
       // Used by the UI to show server availability status.

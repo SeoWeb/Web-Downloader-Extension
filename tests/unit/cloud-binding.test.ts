@@ -17,10 +17,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // ---------------------------------------------------------------------------
 
 const linkCloudAccountMock = vi.fn();
+const unbindCloudAccountMock = vi.fn();
 
 vi.mock("../../src/background/server-client", () => ({
   serverClient: {
     linkCloudAccount: (...args: unknown[]) => linkCloudAccountMock(...args),
+    unbindCloudAccount: (...args: unknown[]) => unbindCloudAccountMock(...args),
   },
 }));
 
@@ -66,6 +68,7 @@ if (typeof globalThis.chrome?.storage === "object") {
 
 import {
   clearCloudBinding,
+  clearServerBinding,
   ensureCloudBinding,
   getCloudBinding,
   linkCloudAccount,
@@ -79,7 +82,9 @@ import {
 const AUTH_KEY = PAGEPOCKET_AUTH_STORAGE_KEY;
 const BINDING_KEY = PAGEPOCKET_CLOUD_BINDING_KEY;
 
-function seedAuth(overrides: Partial<PagePocketAuthState> = {}): PagePocketAuthState {
+function seedAuth(
+  overrides: Partial<PagePocketAuthState> = {},
+): PagePocketAuthState {
   const auth: PagePocketAuthState = {
     accessToken: "pp-access-token",
     refreshToken: "pp-refresh-token",
@@ -96,6 +101,7 @@ describe("cloud binding (6.5 / D4)", () => {
     Object.keys(sessionStore).forEach((k) => delete sessionStore[k]);
     linkCloudAccountMock.mockReset();
     refreshTokenMock.mockReset();
+    unbindCloudAccountMock.mockReset();
   });
 
   describe("linkCloudAccount", () => {
@@ -313,6 +319,56 @@ describe("cloud binding (6.5 / D4)", () => {
 
       expect(await getCloudBinding()).toBeNull();
       expect(sessionStore[BINDING_KEY]).toBeUndefined();
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // clearServerBinding (close-cloud-lifecycle-gaps D1 / task 3.1) —
+  // server-side unbind on logout; failures are logged and swallowed.
+  // -----------------------------------------------------------------------
+  describe("clearServerBinding (server unbind on logout)", () => {
+    function seedBoundBinding() {
+      sessionStore[BINDING_KEY] = {
+        status: "bound",
+        pagepocketUserId: "pp-user-1",
+        plan: "pro",
+        linkedAt: 1,
+      };
+    }
+
+    it("clears the stored binding state after a successful unbind", async () => {
+      seedBoundBinding();
+      unbindCloudAccountMock.mockResolvedValue(true);
+
+      await clearServerBinding();
+
+      expect(unbindCloudAccountMock).toHaveBeenCalledTimes(1);
+      expect(sessionStore[BINDING_KEY]).toBeUndefined();
+      expect(await getCloudBinding()).toBeNull();
+    });
+
+    it("keeps the binding state when the unbind failed (server down)", async () => {
+      seedBoundBinding();
+      unbindCloudAccountMock.mockResolvedValue(false);
+
+      await expect(clearServerBinding()).resolves.toBeUndefined();
+
+      expect(sessionStore[BINDING_KEY]).toEqual({
+        status: "bound",
+        pagepocketUserId: "pp-user-1",
+        plan: "pro",
+        linkedAt: 1,
+      });
+    });
+
+    it("swallows client errors — the function never throws", async () => {
+      seedBoundBinding();
+      unbindCloudAccountMock.mockRejectedValue(new Error("Network down"));
+
+      await expect(clearServerBinding()).resolves.toBeUndefined();
+
+      // Nothing was cleared — removal happens only on success.
+      expect(sessionStore[BINDING_KEY]).toBeDefined();
     });
   });
 });

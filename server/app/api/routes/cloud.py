@@ -4,6 +4,10 @@
 binding. The client proves both identities: a valid ``X-API-Key`` and a
 PagePocket access token verified against the auth service. Session creation
 and the cloud push derive their identity exclusively from this binding.
+
+``DELETE /api/v1/cloud/link`` — the logout mirror: clears the binding on the
+authenticated client (same ``X-API-Key`` identity), keeping the API key
+itself valid. Idempotent, no auth-service call.
 """
 
 import logging
@@ -39,6 +43,13 @@ class CloudLinkResponse(BaseModel):
     bound: bool = True
     pagepocket_user_id: str
     plan: str | None = None
+    api_version: str = "v1"
+
+
+class CloudUnlinkResponse(BaseModel):
+    """Response body for a successful unbinding."""
+
+    bound: bool = False
     api_version: str = "v1"
 
 
@@ -94,6 +105,42 @@ async def cloud_link(
         pagepocket_user_id=result.user_id,
         plan=result.plan,
     )
+
+
+@router.delete(
+    "/link",
+    response_model=CloudUnlinkResponse,
+    summary="Unbind the PagePocket identity from this API-key client",
+    description=(
+        "Clears this client's cloud binding (user id, plan, linked-at) while "
+        "keeping the API key valid. Idempotent: unbinding an already-unbound "
+        "client still succeeds, so a retried logout never errors."
+    ),
+)
+async def cloud_unlink(
+    client: Client = Depends(get_current_client),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> CloudUnlinkResponse:
+    """Clear the client's PagePocket cloud identity (logout mirror of link).
+
+    Clears exactly the three binding columns written by ``cloud_link`` and
+    touches nothing else: the client row (``api_key``, ``last_auth_at``)
+    stays authenticable so the extension identity survives a PagePocket
+    logout. Idempotent by construction — an already-unbound client simply
+    commits a no-op and still returns success.
+    """
+    was_user_id = client.pagepocket_user_id
+
+    client.pagepocket_user_id = None
+    client.pagepocket_plan = None
+    client.pagepocket_linked_at = None
+    await db.commit()
+
+    logger.info(
+        "Cloud identity unbound: client=%s was_user=%s",
+        client.id, was_user_id or "none",
+    )
+    return CloudUnlinkResponse()
 
 
 async def _verify(token: str) -> auth_client.VerifyResult:

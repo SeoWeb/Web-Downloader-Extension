@@ -999,6 +999,78 @@ class TestPushFailsFastOnMessageSize:
 
 
 # ---------------------------------------------------------------------------
+# close-cloud-lifecycle-gaps 2.4 – pre-flight asset-count gate (D3)
+# ---------------------------------------------------------------------------
+
+
+class TestCloudPushAssetCap:
+    """Asset-count cap trips deterministically before any gRPC traffic."""
+
+    def _patch_stub(self, monkeypatch, stub):
+        from app.services import archive_client
+
+        monkeypatch.setattr(archive_client, "_get_stub", lambda: stub)
+        return archive_client
+
+    def test_default_cap_matches_gateway_ingest_default(self):
+        """No CLOUD_MAX_ASSETS configured → cap 200 (gateway MAX_INGEST_ASSETS)."""
+        from app.config import Settings
+
+        assert Settings.model_fields["cloud_max_assets"].default == 200
+
+    def test_over_cap_rejected_without_rpc(self, monkeypatch):
+        """cloud_max_assets + 1 assets → deterministic error, stub untouched."""
+        pytest.importorskip("archive_pb2", reason="proto stubs not available")
+        from app.config import settings
+        from app.services import archive_client
+
+        monkeypatch.setattr(settings, "cloud_max_assets", 3)
+        stub = MagicMock()
+        self._patch_stub(monkeypatch, stub)
+
+        result = archive_client.push_to_archive(
+            user_id="u",
+            session_id="s-cap-over",
+            url="https://example.com",
+            title="T",
+            html_content=b"x",
+            assets=[(f"a{i}.png", "image/png", b"x") for i in range(4)],
+        )
+
+        assert result.page_id is None
+        assert "asset limit" in result.error
+        assert "4 assets" in result.error
+        assert "max 3" in result.error
+        stub.IngestPage.assert_not_called()
+
+    def test_exactly_at_cap_pushes(self, monkeypatch):
+        """A session carrying exactly the cap pushes unchanged."""
+        pytest.importorskip("archive_pb2", reason="proto stubs not available")
+        from app.config import settings
+        from app.services import archive_client
+
+        monkeypatch.setattr(settings, "cloud_max_assets", 3)
+        stub = MagicMock()
+        stub.IngestPage.return_value = types.SimpleNamespace(
+            success=True, page_id="page-cap",
+        )
+        self._patch_stub(monkeypatch, stub)
+
+        result = archive_client.push_to_archive(
+            user_id="u",
+            session_id="s-cap-at",
+            url="https://example.com",
+            title="T",
+            html_content=b"x",
+            assets=[(f"a{i}.png", "image/png", b"x") for i in range(3)],
+        )
+
+        assert result.page_id == "page-cap"
+        assert result.error is None
+        assert stub.IngestPage.call_count == 1
+
+
+# ---------------------------------------------------------------------------
 # 6.2 – single-flight push (converges via user-scoped idempotency)
 # ---------------------------------------------------------------------------
 

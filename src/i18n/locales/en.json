@@ -84,6 +84,16 @@
       "showInFolder": "Show in Folder",
       "downloadAnother": "Download Another"
     },
+    "sessionDelete": {
+      "deleteButton": "Delete server copy",
+      "confirmTitle": "Delete the server copy of this download?",
+      "confirmNote": "The archived copy on the download server will be removed. This cannot be undone.",
+      "alsoRemoveFromPagepocket": "Also remove from PagePocket",
+      "confirmDelete": "Delete",
+      "cancel": "Cancel",
+      "deleted": "Server copy deleted.",
+      "deleteFailed": "Delete failed: {{error}}"
+    },
     "status": {
       "waiting": "Waiting connection...",
       "connected": "Website connected!",

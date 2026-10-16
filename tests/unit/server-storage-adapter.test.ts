@@ -18,7 +18,10 @@ import { UploadQueue } from "../../src/background/upload-queue";
 
 /** Create a mock ServerClient with controlled methods. */
 function createMockServerClient(overrides?: {
-  deleteSession?: (sessionId: string) => Promise<void>;
+  deleteSession?: (
+    sessionId: string,
+    options?: { deleteCloud?: boolean },
+  ) => Promise<void>;
   uploadResource?: (...args: unknown[]) => Promise<unknown>;
 }): ServerClient {
   const client = new ServerClient();
@@ -221,7 +224,9 @@ describe("ServerStorageAdapter", () => {
       // TypeScript enforces this at compile time; at runtime we verify
       // that the method exists on the concrete class but not on the
       // interface type (would require a cast).
-      expect(typeof (adapter as ServerStorageAdapter).getResourceCount).toBe("function");
+      expect(typeof (adapter as ServerStorageAdapter).getResourceCount).toBe(
+        "function",
+      );
     });
   });
 
@@ -362,6 +367,33 @@ describe("ServerStorageAdapter", () => {
       // there may be server-side data to clean up
       expect(deleteMock).toHaveBeenCalledWith("sess-1");
     });
+
+    it("threads the deleteCloud option into deleteSession (federated delete)", async () => {
+      const deleteMock = vi.fn().mockResolvedValue(undefined);
+      const client = createMockServerClient({
+        deleteSession: deleteMock,
+      });
+      const adapter = new ServerStorageAdapter(client);
+      adapter.setSessionId("sess-1");
+
+      await adapter.clear({ deleteCloud: true });
+
+      expect(deleteMock).toHaveBeenCalledWith("sess-1", { deleteCloud: true });
+    });
+
+    it("does not pass the cloud option when it is not requested", async () => {
+      const deleteMock = vi.fn().mockResolvedValue(undefined);
+      const client = createMockServerClient({
+        deleteSession: deleteMock,
+      });
+      const adapter = new ServerStorageAdapter(client);
+      adapter.setSessionId("sess-1");
+
+      await adapter.clear();
+
+      expect(deleteMock).toHaveBeenCalledTimes(1);
+      expect(deleteMock.mock.calls[0]).toHaveLength(1);
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -378,9 +410,17 @@ describe("ServerStorageAdapter", () => {
 
       // These are the same callsites file handlers use:
       // storage.addFile(path, content, mimeType?)
-      await adapter.addFile("images/photo.jpg", new Blob(["img"]), "image/jpeg");
+      await adapter.addFile(
+        "images/photo.jpg",
+        new Blob(["img"]),
+        "image/jpeg",
+      );
       await adapter.addFile("styles/main.css", "body {}", "text/css");
-      await adapter.addFile("scripts/app.js", new ArrayBuffer(0), "application/javascript");
+      await adapter.addFile(
+        "scripts/app.js",
+        new ArrayBuffer(0),
+        "application/javascript",
+      );
 
       // All calls succeed without type errors
     });

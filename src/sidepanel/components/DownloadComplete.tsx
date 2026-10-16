@@ -16,6 +16,8 @@ import {
 import { CloudUploadState } from "../../components/CloudUploadStatus";
 import { DownloadReport } from "../utils/downloadReport";
 import { PAGEPOCKET_URL } from "../../common/pagepocket-mode";
+import { sendMessage } from "../../common/chrome";
+import { SessionDelete } from "./SessionDelete";
 
 const ChromeExtensionRating = React.lazy(
   () => import("../../components/ChromeExtensionRating"),
@@ -38,6 +40,7 @@ interface DownloadCompleteProps {
 }
 
 export function DownloadComplete({
+  tabId,
   tabUrl,
   action,
   reset,
@@ -50,6 +53,21 @@ export function DownloadComplete({
   const [downloadId, setDownloadId] = useState<number | null>(null);
   const [isAlertExpanded, setIsAlertExpanded] = useState<boolean>(true);
   const [urlCopied, setUrlCopied] = useState<boolean>(false);
+
+  // close-cloud-lifecycle-gaps D2: the panel's tracked cloud status mirrors
+  // the server's cloud_status — the upload-complete message only fires on a
+  // successful push ("success"), an upload error maps to "failed", and a
+  // purely local/server ZIP has no cloud status at all.
+  const cloudStatus =
+    cloudUploadState?.status === "success"
+      ? "success"
+      : cloudUploadState?.status === "error"
+        ? "failed"
+        : null;
+
+  // The delete flow targets the server session of this download — only
+  // meaningful when one exists (server-mode completion or a cloud upload).
+  const showSessionDelete = !!serverDownloadUrl || !!cloudUploadState;
 
   // Load alert preference from Chrome storage
   useEffect(() => {
@@ -355,6 +373,26 @@ export function DownloadComplete({
             {t("actions.downloadAnother")}
           </button>
         </div>
+
+        {/* (close-cloud-lifecycle-gaps D2) Delete the server session;
+            cloud-success sessions get the opt-in "Also remove from
+            PagePocket" checkbox. */}
+        {showSessionDelete && (
+          <div className="w-full pt-2 border-t border-slate-100">
+            <SessionDelete
+              cloudStatus={cloudStatus}
+              onDelete={async ({ deleteCloud }) => {
+                const result = await sendMessage("background", {
+                  action: messageActions.SERVER_DELETE_SESSION,
+                  data: { tabId, deleteCloud },
+                });
+                if (result && result.success === false) {
+                  throw new Error(result.error || "Delete failed");
+                }
+              }}
+            />
+          </div>
+        )}
 
         <div className="pt-6 border-t border-slate-100 w-full">
           <p className="text-sm font-medium text-slate-600 mb-4">

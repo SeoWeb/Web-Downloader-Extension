@@ -1,10 +1,15 @@
 """Gateway configuration: env parsing and production fail-fast checks.
 
 Kept free of FastAPI imports so the checks are unit-testable in isolation.
+Also hosts the trusted-proxy drift alarm (D4): derive the actual default-route
+gateway and warn (never crash) when TRUSTED_PROXIES does not cover it.
 """
 
+import ipaddress
 import logging
 import os
+import socket
+import struct
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +31,13 @@ DEV_JWT_SECRET_DEFAULT = "dev-secret-change-me"
 # Pinned by default; chrome-extension:// origins of published extensions can
 # be appended via CORS_ALLOW_ORIGINS (comma-separated).
 DEFAULT_ALLOWED_ORIGINS = ("https://pagepocket.app", "https://app.pagepocket.app")
+
+# D4: remediation hint carried by the drift log line — the command that names
+# the bridge's REAL gateway IP, so TRUSTED_PROXIES can be aligned with it.
+TRUSTED_PROXY_DRIFT_HINT = (
+    "docker network inspect pagepocket_default --format "
+    "'{{(index .IPAM.Config 0).Gateway}}'"
+)
 
 
 class ConfigError(RuntimeError):
@@ -124,3 +136,85 @@ def trusted_proxies(raw: str | None = None) -> tuple[str, ...]:
         return ()
     entries = tuple(entry.strip() for entry in source.split(",") if entry.strip())
     return entries
+
+
+def derive_default_gateway(route_table: str | None = None) -> str | None:
+    """Derive the container's actual default-route gateway IP (D4).
+
+    Parses a /proc/net/route table, finds the interface owning the default
+    route (Destination column 00000000) and decodes its little-endian hex
+    gateway column (e.g. 0100A8C0 -> 192.168.0.1). ``route_table`` is
+    injectable so tests never touch the real file; by default /proc/net/route
+    is read. Returns None when the table is unreadable, malformed, or has no
+    usable default route — unknown topology means "skip the check", never an
+    alarm.
+    """
+    if route_table is None:
+        try:
+            with open("/proc/net/route", encoding="ascii") as fh:
+                route_table = fh.read()
+        except OSError:
+            return None
+
+    for line in route_table.splitlines():
+        # Iface Destination Gateway Flags RefCnt Use Metric Mask MTU Window IRTT
+        columns = line.split()
+        if len(columns) < 3 or columns[1] != "00000000":
+            continue
+        gateway_hex = columns[2]
+        if gateway_hex == "00000000":  # default route without a gateway
+            continue
+        try:
+            # Little-endian hex: 0100A8C0 -> bytes C0 A8 00 01 -> 192.168.0.1
+            return socket.inet_ntoa(struct.pack("<I", int(gateway_hex, 16)))
+        except (ValueError, struct.error):
+            continue
+    return None
+
+
+def _addr_is_covered(addr: str, entries: tuple[str, ...]) -> bool:
+    """Whether ``addr`` matches a TRUSTED_PROXIES entry (IP or containing CIDR).
+
+    Same matching semantics as the limiter's ``_addr_is_trusted`` — the drift
+    check must agree with what the limiter actually trusts. Unparseable
+    entries cover nothing.
+    """
+    try:
+        addr_ip = ipaddress.ip_address(addr)
+    except ValueError:
+        return False
+    for entry in entries:
+        try:
+            if "/" in entry:
+                if addr_ip in ipaddress.ip_network(entry, strict=False):
+                    return True
+            elif addr_ip == ipaddress.ip_address(entry):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+def check_trusted_proxy_drift(route_table: str | None = None) -> str:
+    """Compare the derived default-route gateway with TRUSTED_PROXIES (D4).
+
+    Returns "ok" | "drift" and NEVER raises. On drift it logs one structured
+    error line (derived IP, configured entries, remediation hint) and returns
+    — the caller must keep booting: the alarm warns, it never blocks startup
+    (same fail-open philosophy as the rate limiter). Unknown topology
+    (unreadable route table, no default route) skips silently with "ok".
+    """
+    entries = trusted_proxies()
+    derived = derive_default_gateway(route_table)
+    if derived is None or _addr_is_covered(derived, entries):
+        return "ok"
+
+    logger.error(
+        "TRUSTED_PROXIES drift: derived default-route gateway %s matches none of "
+        "the configured entries %s — XFF is distrusted, so every client shares "
+        "one rate-limit bucket. Remediation: %s (then set TRUSTED_PROXIES)",
+        derived,
+        list(entries) if entries else "(empty)",
+        TRUSTED_PROXY_DRIFT_HINT,
+    )
+    return "drift"

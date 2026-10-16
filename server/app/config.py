@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     archive_ca_cert: str = ""
     archive_client_key: str = ""
     archive_client_cert: str = ""
+    # Asset-count cap for cloud push — parity with the gateway's REST ingest
+    # MAX_INGEST_ASSETS default (equal defaults carry the parity; the two
+    # caps live in different processes with different config systems).
+    cloud_max_assets: int = 200
 
     # PagePocket auth service (cloud identity binding, cloud/link)
     # Sane default matches the compose service name on the internal network.
