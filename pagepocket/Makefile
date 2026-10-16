@@ -121,6 +121,12 @@ test-integration:
 			exit 1; \
 		fi; \
 	fi; \
+	for i in $$(seq 1 30); do \
+		s3st=$$($(IT_COMPOSE) ps -a --filter name=s3mock-init --format '{{.State}}' 2>/dev/null | head -1); \
+		[ "$$s3st" = "exited" ] && break; \
+		sleep 1; \
+	done; \
+	$(IT_COMPOSE) logs --tail=5 s3mock-init >&2 || true; \
 	for i in $$(seq 1 60); do \
 		code=$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/v1/health 2>/dev/null || echo 000); \
 		if [ "$$code" = "200" ]; then break; fi; \

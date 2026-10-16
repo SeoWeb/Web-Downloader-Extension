@@ -29,3 +29,42 @@ networks:
   monolith:
     name: pagepocket-it-monolith
     external: false
+
+# Hermetic R2 for CI/integration (2026-10-16 deploy-day incident): the base
+# compose passes R2_* through with empty defaults, so on a runner with no
+# .env the archive-service crashed in boto3 client construction; locally the
+# REAL bucket silently received test uploads. The IT stack therefore runs
+# adobe/s3mock (MinIO pulled its free images from Docker Hub and quay in
+# 2025) and pins the archive's R2 env to it — hermetic, no real-bucket
+# pollution, no credentials needed.
+services:
+  s3mock:
+    image: adobe/s3mock:latest
+    networks:
+      - default
+
+  s3mock-init:
+    # One-shot bucket creation, reusing the built archive image (has boto3).
+    # NOTE: the make target pre-builds archive-service so this image exists.
+    image: pagepocket-it-archive-service
+    depends_on:
+      - s3mock
+    environment:
+      R2_ENDPOINT_URL: http://s3mock:9090
+      R2_ACCESS_KEY_ID: itadmin
+      R2_SECRET_ACCESS_KEY: itadmin-secret
+      R2_BUCKET_NAME: it-integration-pages
+    entrypoint:
+      - python
+      - -c
+      - "import boto3,os; c=boto3.client('s3',endpoint_url=os.environ['R2_ENDPOINT_URL'],aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'],aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'],region_name='auto'); c.create_bucket(Bucket=os.environ['R2_BUCKET_NAME']); print('bucket ready:', os.environ['R2_BUCKET_NAME'])"
+    networks:
+      - default
+    restart: "no"
+
+  archive-service:
+    environment:
+      R2_ENDPOINT_URL: http://s3mock:9090
+      R2_ACCESS_KEY_ID: itadmin
+      R2_SECRET_ACCESS_KEY: itadmin-secret
+      R2_BUCKET_NAME: it-integration-pages
