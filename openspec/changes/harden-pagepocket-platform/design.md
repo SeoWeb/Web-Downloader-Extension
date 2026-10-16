@@ -73,6 +73,8 @@ RESOURCE_EXHAUSTED → 402/413/429 mapping rests on English prose matching dupli
 
 ## Open questions / follow-ups recorded
 
+- Boot-race knowledge (fixed in-wave): MySQL's `mysqladmin ping -h localhost` healthcheck can pass during the entrypoint's socket-only init phase → services raced TCP readiness (fixed via bounded connect-retry in `shared/db.py`, pymysql-2002/2003-only, bad creds still fail fast). Deploy-day option: switch healthchecks to `healthcheck.sh --connect` (audit P3-8).
+
 - grpc.aio migration for the gateway.
 - Chunked-ingest RPC (carried from `harden-backend-security-and-ops`).
 - Per-service mTLS client certs + CN→RPC allow-list interceptor.
