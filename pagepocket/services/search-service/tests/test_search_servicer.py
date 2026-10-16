@@ -418,6 +418,23 @@ class TestCollectionFilter(unittest.TestCase):
         self.assertNotIn("page-foreign", page_ids)
         self.assertEqual(page_ids, {"page-1"})
 
+    def test_unfiltered_search_runs_without_collection_bind(self):
+        """A search with NO collection_id must execute: the expanding
+        ``coll_ids`` bind may only be declared when the placeholder exists
+        (bindparams() raises ArgumentError on absent names — this exact gap
+        turned every unfiltered search into gRPC UNKNOWN; caught by the
+        MySQL integration suite, 6.4)."""
+        self._index("page-1")
+        self._index("page-2")
+
+        resp, ctx, stub = self._search(collection_id="")
+
+        self.assertIsNone(ctx.code)
+        stub.ListCollectionPageIds.assert_not_called()
+        page_ids = {r.page_id for r in resp.results}
+        self.assertEqual(page_ids, {"page-1", "page-2"})
+        self.assertEqual(resp.total, 2)
+
     def test_empty_collection_returns_empty_result(self):
         """Empty id list from an OWNED rpc call → empty result (correct,
         cacheable — not a library outage)."""

@@ -16,6 +16,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "shared",
 
 import auth_pb2
 import auth_pb2_grpc
+# StatusResponse lives in common.proto (single source of truth since
+# harden-pagepocket-platform): auth.proto no longer defines its own.
+import common_pb2
 from db import db_session, get_engine
 from jwt_utils import issue_access_token, issue_refresh_token, verify_access_token
 from models import RefreshToken, User
@@ -213,4 +216,4 @@ class AuthServicer(auth_pb2_grpc.AuthServiceServicer):
     def Logout(self, request, context):
         with db_session(self.engine) as session:
             session.query(RefreshToken).filter(RefreshToken.user_id == request.user_id).delete()
-        return auth_pb2.StatusResponse(success=True)
+        return common_pb2.StatusResponse(success=True)

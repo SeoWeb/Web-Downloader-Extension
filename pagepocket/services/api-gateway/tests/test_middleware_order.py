@@ -54,6 +54,14 @@ class TestMiddlewareOrdering(unittest.TestCase):
         self.assertEqual(r.status_code, 401)
         self.assertEqual(r.headers.get("access-control-allow-origin"), ORIGIN)
 
+    def test_get_page_by_id_unauthenticated_returns_401(self):
+        """Task 3.10 route: no bearer token → the auth middleware 401s before
+        the route (and any gRPC call) is ever reached."""
+        with TestClient(self.main.app) as client:
+            r = client.get("/api/v1/archive/pages/p1")
+        self.assertEqual(r.status_code, 401)
+        self.assertEqual(r.json(), {"detail": "Invalid token", "api_version": "v1"})
+
     def test_429_response_carries_cors_headers(self):
         # Failing-open happens on Redis outage; here we force the limit to be
         # exceeded to see a real 429 through the full middleware stack.

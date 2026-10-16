@@ -37,7 +37,11 @@ type ShareDialogProps = {
 
 function resolveShareUrl(link: { short_url?: string; token: string } | undefined): string {
   if (!link) return "";
-  return link.short_url || `${window.location.origin}/s/${link.token}`;
+  // Hash-at-rest (share service): page-keyed lookups after a cache miss
+  // return metadata only — token and short_url are both empty because the
+  // plaintext token is unrecoverable by design (creation is the one-time
+  // reveal). Never render a broken origin/s/ URL in that state.
+  return link.short_url || (link.token ? `${window.location.origin}/s/${link.token}` : "");
 }
 
 export function ShareDialog({ pageId, open, onOpenChange }: ShareDialogProps) {
@@ -91,9 +95,11 @@ export function ShareDialog({ pageId, open, onOpenChange }: ShareDialogProps) {
   });
 
   const shareUrl = resolveShareUrl(existingLink || undefined);
+  const hasUsableUrl = shareUrl.length > 0;
 
   const copyLink = useCallback(async () => {
     const url = resolveShareUrl(existingLink || undefined);
+    if (!url) return; // metadata-only link (hash-at-rest): nothing to copy
     try {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied to clipboard");
@@ -122,7 +128,10 @@ export function ShareDialog({ pageId, open, onOpenChange }: ShareDialogProps) {
     }
   }, [existingLink]);
 
-  const hasActiveLink = !!existingLink?.token;
+  // A link record exists (GetShareLinkByPage 404s when none does) — but the
+  // URL is only present on a cache/creation-time reveal; hash-at-rest makes
+  // the plaintext unrecoverable afterwards.
+  const hasActiveLink = !!existingLink;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -185,36 +194,47 @@ export function ShareDialog({ pageId, open, onOpenChange }: ShareDialogProps) {
 
           {hasActiveLink ? (
             <div className="space-y-3 w-full">
-              <div className="flex items-center gap-2 rounded-md border border-border bg-muted p-3 w-full">
-                <Link2 className="size-4 shrink-0 text-muted-foreground" />
-                <span className="text-sm flex-1 w-full break-all">
-                  {shareUrl}
-                </span>
-              </div>
+              {hasUsableUrl ? (
+                <div className="flex items-center gap-2 rounded-md border border-border bg-muted p-3 w-full">
+                  <Link2 className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="text-sm flex-1 w-full break-all">
+                    {shareUrl}
+                  </span>
+                </div>
+              ) : (
+                <p role="note" className="text-xs text-muted-foreground">
+                  Link ready — copy it from the creation screen or create a new link
+                </p>
+              )}
               {existingLink.view_count !== undefined && (
                 <p className="text-xs text-muted-foreground">
                   {existingLink.view_count} view{existingLink.view_count !== 1 ? "s" : ""}
                 </p>
               )}
               <div className="flex gap-2">
-                <Button onClick={copyLink} className="flex-1">
+                <Button onClick={copyLink} className="flex-1" disabled={!hasUsableUrl}>
                   <Copy className="size-4 mr-2" />
                   Copy link
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => window.open(shareUrl, "_blank")}
+                  aria-label="Open link"
+                  onClick={() => {
+                    if (shareUrl) window.open(shareUrl, "_blank");
+                  }}
+                  disabled={!hasUsableUrl}
                 >
                   <ExternalLink className="size-4" />
                 </Button>
                 <Button
                   variant="destructive"
+                  aria-label="Revoke link"
                   onClick={() => {
                     if (confirm("Revoke this share link?")) {
                       revokeMutation.mutate();
                     }
                   }}
-                  disabled={revokeMutation.isPending}
+                  disabled={revokeMutation.isPending || !existingLink?.token}
                 >
                   <Trash2 className="size-4" />
                 </Button>

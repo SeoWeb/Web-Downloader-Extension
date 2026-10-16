@@ -228,6 +228,7 @@ class TestGatewayCallDeadlines(unittest.TestCase):
     def _archive_stub(self):
         stub = MagicMock()
         stub.ListPages.return_value = archive_pb2.ListPagesResponse(total=0)
+        stub.GetPage.return_value = archive_pb2.PageResponse()
         stub.GetPageContent.return_value = archive_pb2.PageContentResponse()
         stub.DeletePage.return_value = common_pb2.StatusResponse(success=True)
         stub.GetArchiveFile.return_value = archive_pb2.ArchiveFileResponse(data=b"x")
@@ -237,11 +238,13 @@ class TestGatewayCallDeadlines(unittest.TestCase):
         stub = self._archive_stub()
         with patch.object(archive_routes, "archive_stub", return_value=stub):
             _run(archive_routes.list_pages(_fake_request()))
+            _run(archive_routes.get_page(_fake_request(), "p1"))
             _run(archive_routes.view_page(_fake_request(), "p1"))
             _run(archive_routes.delete_page(_fake_request(), "p1"))
             _run(archive_routes.get_page_file(_fake_request(), "p1", "index.html"))
 
         for call in (*stub.ListPages.call_args_list,
+                     *stub.GetPage.call_args_list,
                      *stub.GetPageContent.call_args_list,
                      *stub.DeletePage.call_args_list,
                      *stub.GetArchiveFile.call_args_list):
@@ -288,6 +291,105 @@ class TestViewPageResponseShaping(unittest.TestCase):
         with patch.object(archive_routes, "archive_stub", return_value=stub):
             resp = _run(archive_routes.view_page(_fake_request(), "p1"))
         self.assertIsNone(resp["expires_at"])
+
+
+class TestGetPageRoute(unittest.TestCase):
+    """By-id metadata fetch (page-viewer spec / task 3.10): GET /pages/{id}
+    dispatches to the ownership-enforced ArchiveService.GetPage — the viewer
+    never scans a page-size-limited list."""
+
+    def setUp(self):
+        self.stub = MagicMock()
+        p = patch.object(archive_routes, "archive_stub", return_value=self.stub)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_owned_page_returns_list_pages_item_shape(self):
+        """The gateway shapes the proto PageResponse to the exact item shape
+        list_pages emits (what PageResponseSchema validates)."""
+        self.stub.GetPage.return_value = archive_pb2.PageResponse(
+            id="p1", user_id="u1", url="https://example.com",
+            title="Example", preview_text="preview", size_bytes=1234,
+            extension_job_id="job-1", archived_at="2026-01-01T00:00:00",
+        )
+        resp = _run(archive_routes.get_page(_fake_request(user_id="u1"), "p1"))
+        self.assertEqual(resp, {
+            "id": "p1",
+            "user_id": "u1",
+            "url": "https://example.com",
+            "title": "Example",
+            "preview_text": "preview",
+            "size_bytes": 1234,
+            "archived_at": "2026-01-01T00:00:00",
+        })
+        # Caller identity, never empty; explicit deadline (D11).
+        sent = self.stub.GetPage.call_args.args[0]
+        self.assertEqual(sent.page_id, "p1")
+        self.assertEqual(sent.user_id, "u1")
+        self.assertEqual(self.stub.GetPage.call_args.kwargs.get("timeout"), 30)
+
+    def test_cross_user_or_missing_page_returns_404(self):
+        """GetPage returns NOT_FOUND for cross-user AND nonexistent ids —
+        surfaced unchanged (no existence leak), api_version-stamped."""
+        self.stub.GetPage.side_effect = _FakeRpcError(
+            grpc.StatusCode.NOT_FOUND, "Page not found",
+        )
+        with self.assertRaises(HTTPException) as cm:
+            _run(archive_routes.get_page(_fake_request(user_id="u1"), "foreign-p"))
+        self.assertEqual(cm.exception.status_code, 404)
+        self.assertEqual(cm.exception.detail.get("api_version"), "v1")
+
+    def test_response_carries_no_presigned_fields(self):
+        """D4 regression guard: metadata only — never any url-bearing blob
+        beyond the page's own source url, and no signed_url field at all."""
+        self.stub.GetPage.return_value = archive_pb2.PageResponse(id="p1", user_id="u1")
+        resp = _run(archive_routes.get_page(_fake_request(), "p1"))
+        self.assertNotIn("signed_url", resp)
+        self.assertNotIn("r2_key", resp)
+
+
+class TestArchiveRouteErrorTranslation(unittest.TestCase):
+    """gRPC failures on the archive metadata routes map through the shared
+    handler: a nonexistent/cross-user page is a 404 (never an unhandled 500)
+    and an unreachable archive is a 503 + Retry-After (D1/D8). Wave-1's D4
+    rewrite dropped these handlers; the integration gate caught the 500."""
+
+    def _patched(self, stub):
+        p = patch.object(archive_routes, "archive_stub", return_value=stub)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_view_page_not_found_is_404(self):
+        stub = MagicMock()
+        stub.GetPageContent.side_effect = _FakeRpcError(
+            grpc.StatusCode.NOT_FOUND, "Page not found",
+        )
+        self._patched(stub)
+        with self.assertRaises(HTTPException) as cm:
+            _run(archive_routes.view_page(_fake_request(), "missing-p"))
+        self.assertEqual(cm.exception.status_code, 404)
+        self.assertEqual(cm.exception.detail.get("api_version"), "v1")
+
+    def test_list_pages_unavailable_is_503(self):
+        stub = MagicMock()
+        stub.ListPages.side_effect = _FakeRpcError(
+            grpc.StatusCode.UNAVAILABLE, "archive down",
+        )
+        self._patched(stub)
+        with self.assertRaises(HTTPException) as cm:
+            _run(archive_routes.list_pages(_fake_request()))
+        self.assertEqual(cm.exception.status_code, 503)
+        self.assertIn("Retry-After", cm.exception.headers or {})
+
+    def test_delete_page_not_found_is_404(self):
+        stub = MagicMock()
+        stub.DeletePage.side_effect = _FakeRpcError(
+            grpc.StatusCode.NOT_FOUND, "Page not found",
+        )
+        self._patched(stub)
+        with self.assertRaises(HTTPException) as cm:
+            _run(archive_routes.delete_page(_fake_request(), "missing-p"))
+        self.assertEqual(cm.exception.status_code, 404)
 
 
 class TestExtensionJobIdValidation(unittest.TestCase):

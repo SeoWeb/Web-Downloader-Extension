@@ -51,7 +51,7 @@
 - [x] 3.7 Delete the dead `/api/session/refresh` route `pagepocket/frontend/src/app/api/session/refresh/route.ts` and remove all references
 - [x] 3.8 Add global 401 handling (clear session + redirect `/login`, e.g. `QueryCache.onError`) in `pagepocket/frontend/src/lib/client-api.ts` + the providers file
 - [x] 3.9 Reject backslash redirect bypass in `pagepocket/frontend/src/lib/auth/redirect.ts` (tests for `/\evil.com`)
-- [ ] 3.10 Fetch viewer pages by id (drop `page_size: 50` + `.find()`) in `pagepocket/frontend/src/lib/api/archive.ts` + `pagepocket/frontend/src/components/app/page-viewer-shell.tsx`; iframe `src` uses the first-party proxy path
+- [x] 3.10 Fetch viewer pages by id (drop `page_size: 50` + `.find()`) in `pagepocket/frontend/src/lib/api/archive.ts` + `pagepocket/frontend/src/components/app/page-viewer-shell.tsx`; iframe `src` uses the first-party proxy path
 - [x] 3.11 Check delete-flow response status and surface errors (no UI removal on failure) in `pagepocket/frontend/src/components/app/page-viewer-shell.tsx`
 - [x] 3.12 Add security headers + `poweredByHeader: false` (HSTS, `frame-ancestors 'none'`) in `pagepocket/frontend/next.config.ts`
 - [x] 3.13 Add the `server-only` import guard to `pagepocket/frontend/src/lib/env.ts` (verify a client import fails `pnpm build`)
@@ -86,11 +86,11 @@
 ## 6. Final verification, gates & deploy-gated checklist
 
 - [x] 6.1 Extend the AST convention in `pagepocket/services/api-gateway/tests/test_grpc_transport.py` to fail on any sync stub call in an `async def` gateway handler not wrapped in `run_in_threadpool`, and run it
-- [ ] 6.2 Run grep gates: no `library_db` in `pagepocket/services/search-service/**`; no `public, immutable` in `pagepocket/frontend/src/app/api/pp/[...path]/route.ts`; no `google.com/s2` in `pagepocket/frontend/src/**`; no `/api/session/refresh` references in `pagepocket/frontend/src/**`; no per-call channel construction in archive/library/share servicers
-- [ ] 6.3 Verify presigned-URL removal completeness: no `signed_url`/`url` R2 fields in gateway view/share responses and no extension/frontend consumer (grep `pagepocket/extension/**`, `pagepocket/frontend/src/**`, `pagepocket/services/api-gateway/routers/**`)
-- [ ] 6.4 Run the full test gates: `pnpm test` (in `pagepocket/frontend`), `make test`, `make test-integration` (in `pagepocket`), and `cd server && python3 -m pytest tests -q` — all green
-- [ ] 6.5 Run `openspec validate --change "harden-pagepocket-platform"` until valid and confirm every spec scenario above has coverage in code or tests
-- [ ] 6.6 Confirm no task above mutated production and that all prepared scripts (`pagepocket/scripts/prod/rotate-db-users.sh`, confinement overlay, drill fix) are un-executed locally
+- [x] 6.2 Run grep gates: no `library_db` in `pagepocket/services/search-service/**`; no `public, immutable` in `pagepocket/frontend/src/app/api/pp/[...path]/route.ts`; no `google.com/s2` in `pagepocket/frontend/src/**`; no `/api/session/refresh` references in `pagepocket/frontend/src/**`; no per-call channel construction in archive/library/share servicers
+- [x] 6.3 Verify presigned-URL removal completeness: no `signed_url`/`url` R2 fields in gateway view/share responses and no extension/frontend consumer (grep `pagepocket/extension/**`, `pagepocket/frontend/src/**`, `pagepocket/services/api-gateway/routers/**`)
+- [x] 6.4 Run the full test gates: `pnpm test` (in `pagepocket/frontend`), `make test`, `make test-integration` (in `pagepocket`), and `cd server && python3 -m pytest tests -q` — all green
+- [x] 6.5 Run `openspec validate --change "harden-pagepocket-platform"` until valid and confirm every spec scenario above has coverage in code or tests
+- [x] 6.6 Confirm no task above mutated production and that all prepared scripts (`pagepocket/scripts/prod/rotate-db-users.sh`, confinement overlay, drill fix) are un-executed locally
 - [ ] 6.7 DEPLOY-GATED (user-ordered): execute per-service MySQL user rotation (`pagepocket/scripts/prod/rotate-db-users.sh`) + compose env cutover
 - [ ] 6.8 DEPLOY-GATED (user-ordered): apply monolith network confinement and verify search/library/share unreachable, archive/auth reachable from the monolith container
 - [ ] 6.9 DEPLOY-GATED (user-ordered): arm share-service `ENVIRONMENT=production`/`BASE_URL` and verify a prod `short_url` uses the public host

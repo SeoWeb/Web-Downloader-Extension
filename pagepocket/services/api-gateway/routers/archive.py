@@ -82,17 +82,23 @@ async def list_pages(
     sort_by: str = "archived_at",
     collection_id: str = "",
 ):
-    resp = await run_in_threadpool(
-        archive_stub().ListPages,
-        archive_pb2.ListPagesRequest(
-            user_id=request.state.user_id,
-            page=page,
-            page_size=page_size,
-            sort_by=sort_by,
-            collection_id=collection_id,
-        ),
-        timeout=30,
-    )
+    try:
+        resp = await run_in_threadpool(
+            archive_stub().ListPages,
+            archive_pb2.ListPagesRequest(
+                user_id=request.state.user_id,
+                page=page,
+                page_size=page_size,
+                sort_by=sort_by,
+                collection_id=collection_id,
+            ),
+            timeout=30,
+        )
+    except grpc.RpcError as e:
+        # D8: a collection-filtered listing that cannot be resolved arrives
+        # as UNAVAILABLE and must surface as 503 + Retry-After — never a
+        # bare 500 (NOT_FOUND/quota/etc. map through the shared handler too).
+        handle_grpc_error(e)
     return {
         "pages": [
             {
@@ -112,16 +118,49 @@ async def list_pages(
     }
 
 
+@router.get("/pages/{page_id}")
+async def get_page(request: Request, page_id: str):
+    """By-id metadata fetch (page-viewer spec): the viewer never scans a
+    page-size-limited list. GetPage is ownership-enforced upstream and
+    returns NOT_FOUND for cross-user ids — surfaced unchanged (no
+    existence leak). Response items mirror list_pages' item shape."""
+    try:
+        resp = await run_in_threadpool(
+            archive_stub().GetPage,
+            archive_pb2.GetPageRequest(
+                page_id=page_id,
+                user_id=request.state.user_id,
+            ),
+            timeout=30,
+        )
+    except grpc.RpcError as e:
+        handle_grpc_error(e)
+    return {
+        "id": resp.id,
+        "user_id": resp.user_id,
+        "url": resp.url,
+        "title": resp.title,
+        "preview_text": resp.preview_text,
+        "size_bytes": resp.size_bytes,
+        "archived_at": resp.archived_at,
+    }
+
+
 @router.get("/pages/{page_id}/view")
 async def view_page(request: Request, page_id: str):
-    resp = await run_in_threadpool(
-        archive_stub().GetPageContent,
-        archive_pb2.GetPageContentRequest(
-            page_id=page_id,
-            user_id=request.state.user_id,
-        ),
-        timeout=30,
-    )
+    try:
+        resp = await run_in_threadpool(
+            archive_stub().GetPageContent,
+            archive_pb2.GetPageContentRequest(
+                page_id=page_id,
+                user_id=request.state.user_id,
+            ),
+            timeout=30,
+        )
+    except grpc.RpcError as e:
+        # A nonexistent/cross-user page is NOT_FOUND upstream — surfaced as a
+        # 404 (never an unhandled 500; integration regression 3.10/6.4).
+        handle_grpc_error(e)
     # D4: presigned R2 URLs are removed from the REST contract — the response
     # must not carry any url/signed_url field; archived content is delivered
     # exclusively via the sandboxed /f/* proxy routes.
@@ -130,14 +169,17 @@ async def view_page(request: Request, page_id: str):
 
 @router.delete("/pages/{page_id}")
 async def delete_page(request: Request, page_id: str):
-    resp = await run_in_threadpool(
-        archive_stub().DeletePage,
-        archive_pb2.DeletePageRequest(
-            page_id=page_id,
-            user_id=request.state.user_id,
-        ),
-        timeout=30,
-    )
+    try:
+        resp = await run_in_threadpool(
+            archive_stub().DeletePage,
+            archive_pb2.DeletePageRequest(
+                page_id=page_id,
+                user_id=request.state.user_id,
+            ),
+            timeout=30,
+        )
+    except grpc.RpcError as e:
+        handle_grpc_error(e)
     return {"success": resp.success}
 
 

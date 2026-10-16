@@ -232,9 +232,15 @@ class SearchServicer(search_pb2_grpc.SearchServiceServicer):
             score_expr = f"{MATCH_FTS}"
             base_where = f"user_id = :uid AND {LIKE_FILTER} {coll_filter}"
 
-            # Expanding bind param only binds when the placeholder exists.
+            # Expanding bind param is declared only when the placeholder
+            # exists — bindparams() raises ArgumentError on names absent
+            # from the text() construct, which had turned every unfiltered
+            # (no collection_id) search into a gRPC UNKNOWN.
             def _compiled(sql):
-                return text(sql).bindparams(bindparam("coll_ids", expanding=True))
+                stmt = text(sql)
+                if ":coll_ids" in sql:
+                    stmt = stmt.bindparams(bindparam("coll_ids", expanding=True))
+                return stmt
 
             # Count
             count_sql = _compiled(f"""
