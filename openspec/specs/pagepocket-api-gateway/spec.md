@@ -1,4 +1,10 @@
-## ADDED Requirements
+# PagePocket API Gateway Specification
+
+## Purpose
+
+The single internet-facing HTTP entry point for PagePocket cloud services: REST-to-gRPC routing, JWT authentication, per-identity rate limiting, quota error mapping, middleware ordering, and request validation.
+
+## Requirements
 
 ### Requirement: Public REST Surface
 The API Gateway SHALL expose all cloud functionality under `/api/v1/*` as the only internet-facing HTTP entry point and SHALL forward every authorised request to the appropriate internal gRPC service.
@@ -34,7 +40,7 @@ The API Gateway SHALL require a valid bearer JWT on every route except `/api/v1/
 - **THEN** the gateway MUST forward to `ShareService.ValidateToken` without requiring a JWT
 
 ### Requirement: Rate Limiting
-The API Gateway SHALL enforce per-route, per-identity rate limits to protect internal services.
+The API Gateway SHALL enforce per-route, per-identity rate limits to protect internal services, with unauthenticated public routes limited per client IP (derived per the spoof-proof rules of `client-identity-propagation`).
 
 #### Scenario: Authenticated route limit
 - **WHEN** a JWT-authenticated caller exceeds 600 requests per minute on any `/api/v1/*` route
@@ -45,6 +51,11 @@ The API Gateway SHALL enforce per-route, per-identity rate limits to protect int
 - **WHEN** an unauthenticated IP exceeds 20 requests per minute on `/api/v1/auth/*`
 - **THEN** the gateway MUST return HTTP 429 with a `Retry-After` header
 
+#### Scenario: Public share route limit
+- **WHEN** an unauthenticated IP exceeds the 20-per-minute class on `/api/v1/share/public/{token}`
+- **THEN** the gateway MUST return HTTP 429 with a `Retry-After` header
+- **AND** the request MUST NOT reach the share-service (no upstream DB write)
+
 ### Requirement: Archive REST Routes
 The API Gateway SHALL expose REST routes that map 1:1 to `ArchiveService` RPCs for page listing, viewing, and deletion.
 
@@ -53,10 +64,10 @@ The API Gateway SHALL expose REST routes that map 1:1 to `ArchiveService` RPCs f
 - **THEN** the gateway MUST call `ArchiveService.ListPages` with the authenticated `user_id`
 - **AND** return `{ "pages": [...], "total": <int> }`
 
-#### Scenario: View page
+#### Scenario: View page (no presigned URL)
 - **WHEN** a client sends `GET /api/v1/archive/pages/{page_id}/view`
 - **THEN** the gateway MUST call `ArchiveService.GetPageContent` with the authenticated `user_id` and `page_id`
-- **AND** return `{ "url": <presigned_r2_url>, "expires_at": <unix_seconds> }`
+- **AND** the response MUST NOT contain any presigned or R2 URL field (the `url`/`signed_url` contract is removed; archived content is delivered exclusively via the sandboxed asset routes)
 
 #### Scenario: Delete page
 - **WHEN** a client sends `DELETE /api/v1/archive/pages/{page_id}`
@@ -94,8 +105,68 @@ The API Gateway SHALL expose REST routes for collections, tags, search, and shar
 - **WHEN** a client sends `POST /api/v1/share` with JSON `{ page_id, is_public, expires_at }`
 - **THEN** the gateway MUST call `ShareService.CreateShareLink` and return `{ token, short_url, is_public, expires_at, view_count }`
 
-#### Scenario: Validate share link (public)
+#### Scenario: Validate share link (public, no presigned URL)
 - **WHEN** an unauthenticated client sends `GET /api/v1/share/public/{token}`
-- **THEN** the gateway MUST call `ShareService.ValidateToken` and, on `valid=true`, call `ArchiveService.GetPageContent` using the returned `page_id`
-- **AND** return `{ url: <presigned_r2_url>, expires_at: <unix_seconds> }`
+- **THEN** the gateway MUST call `ShareService.ValidateToken` and, on `valid=true`, return the page reference metadata only
+- **AND** the response MUST NOT contain a presigned R2 URL (the `url` field is removed; delivery is via the sandboxed proxy routes)
 - **AND** return HTTP 404 if the token is invalid, revoked, or expired
+
+### Requirement: Middleware Ordering (CORS Outermost)
+The gateway SHALL register middleware so that CORS is the outermost layer (added last), guaranteeing that error responses produced by inner layers — including 401 authentication and 429 rate-limit rejections — carry `Access-Control-Allow-Origin` headers.
+
+#### Scenario: 401 response carries CORS headers
+- **WHEN** a browser request from an allowed origin arrives without a valid token
+- **THEN** the 401 response MUST include `Access-Control-Allow-Origin` for that origin
+
+#### Scenario: 429 response carries CORS headers
+- **WHEN** a browser client exceeds a rate limit
+- **THEN** the 429 response MUST include `Access-Control-Allow-Origin` so the frontend can read `Retry-After`
+
+### Requirement: Logout Endpoint Contract
+The gateway SHALL expose `POST /api/v1/auth/logout` as a request-bodied endpoint whose handler receives the FastAPI `Request` object (typed parameter), forwarding to `AuthService.Logout` so server-side refresh-token revocation executes, and returning success even when the caller sends no JSON body.
+
+#### Scenario: Logout revokes refresh tokens
+- **WHEN** an authenticated client sends `POST /api/v1/auth/logout` with no body (or an empty JSON body)
+- **THEN** the gateway MUST call `AuthService.Logout`, which revokes all of the user's refresh tokens
+- **AND** return HTTP 200 (never 422/500 caused by an untyped `request` query-param binding)
+
+#### Scenario: Logout without valid session
+- **WHEN** `POST /api/v1/auth/logout` is called without a valid bearer token
+- **THEN** the gateway MUST return HTTP 401 per the JWT middleware rules
+
+### Requirement: Malformed Request Body Handling
+The gateway SHALL return HTTP 400 with an `api_version`-stamped error body for malformed or missing JSON bodies and SHALL NOT raise unhandled exceptions from direct dictionary indexing on request payloads in any router.
+
+#### Scenario: Malformed JSON returns 400
+- **WHEN** a client sends a non-JSON or syntactically invalid body to a JSON-expecting route (e.g. `POST /api/v1/share`)
+- **THEN** the gateway MUST return HTTP 400 (not 500)
+
+#### Scenario: Missing required field returns 400
+- **WHEN** a client sends a valid JSON body that lacks required fields
+- **THEN** the gateway MUST return HTTP 400 with a field-level detail (never an unguarded `KeyError` 500)
+
+### Requirement: Structured Quota Error Mapping
+The gateway SHALL map archive `RESOURCE_EXHAUSTED` errors to HTTP status codes using a machine-readable `exhausted:<reason>` prefix in the gRPC details (`quota` → 402, `size` → 413, `rate` → 429), falling back to the legacy English prose markers for monolith compatibility and logging whenever the fallback fires; marker constants SHALL be shared between gateway and archive-service from one source in `pagepocket/shared/`.
+
+#### Scenario: Structured prefix wins
+- **WHEN** the archive-service returns `RESOURCE_EXHAUSTED` with details beginning `exhausted:size`
+- **THEN** the gateway MUST return HTTP 413 based on the prefix alone
+
+#### Scenario: Legacy fallback still works
+- **WHEN** the details carry only the legacy message (e.g. `"Storage limit reached"`)
+- **THEN** the gateway MUST produce the same status via the legacy marker match and MUST log that the fallback path was used
+
+#### Scenario: Shared constants
+- **WHEN** gateway and archive-service are inspected for the marker strings
+- **THEN** both MUST import them from a single shared module (no duplicated literals)
+
+### Requirement: Ingest Parameter Validation
+The gateway SHALL validate `extension_job_id` on ingest before forwarding: length MUST NOT exceed 36 characters and the value MUST match the accepted charset; violations return HTTP 400 (never a downstream 500 from DB column overflow).
+
+#### Scenario: Oversized extension_job_id rejected
+- **WHEN** an ingest request carries an `extension_job_id` longer than 36 characters
+- **THEN** the gateway MUST return HTTP 400 without calling `ArchiveService.IngestPage`
+
+#### Scenario: Illegal charset rejected
+- **WHEN** an `extension_job_id` contains characters outside the accepted set
+- **THEN** the gateway MUST return HTTP 400

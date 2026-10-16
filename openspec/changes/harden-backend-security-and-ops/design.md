@@ -44,7 +44,9 @@ Task 1 is a **read-only verification spike** against production (`ssh -o BatchMo
 - The local authoring workspace is 3 commits **ahead** of `origin/pagepocket` (the openspec artifacts); push before the deploy-gate work so CI sees the same tree.
 - Monolith DB credential is a committed literal (`server/docker-compose.yml:43`) rather than an env-managed secret — same class of issue as the JWT/MYSQL defaults, on the one DB that IS internet-exposed (finding c).
 
-### Ops actions requiring user confirmation (later tasks mutate prod)
+### Ops actions requiring user confirmation
+
+> **ARCHIVE-MERGE WARNING (added 2026-10-16, before archiving `harden-pagepocket-platform`):** that change's deltas are now SYNCED into live specs. When THIS change (`harden-backend-security-and-ops`) is archived, its MODIFIED delta blocks for **pagepocket-api-gateway ("Rate Limiting")**, **pagepocket-archive-service ("Page Ingestion", "Quota Enforcement", "Page Retrieval")**, **pagepocket-search-service ("Index Upsert on Ingest")**, **pagepocket-share-service ("Share Link Creation", "Token Validation")**, and **pagepocket-proto-contracts ("Contract Stability")** were authored against the OLD live text and will silently DROP the newer scenarios (concurrent-ingest convergence, quota-lock scope, presigned-URL removal, CJK byte limit, hash-only token storage, Redis view dedup, public-share rate limit, reserved proto fields) unless rebased first. `deployment-routing` is double-created there (differently-named ADDED reqs — appends cleanly). Rebase those blocks during THIS change's sync step. (later tasks mutate prod)
 
 1. **Close 33060 / 8000 / 8090 to the internet** (bind to loopback or firewall), and **rotate the monolith MySQL root credential** (committed literal, `server/docker-compose.yml:43`) — highest-priority pair; changes prod reachability, needs explicit go-ahead.
 2. **Rotate pagepocket `MYSQL_ROOT_PASSWORD`** off the committed default (internal-only today).
