@@ -220,6 +220,20 @@ def test_prod_overlay_contract(tmp_path: Path) -> None:
         )
         assert "root:" not in db_url, f"{svc} prod DB_URL still connects as root"
 
+    # Regression (2026-10-16 deploy-day incident): the prod DB_URL lines were
+    # committed WITHOUT the `@mysql:3306/<db>` host suffix. Compose happily
+    # renders a hostless URL and SQLAlchemy crash-loops on it at boot — the
+    # rendered-config assertions above cannot catch it (masking), so assert
+    # on the RAW overlay text: every scoped DB_URL carries its host part.
+    prod_lines = [ln for ln in PROD_COMPOSE.read_text().splitlines() if "DB_URL:" in ln]
+    for svc, user in SCOPE_USERS.items():
+        schema = user.removeprefix("pagepocket_")
+        line = next((ln for ln in prod_lines if f"pagepocket_{schema}:" in ln), "")
+        assert f"@mysql:3306/{schema}_db" in line, (
+            f"{svc} prod DB_URL lost its @mysql:3306/{schema}_db host part — "
+            "SQLAlchemy would crash-loop on a hostless URL: " + line.strip()
+        )
+
     # 5.11: loopback-only. Only the gateway publishes anything in prod.
     published = _published_ports(cfg)
     assert set(published) == {"api-gateway"}, (
