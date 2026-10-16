@@ -173,6 +173,14 @@ and the compose changes interlock (prod compose requires `REDIS_PASSWORD`).
 
 ## 4. Regular deploy flow (backend)
 
+> **Atomicity rule (learned 2026-10-16):** a commit that touches ONLY backend
+> paths deploys ONLY the backend — the frontend keeps its last build. The new
+> frontend assumes the new gateway and vice-versa (share-validate schema,
+> by-id viewer route), so **pair backend+frontend changes in one push, or
+> hand-deploy the frontend immediately after** (`pagepocket/frontend`:
+> `pnpm install --frozen-lockfile && pnpm build`, `cp -al .next .next.bak-$(date +%s)`,
+> restart `next start`, `curl` :3000 — mirror of `deploy-frontend`).
+
 `git push origin pagepocket` → CI (same SHA) must be green → `deploy.yml`:
 
 1. `git fetch origin` on the host, then **SHA pinning (D13/4.2)**: the job
