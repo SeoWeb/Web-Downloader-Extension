@@ -31,3 +31,5 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 
 // deploy pipeline probe (2026-10-02, rev 3): exercises the deploy-frontend gate.
+
+// deploy-day rollout marker (2026-10-16): frontend path — atomic pair with the backend marker
