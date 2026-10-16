@@ -115,9 +115,16 @@ and the compose changes interlock (prod compose requires `REDIS_PASSWORD`).
 6. **Install the nightly backup cron** (5.4 — line below is NOT installed
    automatically; install it as the operator):
    ```
-   15 3 * * * /var/www/Web-Downloader-Extension/scripts/prod/backup-mysql.sh >> /var/backups/mysql/cron.log 2>&1
+   15 3 * * * BACKUP_DIR=/home/siim/backups/mysql /var/www/Web-Downloader-Extension/scripts/prod/backup-mysql.sh >> /home/siim/backups/mysql/cron.log 2>&1
    ```
-   Freshness probe for alerting: `scripts/prod/backup-mysql.sh --check-fresh`
+   **BACKUP_DIR decision (user, 2026-10-16):** `/home/siim/backups/mysql`
+   instead of the default `/var/backups/mysql` — creating the latter needs
+   sudo; the home path needs nothing. Run the drill with the same env:
+   `BACKUP_DIR=/home/siim/backups/mysql scripts/prod/restore-drill.sh …`.
+   Migrating to the FHS-standard path later is one sudo line
+   (`sudo mkdir -p /var/backups/mysql && sudo chown siim:siim /var/backups/mysql`)
+   plus moving the files.
+   Freshness probe for alerting: `BACKUP_DIR=/home/siim/backups/mysql scripts/prod/backup-mysql.sh --check-fresh`
    (exit non-zero when the last successful backup is > 26 h old).
 7. **Configure the off-host copy** (5.4/D7 — REQUIRED for the backup spec):
    `rclone config` a remote (R2 `s3:` type, B2, or `ssh:` to a second
@@ -381,7 +388,7 @@ rotation.
 
 | Script | Purpose |
 |---|---|
-| `backup-mysql.sh` | nightly per-DB `--single-transaction` dumps (5 pagepocket DBs + monolith) → `/var/backups/mysql`, log + freshness marker, 14-day pruning, optional rclone off-host copy. Dumps carry NO `CREATE DATABASE`/`USE` (D13/4.1) — restores must target an explicitly created scratch DB |
+| `backup-mysql.sh` | nightly per-DB `--single-transaction` dumps (5 pagepocket DBs + monolith) → `BACKUP_DIR` (default `/var/backups/mysql`; **prod uses `/home/siim/backups/mysql`** — user decision 2026-10-16, no sudo), log + freshness marker, 14-day pruning, optional rclone off-host copy. Dumps carry NO `CREATE DATABASE`/`USE` (D13/4.1) — restores must target an explicitly created scratch DB |
 | `restore-drill.sh` | restore a backup into `<db>_drill_<ts>` (explicitly CREATEd), verify row counts vs source, run the scratch-only canary (marker row asserted ABSENT from the source DB), drop scratch (dry-run by default) |
 | `rotate-credentials.sh` | generate + install MySQL credentials in host env files, ALTER USER in both containers, scoped recreates, health verification (dry-run by default) |
 | `rotate-db-users.sh` | create/rotate the per-service least-privilege users (`pagepocket_<svc>` → own schema only), write `DB_PASSWORD_*` into `pagepocket/.env`, cutover recreate + health verification (dry-run by default; D12/2.16) |
