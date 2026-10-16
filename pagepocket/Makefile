@@ -108,9 +108,18 @@ test-integration:
 	mysql_pw="$${MYSQL_ROOT_PASSWORD:-$$([ -f .env ] && sed -n 's/^MYSQL_ROOT_PASSWORD=//p' .env | head -1)}"; \
 	mysql_pw="$${mysql_pw:-pagepocket}"; \
 	if ! $(IT_COMPOSE) up -d --build; then \
-		echo "==> integration stack failed to start (port conflict with the dev/prod stack on 127.0.0.1:{3306,8090}?)" >&2; \
+		echo "==> integration stack failed to start (attempt 1/2) — dumping ps + logs" >&2; \
+		$(IT_COMPOSE) ps >&2 || true; \
+		$(IT_COMPOSE) logs --tail=40 >&2 || true; \
 		$(IT_COMPOSE) down -v --remove-orphans || true; \
-		exit 1; \
+		echo "==> retrying integration stack boot (attempt 2/2)" >&2; \
+		if ! $(IT_COMPOSE) up -d --build; then \
+			echo "==> integration stack failed twice — final logs" >&2; \
+			$(IT_COMPOSE) ps >&2 || true; \
+			$(IT_COMPOSE) logs --tail=40 >&2 || true; \
+			$(IT_COMPOSE) down -v --remove-orphans || true; \
+			exit 1; \
+		fi; \
 	fi; \
 	for i in $$(seq 1 60); do \
 		code=$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/v1/health 2>/dev/null || echo 000); \

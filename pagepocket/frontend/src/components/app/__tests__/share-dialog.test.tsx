@@ -45,7 +45,7 @@ function renderDialog() {
 beforeEach(() => {
   vi.mocked(clientApi.getLink).mockResolvedValue(metadataOnlyLink);
   vi.mocked(clientApi.createLink).mockResolvedValue(revealedLink);
-  vi.mocked(clientApi.revokeLink).mockResolvedValue(revealedLink);
+  vi.mocked(clientApi.revokeLink).mockResolvedValue({ success: true });
 });
 
 afterEach(() => {
