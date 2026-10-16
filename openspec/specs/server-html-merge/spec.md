@@ -8,7 +8,7 @@ Server-side HTML chunk merging for the Website Downloader microservice. Covers i
 
 ### Requirement: Incremental HTML Chunk Merging
 
-The server SHALL merge HTML chunks incrementally as they are uploaded, using a skeleton-and-chunks approach similar to the client-side HtmlAssembler. The merge is performed when the session transitions from `uploading` to `assembling` status (triggered by finalization after scrape-complete).
+The server SHALL merge HTML chunks incrementally as they are uploaded, using a skeleton-and-chunks approach similar to the client-side HtmlAssembler. The merge is performed when the session transitions from `uploading` to `assembling` status (triggered by finalization after scrape-complete). When the skeleton is reconstructed from the first chunk (after a server restart), that chunk SHALL be marked as consumed so it is not emitted a second time as body content.
 
 #### Scenario: First chunk initializes skeleton
 
@@ -21,6 +21,12 @@ The server SHALL merge HTML chunks incrementally as they are uploaded, using a s
 - **WHEN** additional HTML chunks are uploaded
 - **THEN** the server stores them as queued chunks associated with the session
 - **AND** tracks the total accumulated size
+
+#### Scenario: Restart-during-upload does not duplicate the first scroll
+
+- **WHEN** the server restarts during a scrape and the merge reconstructs the skeleton from the scrollIndex-0 chunk
+- **THEN** that chunk is excluded from the chunk list applied into the skeleton
+- **AND** the merged HTML contains the first scroll's content exactly once
 
 #### Scenario: Chunk deduplication by hash and scrollIndex
 

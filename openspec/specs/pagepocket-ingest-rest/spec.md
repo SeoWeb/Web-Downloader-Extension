@@ -1,3 +1,9 @@
+# PagePocket Ingest REST Specification
+
+## Purpose
+
+The multipart REST ingest endpoint on the api-gateway that maps extension uploads to the archive-service `IngestPage` gRPC call, with the plan sourced exclusively from the authenticated JWT claim (the client-supplied `plan` form field is removed from the contract).
+
 ## Requirements
 
 ### Requirement: REST endpoint for page ingestion
@@ -39,7 +45,7 @@ The api-gateway SHALL expose `POST /api/v1/archive/pages/ingest` that accepts pa
 - **AND** the gateway returns 402 with `{ detail: "Storage limit reached", api_version: "v1" }`
 
 ### Requirement: Multipart form field mapping
-The REST endpoint SHALL map `multipart/form-data` fields to the gRPC `IngestPageRequest` message as follows:
+The REST endpoint SHALL map `multipart/form-data` fields to the gRPC `IngestPageRequest` message as follows. The `plan` form field is REMOVED from the contract: the plan SHALL come exclusively from the authenticated JWT claim, and any client-supplied `plan` value SHALL be ignored (and rejected by validation).
 
 | Form Field | gRPC Field | Type | Required |
 |---|---|---|---|
@@ -47,13 +53,13 @@ The REST endpoint SHALL map `multipart/form-data` fields to the gRPC `IngestPage
 | `title` | `title` | string (Form) | No |
 | `html_content` | `html_content` | bytes (File) | Yes |
 | `extension_job_id` | `extension_job_id` | string (Form) | No |
-| `plan` | `plan` | string (Form) | No (defaults to JWT claim) |
 | `assets` | `assets[]` | repeated Asset (Files) | No |
 
-#### Scenario: Plan defaults to JWT claim
+#### Scenario: Plan always comes from the JWT claim
 - **GIVEN** a user with plan "free" in their JWT
-- **WHEN** the upload request does not include a `plan` field
-- **THEN** the plan is read from `request.state.plan` (set by AuthMiddleware from the JWT)
+- **WHEN** the upload request includes a `plan` field with any value (e.g., `pro`)
+- **THEN** the gateway ignores the field (or rejects the request as invalid)
+- **AND** the gRPC request's plan is `free` — the JWT claim — never the client-supplied value
 
 #### Scenario: Asset file metadata preserved
 - **GIVEN** an asset file uploaded with filename `style.css` and content-type `text/css`

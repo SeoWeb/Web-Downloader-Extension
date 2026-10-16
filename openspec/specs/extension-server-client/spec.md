@@ -1,12 +1,23 @@
-## MODIFIED Requirements
+# Extension Server Client Specification
+
+## Purpose
+
+The extension's HTTP client for the Python microservice: automatic registration and deadlock-free re-registration with the API key held in `chrome.storage.session`, per-tab server-session tracking, and the full upload/finalize/status call surface.
+
+## Requirements
 
 ### Requirement: Server API Client
-The extension SHALL provide a `ServerClient` class that encapsulates all HTTP communication with the Python microservice. The server session tracking (`activeServerSessionId`, `serverScrollIndex`) SHALL be maintained per-tab so that multiple tabs can have independent server sessions simultaneously.
+The extension SHALL provide a `ServerClient` class that encapsulates all HTTP communication with the Python microservice. The API key SHALL be stored in `chrome.storage.session` (cleared on browser restart; re-registration is automatic and deadlock-free per `extension-identity-lifecycle`). The server session tracking (`activeServerSessionId`, `serverScrollIndex`) SHALL be maintained per-tab so that multiple tabs can have independent server sessions simultaneously.
 
 #### Scenario: Auto-registration on first use
-- **WHEN** the ServerClient is initialized and no API key is stored in `chrome.storage.local`
+- **WHEN** the ServerClient is initialized and no API key is stored in `chrome.storage.session`
 - **THEN** a POST request is sent to `<serverUrl>/api/v1/auth/register` with a unique client identifier
-- **AND** the returned API key is stored in `chrome.storage.local` for future use
+- **AND** the returned API key is stored in `chrome.storage.session` for future use
+
+#### Scenario: Re-registration on revoked key terminates
+- **WHEN** a request returns 401 and re-registration with the stored instance id cannot produce a working key
+- **THEN** the client re-registers with a fresh instance identifier (single-flight) and retries once
+- **AND** persistent failure surfaces as an authentication error instead of looping
 
 #### Scenario: Create session
 - **WHEN** `createSession(url)` is called with a stored API key

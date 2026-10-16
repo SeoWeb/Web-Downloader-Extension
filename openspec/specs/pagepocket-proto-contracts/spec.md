@@ -34,7 +34,7 @@ Generated Python stubs SHALL be produced into `pagepocket/shared/proto_generated
 - **THEN** it MUST be generated output only; hand edits MUST NOT be committed
 
 ### Requirement: Contract Stability
-Field numbers in proto messages SHALL NOT be renumbered or reused once the spec is merged; removed fields MUST be marked `reserved` in the same change that stops populating them, and abandoned-but-present fields MUST be explicitly marked `[deprecated = true]` — no silently ignored fields.
+Field numbers in proto messages SHALL NOT be renumbered or reused once the spec is merged; removed fields MUST be marked `reserved` in the same change that stops populating them, and abandoned-but-present fields MUST be explicitly marked `[deprecated = true]` — no silently ignored fields. Additive changes (new optional fields on requests or responses) SHALL be permitted and SHALL ship together with regenerated stubs on both provider and consumer sides — e.g. `owner_user_id` on the share validation response and `plan` on the token-verification response are such additive additions.
 
 #### Scenario: Removing a field
 - **WHEN** a field is no longer needed in a future change
@@ -51,6 +51,16 @@ Field numbers in proto messages SHALL NOT be renumbered or reused once the spec 
 #### Scenario: Adding a field
 - **WHEN** a new field is added to an existing message
 - **THEN** it MUST use the next available tag number and MUST be optional (proto3 default), preserving backwards compatibility with older clients
+
+#### Scenario: Additive field addition is compatible
+- **WHEN** a response message gains a new optional field and the consumer is older than the provider
+- **THEN** the older consumer ignores the unknown field without error
+- **AND** the newer consumer reads the field
+
+#### Scenario: Stubs are regenerated in the same change
+- **WHEN** a proto file changes (additively)
+- **THEN** the generated stubs for all services that reference it are regenerated in the same change
+- **AND** no hand-edited generated files exist
 
 ### Requirement: Shared Status Message
 Services that return a generic success/message reply SHALL use one canonical `StatusResponse { bool success, string message }` definition shared across packages (single source of truth), replacing the per-package duplicates, with the wire shape unchanged (`field 1 bool success`, `field 2 string message`).

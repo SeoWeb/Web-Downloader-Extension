@@ -46,7 +46,7 @@ The server SHALL provide a `GET /api/v1/health` endpoint that returns server sta
 
 ### Requirement: Session Creation
 
-The server SHALL provide a `POST /api/v1/sessions` endpoint that creates a new download session and returns a session ID.
+The server SHALL provide a `POST /api/v1/sessions` endpoint that creates a new download session and returns a session ID. The session's cloud identity SHALL be sourced from the server-side client binding (see `cloud-push-authorization`): a client-supplied `pagepocketUserId` option is accepted only when it matches the authenticated client's stored binding, and is otherwise rejected with 403. Unbound clients get local-only sessions.
 
 #### Scenario: Successful session creation
 
@@ -66,6 +66,17 @@ The server SHALL provide a `POST /api/v1/sessions` endpoint that creates a new d
 - **THEN** the server sets the session's `expires_at` to the specified number of days from creation
 - **AND** the value is clamped to a server-configured range (e.g., 1-30 days)
 - **AND** if not specified, the default retention is 1 day
+
+#### Scenario: Client-sent pagepocketUserId must match the binding
+
+- **WHEN** a client sends `options.pagepocketUserId` equal to its stored cloud binding
+- **THEN** the session is created with that cloud identity
+
+#### Scenario: Forged pagepocketUserId is rejected
+
+- **WHEN** a client sends `options.pagepocketUserId` with another user's ID (or any value while unbound)
+- **THEN** the server returns 403 and creates no session
+- **AND** finished assemblies of that foreign user's sessions can never be targeted
 
 #### Scenario: Missing API key
 
@@ -101,7 +112,7 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/scrape-complete` endpoint
 
 ### Requirement: Content Text Upload
 
-The server SHALL provide a `POST /api/v1/sessions/{id}/content` endpoint that receives text content for inclusion as `content.txt` in the ZIP archive.
+The server SHALL provide a `POST /api/v1/sessions/{id}/content` endpoint that receives text content for inclusion as `content.txt` in the ZIP archive. Repeated uploads SHALL append to the session's stored text (implementation behavior), with the assembled `content.txt` reflecting all received text.
 
 #### Scenario: Successful content text upload
 
@@ -110,10 +121,11 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/content` endpoint that re
 - **AND** returns a 200 response confirming storage
 - **AND** if called in `assembling` or `ready` status, returns a 409 response
 
-#### Scenario: Content text replaces previous upload
+#### Scenario: Repeated content uploads accumulate
 
-- **WHEN** a client uploads content text when one already exists for the session
-- **THEN** the server replaces the previous content with the new upload
+- **WHEN** a client uploads content text when text already exists for the session
+- **THEN** the new upload is appended to the stored content (both server implementations behave this way)
+- **AND** the assembled `content.txt` contains the accumulated text
 
 ### Requirement: HTML Chunk Upload
 
@@ -156,7 +168,7 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/html` endpoint that recei
 
 ### Requirement: Resource File Upload
 
-The server SHALL provide a `POST /api/v1/sessions/{id}/resources` endpoint that receives a resource file (image, CSS, JS, document, video) via multipart upload. The endpoint SHALL support pre-compressed payloads using a custom header.
+The server SHALL provide a `POST /api/v1/sessions/{id}/resources` endpoint that receives a resource file (image, CSS, JS, document, video) via multipart upload. The endpoint SHALL support pre-compressed payloads using a custom header, and SHALL bound decompression BEFORE decompressing: the inflated size is computed or capped first, and payloads that would exceed the per-resource/session limits are rejected with 413 without allocating the full inflated buffer (gzip-bomb guard).
 
 #### Scenario: Successful resource upload
 
@@ -170,8 +182,15 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/resources` endpoint that 
 #### Scenario: Pre-compressed resource upload
 
 - **WHEN** a client uploads a resource with `X-Content-Gzipped: true` header
-- **THEN** the server decompresses the `file` field content before storing the file
-- **AND** the stored file size reflects the uncompressed size
+- **THEN** the server validates the inflated size against the remaining session budget and a hard per-resource ceiling BEFORE full decompression
+- **AND** oversized payloads are rejected with 413 and never fully buffered
+- **AND** accepted payloads are decompressed and stored with the uncompressed size recorded
+
+#### Scenario: Gzip bomb is rejected
+
+- **WHEN** a gzipped payload of a few kilobytes declares/inflates to gigabytes
+- **THEN** the server rejects it with 413
+- **AND** server memory is not exhausted by the decompression attempt
 
 #### Scenario: Resource upload to assembling session
 
@@ -193,13 +212,13 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/resources` endpoint that 
 
 #### Scenario: Resource upload rate limiting
 
-- **WHEN** a client sends more than 600 resource upload requests per minute for a single session
+- **WHEN** a client sends more than the configured rate of resource upload requests for a single session
 - **THEN** the server returns a 429 response with a retry-after header
-- **AND** the limit uses a token bucket algorithm (rate: 10 tokens/second = 600/minute, burst capacity: 20) to allow for initial bursts during parallel uploads
+- **AND** the limit uses a token bucket (rate: 60 requests/second, burst capacity: 100 per session) sized for the extension's parallel upload workers
 
 ### Requirement: Filename Map Upload
 
-The server SHALL provide a `POST /api/v1/sessions/{id}/filename-map` endpoint that receives the extension's image filename map (URL to local filename mapping). Subsequent uploads merge with the existing map, allowing incremental updates as linked pages discover new images.
+The server SHALL provide a `POST /api/v1/sessions/{id}/filename-map` endpoint that receives the extension's image filename map (URL to local filename mapping). Subsequent uploads merge with the existing map, and the merged result SHALL be durably persisted: the ORM change MUST be tracked by the session (copy-before-mutate or explicit dirty marking), never assigned in place on an already-persistent JSON object, which commits nothing.
 
 #### Scenario: Successful filename map upload
 
@@ -207,12 +226,17 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/filename-map` endpoint th
 - **THEN** the server stores the mapping for use during HTML conversion
 - **AND** returns a 200 response with the number of mappings stored
 
-#### Scenario: Incremental filename map update
+#### Scenario: Incremental filename map update persists
 
 - **WHEN** a client uploads a filename map when one already exists for the session
 - **THEN** the server merges the new mappings with the existing map
-- **AND** new entries are added; existing entries are overwritten
+- **AND** the merged map is actually committed (a follow-up read returns the union, not the original)
 - **AND** returns a 200 response with the total number of mappings after merge
+
+#### Scenario: Linked-page download gets complete mappings
+
+- **WHEN** linked pages uploaded after the first filename map reference images recorded only in later map uploads
+- **THEN** assembly resolves those images because the incremental merges were persisted
 
 #### Scenario: Filename map upload to assembling session
 
@@ -222,7 +246,7 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/filename-map` endpoint th
 
 ### Requirement: Session Finalization
 
-The server SHALL provide a `POST /api/v1/sessions/{id}/finalize` endpoint that signals all uploads are complete and triggers HTML merging, URL conversion, and ZIP assembly. The client MUST ensure that both the `scrape-complete` signal and the final `filename-map` upload have been confirmed (received 200 ACK) before calling this endpoint.
+The server SHALL provide a `POST /api/v1/sessions/{id}/finalize` endpoint that signals all uploads are complete and triggers HTML merging, URL conversion, and ZIP assembly. The status transition SHALL be race-safe: the transition check and write execute under a row lock (`SELECT ... FOR UPDATE`) or equivalent single-statement guard, so concurrent finalize calls cannot start two assembly pipelines. The client MUST ensure that both the `scrape-complete` signal and the final `filename-map` upload have been confirmed (received 200 ACK) before calling this endpoint.
 
 #### Scenario: Successful finalization
 
@@ -231,6 +255,12 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/finalize` endpoint that s
 - **AND** begins the assembly pipeline: merge HTML chunks, convert URLs in HTML, convert URLs in CSS files, assemble ZIP (or single HTML file)
 - **AND** returns a 202 response indicating assembly has started
 - AND the extension MUST ensure all resource uploads are complete (UploadQueue drained) before calling finalize
+
+#### Scenario: Concurrent finalize calls start exactly one assembly
+
+- **WHEN** two finalize requests for the same session race (e.g., a retry overlapping the original)
+- **THEN** exactly one request performs the `uploading → assembling` transition and starts the pipeline
+- **AND** the other receives the 409 "already assembling" response and no second assembly task exists
 
 #### Scenario: Finalization rejected for scraping session
 

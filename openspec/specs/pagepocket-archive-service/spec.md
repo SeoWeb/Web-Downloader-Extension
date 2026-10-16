@@ -7,20 +7,20 @@ Persistence and retrieval of archived pages: ingestion from the extension server
 ## Requirements
 
 ### Requirement: Page Ingestion from Extension Server
-The Archive Service SHALL expose an `ArchiveService.IngestPage` RPC that receives a captured page (HTML + assets) from the extension server and persists it. When receiving pre-processed HTML with relative asset paths, the `sanitise_and_rewrite` function SHALL correctly match basenames (e.g., `images/photo.jpg` → basename `photo.jpg`) against the asset map. Concurrent duplicate ingests SHALL converge idempotently, the extracted body SHALL be byte-safe truncated before being sent to search, and `extension_job_id` SHALL be length/charset-guarded.
+The Archive Service SHALL expose an `ArchiveService.IngestPage` RPC that receives a captured page (HTML + assets) from the extension server and persists it. HTML SHALL be processed to archive-relative asset paths (not absolute `/r2/...` URLs), with `<script>` elements removed and event-handler attributes plus `javascript:`/`data:text/html` URIs sanitized (see `archived-html-serving`). When receiving pre-processed HTML with relative asset paths, the `sanitise_and_rewrite` function SHALL correctly match basenames (e.g., `images/photo.jpg` → basename `photo.jpg`) against the asset map. Concurrent duplicate ingests SHALL converge idempotently, the extracted body SHALL be byte-safe truncated before being sent to search, and `extension_job_id` SHALL be length/charset-guarded. Ingest idempotency SHALL be user-scoped: `extension_job_id` uniqueness is enforced per `(user_id, extension_job_id)`, so one user's job id can never resolve to another user's page.
 
 #### Scenario: Successful ingest with pre-processed HTML
-- **WHEN** `IngestPage` is called with `user_id`, `url`, `title`, `html_content` containing relative paths like `images/photo.jpg`, a list of `Asset { filename, content_type, data }`, and a unique `extension_job_id`
+- **WHEN** `IngestPage` is called with `user_id`, `url`, `title`, `html_content` containing archive-relative asset references (e.g. `images/photo.jpg`), a list of `Asset { filename, content_type, data }`, and a unique `extension_job_id`
 - **THEN** the service MUST generate a UUIDv4 `page_id`
 - **AND** upload every asset to R2 under `{user_id}/{page_id}/assets/{filename}`
-- **AND** rewrite every `src`/`href` in the HTML whose basename matches an asset filename to `/r2/{user_id}/{page_id}/assets/{filename}`
-- **AND** upload the rewritten HTML to R2 under `{user_id}/{page_id}/index.html` with `content-type: text/html; charset=utf-8`
+- **AND** rewrite every `src`/`href` in the HTML whose basename matches an asset filename to its archive-relative path within the page (never to an absolute `/r2/...` URL)
+- **AND** upload the sanitized, rewritten HTML to R2 under `{user_id}/{page_id}/index.html` with `content-type: text/html; charset=utf-8`
 - **AND** insert a row into `archive_db.pages` with `id`, `user_id`, `url`, `title`, first 500 chars of body text as `preview_text`, the `index.html` R2 key, total byte size, and the `extension_job_id`
-- **AND** call `SearchService.IndexPage` (with an explicit deadline) with the extracted plain-text body truncated by bytes (UTF-8-safe), not by characters
+- **AND** call `SearchService.IndexPage` asynchronously (with an explicit deadline) with the extracted plain-text body truncated by bytes (UTF-8-safe), not by characters
 - **AND** return `IngestPageResponse { success=true, page_id=<uuid>, message="" }`
 
-#### Scenario: Idempotent replay
-- **WHEN** `IngestPage` is called with an `extension_job_id` that already exists in `archive_db.pages`
+#### Scenario: Idempotent replay is scoped to the owner
+- **WHEN** `IngestPage` is called with an `extension_job_id` that already exists for the same `user_id`
 - **THEN** the service MUST NOT upload to R2 again and MUST NOT create a new row
 - **AND** return `IngestPageResponse { success=true, page_id=<existing uuid> }`
 
@@ -37,8 +37,18 @@ The Archive Service SHALL expose an `ArchiveService.IngestPage` RPC that receive
 - **WHEN** the `title` field is empty
 - **THEN** the service MUST use the `<title>` element from the HTML if present, else the `url`, as the stored title
 
+#### Scenario: Job id collision across users cannot shadow a page
+- **WHEN** `IngestPage` is called with an `extension_job_id` that exists but belongs to a different `user_id`
+- **THEN** the service MUST treat it as a new ingest for this user (new `page_id`)
+- **AND** MUST NOT return, modify, or delete the other user's page
+
+#### Scenario: Archived HTML is sanitized before persistence
+- **WHEN** `html_content` contains `<script>` blocks, `on*` handler attributes, or `javascript:` URIs
+- **THEN** the persisted HTML contains none of them
+- **AND** the extracted plain-text preview is unchanged in meaning
+
 ### Requirement: Quota Enforcement
-The Archive Service SHALL enforce per-plan quotas (pages per month, total bytes) before writing to R2, SHALL attach a machine-readable `exhausted:<reason>` prefix to `RESOURCE_EXHAUSTED` details alongside the human message, and SHALL hold the quota row lock only across a short reserve transaction — never across the R2 upload phase.
+The Archive Service SHALL enforce per-plan quotas (pages per month, total bytes) before writing to R2, using the `plan` supplied in the gRPC request, which SHALL be set only by trusted internal callers (the gateway from the authenticated JWT claim; the extension server from its server-side client binding) — the plan SHALL never be taken from data an end client controlled directly. The service SHALL attach a machine-readable `exhausted:<reason>` prefix to `RESOURCE_EXHAUSTED` details alongside the human message, and SHALL hold the quota row lock only across a short reserve transaction — never across the R2 upload phase.
 
 #### Scenario: Under quota
 - **WHEN** `IngestPage` is called and the user's `user_quotas.pages_this_month` is below the plan limit AND `total_bytes + request_size` is below the plan byte limit
@@ -62,8 +72,13 @@ The Archive Service SHALL enforce per-plan quotas (pages per month, total bytes)
 - **THEN** it MUST use: `free` = 50 pages/month + 500 MB; `pro` = 99999 pages/month + 10 GB; `team` = 99999 pages/month + 50 GB
 - **AND** `pages_this_month` MUST reset to 0 when `quota_reset_at` is in the past (rolled forward one month on next ingest)
 
+#### Scenario: Plan comes from the authenticated context
+- **WHEN** a gateway ingest request carries a form field or header suggesting a different plan than the JWT claim
+- **THEN** the gateway sends the JWT claim's plan in the gRPC request
+- **AND** the archive service enforces quotas against that plan only
+
 ### Requirement: Page Retrieval
-The Archive Service SHALL expose `ArchiveService.GetPage`, `ArchiveService.GetPageContent`, and `ArchiveService.ListPages` RPCs that return pages owned by the requesting `user_id`. `GetPageContent` SHALL NOT return presigned URLs.
+The Archive Service SHALL expose `ArchiveService.GetPage`, `ArchiveService.GetPageContent`, and `ArchiveService.ListPages` RPCs that return pages owned by the requesting `user_id`. Ownership checks SHALL be mandatory: a request with an empty `user_id` SHALL be rejected with `INVALID_ARGUMENT` and SHALL never bypass the ownership check. `GetPageContent` SHALL NOT generate or return presigned URLs.
 
 #### Scenario: Get metadata
 - **WHEN** `GetPage` is called with `page_id` and `user_id`
@@ -74,6 +89,11 @@ The Archive Service SHALL expose `ArchiveService.GetPage`, `ArchiveService.GetPa
 - **WHEN** `GetPageContent` is called with `page_id` and `user_id`
 - **THEN** the service MUST NOT generate or return an R2 presigned GET URL
 - **AND** `PageContentResponse` MUST NOT contain `signed_url` (the field's tag is reserved); archived content is delivered via the sandboxed asset-serving path only
+
+#### Scenario: Empty user_id is never a wildcard
+- **WHEN** `GetPageContent` or `GetArchiveFile` is called with an empty `user_id`
+- **THEN** the service MUST return `INVALID_ARGUMENT`
+- **AND** MUST NOT return content for any page regardless of existence
 
 #### Scenario: List pagination and sort
 - **WHEN** `ListPages` is called with `user_id`, `page`, `page_size`, `sort_by ∈ {archived_at, title}`
@@ -141,3 +161,14 @@ The Archive Service SHALL classify R2 exceptions by cause: missing-key/404 error
 #### Scenario: Previously corrupted CJK page re-indexed fully
 - **WHEN** a page whose `IndexPage` call failed the byte-length check is retried via `RetryPendingIndexing`
 - **THEN** the retry MUST fetch `{user_id}/{page_id}/index.html` from R2 and index the complete extracted body (not the 500-char preview), producing a correct search entry
+
+### Requirement: Archive file path hardening
+`GetArchiveFile` SHALL reject any `file_path` that escapes the page's archive root: after normalization, the resolved path SHALL contain no `..` segments and SHALL NOT be absolute, regardless of object-store namespace semantics.
+
+#### Scenario: Leading traversal is rejected
+- **WHEN** `GetArchiveFile` is called with `file_path = "../other-page/index.html"` (leading `../`)
+- **THEN** the service MUST return `INVALID_ARGUMENT` without any R2 lookup
+
+#### Scenario: Embedded traversal is rejected
+- **WHEN** `file_path` normalizes to a path containing `..` (e.g., `assets/../../secret`)
+- **THEN** the service MUST return `INVALID_ARGUMENT`

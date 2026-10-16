@@ -231,7 +231,7 @@ The server SHALL include an Alembic migration that adds a `size` column (BigInte
 
 ### Requirement: Client Isolation via API Key
 
-The server SHALL isolate sessions and data between different registered clients (API keys).
+The server SHALL isolate sessions and data between different registered clients (API keys). The cloud binding (bound PagePocket user and plan, see `cloud-push-authorization`) SHALL be stored on the client record — never on the session as client-supplied data — so that session isolation and cloud identity are derived from the same authenticated root.
 
 #### Scenario: Client can only access own sessions
 
@@ -242,6 +242,12 @@ The server SHALL isolate sessions and data between different registered clients 
 
 - **WHEN** a client attempts to access a session created by a different API key
 - **THEN** the server returns a 403 response
+
+#### Scenario: Cloud identity lives on the client, not the request
+
+- **WHEN** any session of a client resolves its cloud push identity
+- **THEN** it uses the binding stored on the client record at link time
+- **AND** no other client (or an unauthenticated caller) can read, set, or impersonate that binding via session options
 
 ### Requirement: Local Fallback Input Validation
 The `SERVER_LOCAL_FALLBACK` message handler SHALL validate that required data (HTML content) is present before attempting to start a local download.
