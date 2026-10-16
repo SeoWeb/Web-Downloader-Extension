@@ -64,10 +64,7 @@ import {
   PAGEPOCKET_AUTH_STORAGE_KEY,
   type PagePocketAuthState,
 } from "../types/authTypes";
-import {
-  ensureCloudBinding,
-  getCloudBinding,
-} from "./cloud-binding";
+import { ensureCloudBinding, getCloudBinding } from "./cloud-binding";
 
 const EMPTY_MAP: Map<string, string> = new Map();
 
@@ -1218,7 +1215,12 @@ export async function resumeServerDownload(
         (_status, phase, progressPct, elapsedSeconds) => {
           sendMessage({
             key: "status.assemblyProgress",
-            options: { status: "assembling", phase, progressPct, elapsedSeconds },
+            options: {
+              status: "assembling",
+              phase,
+              progressPct,
+              elapsedSeconds,
+            },
           });
         },
         tabId,
