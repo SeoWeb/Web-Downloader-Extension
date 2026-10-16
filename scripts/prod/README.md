@@ -85,6 +85,25 @@ and the compose changes interlock (prod compose requires `REDIS_PASSWORD`).
    first migration pass is a no-op — nothing to stamp.
    Verify the exposure closure: external probe of 33060/8000/8090 must now
    REFUSE connections.
+3b. **Rebuild the monolith** (user-ordered 2026-10-16 — IN scope for deploy
+   day; the only consumer of the monolith today is the operator's own
+   extension build, so no legacy-behavior contract applies): from
+   `/var/www/Web-Downloader-Extension/server` with the pagepocket stack
+   already up (step 3 created the `pagepocket-monolith` network):
+   ```
+   docker compose -f docker-compose.yml build app
+   docker compose -f docker-compose.yml run --rm app alembic upgrade head
+   docker compose -f docker-compose.yml up -d
+   ```
+   The new compose attaches the confinement network (`pagepocket-monolith`)
+   and the mTLS env is compose-provided — no new server/.env keys needed.
+   **Alembic on the legacy DB:** if `upgrade head` fails because tables
+   predate alembic_version, inspect first (`alembic current`, table list),
+   `alembic stamp head` ONLY if the schema matches current models, then
+   re-run upgrade (no-op). Verify: `GET http://127.0.0.1:8000/api/v1/health`,
+   `POST /api/v1/cloud/link` without a key → 401, and one binding round-trip
+   from the operator's extension. This step SUBSUMES step 11's switch —
+   step 11's reachability verification is still required.
 4. **Rotate MySQL credentials**: `scripts/prod/rotate-credentials.sh --yes`
    (5.12 — monolith root + app user, pagepocket root; rewrites both env
    files 0600, recreates affected containers `--no-deps`, verifies both
@@ -130,14 +149,14 @@ and the compose changes interlock (prod compose requires `REDIS_PASSWORD`).
    `<scratch>.__restore_drill_canary` that is asserted to be ABSENT from
    the source DB (proof the restore targeted scratch only), and drops the
    scratch DB). Record the run INCLUDING the canary line below.
-11. **Monolith network confinement** (D12/2.17 — deploy-gated operator
-   action): after a pagepocket deploy has created the `pagepocket-monolith`
-   network, switch the monolith over and verify reachability — exact
-   commands in §Monolith network confinement.
+11. **Monolith network confinement — verification** (D12/2.17): if step 3b
+   rebuilt the monolith on the new compose, the switch already happened —
+   run §Monolith network confinement's reachability checks (archive/auth
+   connect, search/library/share FAIL, monolith + frontend healthy) and
+   record the output.
 12. **CI-gated deploys from here on.** Nothing deploys the monolith
-   automatically (it ran untouched for ~4 months, spike finding f) — a
-   monolith rebuild ships many accumulated commits at once and stays a
-   deliberate, operator-driven act (see §10).
+   automatically — after step 3b it runs current code; subsequent monolith
+   rebuilds stay deliberate, operator-driven acts (see §10).
 
 ### Restore-drill log (spec: recorded evidence)
 

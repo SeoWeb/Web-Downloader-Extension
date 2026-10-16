@@ -22,7 +22,7 @@ description: Deploy or release this project to production on the Contabo server 
 - To push code **without** deploying (consolidation), put `[skip ci]` in the HEAD commit message of the push (done 2026-10-16 for the main fast-forward).
 - Backend = docker compose project `pagepocket` from `/var/www/Web-Downloader-Extension/pagepocket`, **always both files** (`-f docker-compose.yml -f docker-compose.prod.yml`). `api-gateway` :8090 is the only host-published port (bound to 127.0.0.1); MySQL :33060 is **not** published anymore; internal services are mTLS-only.
 - Frontend = nohup `next start` on :3000 (**no pm2 on the host** — deploy.yml handles both, prefers the no-pm2 path; if you see pm2 output, fine, but do not "restore" pm2).
-- The **monolith** (`server/`, compose project `server`, port 8000) is deployed **manually, outside CI — by design**. Never let a pagepocket deploy touch it; the monolith's first rebuild is its own documented procedure.
+- The **monolith** (`server/`, compose project `server`, port 8000) is deployed **manually, outside CI — by design**. Never let a pagepocket deploy touch it. **Deploy day INCLUDES a manual monolith rebuild** (user order 2026-10-16: only the operator's own extension build consumes it, so no legacy contract applies) — procedure in runbook §3 step 3b (build → alembic stamp-or-upgrade → up on the confinement network; subsumes the §7 switch).
 
 ## Non-negotiable safety rules
 
