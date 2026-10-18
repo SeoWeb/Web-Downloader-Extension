@@ -409,7 +409,7 @@ next.log 2>&1 &`, or pm2 if it ever returns).
       and smoke-test deliberately; nothing deploys it automatically
 - [ ] Deploy-gate runs `git reset --hard origin/pagepocket` on the host —
       confirmed safe (tree clean apart from untracked `pagepocket/frontend/
-  .next.bak-*` and `next.log`)
+.next.bak-*` and `next.log`)
 
 ## 12. Script inventory (`scripts/prod/`)
 
@@ -503,3 +503,25 @@ Execute each at deploy time and record the evidence here, §13-style.
       deploy path filter — on the host run `git fetch` +
       `git reset --hard origin/pagepocket` BEFORE rebuilding `server-app-1`
       (§3 step 3b); manual rebuild only.
+
+### Deploy record — 2026-10-18 (SHA `4d4eb41`)
+
+- CI `39142833995` green (`backend` job skipped in 0s — path filter, gateway
+  untouched). Deploy `39142834030`: `deploy-frontend` ✓ 48s,
+  `deploy-backend` skipped. Host tree pinned at `4d4eb41` by the deploy
+  script's own SHA-gated `git reset`; `pagepocket/frontend/.next` rebuilt
+  17:59 local, pm2 `next-server` on :3000 → 200. Rollback copy:
+  `.next.bak-*` (hardlink).
+- **Fix C verified in prod** (probe session `13fcfb51-7905-464e-9682-91722eff139b`,
+  scratch client `probe-20261018-c`, deleted after the check):
+  column `resources_received` = 0 mid-flight (per-upload writes stay gone),
+  finalize → 202, exactly ONE warning line — `resources_received deficit at
+finalize: session_id=… resources_discovered=3 resources_received=1 (2
+discovered resource(s) never uploaded; finalize proceeds)` — column = 1 ==
+  resources rows = 1 post-finalize, `/status` live-counts (received 1,
+  discovered 3, status `ready`).
+- Monolith rebuilt per §3 step 3b from the `4d4eb41` tree (`build app` +
+  `alembic upgrade head` (no-op) + `up -d`), app healthy.
+- Pending user-side: Fix A visual (page `5ecce3ab…` renders fully), Fix B
+  (UI share dialog + `/s/{token}`), 6.6 extension rebuild+reload checks
+  (kill-the-SW resume, hung-upload retry, failed-count banner).
