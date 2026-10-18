@@ -77,3 +77,27 @@ export function sandboxHeaders(contentType: string): Record<string, string> {
   }
   return headers;
 }
+
+/**
+ * CORS answer for the sandboxed viewer iframes (archived-html-serving): the
+ * sandbox drops `allow-same-origin`, so archived documents run on an opaque
+ * origin (the literal string `null`) and every subresource request they make
+ * is CORS-mode. The proxies serving that iframe its archived bytes echo the
+ * request `Origin` verbatim — including `null`, which the gateway's
+ * allow-list can never contain — plus credentials (the `/api/pp` route
+ * authenticates via cookies) and `Vary: Origin` (shared caches must never
+ * reuse one origin's CORS answer for another).
+ *
+ * Applied to FILE responses of the two archived-file proxies ONLY; requests
+ * without an `Origin` gain no ACAO headers at all (fail closed).
+ */
+export function corsEchoHeaders(origin: string | null): Record<string, string> {
+  if (!origin) {
+    return {};
+  }
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Credentials": "true",
+    Vary: "Origin",
+  };
+}

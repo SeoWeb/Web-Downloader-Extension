@@ -409,7 +409,7 @@ next.log 2>&1 &`, or pm2 if it ever returns).
       and smoke-test deliberately; nothing deploys it automatically
 - [ ] Deploy-gate runs `git reset --hard origin/pagepocket` on the host —
       confirmed safe (tree clean apart from untracked `pagepocket/frontend/
-    .next.bak-*` and `next.log`)
+  .next.bak-*` and `next.log`)
 
 ## 12. Script inventory (`scripts/prod/`)
 
@@ -474,3 +474,32 @@ Still operator-side (needs a PagePocket-bound client, i.e. the extension
 smoke): real bind → cloud push → checkbox delete removes the PP page
 (7.3), the bound→unbind transition on PP logout (7.2's second half), and a
 real >200-asset page end-to-end (7.4's wire path is proven above).
+
+## 14. fix-archived-page-pipeline deploy verification checklist (pre-deploy probes)
+
+Probes referenced by the deploy-gated tasks 6.1–6.6 of
+`openspec/changes/fix-archived-page-pipeline/` (frontend fixes A+B ship via
+`deploy-frontend`; monolith fix C is a manual rebuild — gotcha below).
+Execute each at deploy time and record the evidence here, §13-style.
+
+- [ ] **Fix A (opaque-origin viewer CORS):** re-open page
+      `5ecce3ab-7b6c-4a8c-a467-6a06ff791f37` in the logged-in viewer at
+      `app.pagepocket.app` → fonts, images, and styles render; NO CORS console
+      errors. (The viewer iframes run on a sandboxed origin `null` by design —
+      the BFF file proxies now echo the request Origin into ACAO; the gateway
+      is untouched.)
+- [ ] **Fix B (share-proxy allow-list):** mint a share link via the UI dialog →
+      open `/s/{token}` → renders. Authenticated smoke:
+      `curl -X POST https://app.pagepocket.app/api/pp/share` no longer returns
+      400 `Proxied route not allowed` (bare family root `/api/v1/share` is now
+      admitted).
+- [ ] **Fix C (`resources_received` reconcile):** multipart resource upload to
+      a scratch session → the `resources` row appears; after finalize
+      `SELECT resources_received FROM sessions WHERE id='…';` equals the
+      resources row count. Deficit probe (upload fewer than
+      `resources_discovered`) greps `resources_received deficit at finalize`
+      in server logs while finalize stays 202.
+- [ ] **Monolith rebuild gotcha (repeated from §13):** `server/**` is in NO
+      deploy path filter — on the host run `git fetch` +
+      `git reset --hard origin/pagepocket` BEFORE rebuilding `server-app-1`
+      (§3 step 3b); manual rebuild only.

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_GATEWAY_URL } from "@/lib/env";
-import { contentTypeForPath, sandboxHeaders } from "@/lib/serving-headers";
+import {
+  contentTypeForPath,
+  corsEchoHeaders,
+  sandboxHeaders,
+} from "@/lib/serving-headers";
 import { isSafeSegment } from "@/lib/proxy-path";
 
 const API_BASE = API_GATEWAY_URL;
@@ -12,9 +16,7 @@ const TOKEN_PATTERN = /^[A-Za-z0-9_-]{1,256}$/;
 
 export async function GET(
   request: NextRequest,
-  {
-    params,
-  }: { params: Promise<{ token: string; path: string[] }> },
+  { params }: { params: Promise<{ token: string; path: string[] }> },
 ) {
   const { token, path } = await params;
 
@@ -54,6 +56,14 @@ export async function GET(
       response.headers.get("content-type") ?? contentTypeForPath(filePath),
     );
     for (const [name, value] of Object.entries(sandbox)) {
+      headers.set(name, value);
+    }
+    // Opaque-origin viewer CORS (archived-html-serving): echo the request
+    // Origin verbatim (including the literal `null`) on served files only —
+    // error paths gain no ACAO. No Origin → no CORS headers at all.
+    for (const [name, value] of Object.entries(
+      corsEchoHeaders(request.headers.get("origin")),
+    )) {
       headers.set(name, value);
     }
     if (!headers.has("cache-control")) {

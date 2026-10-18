@@ -191,10 +191,14 @@ def _session_to_response(session: Session) -> SessionResponse:
         if os.path.exists(session.zip_path):
             output_size = os.path.getsize(session.zip_path)
 
-    # Note: html_chunks and resources_received in the session row are
-    # no longer updated per-upload (deadlock fix). For the list/create
-    # endpoints we return the stored values (may be stale for active
-    # sessions; use /status endpoint for live aggregates).
+    # Counter truth model (fix-archived-page-pipeline C): html_chunks and
+    # resources_received are NOT updated per-upload (deadlock fix).
+    # resources_received is reconciled exactly once, at finalize (the
+    # guarded status-transition UPDATE), so the stored value is truthful
+    # for terminal sessions and may lag for active ones. Two sources of
+    # truth: this stored column (create/list responses) and the live
+    # /status aggregates (COUNT over the resources table) for anything
+    # in flight — the extension resume path reads the latter.
     return SessionResponse(
         id=session.id,
         url=session.url,
@@ -383,7 +387,10 @@ async def get_session_status(
             output_size = os.path.getsize(session.zip_path)
 
     # Compute counters from aggregates (session counters are no longer
-    # updated per-upload to avoid MySQL deadlocks).
+    # updated per-upload to avoid MySQL deadlocks; the stored
+    # resources_received column is only reconciled once at finalize).
+    # These live aggregates remain the authoritative API view at every
+    # stage — the extension resume path consumes this endpoint.
     html_chunk_count = (await db.execute(
         select(func.count()).select_from(HtmlChunk).where(HtmlChunk.session_id == session_id)
     )).scalar() or 0
@@ -656,6 +663,13 @@ async def finalize_session(
     Returns 202 indicating assembly has started.
     If session is already in 'assembling' or 'ready' status, returns 409
     (client should treat as success and poll status).
+
+    The same guarded transition UPDATE reconciles the stale-by-design
+    ``resources_received`` column to the live resources-table count
+    (one write per session lifetime; per-upload counter updates were
+    removed by the documented deadlock fix). A ``resources_discovered``
+    deficit is logged as a structured warning — visibility only, never a
+    refusal; the /status endpoint's live aggregates remain the API truth.
     """
     session = await _get_session_or_404(session_id, db)
     require_session_owner(client, session.client_id)
@@ -715,31 +729,44 @@ async def finalize_session(
 
     # Check if session has any content — use aggregate queries since
     # session.html_chunks is no longer updated per-upload (deadlock fix).
+    # The resource count is computed unconditionally: besides the
+    # empty-session check it feeds the finalize-time resources_received
+    # reconciliation and the discovery/received deficit warning below
+    # (fix-archived-page-pipeline C).
     html_chunk_count_stmt = select(func.count()).select_from(HtmlChunk).where(
         HtmlChunk.session_id == session_id
     )
     html_chunk_count = (await db.execute(html_chunk_count_stmt)).scalar() or 0
-    if html_chunk_count == 0:
-        # Check for resources too
-        resource_stmt = select(func.count()).select_from(Resource).where(
-            Resource.session_id == session_id
+    resource_count_stmt = select(func.count()).select_from(Resource).where(
+        Resource.session_id == session_id
+    )
+    resource_count = (await db.execute(resource_count_stmt)).scalar() or 0
+    # Captured before the transition so the deficit warning below reads a
+    # plain local (the guarded UPDATE is Core-level and never touches this
+    # ORM object's attributes).
+    discovered = session.resources_discovered
+    if html_chunk_count == 0 and resource_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "empty_session",
+                "message": "Session has no HTML chunks or resources",
+                "api_version": "v1",
+            },
         )
-        resource_count = (await db.execute(resource_stmt)).scalar() or 0
-        if resource_count == 0:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "error": "empty_session",
-                    "message": "Session has no HTML chunks or resources",
-                    "api_version": "v1",
-                },
-            )
 
     # Transition to assembling with a single guarded UPDATE (3.4):
     # `WHERE status = 'uploading'` makes the transition atomic — a concurrent
     # finalize blocks on the InnoDB row lock, re-evaluates the predicate after
     # the first commit, matches zero rows (rowcount == 0) and receives 409.
     # This guarantees exactly one assembly task is ever registered.
+    #
+    # The same statement reconciles the stale-by-design resources_received
+    # column (fix-archived-page-pipeline C): the column is NOT updated
+    # per-upload (documented deadlock fix), so it is written exactly once
+    # per session lifetime here, from the authoritative aggregate
+    # `resource_count` computed above — zero extra statements, zero new
+    # lock scope beyond the row this UPDATE already touches.
     now = datetime.now(timezone.utc)
     transition = await db.execute(
         sa_update(Session)
@@ -752,6 +779,7 @@ async def finalize_session(
             assembly_phase="merging_html",
             assembly_progress_pct=0,
             finalized_at=now,
+            resources_received=resource_count,
         )
     )
     if transition.rowcount == 0:
@@ -777,6 +805,23 @@ async def finalize_session(
     # Commit immediately so that polling requests see "assembling" status
     # right away, and so the row lock is released for other workers.
     await db.commit()
+
+    # Finalize-time integrity warning (fix-archived-page-pipeline C): when
+    # the client reported more discovered resources than are actually
+    # stored, say so LOUDLY — but purely as visibility. Finalize semantics
+    # are unchanged: the deficit never blocks or alters the 202 outcome
+    # (partial downloads remain valid). Emitted only after the guarded
+    # transition succeeded, so 409/422 paths stay silent.
+    if discovered is not None and discovered > resource_count:
+        logger.warning(
+            "resources_received deficit at finalize: session_id=%s "
+            "resources_discovered=%d resources_received=%d "
+            "(%d discovered resource(s) never uploaded; finalize proceeds)",
+            session_id,
+            discovered,
+            resource_count,
+            discovered - resource_count,
+        )
 
     # Trigger the assembly pipeline as a background task
     import asyncio

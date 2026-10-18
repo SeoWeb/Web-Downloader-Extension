@@ -63,6 +63,7 @@ vi.mock("../../src/background/message", () => ({
 
 vi.mock("../../src/background/download-checkpoint", () => ({
   readCheckpoint: vi.fn().mockResolvedValue(null),
+  readAllCheckpoints: vi.fn().mockResolvedValue([]),
   clearCheckpoint: vi.fn(),
 }));
 
@@ -134,7 +135,8 @@ describe("cleanup via chrome.alarms (task 4.3)", () => {
   it("registers listeners exactly once despite repeated initialization", () => {
     const onAlarmCallsBefore =
       registry.alarmsOnAlarm.addListener.mock.calls.length;
-    const tabsCallsBefore = registry.tabsOnRemoved.addListener.mock.calls.length;
+    const tabsCallsBefore =
+      registry.tabsOnRemoved.addListener.mock.calls.length;
 
     initializeCleanupHandlers();
     initializeCleanupHandlers();
@@ -216,14 +218,14 @@ describe("cleanup via chrome.alarms (task 4.3)", () => {
       // First tick is a fresh module state in this file — reset by running
       // one tick, then count.
       await runAlarmCleanup(MEMORY_MONITOR_ALARM);
-      const callsAfterFirst = (memoryManager.forceCleanup as vi.Mock).mock
-        .calls.length;
+      const callsAfterFirst = (memoryManager.forceCleanup as vi.Mock).mock.calls
+        .length;
 
       await runAlarmCleanup(MEMORY_MONITOR_ALARM);
       await runAlarmCleanup(MEMORY_MONITOR_ALARM);
 
-      const callsAfterThird = (memoryManager.forceCleanup as vi.Mock).mock
-        .calls.length;
+      const callsAfterThird = (memoryManager.forceCleanup as vi.Mock).mock.calls
+        .length;
       // Sustained CRITICAL does NOT re-trigger the extra handler
       expect(callsAfterThird).toBe(callsAfterFirst);
     });
@@ -231,10 +233,13 @@ describe("cleanup via chrome.alarms (task 4.3)", () => {
     it("fires again after pressure drops and re-enters CRITICAL", async () => {
       const statsSpy = vi
         .spyOn(memoryManager, "getMemoryStats")
-        .mockReturnValue({ memoryPressureLevel: MemoryPressureLevel.LOW } as any);
+        .mockReturnValue({
+          memoryPressureLevel: MemoryPressureLevel.LOW,
+        } as any);
 
       await runAlarmCleanup(MEMORY_MONITOR_ALARM);
-      const afterLow = (memoryManager.forceCleanup as vi.Mock).mock.calls.length;
+      const afterLow = (memoryManager.forceCleanup as vi.Mock).mock.calls
+        .length;
 
       statsSpy.mockReturnValue({
         memoryPressureLevel: MemoryPressureLevel.CRITICAL,

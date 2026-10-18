@@ -309,7 +309,17 @@ function withTimeout(
     }
     // Fallback for Chrome <116
     const controller = new AbortController();
-    const onAbort = () => controller.abort();
+    const onAbort = () => {
+      // Preserve WHY the abort happened: a timeout must surface as
+      // TimeoutError (retryable by the upload queue), a user cancellation
+      // as AbortError (terminal). Dropping the reason would misclassify
+      // timeouts as user cancels on Chrome <116.
+      if (timeoutSignal.aborted) {
+        controller.abort(timeoutSignal.reason);
+      } else {
+        controller.abort(signal?.reason);
+      }
+    };
     signal.addEventListener("abort", onAbort, { once: true });
     timeoutSignal.addEventListener("abort", onAbort, { once: true });
     return controller.signal;

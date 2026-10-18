@@ -343,6 +343,10 @@ export async function downloadResources(
     return;
   }
 
+  // Server session id — assigned once created; the finally block uses it to
+  // clear ONLY this download's checkpoint (per-download keying, design D4.4).
+  let serverSessionId: string | undefined;
+
   // Memory check — server mode threshold (100MB available)
   const initialMemoryStats = memoryManager.getMemoryStats();
   const availableMemoryBytes =
@@ -382,7 +386,6 @@ export async function downloadResources(
 
     // Create server session (reuse existing if created during INITIALIZE_DIFFERENTIAL_SCRAPING)
     const existingSessionId = getActiveServerSessionId(tabId!);
-    let serverSessionId: string;
     if (existingSessionId) {
       serverSessionId = existingSessionId;
     } else {
@@ -493,7 +496,13 @@ export async function downloadResources(
     await setTabDownloadComplete(tabId!);
     setDownloadAbortController(null, tabId!);
     disconnectKeepalivePort(tabId!);
-    await clearCheckpoint();
+    // Per-download checkpoint keying (design D4.4): clear ONLY this
+    // download's checkpoint — a concurrent download's checkpoint must
+    // survive. Skip entirely when no session was created (nothing was
+    // written for this download).
+    if (serverSessionId) {
+      await clearCheckpoint(serverSessionId);
+    }
 
     // (Concurrent-downloads spec / design D7) Teardown must never destroy
     // another active download's state. The RequestQueue is a SHARED
@@ -700,7 +709,7 @@ async function executeDownloadServerMode(
     // recoverable. The final save after linked pages overwrites with a superset.
     const mainPageResourceUrls = uploadQueue.getResourceUrls();
     if (mainPageResourceUrls.length > 0) {
-      await updateCheckpointResourceUrls(mainPageResourceUrls);
+      await updateCheckpointResourceUrls(mainPageResourceUrls, sessionId);
       console.log(
         `[Checkpoint] Main page resource URLs saved: ${mainPageResourceUrls.length} entries`,
       );
@@ -863,7 +872,7 @@ async function executeDownloadServerMode(
       // Collect resource URLs from the upload queue's pending + active tasks
       const resourceUrls = uploadQueue.getResourceUrls();
       if (resourceUrls.length > 0) {
-        await updateCheckpointResourceUrls(resourceUrls);
+        await updateCheckpointResourceUrls(resourceUrls, sessionId);
       }
     }
 
@@ -871,7 +880,7 @@ async function executeDownloadServerMode(
     await serverClient.scrapeComplete(sessionId, totalResourceCount);
     scrapeCompleteSent = true;
     sendMessage({ key: "status.scrapeComplete" });
-    updateCheckpointPhase("uploading");
+    updateCheckpointPhase("uploading", sessionId);
 
     // Wait for all resource uploads to complete before finalizing.
     // Finalization requires all resources to be on the server.
@@ -913,6 +922,11 @@ async function executeDownloadServerMode(
       clearInterval(heartbeatInterval);
     }
 
+    // (D3) Terminal upload-failure count — propagated into the completion
+    // payload so "completed with N failed uploads" is visible in the panel
+    // instead of rendering as a clean success.
+    const failedUploadCount = uploadQueue.getProgress().failedCount;
+
     // If the session size limit was reached, log and notify the user
     // that we're finalizing with partial data.
     if (uploadQueue.isSessionFull()) {
@@ -926,7 +940,7 @@ async function executeDownloadServerMode(
     // (12.8) Replace ZIP generation with server finalization + polling.
     sendMessage({ key: "status.finalizingServer" });
     await serverClient.finalizeSession(sessionId);
-    updateCheckpointPhase("assembling");
+    updateCheckpointPhase("assembling", sessionId);
 
     // Poll for assembly completion and trigger download
     sendMessage({ key: "status.assemblingServer" });
@@ -971,7 +985,10 @@ async function executeDownloadServerMode(
         key: "status.pagepocketUploadComplete",
         options: { pageId: downloadResult.cloudPageId },
       });
-      sendMessage({ key: "status.complete" });
+      sendMessage({
+        key: "status.complete",
+        options: { failedCount: failedUploadCount },
+      });
     } else if (downloadResult?.cloudError) {
       // Cloud push failed — show specific error
       sendMessage({
@@ -984,12 +1001,17 @@ async function executeDownloadServerMode(
       // Also include the URL in the status.complete message as a defensive
       // measure — the UI handler merges both, ensuring the download URL is
       // available even if serverDownloadReady was missed or reordered.
-      const serverCompleteOptions = downloadResult?.downloadUrl
-        ? {
-            downloadUrl: downloadResult.downloadUrl,
-            isSingleFile: downloadOptions.singleFile,
-          }
-        : undefined;
+      // (D3) failedCount is additive: a clean download sends 0, which renders
+      // unchanged.
+      const serverCompleteOptions = {
+        ...(downloadResult?.downloadUrl
+          ? {
+              downloadUrl: downloadResult.downloadUrl,
+              isSingleFile: downloadOptions.singleFile,
+            }
+          : {}),
+        failedCount: failedUploadCount,
+      };
 
       if (downloadResult?.downloadUrl) {
         sendMessage({
@@ -1095,7 +1117,12 @@ async function executeDownloadServerMode(
  *
  * Falls back to throwing if the session is not recoverable (FAILED, expired, missing).
  */
-/** Finalize a server session and poll for assembly completion. */
+/**
+ * Finalize a server session and poll for assembly completion.
+ * `failedCount` (D3) is the resume queue's terminal upload-failure count —
+ * propagated into the status.complete payload (0 when the resume path
+ * performed no local re-uploads).
+ */
 async function finalizeAndPollAssembly(
   client: typeof serverClient,
   sessionId: string,
@@ -1103,6 +1130,7 @@ async function finalizeAndPollAssembly(
   tabId: number | undefined,
   saveAs: boolean,
   sendMessage: (message: string | { key: string; options?: any }) => void,
+  failedCount = 0,
 ): Promise<void> {
   sendMessage({ key: "status.finalizingServer" });
   try {
@@ -1133,7 +1161,10 @@ async function finalizeAndPollAssembly(
       key: "status.pagepocketUploadComplete",
       options: { pageId: downloadResult.cloudPageId },
     });
-    sendMessage({ key: "status.complete" });
+    sendMessage({
+      key: "status.complete",
+      options: { failedCount },
+    });
   } else if (downloadResult?.cloudError) {
     sendMessage({
       key: "status.pagepocketUploadError",
@@ -1146,7 +1177,7 @@ async function finalizeAndPollAssembly(
     });
     sendMessage({
       key: "status.complete",
-      options: { downloadUrl: downloadResult.downloadUrl },
+      options: { downloadUrl: downloadResult.downloadUrl, failedCount },
     });
   }
 }
@@ -1157,7 +1188,12 @@ export async function resumeServerDownload(
     tabUrl?: string;
     tabId?: number;
     phase?: string;
-    resourceUrls?: Array<{ url: string; path: string; contentType: string }>;
+    resourceUrls?: Array<{
+      url: string;
+      path: string;
+      contentType: string;
+      size?: number;
+    }>;
   },
   sendMessage: (message: string | { key: string; options?: any }) => void,
 ): Promise<void> {
@@ -1197,7 +1233,7 @@ export async function resumeServerDownload(
       });
       sendMessage({
         key: "status.complete",
-        options: { downloadUrl: status.download_url },
+        options: { downloadUrl: status.download_url, failedCount: 0 },
       });
       return;
     }
@@ -1231,7 +1267,10 @@ export async function resumeServerDownload(
           key: "status.pagepocketUploadComplete",
           options: { pageId: downloadResult.cloudPageId },
         });
-        sendMessage({ key: "status.complete" });
+        sendMessage({
+          key: "status.complete",
+          options: { failedCount: 0 },
+        });
       } else if (downloadResult?.cloudError) {
         sendMessage({
           key: "status.pagepocketUploadError",
@@ -1240,7 +1279,7 @@ export async function resumeServerDownload(
       } else if (downloadResult?.downloadUrl) {
         sendMessage({
           key: "status.complete",
-          options: { downloadUrl: downloadResult.downloadUrl },
+          options: { downloadUrl: downloadResult.downloadUrl, failedCount: 0 },
         });
       }
       return;
@@ -1373,6 +1412,11 @@ export async function resumeServerDownload(
       if (heartbeatInterval !== undefined) clearInterval(heartbeatInterval);
     }
 
+    // (D3) Terminal upload-failure count from the resume queue — surfaced in
+    // the completion payload so a resumed download with failed re-uploads is
+    // visible in the panel.
+    const failedCount = uploadQueue.getProgress().failedCount;
+
     // Finalize (idempotent)
     await finalizeAndPollAssembly(
       serverClient,
@@ -1381,6 +1425,7 @@ export async function resumeServerDownload(
       tabId,
       saveAs,
       sendMessage,
+      failedCount,
     );
   } catch (error) {
     // Best-effort scrapeComplete so the server transitions out of SCRAPING.

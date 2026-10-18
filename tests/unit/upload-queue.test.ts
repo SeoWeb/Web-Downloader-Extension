@@ -17,6 +17,7 @@ import {
   UploadTask,
   QueueProgress,
 } from "../../src/background/upload-queue";
+import { vi } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,9 +64,13 @@ describe("UploadQueue", () => {
   function createQueue(
     options?: { maxConcurrency?: number },
     uploadFn?: (
-      sessionId: string, path: string, blob: Blob, originalUrl: string,
-      contentType: string, signal?: AbortSignal,
-      onUploadProgress?: (loaded: number, total: number) => void
+      sessionId: string,
+      path: string,
+      blob: Blob,
+      originalUrl: string,
+      contentType: string,
+      signal?: AbortSignal,
+      onUploadProgress?: (loaded: number, total: number) => void,
     ) => Promise<unknown>,
   ): UploadQueue {
     const client = createMockServerClient({
@@ -91,16 +96,19 @@ describe("UploadQueue", () => {
       let maxActive = 0;
       const concurrency = 3;
 
-      const queue = createQueue(
-        { maxConcurrency: concurrency },
-        async () => {
-          activeCount++;
-          maxActive = Math.max(maxActive, activeCount);
-          await sleep(50);
-          activeCount--;
-          return { resource_id: "r1", local_path: "img.png", size: 100, deduplicated: false, api_version: "v1" };
-        },
-      );
+      const queue = createQueue({ maxConcurrency: concurrency }, async () => {
+        activeCount++;
+        maxActive = Math.max(maxActive, activeCount);
+        await sleep(50);
+        activeCount--;
+        return {
+          resource_id: "r1",
+          local_path: "img.png",
+          size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        };
+      });
 
       // Enqueue 10 uploads
       const sessionId = "test-session";
@@ -128,11 +136,23 @@ describe("UploadQueue", () => {
         maxActive = Math.max(maxActive, activeCount);
         await sleep(50);
         activeCount--;
-        return { resource_id: "r1", local_path: "img.png", size: 100, deduplicated: false, api_version: "v1" };
+        return {
+          resource_id: "r1",
+          local_path: "img.png",
+          size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        };
       });
 
       for (let i = 0; i < 15; i++) {
-        await queue.enqueue("s1", `img${i}`, createBlob(100), `url${i}`, "image/png");
+        await queue.enqueue(
+          "s1",
+          `img${i}`,
+          createBlob(100),
+          `url${i}`,
+          "image/png",
+        );
       }
 
       await queue.waitForAll();
@@ -147,13 +167,37 @@ describe("UploadQueue", () => {
   describe("progress tracking", () => {
     it("tracks completedCount and totalCount", async () => {
       const queue = createQueue({}, async () => {
-        return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
+        return {
+          resource_id: "r1",
+          local_path: "x",
+          size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        };
       });
 
       const sessionId = "s1";
-      await queue.enqueue(sessionId, "img1", createBlob(100), "url1", "image/png");
-      await queue.enqueue(sessionId, "img2", createBlob(200), "url2", "image/png");
-      await queue.enqueue(sessionId, "img3", createBlob(300), "url3", "image/png");
+      await queue.enqueue(
+        sessionId,
+        "img1",
+        createBlob(100),
+        "url1",
+        "image/png",
+      );
+      await queue.enqueue(
+        sessionId,
+        "img2",
+        createBlob(200),
+        "url2",
+        "image/png",
+      );
+      await queue.enqueue(
+        sessionId,
+        "img3",
+        createBlob(300),
+        "url3",
+        "image/png",
+      );
 
       await queue.waitForAll();
 
@@ -167,7 +211,13 @@ describe("UploadQueue", () => {
     it("emits progress events as tasks complete", async () => {
       const queue = createQueue({}, async () => {
         await sleep(10);
-        return { resource_id: "r1", local_path: "x", size: 50, deduplicated: false, api_version: "v1" };
+        return {
+          resource_id: "r1",
+          local_path: "x",
+          size: 50,
+          deduplicated: false,
+          api_version: "v1",
+        };
       });
 
       await queue.enqueue("s1", "img1", createBlob(50), "url1", "image/png");
@@ -185,7 +235,13 @@ describe("UploadQueue", () => {
     it("getResourceCount returns pending + active + completed", async () => {
       const queue = createQueue({}, async () => {
         await sleep(50);
-        return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
+        return {
+          resource_id: "r1",
+          local_path: "x",
+          size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        };
       });
 
       await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
@@ -214,12 +270,19 @@ describe("UploadQueue", () => {
         if (callCount <= 2) {
           throw new ServerUnavailableError("Server error", undefined, 500);
         }
-        return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
+        return {
+          resource_id: "r1",
+          local_path: "x",
+          size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        };
       });
 
       // Speed up retries by making backoff short
       const origSleep = (queue as any).sleep;
-      (queue as any).sleep = (ms: number) => origSleep.call(queue, Math.min(ms, 10));
+      (queue as any).sleep = (ms: number) =>
+        origSleep.call(queue, Math.min(ms, 10));
 
       await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
       await queue.waitForAll();
@@ -236,7 +299,13 @@ describe("UploadQueue", () => {
         if (callCount === 1) {
           throw new HttpError("Rate limited", 429, 1); // Retry-After: 1 second
         }
-        return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
+        return {
+          resource_id: "r1",
+          local_path: "x",
+          size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        };
       });
 
       // Speed up retries
@@ -322,17 +391,20 @@ describe("UploadQueue", () => {
     it("cancels in-progress uploads via AbortController", async () => {
       let aborted = false;
 
-      const queue = createQueue({}, async (_sid, _path, _blob, _url, _ct, signal) => {
-        // Simulate a long upload that checks for abort
-        await new Promise<void>((resolve, reject) => {
-          const timer = setTimeout(resolve, 5000);
-          signal?.addEventListener("abort", () => {
-            clearTimeout(timer);
-            aborted = true;
-            reject(new DOMException("Aborted", "AbortError"));
+      const queue = createQueue(
+        {},
+        async (_sid, _path, _blob, _url, _ct, signal) => {
+          // Simulate a long upload that checks for abort
+          await new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(resolve, 5000);
+            signal?.addEventListener("abort", () => {
+              clearTimeout(timer);
+              aborted = true;
+              reject(new DOMException("Aborted", "AbortError"));
+            });
           });
-        });
-      });
+        },
+      );
 
       await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
       await sleep(20); // Let the upload start
@@ -346,18 +418,27 @@ describe("UploadQueue", () => {
     it("cancels pending uploads without starting them", async () => {
       let uploadCount = 0;
 
-      const queue = createQueue(
-        { maxConcurrency: 1 },
-        async () => {
-          uploadCount++;
-          await sleep(100);
-          return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
-        },
-      );
+      const queue = createQueue({ maxConcurrency: 1 }, async () => {
+        uploadCount++;
+        await sleep(100);
+        return {
+          resource_id: "r1",
+          local_path: "x",
+          size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        };
+      });
 
       // Enqueue 5 uploads; only 1 can run at a time (concurrency=1)
       for (let i = 0; i < 5; i++) {
-        await queue.enqueue("s1", `img${i}`, createBlob(100), `url${i}`, "image/png");
+        await queue.enqueue(
+          "s1",
+          `img${i}`,
+          createBlob(100),
+          `url${i}`,
+          "image/png",
+        );
       }
 
       await sleep(20); // Let the first one start
@@ -370,7 +451,11 @@ describe("UploadQueue", () => {
 
     it("rejects new enqueues after cancellation", async () => {
       const queue = createQueue({}, async () => ({
-        resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1",
+        resource_id: "r1",
+        local_path: "x",
+        size: 100,
+        deduplicated: false,
+        api_version: "v1",
       }));
 
       queue.cancel();
@@ -393,7 +478,13 @@ describe("UploadQueue", () => {
         // because ServerClient holds its own parameter reference
         blobSeenDuringUpload = blob;
         await sleep(50);
-        return { resource_id: "r1", local_path: "x", size: blob.size, deduplicated: false, api_version: "v1" };
+        return {
+          resource_id: "r1",
+          local_path: "x",
+          size: blob.size,
+          deduplicated: false,
+          api_version: "v1",
+        };
       });
 
       await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
@@ -420,13 +511,16 @@ describe("UploadQueue", () => {
     });
 
     it("nullifies blob references on cancellation", async () => {
-      const queue = createQueue(
-        { maxConcurrency: 1 },
-        async () => {
-          await sleep(200);
-          return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
-        },
-      );
+      const queue = createQueue({ maxConcurrency: 1 }, async () => {
+        await sleep(200);
+        return {
+          resource_id: "r1",
+          local_path: "x",
+          size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        };
+      });
 
       await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
       await queue.enqueue("s1", "img2", createBlob(200), "url2", "image/png");
@@ -454,7 +548,13 @@ describe("UploadQueue", () => {
             onProgress(70, 100);
           }
           await sleep(10);
-          return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
+          return {
+            resource_id: "r1",
+            local_path: "x",
+            size: 100,
+            deduplicated: false,
+            api_version: "v1",
+          };
         },
       );
 
@@ -481,7 +581,11 @@ describe("UploadQueue", () => {
   describe("waitForAll promise-based notification", () => {
     it("resolves immediately when queue is already empty", async () => {
       const queue = createQueue({}, async () => ({
-        resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1",
+        resource_id: "r1",
+        local_path: "x",
+        size: 100,
+        deduplicated: false,
+        api_version: "v1",
       }));
 
       // Queue has never had any tasks — waitForAll should resolve immediately
@@ -497,8 +601,16 @@ describe("UploadQueue", () => {
 
       const queue = createQueue({}, async () => {
         // Hold the upload open until we explicitly resolve it
-        await new Promise<void>((resolve) => { uploadResolve = resolve; });
-        return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
+        await new Promise<void>((resolve) => {
+          uploadResolve = resolve;
+        });
+        return {
+          resource_id: "r1",
+          local_path: "x",
+          size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        };
       });
 
       await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
@@ -524,7 +636,13 @@ describe("UploadQueue", () => {
       const queue = createQueue({}, async () => {
         // Long-running upload
         await sleep(5000);
-        return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
+        return {
+          resource_id: "r1",
+          local_path: "x",
+          size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        };
       });
 
       await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
@@ -548,32 +666,42 @@ describe("UploadQueue", () => {
       let activeCount = 0;
       let maxActive = 0;
 
-      const queue = createQueue(
-        { maxConcurrency: 3 },
-        async () => {
-          activeCount++;
-          maxActive = Math.max(maxActive, activeCount);
-          callCount++;
+      const queue = createQueue({ maxConcurrency: 3 }, async () => {
+        activeCount++;
+        maxActive = Math.max(maxActive, activeCount);
+        callCount++;
 
-          // Fail the first call to test retry
-          if (callCount === 1) {
-            activeCount--;
-            throw new ServerUnavailableError("Transient error", undefined, 503);
-          }
-
-          await sleep(20);
+        // Fail the first call to test retry
+        if (callCount === 1) {
           activeCount--;
-          return { resource_id: "r1", local_path: "x", size: 100, deduplicated: false, api_version: "v1" };
-        },
-      );
+          throw new ServerUnavailableError("Transient error", undefined, 503);
+        }
+
+        await sleep(20);
+        activeCount--;
+        return {
+          resource_id: "r1",
+          local_path: "x",
+          size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        };
+      });
 
       // Speed up retries
       const origSleep = (queue as any).sleep;
-      (queue as any).sleep = (ms: number) => origSleep.call(queue, Math.min(ms, 10));
+      (queue as any).sleep = (ms: number) =>
+        origSleep.call(queue, Math.min(ms, 10));
 
       // Enqueue 6 resources
       for (let i = 0; i < 6; i++) {
-        await queue.enqueue("s1", `img${i}`, createBlob(100), `url${i}`, "image/png");
+        await queue.enqueue(
+          "s1",
+          `img${i}`,
+          createBlob(100),
+          `url${i}`,
+          "image/png",
+        );
       }
 
       await queue.waitForAll();
@@ -588,5 +716,333 @@ describe("UploadQueue", () => {
       // Progress events should have been emitted
       expect(progressEvents.length).toBeGreaterThan(0);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D1 — TimeoutError aborts are retryable (fix-archived-page-pipeline)
+//
+// AbortSignal.timeout() rejects with a DOMException named "TimeoutError".
+// Before the fix this fell through to the non-retryable path, making a hung
+// upload a single-attempt permanent failure. User cancellation (AbortError)
+// must remain terminal.
+// ---------------------------------------------------------------------------
+
+const UPLOAD_OK = {
+  resource_id: "r1",
+  local_path: "x",
+  size: 100,
+  deduplicated: false,
+  api_version: "v1",
+};
+
+/** Standalone queue factory (the one inside describe("UploadQueue") is
+ *  scoped there; these suites need their own with local callback tracking). */
+function createStandaloneQueue(
+  options: { maxConcurrency?: number },
+  uploadFn?: (
+    sessionId: string,
+    path: string,
+    blob: Blob,
+    originalUrl: string,
+    contentType: string,
+    signal?: AbortSignal,
+    onUploadProgress?: (loaded: number, total: number) => void,
+  ) => Promise<unknown>,
+  handlers?: {
+    onProgress?: (p: QueueProgress) => void;
+    onSessionFull?: (sessionId: string) => void;
+  },
+): UploadQueue {
+  const client = createMockServerClient({ uploadResource: uploadFn as any });
+  return new UploadQueue(client, {
+    maxConcurrency: options?.maxConcurrency ?? 5,
+    onProgress: handlers?.onProgress,
+    onSessionFull: handlers?.onSessionFull,
+  });
+}
+
+describe("UploadQueue timeout classification (D1)", () => {
+  /** Make retry backoff near-instant while keeping sleep async. */
+  function speedUpSleep(queue: UploadQueue): void {
+    const origSleep = (queue as any).sleep;
+    (queue as any).sleep = (ms: number) =>
+      origSleep.call(queue, Math.min(ms, 10));
+  }
+
+  it("retries TimeoutError aborts and eventually succeeds", async () => {
+    let callCount = 0;
+
+    const queue = createStandaloneQueue({}, async () => {
+      callCount++;
+      if (callCount <= 2) {
+        throw new DOMException("The operation timed out.", "TimeoutError");
+      }
+      return { ...UPLOAD_OK };
+    });
+    speedUpSleep(queue);
+
+    await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
+    await queue.waitForAll();
+
+    expect(callCount).toBe(3); // initial + 2 retries
+    expect(queue.getProgress().completedCount).toBe(1);
+    expect(queue.getProgress().failedCount).toBe(0);
+  });
+
+  it("exhausts the retry budget on persistent TimeoutError, then fails visibly (one log)", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    let callCount = 0;
+
+    const queue = createStandaloneQueue({}, async () => {
+      callCount++;
+      throw new DOMException("The operation timed out.", "TimeoutError");
+    });
+    speedUpSleep(queue);
+
+    await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
+    await queue.waitForAll();
+
+    expect(callCount).toBe(4); // initial + MAX_RETRIES(3) — retried, not permanent-on-first
+    expect(queue.getProgress().failedCount).toBe(1);
+    expect(queue.getProgress().completedCount).toBe(0);
+
+    const terminalLogs = errorSpy.mock.calls.filter((c) =>
+      String(c[0]).includes("Upload failed permanently"),
+    );
+    expect(terminalLogs).toHaveLength(1);
+
+    errorSpy.mockRestore();
+  });
+
+  it("AbortError (user cancellation) remains terminal — no retry", async () => {
+    let callCount = 0;
+
+    const queue = createStandaloneQueue({}, async () => {
+      callCount++;
+      throw new DOMException("The user aborted a request.", "AbortError");
+    });
+
+    await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
+    await sleep(50);
+
+    expect(callCount).toBe(1);
+    expect(queue.getProgress().failedCount).toBe(1);
+    expect(queue.getProgress().completedCount).toBe(0);
+  });
+
+  it("a task signal aborted by queue cancel() stays terminal (never retried)", async () => {
+    let callCount = 0;
+
+    const queue = createStandaloneQueue(
+      { maxConcurrency: 1 },
+      async (_sid, _path, _blob, _url, _ct, signal) => {
+        callCount++;
+        await new Promise<void>((resolve, reject) => {
+          signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        });
+      },
+    );
+
+    await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
+    await sleep(20);
+    queue.cancel();
+    await sleep(30); // let the rejection land
+
+    expect(callCount).toBe(1);
+    expect(queue.isCancelled()).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D2 — Terminal failure logging, exactly once per class
+// (fix-archived-page-pipeline)
+// ---------------------------------------------------------------------------
+
+describe("UploadQueue terminal failure logging (D2)", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it("AuthenticationError logs exactly one structured error", async () => {
+    const queue = createStandaloneQueue({}, async () => {
+      throw new AuthenticationError(
+        "Authentication failed after re-registration",
+      );
+    });
+
+    await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
+    await sleep(50);
+
+    expect(queue.getProgress().failedCount).toBe(1);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(String(errorSpy.mock.calls[0][0])).toContain(
+      "Authentication failed",
+    );
+    expect(String(errorSpy.mock.calls[0][0])).toContain("path=img1");
+  });
+
+  it("413 session-full fail-all drain logs exactly once (not per drained task)", async () => {
+    const sessionFullCalls: string[] = [];
+    const queue = createStandaloneQueue(
+      { maxConcurrency: 1 },
+      async () => {
+        throw new HttpError("Session full", 413);
+      },
+      { onSessionFull: (sid) => sessionFullCalls.push(sid) },
+    );
+
+    // Enqueue synchronously (no await) so all 5 land in `pending` before the
+    // first upload attempt runs and triggers the session-full drain.
+    for (let i = 0; i < 5; i++) {
+      void queue
+        .enqueue("s1", `img${i}`, createBlob(100), `url${i}`, "image/png")
+        .catch(() => {
+          // enqueue throws after sessionFullDetected — not expected here
+        });
+    }
+    await sleep(80);
+
+    // All 5 failed: 1 by 413 + 4 drained
+    expect(queue.getProgress().failedCount).toBe(5);
+    expect(sessionFullCalls).toEqual(["s1"]);
+
+    const drainLogs = warnSpy.mock.calls.filter((c) =>
+      String(c[0]).includes("Session full"),
+    );
+    expect(drainLogs).toHaveLength(1);
+    expect(String(drainLogs[0][0])).toContain("drained 4 pending");
+  });
+
+  it("cancel() logs exactly one summary with active + pending counts", async () => {
+    const queue = createStandaloneQueue({ maxConcurrency: 1 }, async () => {
+      await sleep(200);
+      return { ...UPLOAD_OK };
+    });
+
+    for (let i = 0; i < 3; i++) {
+      await queue.enqueue(
+        "s1",
+        `img${i}`,
+        createBlob(100),
+        `url${i}`,
+        "image/png",
+      );
+    }
+    await sleep(20); // first starts, two pending
+    queue.cancel();
+
+    const summaries = warnSpy.mock.calls.filter((c) =>
+      String(c[0]).includes("Queue cancelled"),
+    );
+    expect(summaries).toHaveLength(1);
+    expect(String(summaries[0][0])).toContain("1 active + 2 pending");
+  });
+
+  it("a late AbortError rejection after cancel() neither double-counts nor logs again", async () => {
+    const queue = createStandaloneQueue(
+      { maxConcurrency: 1 },
+      async (_sid, _path, _blob, _url, _ct, signal) => {
+        await new Promise<void>((_resolve, reject) => {
+          signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        });
+      },
+    );
+
+    for (let i = 0; i < 3; i++) {
+      await queue.enqueue(
+        "s1",
+        `img${i}`,
+        createBlob(100),
+        `url${i}`,
+        "image/png",
+      );
+    }
+    await sleep(20); // first active, two pending
+    queue.cancel();
+    await sleep(30); // let the in-flight rejection reach handleTaskError
+
+    // cancel() counted 1 active + 2 pending = 3; the late rejection of the
+    // already-accounted active task must NOT bump it to 4 (D3 correctness).
+    expect(queue.getProgress().failedCount).toBe(3);
+    expect(queue.getProgress().totalCount).toBe(3);
+
+    const summaries = warnSpy.mock.calls.filter((c) =>
+      String(c[0]).includes("Queue cancelled"),
+    );
+    expect(summaries).toHaveLength(1);
+    const perTaskAbortLogs = warnSpy.mock.calls.filter((c) =>
+      String(c[0]).includes("Upload aborted"),
+    );
+    expect(perTaskAbortLogs).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D4 — checkpoint manifest entries carry size (blobs never persisted)
+// ---------------------------------------------------------------------------
+
+describe("UploadQueue resource manifest (D4)", () => {
+  it("getResourceUrls entries include the task byte size", async () => {
+    const queue = createStandaloneQueue({}, async () => {
+      await sleep(10);
+      return { ...UPLOAD_OK };
+    });
+
+    await queue.enqueue(
+      "s1",
+      "images/a.png",
+      createBlob(111),
+      "https://x/a.png",
+      "image/png",
+    );
+    await queue.enqueue(
+      "s1",
+      "styles/b.css",
+      createBlob(222),
+      "https://x/b.css",
+      "text/css",
+    );
+    await queue.waitForAll();
+
+    const entries = queue.getResourceUrls();
+    expect(entries).toHaveLength(2);
+    expect(entries).toContainEqual({
+      url: "https://x/a.png",
+      path: "images/a.png",
+      contentType: "image/png",
+      size: 111,
+    });
+    expect(entries).toContainEqual({
+      url: "https://x/b.css",
+      path: "styles/b.css",
+      contentType: "text/css",
+      size: 222,
+    });
+  });
+
+  it("permanently failed tasks are excluded from the manifest", async () => {
+    const queue = createStandaloneQueue({}, async () => {
+      throw new HttpError("Not found", 404);
+    });
+
+    await queue.enqueue("s1", "img1", createBlob(100), "url1", "image/png");
+    await sleep(50);
+
+    expect(queue.getProgress().failedCount).toBe(1);
+    expect(queue.getResourceUrls()).toHaveLength(0);
   });
 });

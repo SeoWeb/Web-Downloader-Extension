@@ -228,13 +228,17 @@ export async function messageWorker(
       // Don't clear the checkpoint here — RESUME_SERVER_DOWNLOAD needs it.
       // The sidepanel reads checkpoint data to populate interruptData, but the
       // actual checkpoint must persist so resume can access resourceUrls etc.
+      // (D4) readCheckpoint() returns the newest per-download checkpoint when
+      // no session id is given.
       return await readCheckpoint();
     }
 
     case messageActions.DISMISS_INTERRUPTED_DOWNLOAD: {
       // User dismissed the interrupt UI without resuming — clear the checkpoint
       // so re-opening the panel doesn't show stale interrupt state.
-      await clearCheckpoint();
+      // (D4) Clears only the targeted download's checkpoint when the panel
+      // provides its session id; no id → legacy global clear.
+      await clearCheckpoint(data?.serverSessionId);
       return { success: true };
     }
 
@@ -244,7 +248,9 @@ export async function messageWorker(
       // transient failure (server unreachable) destroyed all recovery state.
       // Now: clear only on success or definitive failure (expired/invalid
       // session); keep on transient failure.
-      let checkpoint = await readCheckpoint();
+      // (D4) Target the resume's own checkpoint when the panel provides the
+      // server session id.
+      let checkpoint = await readCheckpoint(data?.serverSessionId);
       const cameFromStorage = checkpoint !== null;
 
       if (!checkpoint && data?.serverSessionId) {
@@ -267,16 +273,17 @@ export async function messageWorker(
               data: { message },
             });
           });
-          // Success — normal completion cleanup
+          // Success — normal completion cleanup (targeted per-download clear,
+          // design D4.4 — a concurrent download's checkpoint must survive)
           if (cameFromStorage) {
-            await clearCheckpoint();
+            await clearCheckpoint(checkpoint.serverSessionId);
           }
           return { success: true };
         } catch (err) {
           // Definitive failure (expired/invalid session) — the checkpoint
           // can never be used again; clear it so the panel offers Restart.
           if (cameFromStorage && isDefinitiveResumeFailure(err)) {
-            await clearCheckpoint();
+            await clearCheckpoint(checkpoint.serverSessionId);
           }
           // Transient failure — the checkpoint stays in
           // chrome.storage.session so the panel can offer Retry.

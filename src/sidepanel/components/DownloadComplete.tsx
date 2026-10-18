@@ -12,6 +12,7 @@ import {
   Server,
   FileText,
   Cloud,
+  AlertTriangle,
 } from "lucide-react";
 import { CloudUploadState } from "../../components/CloudUploadStatus";
 import { DownloadReport } from "../utils/downloadReport";
@@ -37,6 +38,11 @@ interface DownloadCompleteProps {
   cloudUploadState?: CloudUploadState | null;
   /** (5.3 + 5.5) Aggregated per-category report + partial marker. */
   downloadReport?: DownloadReport | null;
+  /**
+   * (D3) Resource uploads that failed permanently before completion.
+   * 0/undefined renders nothing — a clean download is unchanged.
+   */
+  failedUploads?: number;
 }
 
 export function DownloadComplete({
@@ -48,6 +54,7 @@ export function DownloadComplete({
   isSingleFile,
   cloudUploadState,
   downloadReport,
+  failedUploads,
 }: DownloadCompleteProps) {
   const { t } = useTranslation();
   const [downloadId, setDownloadId] = useState<number | null>(null);
@@ -138,6 +145,19 @@ export function DownloadComplete({
           </h2>
           <p className="text-slate-500 mt-2">{t("status.zipLocation")}</p>
         </div>
+
+        {/* (D3) Completed with N failed uploads — a partial success must be
+            visible instead of rendering as a clean success hero. */}
+        {!!failedUploads && failedUploads > 0 && (
+          <div className="w-full bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3 text-left">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <span className="text-sm text-amber-800">
+              {t("status.completedWithFailedUploads", {
+                count: failedUploads,
+              })}
+            </span>
+          </div>
+        )}
 
         {/* (15.4) Server download URL with copy button */}
         {serverDownloadUrl && !cloudUploadState && (

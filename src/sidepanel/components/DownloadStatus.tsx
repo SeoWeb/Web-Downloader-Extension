@@ -34,7 +34,12 @@ export interface InterruptData {
   tabUrl: string;
   timestamp: number;
   serverSessionId?: string;
-  resourceUrls?: Array<{ url: string; path: string; contentType: string }>;
+  resourceUrls?: Array<{
+    url: string;
+    path: string;
+    contentType: string;
+    size?: number;
+  }>;
 }
 
 interface DownloadStatusProps {

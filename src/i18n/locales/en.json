@@ -246,7 +246,8 @@
       "savingPartialCapture": "Saving what we captured…",
       "downloadReport": "Download report",
       "partialDownload": "Partial download",
-      "partialDownloadNote": "The archive contains what was captured before the download was stopped."
+      "partialDownloadNote": "The archive contains what was captured before the download was stopped.",
+      "completedWithFailedUploads": "Completed with {{count}} failed resource upload(s) — some files may be missing from the archive."
     },
     "permissions": {
       "storage": {

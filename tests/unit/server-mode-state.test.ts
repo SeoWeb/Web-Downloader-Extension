@@ -51,7 +51,10 @@ describe("applyServerModeMessage", () => {
   // -----------------------------------------------------------------------
 
   it("should transition to scraping on status.scraping", () => {
-    const next = applyServerModeMessage(initialServerModeState, "status.scraping");
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.scraping",
+    );
     expect(next.phase).toBe("scraping");
   });
 
@@ -60,19 +63,28 @@ describe("applyServerModeMessage", () => {
   // -----------------------------------------------------------------------
 
   it("should transition to uploading on status.sendingScrapeComplete", () => {
-    const state = applyServerModeMessage(initialServerModeState, "status.scraping");
+    const state = applyServerModeMessage(
+      initialServerModeState,
+      "status.scraping",
+    );
     const next = applyServerModeMessage(state, "status.sendingScrapeComplete");
     expect(next.phase).toBe("uploading");
   });
 
   it("should transition to uploading on status.scrapeComplete", () => {
-    const state = applyServerModeMessage(initialServerModeState, "status.scraping");
+    const state = applyServerModeMessage(
+      initialServerModeState,
+      "status.scraping",
+    );
     const next = applyServerModeMessage(state, "status.scrapeComplete");
     expect(next.phase).toBe("uploading");
   });
 
   it("should transition to uploading on status.waitingForUploads", () => {
-    const state = applyServerModeMessage(initialServerModeState, "status.scraping");
+    const state = applyServerModeMessage(
+      initialServerModeState,
+      "status.scraping",
+    );
     const next = applyServerModeMessage(state, "status.waitingForUploads");
     expect(next.phase).toBe("uploading");
   });
@@ -82,17 +94,24 @@ describe("applyServerModeMessage", () => {
   // -----------------------------------------------------------------------
 
   it("should update upload progress and infer uploading phase", () => {
-    const next = applyServerModeMessage(initialServerModeState, "status.uploadProgress", {
-      completed: 5,
-      total: 20,
-    });
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.uploadProgress",
+      {
+        completed: 5,
+        total: 20,
+      },
+    );
     expect(next.phase).toBe("uploading");
     expect(next.uploadCompleted).toBe(5);
     expect(next.uploadTotal).toBe(20);
   });
 
   it("should preserve current phase during upload progress if already set", () => {
-    const scraping = applyServerModeMessage(initialServerModeState, "status.scraping");
+    const scraping = applyServerModeMessage(
+      initialServerModeState,
+      "status.scraping",
+    );
     const next = applyServerModeMessage(scraping, "status.uploadProgress", {
       completed: 3,
       total: 10,
@@ -104,10 +123,14 @@ describe("applyServerModeMessage", () => {
   });
 
   it("should accumulate upload progress across multiple messages", () => {
-    const state1 = applyServerModeMessage(initialServerModeState, "status.uploadProgress", {
-      completed: 3,
-      total: 10,
-    });
+    const state1 = applyServerModeMessage(
+      initialServerModeState,
+      "status.uploadProgress",
+      {
+        completed: 3,
+        total: 10,
+      },
+    );
     const state2 = applyServerModeMessage(state1, "status.uploadProgress", {
       completed: 7,
       total: 10,
@@ -121,19 +144,28 @@ describe("applyServerModeMessage", () => {
   // -----------------------------------------------------------------------
 
   it("should transition to assembling on status.finalizingServer", () => {
-    const uploading = applyServerModeMessage(initialServerModeState, "status.scrapeComplete");
+    const uploading = applyServerModeMessage(
+      initialServerModeState,
+      "status.scrapeComplete",
+    );
     const next = applyServerModeMessage(uploading, "status.finalizingServer");
     expect(next.phase).toBe("assembling");
   });
 
   it("should transition to assembling on status.assemblingServer", () => {
-    const uploading = applyServerModeMessage(initialServerModeState, "status.scrapeComplete");
+    const uploading = applyServerModeMessage(
+      initialServerModeState,
+      "status.scrapeComplete",
+    );
     const next = applyServerModeMessage(uploading, "status.assemblingServer");
     expect(next.phase).toBe("assembling");
   });
 
   it("should update assembly progress with phase and percentage", () => {
-    const uploading = applyServerModeMessage(initialServerModeState, "status.scrapeComplete");
+    const uploading = applyServerModeMessage(
+      initialServerModeState,
+      "status.scrapeComplete",
+    );
     const next = applyServerModeMessage(uploading, "status.assemblyProgress", {
       phase: "merging_html",
       progressPct: 42,
@@ -144,30 +176,49 @@ describe("applyServerModeMessage", () => {
   });
 
   it("should preserve previous assembly values when options are absent", () => {
-    const uploading = applyServerModeMessage(initialServerModeState, "status.scrapeComplete");
-    const assembling = applyServerModeMessage(uploading, "status.assemblyProgress", {
-      phase: "converting",
-      progressPct: 60,
-    });
-    const next = applyServerModeMessage(assembling, "status.assemblyProgress", {});
+    const uploading = applyServerModeMessage(
+      initialServerModeState,
+      "status.scrapeComplete",
+    );
+    const assembling = applyServerModeMessage(
+      uploading,
+      "status.assemblyProgress",
+      {
+        phase: "converting",
+        progressPct: 60,
+      },
+    );
+    const next = applyServerModeMessage(
+      assembling,
+      "status.assemblyProgress",
+      {},
+    );
     expect(next.assemblyPhase).toBe("converting");
     expect(next.assemblyProgressPct).toBe(60);
   });
 
   // Task 6.1 — assembly-timeout envelope: elapsed seconds are additive.
   it("should record assembly elapsed seconds when the server reports them", () => {
-    const next = applyServerModeMessage(initialServerModeState, "status.assemblyProgress", {
-      phase: "pushing_cloud",
-      progressPct: 30,
-      elapsedSeconds: 615,
-    });
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.assemblyProgress",
+      {
+        phase: "pushing_cloud",
+        progressPct: 30,
+        elapsedSeconds: 615,
+      },
+    );
     expect(next.assemblyElapsedSeconds).toBe(615);
   });
 
   it("should keep the last elapsed value when a later message omits it", () => {
-    const first = applyServerModeMessage(initialServerModeState, "status.assemblyProgress", {
-      elapsedSeconds: 120,
-    });
+    const first = applyServerModeMessage(
+      initialServerModeState,
+      "status.assemblyProgress",
+      {
+        elapsedSeconds: 120,
+      },
+    );
     const next = applyServerModeMessage(first, "status.assemblyProgress", {
       phase: "zipping",
     });
@@ -177,14 +228,22 @@ describe("applyServerModeMessage", () => {
   it("stays undefined-safe when elapsedSeconds is null or missing entirely", () => {
     // Older servers never send assembly_elapsed_seconds — the option is
     // absent and the state stays null without throwing.
-    const next = applyServerModeMessage(initialServerModeState, "status.assemblyProgress", {
-      phase: "merging_html",
-      progressPct: 10,
-    });
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.assemblyProgress",
+      {
+        phase: "merging_html",
+        progressPct: 10,
+      },
+    );
     expect(next.assemblyElapsedSeconds).toBeNull();
-    const explicitNull = applyServerModeMessage(initialServerModeState, "status.assemblyProgress", {
-      elapsedSeconds: null,
-    });
+    const explicitNull = applyServerModeMessage(
+      initialServerModeState,
+      "status.assemblyProgress",
+      {
+        elapsedSeconds: null,
+      },
+    );
     expect(explicitNull.assemblyElapsedSeconds).toBeNull();
   });
 
@@ -193,18 +252,26 @@ describe("applyServerModeMessage", () => {
   // -----------------------------------------------------------------------
 
   it("should transition to ready on status.complete with download URL", () => {
-    const assembling = applyServerModeMessage(initialServerModeState, "status.assemblingServer");
+    const assembling = applyServerModeMessage(
+      initialServerModeState,
+      "status.assemblingServer",
+    );
     const next = applyServerModeMessage(assembling, "status.complete", {
       downloadUrl: "https://server.example.com/api/v1/sessions/abc/download",
       isSingleFile: false,
     });
     expect(next.phase).toBe("ready");
-    expect(next.serverDownloadUrl).toBe("https://server.example.com/api/v1/sessions/abc/download");
+    expect(next.serverDownloadUrl).toBe(
+      "https://server.example.com/api/v1/sessions/abc/download",
+    );
     expect(next.isSingleFile).toBe(false);
   });
 
   it("should transition to ready on status.complete with singleFile=true", () => {
-    const assembling = applyServerModeMessage(initialServerModeState, "status.assemblingServer");
+    const assembling = applyServerModeMessage(
+      initialServerModeState,
+      "status.assemblingServer",
+    );
     const next = applyServerModeMessage(assembling, "status.complete", {
       downloadUrl: "https://server.example.com/api/v1/sessions/abc/download",
       isSingleFile: true,
@@ -221,26 +288,38 @@ describe("applyServerModeMessage", () => {
       {
         key: "status.complete",
         options: {
-          downloadUrl: "https://server.example.com/api/v1/sessions/xyz/download",
+          downloadUrl:
+            "https://server.example.com/api/v1/sessions/xyz/download",
           isSingleFile: true,
         },
       },
     ]);
     expect(next.phase).toBe("ready");
-    expect(next.serverDownloadUrl).toBe("https://server.example.com/api/v1/sessions/xyz/download");
+    expect(next.serverDownloadUrl).toBe(
+      "https://server.example.com/api/v1/sessions/xyz/download",
+    );
     expect(next.isSingleFile).toBe(true);
   });
 
   // 15.3 — serverDownloadReady (explicit URL signal)
   it("should update download URL on status.serverDownloadReady without changing phase", () => {
-    const assembling = applyServerModeMessage(initialServerModeState, "status.assemblingServer");
-    const next = applyServerModeMessage(assembling, "status.serverDownloadReady", {
-      downloadUrl: "https://server.example.com/api/v1/sessions/abc/download",
-      isSingleFile: false,
-    });
+    const assembling = applyServerModeMessage(
+      initialServerModeState,
+      "status.assemblingServer",
+    );
+    const next = applyServerModeMessage(
+      assembling,
+      "status.serverDownloadReady",
+      {
+        downloadUrl: "https://server.example.com/api/v1/sessions/abc/download",
+        isSingleFile: false,
+      },
+    );
     // Phase should remain 'assembling' — serverDownloadReady only sets the URL
     expect(next.phase).toBe("assembling");
-    expect(next.serverDownloadUrl).toBe("https://server.example.com/api/v1/sessions/abc/download");
+    expect(next.serverDownloadUrl).toBe(
+      "https://server.example.com/api/v1/sessions/abc/download",
+    );
   });
 
   // -----------------------------------------------------------------------
@@ -248,11 +327,15 @@ describe("applyServerModeMessage", () => {
   // -----------------------------------------------------------------------
 
   it("should transition to failed on status.serverError (server_unavailable)", () => {
-    const next = applyServerModeMessage(initialServerModeState, "status.serverError", {
-      error: "Connection refused",
-      canFallback: true,
-      reason: "server_unavailable",
-    });
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.serverError",
+      {
+        error: "Connection refused",
+        canFallback: true,
+        reason: "server_unavailable",
+      },
+    );
     expect(next.phase).toBe("failed");
     expect(next.serverError).toEqual({
       error: "Connection refused",
@@ -262,27 +345,39 @@ describe("applyServerModeMessage", () => {
   });
 
   it("should transition to failed on status.serverError (assembly_failed)", () => {
-    const next = applyServerModeMessage(initialServerModeState, "status.serverError", {
-      error: "Assembly crashed",
-      canFallback: true,
-      reason: "assembly_failed",
-    });
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.serverError",
+      {
+        error: "Assembly crashed",
+        canFallback: true,
+        reason: "assembly_failed",
+      },
+    );
     expect(next.phase).toBe("failed");
     expect(next.serverError?.reason).toBe("assembly_failed");
   });
 
   it("should transition to failed on status.serverError (auth_failed)", () => {
-    const next = applyServerModeMessage(initialServerModeState, "status.serverError", {
-      error: "API key rejected",
-      canFallback: false,
-      reason: "auth_failed",
-    });
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.serverError",
+      {
+        error: "API key rejected",
+        canFallback: false,
+        reason: "auth_failed",
+      },
+    );
     expect(next.phase).toBe("failed");
     expect(next.serverError?.canFallback).toBe(false);
   });
 
   it("should default reason to server_unavailable when missing", () => {
-    const next = applyServerModeMessage(initialServerModeState, "status.serverError", {});
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.serverError",
+      {},
+    );
     expect(next.phase).toBe("failed");
     expect(next.serverError?.reason).toBe("server_unavailable");
   });
@@ -292,31 +387,43 @@ describe("applyServerModeMessage", () => {
   // -----------------------------------------------------------------------
 
   it("should transition to timeout on status.serverError with assembly_timeout reason", () => {
-    const next = applyServerModeMessage(initialServerModeState, "status.serverError", {
-      error: "Assembly took too long",
-      canFallback: true,
-      reason: "assembly_timeout",
-    });
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.serverError",
+      {
+        error: "Assembly took too long",
+        canFallback: true,
+        reason: "assembly_timeout",
+      },
+    );
     expect(next.phase).toBe("timeout");
     expect(next.serverError?.reason).toBe("assembly_timeout");
     expect(next.serverError?.canFallback).toBe(true);
   });
 
   it("should transition to timeout on status.serverFallbackOffer with assembly_timeout", () => {
-    const next = applyServerModeMessage(initialServerModeState, "status.serverFallbackOffer", {
-      errorMessage: "Timeout",
-      reason: "assembly_timeout",
-    });
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.serverFallbackOffer",
+      {
+        errorMessage: "Timeout",
+        reason: "assembly_timeout",
+      },
+    );
     expect(next.phase).toBe("timeout");
     expect(next.serverError?.canFallback).toBe(true);
     expect(next.serverError?.error).toBe("Timeout");
   });
 
   it("should transition to failed on status.serverFallbackOffer with non-timeout reason", () => {
-    const next = applyServerModeMessage(initialServerModeState, "status.serverFallbackOffer", {
-      errorMessage: "Server error",
-      reason: "server_unavailable",
-    });
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.serverFallbackOffer",
+      {
+        errorMessage: "Server error",
+        reason: "server_unavailable",
+      },
+    );
     expect(next.phase).toBe("failed");
     expect(next.serverError?.canFallback).toBe(true);
   });
@@ -327,7 +434,10 @@ describe("applyServerModeMessage", () => {
 
   it("should reach all 6 server-mode states in a full download lifecycle", () => {
     // Phase 1: scraping
-    const s1 = applyServerModeMessage(initialServerModeState, "status.scraping");
+    const s1 = applyServerModeMessage(
+      initialServerModeState,
+      "status.scraping",
+    );
     expect(s1.phase).toBe("scraping");
 
     // Phase 2: uploading
@@ -347,7 +457,10 @@ describe("applyServerModeMessage", () => {
   });
 
   it("should reach failed state when server is unavailable", () => {
-    const s1 = applyServerModeMessage(initialServerModeState, "status.scraping");
+    const s1 = applyServerModeMessage(
+      initialServerModeState,
+      "status.scraping",
+    );
     const s2 = applyServerModeMessage(s1, "status.serverError", {
       error: "Connection refused",
       canFallback: true,
@@ -371,11 +484,67 @@ describe("applyServerModeMessage", () => {
   });
 
   // -----------------------------------------------------------------------
+  // D3 — failedCount surfaced through the completion state
+  // (fix-archived-page-pipeline)
+  // -----------------------------------------------------------------------
+
+  it("should default failedUploads to 0 in initial state", () => {
+    expect(initialServerModeState.failedUploads).toBe(0);
+  });
+
+  it("should record failedUploads when status.complete carries failedCount", () => {
+    const assembling = applyServerModeMessage(
+      initialServerModeState,
+      "status.assemblingServer",
+    );
+    const next = applyServerModeMessage(assembling, "status.complete", {
+      downloadUrl: "https://server.example.com/dl",
+      isSingleFile: false,
+      failedCount: 7,
+    });
+    expect(next.phase).toBe("ready");
+    expect(next.failedUploads).toBe(7);
+    // Existing completion fields unchanged
+    expect(next.serverDownloadUrl).toBe("https://server.example.com/dl");
+    expect(next.isSingleFile).toBe(false);
+  });
+
+  it("should keep failedUploads at 0 for a clean completion (renders unchanged)", () => {
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.complete",
+      {
+        downloadUrl: "https://server.example.com/dl",
+        isSingleFile: true,
+        failedCount: 0,
+      },
+    );
+    expect(next.phase).toBe("ready");
+    expect(next.failedUploads).toBe(0);
+  });
+
+  it("should keep the previous failedUploads when status.complete omits failedCount", () => {
+    const withFailures = applyServerModeMessage(
+      initialServerModeState,
+      "status.complete",
+      { failedCount: 3 },
+    );
+    const again = applyServerModeMessage(withFailures, "status.complete", {
+      downloadUrl: "https://server.example.com/dl2",
+    });
+    expect(again.failedUploads).toBe(3);
+    expect(again.serverDownloadUrl).toBe("https://server.example.com/dl2");
+  });
+
+  // -----------------------------------------------------------------------
   // Unknown message
   // -----------------------------------------------------------------------
 
   it("should return unchanged state for unknown message keys", () => {
-    const scraping = applyServerModeMessage(initialServerModeState, "status.scraping");
+    const scraping = applyServerModeMessage(
+      initialServerModeState,
+      "status.scraping",
+    );
     const next = applyServerModeMessage(scraping, "status.unknownMessage");
     expect(next).toEqual(scraping);
   });

@@ -1,7 +1,11 @@
 import { NextRequest } from "next/server";
 import { setAuthCookies, clearAuthCookies } from "@/lib/auth/cookies";
 import { API_GATEWAY_URL } from "@/lib/env";
-import { contentTypeForPath, sandboxHeaders } from "@/lib/serving-headers";
+import {
+  contentTypeForPath,
+  corsEchoHeaders,
+  sandboxHeaders,
+} from "@/lib/serving-headers";
 import { forwardedClientIpHeadersFrom } from "@/lib/api/client-ip";
 import { isSafeSegment } from "@/lib/proxy-path";
 
@@ -17,8 +21,12 @@ const ARCHIVE_FILE_ROUTE = /^\/archive\/[^/]+\/f\/(.+)$/;
 // Route allow-list (archived-file-proxy / design D11): the COMPOSED upstream
 // path (gateway base path + proxied route) must stay inside these route
 // families after normalization — the gateway's remaining surface (/docs,
-// openapi.json, …) is unreachable through this proxy.
-const ALLOWED_UPSTREAM = /^\/api\/v1\/(archive|library|search|share|auth)\//;
+// openapi.json, …) is unreachable through this proxy. Bare family roots are
+// admitted (`(\/|$)`): the gateway exposes `POST ""`/`GET ""` at the `/share`
+// root. Traversal safety is orthogonal — isSafeSegment rejects dot-segments
+// per segment before the composed path is tested here.
+const ALLOWED_UPSTREAM =
+  /^\/api\/v1\/(archive|library|search|share|auth)(\/|$)/;
 
 const GATEWAY_BASE_PATH = new URL(API_BASE).pathname.replace(/\/+$/, "");
 
@@ -53,15 +61,25 @@ function privatizeCacheControl(headers: Headers): void {
   const directives = (headers.get("cache-control") ?? "")
     .split(",")
     .map((directive) => directive.trim())
-    .filter((directive) => directive.length > 0 && !/^(public|immutable)$/i.test(directive));
+    .filter(
+      (directive) =>
+        directive.length > 0 && !/^(public|immutable)$/i.test(directive),
+    );
   if (!directives.some((directive) => directive.toLowerCase() === "private")) {
     directives.unshift("private");
   }
   headers.set("cache-control", directives.join(", "));
 }
 
-function proxyResponse(response: Response, filePath: string | null): Response {
+function proxyResponse(
+  response: Response,
+  filePath: string | null,
+  requestOrigin: string | null,
+): Response {
   if (!filePath) {
+    // Non-file API responses gain no CORS headers — the Origin echo exists
+    // only for the archived-file routes consumed by the sandboxed viewer
+    // iframes (opaque origin `null`).
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
@@ -73,6 +91,11 @@ function proxyResponse(response: Response, filePath: string | null): Response {
     response.headers.get("content-type") ?? contentTypeForPath(filePath),
   );
   for (const [name, value] of Object.entries(sandbox)) {
+    headers.set(name, value);
+  }
+  // Opaque-origin viewer CORS (archived-html-serving): echo the request
+  // Origin verbatim (including the literal `null`) on file responses only.
+  for (const [name, value] of Object.entries(corsEchoHeaders(requestOrigin))) {
     headers.set(name, value);
   }
   privatizeCacheControl(headers);
@@ -116,7 +139,8 @@ function responseCookieSetter(response: Response) {
       if (opts.httpOnly) parts.push("HttpOnly");
       if (opts.secure) parts.push("Secure");
       if (opts.sameSite) {
-        const s = opts.sameSite.charAt(0).toUpperCase() + opts.sameSite.slice(1);
+        const s =
+          opts.sameSite.charAt(0).toUpperCase() + opts.sameSite.slice(1);
         parts.push(`SameSite=${s}`);
       }
       if (opts.domain) parts.push(`Domain=${opts.domain}`);
@@ -262,10 +286,13 @@ async function proxyRequest(
   const { path } = await params;
   const route = normalizeUpstreamRoute(path);
   if (!route) {
-    return new Response(JSON.stringify({ error: "Proxied route not allowed" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Proxied route not allowed" }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
   const filePath = archiveFilePath(route);
   const url = new URL(request.url);
@@ -287,7 +314,12 @@ async function proxyRequest(
   if (accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
-  for (const name of ["Range", "Accept", "If-None-Match", "If-Modified-Since"]) {
+  for (const name of [
+    "Range",
+    "Accept",
+    "If-None-Match",
+    "If-Modified-Since",
+  ]) {
     const value = request.headers.get(name);
     if (value) {
       headers[name] = value;
@@ -301,12 +333,14 @@ async function proxyRequest(
     headers,
     cache: "no-store",
     ...(upstream.body !== undefined ? { body: upstream.body } : {}),
-    ...(upstream.body instanceof ReadableStream ? { duplex: "half" as const } : {}),
+    ...(upstream.body instanceof ReadableStream
+      ? { duplex: "half" as const }
+      : {}),
   });
 
   if (response.status === 401) {
     const userId = accessToken
-      ? decodeJwtSubject(accessToken) ?? "anonymous"
+      ? (decodeJwtSubject(accessToken) ?? "anonymous")
       : "anonymous";
     let refreshPromise = refreshPromises.get(userId);
 
@@ -337,7 +371,11 @@ async function proxyRequest(
             ? { body: upstream.replayBody }
             : {}),
         });
-        const finalResponse = proxyResponse(response, filePath);
+        const finalResponse = proxyResponse(
+          response,
+          filePath,
+          request.headers.get("origin"),
+        );
         setAuthCookiesOn(finalResponse, outcome);
         return finalResponse;
       }
@@ -345,7 +383,9 @@ async function proxyRequest(
       // Streamed (non-replayable) request body: rotate the cookies and hand
       // the caller a definite 503 so it can replay with the fresh token.
       const replayResponse = new Response(
-        JSON.stringify({ error: "Access token refreshed — replay the request" }),
+        JSON.stringify({
+          error: "Access token refreshed — replay the request",
+        }),
         { status: 503, headers: { "Content-Type": "application/json" } },
       );
       setAuthCookiesOn(replayResponse, outcome);
@@ -369,5 +409,5 @@ async function proxyRequest(
     );
   }
 
-  return proxyResponse(response, filePath);
+  return proxyResponse(response, filePath, request.headers.get("origin"));
 }

@@ -12,7 +12,7 @@
 import { memoryManager } from "../utils/MemoryManager";
 import { MemoryPressureLevel } from "../utils/memoryLimits";
 
-import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
+import { readAllCheckpoints, clearCheckpoint } from "./download-checkpoint";
 import { sendMessageToPanel, deleteServerSessionState } from "./message";
 import { messageActions } from "../common/message";
 import {
@@ -241,8 +241,12 @@ async function performStartupCleanup(): Promise<void> {
  */
 async function handleInterruptedDownload(): Promise<void> {
   try {
-    // Read checkpoint before clearing it, so we can notify the sidepanel.
-    const checkpoint = await readCheckpoint();
+    // (D4) Read ALL per-download checkpoints before clearing any, so every
+    // interrupted download (including concurrent ones) is detected. Each is
+    // offered to the panel; only checkpoints successfully delivered are
+    // cleared — the rest stay discoverable via CHECK_INTERRUPTED_DOWNLOAD
+    // when the panel opens.
+    const checkpoints = await readAllCheckpoints();
 
     // Reset download flag and active tab IDs (always, even if notification fails)
     await chrome.storage.local.set({ isDownloadInProgress: false });
@@ -250,23 +254,22 @@ async function handleInterruptedDownload(): Promise<void> {
     // Force cleanup to free any stuck resources
     await memoryManager.forceCleanup();
 
-    // Notify sidepanel about the interrupted download.
-    // If the panel isn't open, we keep the checkpoint so
-    // CHECK_INTERRUPTED_DOWNLOAD can find it on panel open.
-    if (checkpoint) {
-      let panelNotified = false;
-      try {
-        await sendMessageToPanel(
-          messageActions.DOWNLOAD_INTERRUPTED,
-          checkpoint,
-        );
-        panelNotified = true;
-      } catch {
-        // Panel not connected — keep checkpoint for later discovery
-      }
+    if (checkpoints.length > 0) {
+      for (const checkpoint of checkpoints) {
+        let panelNotified = false;
+        try {
+          await sendMessageToPanel(
+            messageActions.DOWNLOAD_INTERRUPTED,
+            checkpoint,
+          );
+          panelNotified = true;
+        } catch {
+          // Panel not connected — keep this checkpoint for later discovery
+        }
 
-      if (panelNotified) {
-        await clearCheckpoint();
+        if (panelNotified) {
+          await clearCheckpoint(checkpoint.serverSessionId);
+        }
       }
     } else {
       // No checkpoint but flag was set — clear any stale state

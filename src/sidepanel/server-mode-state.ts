@@ -37,6 +37,12 @@ export interface ServerModeState {
   serverDownloadUrl: string | null;
   /** Whether the download is a single-file HTML. */
   isSingleFile: boolean;
+  /**
+   * (D3) Number of resource uploads that failed permanently before the
+   * download completed — 0 for a clean download. Reported additively via
+   * the `status.complete` payload's `failedCount` option.
+   */
+  failedUploads: number;
   /** Server error details. */
   serverError: { error: string; canFallback: boolean; reason: string } | null;
 }
@@ -50,6 +56,7 @@ export const initialServerModeState: ServerModeState = {
   assemblyElapsedSeconds: null,
   serverDownloadUrl: null,
   isSingleFile: false,
+  failedUploads: 0,
   serverError: null,
 };
 
@@ -137,12 +144,18 @@ export function applyServerModeMessage(
     // (15.3 + 15.4) Download ready — also accept download URL options
     // defensively so the UI is self-contained even if serverDownloadReady
     // was missed or processed out of order.
+    // (D3) `failedCount` is additive: absent → keep the previous value
+    // (0 for a clean download), so completion renders unchanged.
     case "status.complete":
       return {
         ...prev,
         phase: "ready",
         serverDownloadUrl: options?.downloadUrl ?? prev.serverDownloadUrl,
         isSingleFile: options?.isSingleFile ?? prev.isSingleFile,
+        failedUploads:
+          typeof options?.failedCount === "number"
+            ? options.failedCount
+            : prev.failedUploads,
       };
 
     // (15.3) Explicit download-ready signal with URL

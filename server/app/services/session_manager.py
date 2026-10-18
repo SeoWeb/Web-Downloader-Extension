@@ -227,12 +227,13 @@ class SessionManager:
         method makes the intent explicit and covers edge cases where no
         other field changes on a given request.
 
-        Note: In practice, HTML chunk uploads and resource uploads already
-        modify ``session.total_size`` (and ``html_chunks`` /
-        ``resources_received`` counters) before flushing, which triggers
-        ``onupdate`` automatically.  This method exists as a safety net
-        for any future code paths that touch a session without modifying
-        tracked counters.
+        Note: HTML chunk and resource uploads no longer touch the session
+        row at all (deadlock fix — the per-upload ``html_chunks`` /
+        ``resources_received`` / ``total_size`` counter updates were
+        removed; ``resources_received`` is reconciled once at finalize and
+        the ``/status`` endpoint computes live aggregates). Session rows
+        are therefore rarely modified mid-flight, which makes this explicit
+        touch the safety net it was designed to be.
         """
         # Force a change that triggers onupdate — incrementing a counter
         # that is already being tracked is cleaner than using raw SQL.

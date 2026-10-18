@@ -32,15 +32,26 @@ function streamResponse(body: string, headers: Record<string, string>) {
   return new Response(stream, { status: 200, headers });
 }
 
-function callGet(token: string, path: string[]) {
-  const request = new Request(`http://localhost:3000/api/sc/${token}/${path.join("/")}`);
+function callGet(
+  token: string,
+  path: string[],
+  headers?: Record<string, string>,
+) {
+  const request = new Request(
+    `http://localhost:3000/api/sc/${token}/${path.join("/")}`,
+    {
+      ...(headers ? { headers } : {}),
+    },
+  );
   return GET(request as never, { params: Promise.resolve({ token, path }) });
 }
 
 describe("GET /api/sc/[token]/[...path] — archived-html-serving headers", () => {
   it("HTML path: sandbox CSP, nosniff, pinned utf-8 type, no-referrer", async () => {
     fetchMock.mockResolvedValue(
-      gatewayResponse("<p>hi</p>", { "Content-Type": "text/html; charset=utf-8" }),
+      gatewayResponse("<p>hi</p>", {
+        "Content-Type": "text/html; charset=utf-8",
+      }),
     );
 
     const res = await callGet("tok", ["index.html"]);
@@ -49,7 +60,9 @@ describe("GET /api/sc/[token]/[...path] — archived-html-serving headers", () =
     expect(res.headers.get("content-security-policy")).toBe(
       "sandbox allow-popups allow-forms",
     );
-    expect(res.headers.get("content-security-policy")).not.toContain("allow-same-origin");
+    expect(res.headers.get("content-security-policy")).not.toContain(
+      "allow-same-origin",
+    );
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
     expect(res.headers.get("referrer-policy")).toBe("no-referrer");
@@ -97,9 +110,72 @@ describe("GET /api/sc/[token]/[...path] — archived-html-serving headers", () =
   });
 });
 
+describe("opaque-origin viewer CORS (Origin echo on served files)", () => {
+  it("file response with Origin: null echoes ACAO null + credentials + Vary", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("<p>hi</p>", {
+        "Content-Type": "text/html; charset=utf-8",
+      }),
+    );
+
+    const res = await callGet("tok", ["index.html"], { origin: "null" });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("access-control-allow-origin")).toBe("null");
+    expect(res.headers.get("access-control-allow-credentials")).toBe("true");
+    expect(res.headers.get("vary")).toBe("Origin");
+  });
+
+  it("file response with a real Origin echoes it verbatim", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("css-bytes", { "Content-Type": "text/css" }),
+    );
+
+    const res = await callGet("tok", ["assets", "style.css"], {
+      origin: "https://app.pagepocket.app",
+    });
+
+    expect(res.headers.get("access-control-allow-origin")).toBe(
+      "https://app.pagepocket.app",
+    );
+    expect(res.headers.get("access-control-allow-credentials")).toBe("true");
+  });
+
+  it("file response without Origin gains no CORS headers at all", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("png-bytes", { "Content-Type": "image/png" }),
+    );
+
+    const res = await callGet("tok", ["logo.png"]);
+
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    expect(res.headers.get("access-control-allow-credentials")).toBeNull();
+    expect(res.headers.get("vary")).toBeNull();
+  });
+
+  it("error responses (404) gain no ACAO even with an Origin", async () => {
+    fetchMock.mockResolvedValue(new Response("Not found", { status: 404 }));
+
+    const res = await callGet("tok", ["missing.html"], {
+      origin: "https://evil.example",
+    });
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    expect(res.headers.get("access-control-allow-credentials")).toBeNull();
+    expect(res.headers.get("vary")).toBeNull();
+  });
+});
+
 describe("token and path-segment validation", () => {
   it("rejects unsafe token segments with 400 and never proxies", async () => {
-    for (const token of ["../evil", "tok;drop", "tok/../x", "tok%00", "tok rank"]) {
+    for (const token of [
+      "../evil",
+      "tok;drop",
+      "tok/../x",
+      "tok%00",
+      "tok rank",
+    ]) {
       fetchMock.mockClear();
       const res = await callGet(token, ["index.html"]);
       expect(res.status).toBe(400);
@@ -132,7 +208,9 @@ describe("token and path-segment validation", () => {
 describe("streaming body handling", () => {
   it("streams the upstream body instead of buffering via arrayBuffer()", async () => {
     fetchMock.mockResolvedValue(
-      streamResponse("archive-zip-bytes", { "Content-Type": "application/zip" }),
+      streamResponse("archive-zip-bytes", {
+        "Content-Type": "application/zip",
+      }),
     );
 
     const res = await callGet("tok", ["exports", "archive.zip"]);
@@ -174,7 +252,9 @@ describe("streaming body handling", () => {
 
   it("composes the gateway URL from the validated token and path", async () => {
     fetchMock.mockResolvedValue(
-      gatewayResponse("<p>x</p>", { "Content-Type": "text/html; charset=utf-8" }),
+      gatewayResponse("<p>x</p>", {
+        "Content-Type": "text/html; charset=utf-8",
+      }),
     );
 
     await callGet("abc123_-", ["assets", "style.css"]);

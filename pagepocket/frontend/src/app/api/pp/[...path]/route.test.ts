@@ -26,7 +26,10 @@ function base64url(payload: object): string {
     .replace(/=+$/, "");
 }
 
-function makeAccessToken(sub: string, exp = Math.floor(Date.now() / 1000) + 3600): string {
+function makeAccessToken(
+  sub: string,
+  exp = Math.floor(Date.now() / 1000) + 3600,
+): string {
   return `${base64url({ alg: "none" })}.${base64url({ sub, exp })}.sig`;
 }
 
@@ -41,16 +44,24 @@ function callGet(path: string[], cookie?: string) {
 function callApi(
   method: string,
   path: string[],
-  init?: { body?: string; contentType?: string; cookie?: string; headers?: Record<string, string> },
+  init?: {
+    body?: string;
+    contentType?: string;
+    cookie?: string;
+    headers?: Record<string, string>;
+  },
 ) {
   const headers: Record<string, string> = { ...init?.headers };
   if (init?.contentType) headers["content-type"] = init.contentType;
   if (init?.cookie) headers["cookie"] = init.cookie;
-  const request = new NextRequest(`http://localhost:3000/api/pp/${path.join("/")}`, {
-    method,
-    headers,
-    ...(init?.body !== undefined ? { body: init.body } : {}),
-  });
+  const request = new NextRequest(
+    `http://localhost:3000/api/pp/${path.join("/")}`,
+    {
+      method,
+      headers,
+      ...(init?.body !== undefined ? { body: init.body } : {}),
+    },
+  );
   const handler = method === "POST" ? POST : method === "DELETE" ? DELETE : GET;
   return handler(request, { params: Promise.resolve({ path }) });
 }
@@ -72,7 +83,9 @@ function streamResponse(body: string, headers: Record<string, string>) {
 describe("GET /api/pp/archive/*/f/* — archived-html-serving headers", () => {
   it("HTML file: sandbox CSP, nosniff, pinned utf-8 type, no-referrer", async () => {
     fetchMock.mockResolvedValue(
-      gatewayResponse("<p>hi</p>", { "Content-Type": "text/html; charset=utf-8" }),
+      gatewayResponse("<p>hi</p>", {
+        "Content-Type": "text/html; charset=utf-8",
+      }),
     );
 
     const res = await callGet(["archive", "page-1", "f", "index.html"]);
@@ -81,7 +94,9 @@ describe("GET /api/pp/archive/*/f/* — archived-html-serving headers", () => {
     expect(res.headers.get("content-security-policy")).toBe(
       "sandbox allow-popups allow-forms",
     );
-    expect(res.headers.get("content-security-policy")).not.toContain("allow-same-origin");
+    expect(res.headers.get("content-security-policy")).not.toContain(
+      "allow-same-origin",
+    );
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
     expect(res.headers.get("referrer-policy")).toBe("no-referrer");
@@ -163,7 +178,9 @@ describe("private caching of cookie-authenticated files", () => {
 
   it("sets private when the gateway sends no cache-control on a file", async () => {
     fetchMock.mockResolvedValue(
-      gatewayResponse("<p>hi</p>", { "Content-Type": "text/html; charset=utf-8" }),
+      gatewayResponse("<p>hi</p>", {
+        "Content-Type": "text/html; charset=utf-8",
+      }),
     );
 
     const res = await callGet(["archive", "page-1", "f", "index.html"]);
@@ -182,6 +199,71 @@ describe("private caching of cookie-authenticated files", () => {
   });
 });
 
+describe("opaque-origin viewer CORS (Origin echo on file responses)", () => {
+  it("file response with Origin: null echoes ACAO null + credentials + Vary", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("png-bytes", { "Content-Type": "image/png" }),
+    );
+
+    const res = await callApi(
+      "GET",
+      ["archive", "page-1", "f", "assets", "font.woff2"],
+      {
+        headers: { origin: "null" },
+      },
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("access-control-allow-origin")).toBe("null");
+    expect(res.headers.get("access-control-allow-credentials")).toBe("true");
+    expect(res.headers.get("vary")).toBe("Origin");
+  });
+
+  it("file response with a real Origin echoes it verbatim", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("<p>hi</p>", {
+        "Content-Type": "text/html; charset=utf-8",
+      }),
+    );
+
+    const res = await callApi("GET", ["archive", "page-1", "f", "index.html"], {
+      headers: { origin: "https://app.pagepocket.app" },
+    });
+
+    expect(res.headers.get("access-control-allow-origin")).toBe(
+      "https://app.pagepocket.app",
+    );
+    expect(res.headers.get("access-control-allow-credentials")).toBe("true");
+  });
+
+  it("non-file JSON API response with Origin gains NO ACAO", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("[]", { "Content-Type": "application/json" }),
+    );
+
+    const res = await callApi("GET", ["library", "collections"], {
+      headers: { origin: "https://evil.example" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    expect(res.headers.get("access-control-allow-credentials")).toBeNull();
+    expect(res.headers.get("vary")).toBeNull();
+  });
+
+  it("file response without Origin gains no CORS headers at all", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("png-bytes", { "Content-Type": "image/png" }),
+    );
+
+    const res = await callGet(["archive", "page-1", "f", "assets", "logo.png"]);
+
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    expect(res.headers.get("access-control-allow-credentials")).toBeNull();
+    expect(res.headers.get("vary")).toBeNull();
+  });
+});
+
 describe("route allow-list and traversal rejection", () => {
   it("rejects decoded dot-dot escapes with 400 and never proxies", async () => {
     const res = await callGet(["api", "v1", "archive", "..", "..", "docs"]);
@@ -193,21 +275,38 @@ describe("route allow-list and traversal rejection", () => {
   it("rejects encoded dot-segment variants with 400", async () => {
     for (const escape of ["%2e%2e", "%2E%2E", "%2e%2f"]) {
       fetchMock.mockClear();
-      const res = await callGet(["api", "v1", "archive", escape, escape, "docs"]);
+      const res = await callGet([
+        "api",
+        "v1",
+        "archive",
+        escape,
+        escape,
+        "docs",
+      ]);
       expect(res.status).toBe(400);
       expect(fetchMock).not.toHaveBeenCalled();
     }
   });
 
   it("rejects segments that decode into separators (encoded slashes)", async () => {
-    const res = await callGet(["archive", "pages%2F..%2F..%2Fdocs", "f", "x.html"]);
+    const res = await callGet([
+      "archive",
+      "pages%2F..%2F..%2Fdocs",
+      "f",
+      "x.html",
+    ]);
 
     expect(res.status).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("rejects composed paths outside the allowed route families (docs, openapi.json)", async () => {
-    for (const path of [["docs"], ["openapi.json"], ["health"], ["v1", "auth", "login"]]) {
+    for (const path of [
+      ["docs"],
+      ["openapi.json"],
+      ["health"],
+      ["v1", "auth", "login"],
+    ]) {
       fetchMock.mockClear();
       const res = await callGet(path);
       expect(res.status).toBe(400);
@@ -217,7 +316,9 @@ describe("route allow-list and traversal rejection", () => {
 
   it("forwards legitimate routes to the same normalized gateway path", async () => {
     fetchMock.mockResolvedValue(
-      gatewayResponse("<p>hi</p>", { "Content-Type": "text/html; charset=utf-8" }),
+      gatewayResponse("<p>hi</p>", {
+        "Content-Type": "text/html; charset=utf-8",
+      }),
     );
 
     const res = await callGet(["archive", "pages", "abc", "f", "index.html"]);
@@ -225,7 +326,46 @@ describe("route allow-list and traversal rejection", () => {
     expect(res.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [upstreamUrl] = fetchMock.mock.calls[0]!;
-    expect(String(upstreamUrl)).toBe(`${API_BASE}/archive/pages/abc/f/index.html?`);
+    expect(String(upstreamUrl)).toBe(
+      `${API_BASE}/archive/pages/abc/f/index.html?`,
+    );
+  });
+
+  it('admits the bare share family root: POST ["share"] forwards to /share', async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse('{"token":"t"}', { "Content-Type": "application/json" }),
+    );
+
+    const res = await callApi("POST", ["share"], {
+      body: JSON.stringify({ page_id: "p-1", is_public: true }),
+      contentType: "application/json",
+    });
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [upstreamUrl, init] = fetchMock.mock.calls[0]!;
+    expect(String(upstreamUrl)).toBe(`${API_BASE}/share?`);
+    expect(init!.method).toBe("POST");
+  });
+
+  it('admits the bare share family root: GET ["share"] forwards to /share', async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse('{"token":"t"}', { "Content-Type": "application/json" }),
+    );
+
+    const res = await callGet(["share"]);
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [upstreamUrl] = fetchMock.mock.calls[0]!;
+    expect(String(upstreamUrl)).toBe(`${API_BASE}/share?`);
+  });
+
+  it("still rejects same-prefix non-family paths (share -> shared)", async () => {
+    const res = await callGet(["shared", "x"]);
+
+    expect(res.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
@@ -250,7 +390,9 @@ describe("conditional and media header passthrough", () => {
       },
     );
     await GET(request, {
-      params: Promise.resolve({ path: ["archive", "page-1", "f", "video.mp4"] }),
+      params: Promise.resolve({
+        path: ["archive", "page-1", "f", "video.mp4"],
+      }),
     });
 
     const [, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1]!;
@@ -258,11 +400,15 @@ describe("conditional and media header passthrough", () => {
     expect(upstreamHeaders["Range"]).toBe("bytes=1000-1999");
     expect(upstreamHeaders["Accept"]).toBe("*/*");
     expect(upstreamHeaders["If-None-Match"]).toBe('"etag-1"');
-    expect(upstreamHeaders["If-Modified-Since"]).toBe("Wed, 01 Jan 2025 00:00:00 GMT");
+    expect(upstreamHeaders["If-Modified-Since"]).toBe(
+      "Wed, 01 Jan 2025 00:00:00 GMT",
+    );
   });
 
   it("forwards the caller Content-Type instead of hardcoding application/json", async () => {
-    fetchMock.mockResolvedValue(gatewayResponse("ok", { "Content-Type": "text/plain" }));
+    fetchMock.mockResolvedValue(
+      gatewayResponse("ok", { "Content-Type": "text/plain" }),
+    );
 
     await callApi("POST", ["library", "collections"], {
       body: "a,b,c",
@@ -278,7 +424,10 @@ describe("conditional and media header passthrough", () => {
     fetchMock.mockResolvedValue(
       new Response("chunk", {
         status: 206,
-        headers: { "Content-Type": "video/mp4", "Content-Range": "bytes 0-4/100" },
+        headers: {
+          "Content-Type": "video/mp4",
+          "Content-Range": "bytes 0-4/100",
+        },
       }),
     );
 
@@ -292,7 +441,9 @@ describe("conditional and media header passthrough", () => {
 describe("streaming body handling", () => {
   it("streams upstream response bodies without buffering", async () => {
     fetchMock.mockResolvedValue(
-      streamResponse("streamed-bytes", { "Content-Type": "application/octet-stream" }),
+      streamResponse("streamed-bytes", {
+        "Content-Type": "application/octet-stream",
+      }),
     );
 
     const res = await callGet(["archive", "page-1", "f", "big.zip"]);
@@ -302,7 +453,9 @@ describe("streaming body handling", () => {
 
   it("forwards DELETE request bodies to the gateway", async () => {
     fetchMock.mockResolvedValue(
-      gatewayResponse('{"success":true}', { "Content-Type": "application/json" }),
+      gatewayResponse('{"success":true}', {
+        "Content-Type": "application/json",
+      }),
     );
 
     const res = await callApi("DELETE", ["library", "collections", "x"], {
@@ -313,11 +466,13 @@ describe("streaming body handling", () => {
     expect(res.status).toBe(200);
     const [, init] = fetchMock.mock.calls[0]!;
     expect(init!.body).toBe(JSON.stringify({ purge: true }));
-    expect((init!.method as string)).toBe("DELETE");
+    expect(init!.method as string).toBe("DELETE");
   });
 
   it("streams non-JSON request bodies through (not buffered text)", async () => {
-    fetchMock.mockResolvedValue(gatewayResponse("ok", { "Content-Type": "text/plain" }));
+    fetchMock.mockResolvedValue(
+      gatewayResponse("ok", { "Content-Type": "text/plain" }),
+    );
 
     await callApi("POST", ["library", "collections"], {
       body: "raw-upload-bytes",
@@ -475,12 +630,17 @@ describe("refresh hardening", () => {
       gatewayResponse("[]", { "Content-Type": "application/json" }),
     );
 
-    const request = new NextRequest("http://localhost:3000/api/pp/library/collections", {
-      headers: {
-        "x-forwarded-for": "203.0.113.7, 10.0.0.2",
+    const request = new NextRequest(
+      "http://localhost:3000/api/pp/library/collections",
+      {
+        headers: {
+          "x-forwarded-for": "203.0.113.7, 10.0.0.2",
+        },
       },
+    );
+    await GET(request, {
+      params: Promise.resolve({ path: ["library", "collections"] }),
     });
-    await GET(request, { params: Promise.resolve({ path: ["library", "collections"] }) });
 
     const [, init] = fetchMock.mock.calls[0]!;
     const upstreamHeaders = init!.headers! as Record<string, string>;

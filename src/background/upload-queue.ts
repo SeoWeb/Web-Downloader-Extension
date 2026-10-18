@@ -195,7 +195,12 @@ export class UploadQueue {
 
     this.pending.push(task);
     this.totalBytes += blob.size;
-    this.resourceUrlMap.set(id, { url: originalUrl, path, contentType });
+    this.resourceUrlMap.set(id, {
+      url: originalUrl,
+      path,
+      contentType,
+      size: blob.size,
+    });
 
     // Start processing if not already running
     this.scheduleProcessing();
@@ -208,6 +213,12 @@ export class UploadQueue {
    * pending uploads using AbortController.
    */
   cancel(): void {
+    // Idempotent — a second cancel() has nothing left to abort and must not
+    // emit a duplicate summary log (design D4.2: one log per terminal class).
+    if (this.cancelled) return;
+
+    const activeCount = this.active.size;
+    const pendingCount = this.pending.length;
     this.cancelled = true;
 
     // Abort all in-progress uploads
@@ -238,6 +249,13 @@ export class UploadQueue {
     }
     this.doneWaiters.length = 0;
 
+    // (D2) Terminal-failure log — the queue-wide cancel is a terminal outcome
+    // for every active+pending task; summarize once instead of logging each.
+    console.warn(
+      `[UploadQueue] Queue cancelled: ${activeCount} active + ${pendingCount} pending uploads aborted` +
+        ` (${this.completedCount} had completed successfully)`,
+    );
+
     this.notifyProgress();
   }
 
@@ -255,13 +273,20 @@ export class UploadQueue {
    * excluding permanently failed tasks. Used for checkpoint persistence so
    * resume can re-upload resources that the server may not have received
    * (the server deduplicates by URL hash, so re-uploading is harmless).
+   * Each entry carries the task's byte size — metadata only, blobs are
+   * never persisted (design D4.4).
    */
   private readonly resourceUrlMap: Map<
     string,
-    { url: string; path: string; contentType: string }
+    { url: string; path: string; contentType: string; size: number }
   > = new Map();
 
-  getResourceUrls(): Array<{ url: string; path: string; contentType: string }> {
+  getResourceUrls(): Array<{
+    url: string;
+    path: string;
+    contentType: string;
+    size: number;
+  }> {
     return Array.from(this.resourceUrlMap.values());
   }
 
@@ -452,14 +477,25 @@ export class UploadQueue {
    * - Other 4xx → no retry
    * - AuthenticationError → no retry (ServerClient handles re-registration)
    * - AbortError → no retry (user cancelled)
+   * - TimeoutError (AbortSignal.timeout) → retryable (design D4.1)
    */
   private async handleTaskError(task: UploadTask, err: unknown): Promise<void> {
     // Check for abort (user cancellation)
     if (isAbortError(err) || task.abortController.signal.aborted) {
+      // cancel() already failed and accounted for every active+pending task;
+      // a late AbortError rejection from an in-flight upload must not
+      // double-count failedCount or duplicate the cancel summary log (D3/D2).
+      if (this.wasFailedByQueueCancel(task)) {
+        return;
+      }
       task.status = "failed";
       task.blob = null; // release memory
       this.failedCount++;
       this.active.delete(task.id);
+      // (D2) Abort is terminal for this task — log it once.
+      console.warn(
+        `[UploadQueue] Upload aborted (cancelled): path=${task.path} url=${task.originalUrl}`,
+      );
       this.notifyProgress();
       return;
     }
@@ -470,6 +506,12 @@ export class UploadQueue {
       task.blob = null;
       this.failedCount++;
       this.active.delete(task.id);
+      // (D2) Terminal-failure log — auth failures were silent before.
+      console.error(
+        `[UploadQueue] Authentication failed after re-registration attempts — ` +
+          `upload permanently failed: path=${task.path} session=${task.sessionId} ` +
+          `error=${err.message}`,
+      );
       this.notifyProgress();
       return;
     }
@@ -487,12 +529,20 @@ export class UploadQueue {
         this.sessionFullDetected = true;
 
         // Fast-fail all remaining pending tasks — they would 413 anyway.
+        let drained = 0;
         while (this.pending.length > 0) {
           const pendingTask = this.pending.shift()!;
           pendingTask.status = "failed";
           pendingTask.blob = null;
           this.failedCount++;
+          drained++;
         }
+
+        // (D2) One log for the whole fail-all drain — not per drained task.
+        console.warn(
+          `[UploadQueue] 413 Session full (session=${task.sessionId}): ` +
+            `drained ${drained} pending uploads, finalizing with partial data`,
+        );
 
         this.notifyProgress();
         this.onSessionFull?.(task.sessionId);
@@ -513,13 +563,9 @@ export class UploadQueue {
 
         await this.sleep(delay);
 
-        // Check if cancelled during sleep
-        if (this.cancelled || task.abortController.signal.aborted) {
-          task.status = "failed";
-          task.blob = null;
-          this.failedCount++;
-          this.active.delete(task.id);
-          this.notifyProgress();
+        // Check if cancelled during sleep — cancel() already accounted for
+        // this task while it slept; don't double-count (D3).
+        if (this.wasFailedByQueueCancel(task)) {
           return;
         }
 
@@ -527,16 +573,21 @@ export class UploadQueue {
         this.executeTask(task).catch(() => {});
         return;
       }
-      // Exhausted retries for 429
+      // Exhausted retries for 429 — terminal (D2): log once.
       task.status = "failed";
       task.blob = null;
       this.failedCount++;
       this.active.delete(task.id);
+      this.resourceUrlMap.delete(task.id); // exclude from checkpoint
+      console.error(
+        `[UploadQueue] Upload failed permanently: path=${task.path} retries=${task.retries} ` +
+          `error=${err instanceof Error ? err.message : err}`,
+      );
       this.notifyProgress();
       return;
     }
 
-    // (9.3) 5xx / ServerUnavailableError / network errors → retryable
+    // (9.3) 5xx / ServerUnavailableError / network errors / timeout aborts → retryable
     if (isRetryableError(err)) {
       if (task.retries < MAX_RETRIES) {
         task.retries++;
@@ -547,13 +598,9 @@ export class UploadQueue {
 
         await this.sleep(delay);
 
-        // Check if cancelled during sleep
-        if (this.cancelled || task.abortController.signal.aborted) {
-          task.status = "failed";
-          task.blob = null;
-          this.failedCount++;
-          this.active.delete(task.id);
-          this.notifyProgress();
+        // Check if cancelled during sleep — cancel() already accounted for
+        // this task while it slept; don't double-count (D3).
+        if (this.wasFailedByQueueCancel(task)) {
           return;
         }
 
@@ -588,6 +635,16 @@ export class UploadQueue {
 
   private generateTaskId(): string {
     return `upload-${Date.now()}-${++this.taskIdCounter}`;
+  }
+
+  /**
+   * True when cancel() has already failed and accounted for this task
+   * (it was active/pending when the queue-wide cancel cleared the maps).
+   * A late rejection or retry-sleep wakeup must not double-count it in
+   * failedCount or log it again (design D4.2/D4.3).
+   */
+  private wasFailedByQueueCancel(task: UploadTask): boolean {
+    return this.cancelled && !this.active.has(task.id);
   }
 
   /**
@@ -686,11 +743,18 @@ function getRetryAfterFromError(err: unknown): number | undefined {
 }
 
 /**
- * Check if the error is retryable (5xx, network error, or ServerUnavailableError).
- * Non-retryable: 4xx client errors (except 429 handled separately).
+ * Check if the error is retryable (5xx, network error, ServerUnavailableError,
+ * or a timeout abort). Non-retryable: 4xx client errors (except 429 handled
+ * separately) and user cancellation (AbortError — see isAbortError).
  *
  * (S2 fix) Removed regex-based HTTP status fallback — all custom error
  * classes carry a `statusCode` property for structured detection.
+ *
+ * (D1 fix) `AbortSignal.timeout()` rejects with a DOMException named
+ * "TimeoutError" — a hung upload, NOT a user cancellation. It must be
+ * classified retryable so a stalled upload retries with backoff instead of
+ * becoming a single-attempt permanent failure. Genuine user cancellation
+ * keeps the name "AbortError" and stays terminal.
  */
 function isRetryableError(err: unknown): boolean {
   // ServerUnavailableError → retryable (5xx or network-level)
@@ -699,6 +763,15 @@ function isRetryableError(err: unknown): boolean {
       err.statusCode === undefined || // network-level (no HTTP status)
       err.statusCode >= 500 // 5xx server error
     );
+  }
+
+  // (D1) TimeoutError from AbortSignal.timeout() → retryable
+  if (err instanceof DOMException && err.name === "TimeoutError") {
+    return true;
+  }
+  // Defensive: some environments surface it as a plain Error with the name set
+  if (err instanceof Error && err.name === "TimeoutError") {
+    return true;
   }
 
   // TypeError (network failure) → retryable

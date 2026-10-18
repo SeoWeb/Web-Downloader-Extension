@@ -669,6 +669,7 @@ export default function SidePanel() {
         isSingleFile={serverModeState.isSingleFile}
         cloudUploadState={cloudUploadState}
         downloadReport={downloadReport}
+        failedUploads={serverModeState.failedUploads}
       />
     </div>
   );
