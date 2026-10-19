@@ -552,3 +552,29 @@ discovered resource(s) never uploaded; finalize proceeds)` — column = 1 ==
   `images/day-cloudy.svg` which was never uploaded (CSS-`mask` ref missed by
   the extension harvester; 64 images + 4 svg + 28 scripts + 11 styles ARE
   stored). Ingest-integrity gate / harvester improvement = follow-up change.
+
+### Incident + config record — 2026-10-19 (cap raise + credential-drift recovery)
+
+- Symptom: alkostar.hr download (280 assets) never appeared. Monolith log:
+  `Cloud push rejected pre-flight: assets=280 limit=200` — 5 attempts, all
+  rejected by the gateway `MAX_INGEST_ASSETS` cap (D2 default 200).
+- Fix (user-approved): `MAX_INGEST_ASSETS=2000` in `pagepocket/.env` +
+  `CLOUD_MAX_ASSETS=2000` in `server/.env` (pre-flight parity), containers
+  recreated. Verified live in both containers.
+- INCIDENT during recreation: `docker compose up -d` (base file only) resolved
+  every service DB*URL to `root` + per-service `DB_PASSWORD*_`— a latent
+drift:`DB*USER*_`were never in`.env`, and old containers predated the
+  current env. auth/archive/library/search/share crashed on MySQL auth.
+- Recovery: `scripts/prod/rotate-db-users.sh --yes` — provisioned the five
+  `pagepocket_{auth,archive,library,search,share}` users (reusing the existing
+  `DB_PASSWORD_*` values) and recreated services WITH the
+  `docker-compose.prod.yml` overlay (which hardcodes the scoped users).
+  Gateway health 200, zero unhealthy containers. Env backup:
+  `pagepocket/.env.bak-20261019_171824`.
+- LESSON: pagepocket stack mutations MUST use
+  `-f docker-compose.yml -f docker-compose.prod.yml` (as the rotation script
+  does). Plain `docker compose up` resolves dev-default DB users.
+- Follow-ups (not yet built): extension-side early warning when a page
+  exceeds the publish cap (fail before uploading N assets); monolith ingest
+  batching for pages above the cap; harvester gap — CSS `mask: url(...)`
+  references are not captured (day-cloudy.svg class of misses).
