@@ -20,6 +20,37 @@ export interface HandlerOptions {
   documentUrl?: string;
 }
 
+/**
+ * Merge filename maps into ONE map for upload (fix G).
+ *
+ * The first map (images) is copied first; every following map's entries are
+ * added only when the key is not already present — earlier categories are
+ * never clobbered on the (rare) shared-URL collision. Sequential guarded
+ * set loops, deliberately not spread merges.
+ */
+export function mergeFilenameMaps(
+  primary?: Map<string, string>,
+  ...others: Array<Map<string, string> | undefined>
+): Map<string, string> {
+  const merged = new Map<string, string>();
+  for (const [key, value] of primary ?? []) {
+    merged.set(key, value);
+  }
+  for (const source of others) {
+    for (const [key, value] of source ?? []) {
+      if (!merged.has(key)) merged.set(key, value);
+    }
+  }
+  return merged;
+}
+
+/**
+ * Download the page's stylesheets and scripts.
+ *
+ * Returns the merged filename map from both handlers (raw reference AND
+ * absolute URL → archive path), mirroring processImages — the caller
+ * uploads one combined map to the server (fix G).
+ */
 export async function processAssets(
   data: { css: string[]; js: string[] },
   storage: IStorageAdapter,
@@ -27,15 +58,17 @@ export async function processAssets(
   sendMessage: (message: string | { key: string; options?: any }) => void,
   context?: DownloadContext,
   options?: HandlerOptions,
-) {
+): Promise<Map<string, string>> {
   const documentUrl = options?.documentUrl ?? tabUrl;
+  let cssMap: Map<string, string> | undefined;
+  let jsMap: Map<string, string> | undefined;
 
   if (data.css?.length) {
     sendMessage({
       key: "status.downloadingCss",
       options: { count: data.css.length },
     });
-    await addCssFiles(
+    cssMap = await addCssFiles(
       data.css,
       storage,
       tabUrl,
@@ -51,7 +84,7 @@ export async function processAssets(
       key: "status.downloadingJs",
       options: { count: data.js.length },
     });
-    await addJsFiles(
+    jsMap = await addJsFiles(
       data.js,
       storage,
       tabUrl,
@@ -61,8 +94,16 @@ export async function processAssets(
     );
     sendMessage({ key: "status.jsDownloaded" });
   }
+
+  return mergeFilenameMaps(cssMap, jsMap);
 }
 
+/**
+ * Download the page's document links.
+ *
+ * Returns the document filename map (raw attribute AND absolute URL →
+ * archive path), mirroring processImages (fix G).
+ */
 export async function processDocuments(
   documents: string[],
   storage: IStorageAdapter,
@@ -70,8 +111,8 @@ export async function processDocuments(
   sendMessage: (message: string | { key: string; options?: any }) => void,
   context?: DownloadContext,
   options?: HandlerOptions,
-) {
-  if (!documents?.length) return;
+): Promise<Map<string, string>> {
+  if (!documents?.length) return new Map<string, string>();
 
   const documentUrl = options?.documentUrl ?? tabUrl;
 
@@ -79,7 +120,7 @@ export async function processDocuments(
     key: "status.downloadingDocuments",
     options: { count: documents.length },
   });
-  await addDocumentFiles(
+  const docMap = await addDocumentFiles(
     documents,
     storage,
     tabUrl,
@@ -88,6 +129,7 @@ export async function processDocuments(
     { documentUrl },
   );
   sendMessage({ key: "status.documentsDownloaded" });
+  return mergeFilenameMaps(docMap);
 }
 
 export async function processImages(

@@ -32,6 +32,14 @@ type QueueOutcome =
 
 type SendMessage = (message: string | { key: string; options?: any }) => void;
 
+/** One schedulable stylesheet: resolved absolute URL + as-authored reference. */
+interface CssItem {
+  url: string;
+  depth: number;
+  /** Raw as-authored reference (attribute value or @import target). */
+  raw: string;
+}
+
 /** Per-download accounting shared by top-level stylesheets and imports. */
 interface CssDownloadState {
   storage: IStorageAdapter;
@@ -40,6 +48,8 @@ interface CssDownloadState {
   failureCategories: Partial<Record<FileHandlerFailureCategory, number>>;
   /** Resolved absolute CSS URLs already processed — dedups per download. */
   visited: Set<string>;
+  /** Uploaded stylesheets: raw reference AND absolute URL → archive path. */
+  filenameMap: Map<string, string>;
   /** Number of page-level stylesheets (drives progress totals). */
   totalCount: number;
   /** Top-level stats (drive progress + summary). */
@@ -51,7 +61,7 @@ interface CssDownloadState {
   importsSucceeded: number;
   importsFailed: number;
   /** Schedule a stylesheet for processing (tracked by the drain loop). */
-  spawn: (item: { url: string; depth: number }) => void;
+  spawn: (item: CssItem) => void;
 }
 
 /** Enqueue one fetch and settle to a plain outcome (never throws). */
@@ -87,6 +97,12 @@ function recordFailure(
  * Relative URLs resolve against the document URL (design D2). Text is
  * decoded with the declared charset (design D6). Opaque (no-cors) responses
  * are recorded as a categorized `cors` failure — their body is unreadable.
+ *
+ * Returns a filename map (mirroring the image handler): each uploaded
+ * stylesheet is keyed BOTH by its raw as-authored reference and by its
+ * resolved absolute URL (query string included), with the archive path as
+ * the value — this is uploaded to the server so the archived-HTML converter
+ * can resolve stylesheet hrefs to the exact stored paths.
  */
 export async function addCssFiles(
   csss: string[],
@@ -95,8 +111,9 @@ export async function addCssFiles(
   sendMessage: SendMessage,
   downloadId?: string,
   options?: FileHandlerOptions,
-) {
-  if (!csss?.length) return;
+): Promise<Map<string, string>> {
+  const filenameMap = new Map<string, string>();
+  if (!csss?.length) return filenameMap;
 
   const documentUrl = options?.documentUrl;
   // Legacy fallback base: the site origin (previous behavior).
@@ -107,6 +124,7 @@ export async function addCssFiles(
     sendMessage,
     failureCategories: {},
     visited: new Set<string>(),
+    filenameMap,
     totalCount: 0,
     successCount: 0,
     failCount: 0,
@@ -156,7 +174,7 @@ export async function addCssFiles(
     }
     state.visited.add(resolved);
     state.totalCount++;
-    state.spawn({ url: resolved, depth: 0 });
+    state.spawn({ url: resolved, depth: 0, raw: css });
   }
 
   // Drain: keep waiting while any stylesheet (or newly discovered import)
@@ -187,6 +205,8 @@ export async function addCssFiles(
       },
     });
   }
+
+  return filenameMap;
 }
 
 /**
@@ -195,10 +215,10 @@ export async function addCssFiles(
  * drain loop (entered into `inflight` before this task settles).
  */
 async function processCssItem(
-  item: { url: string; depth: number },
+  item: CssItem,
   state: CssDownloadState,
 ): Promise<void> {
-  const { url: fullCssUrl, depth } = item;
+  const { url: fullCssUrl, depth, raw } = item;
   const isTopLevel = depth === 0;
 
   const outcome = await enqueueRequest({
@@ -286,9 +306,18 @@ async function processCssItem(
     }
 
     // Upload the raw CSS at a collision-free archive path (design D5).
+    // The 4th argument carries the resolved ABSOLUTE source URL (query
+    // string included) so the server stores it as resources.original_url —
+    // the archived-HTML converter resolves stylesheet hrefs to absolute
+    // URLs and looks them up in the session filename map (fix G).
     const archivePath = buildArchivePath(fullCssUrl, "styles");
     const cssBlob = new Blob([cssContent], { type: "text/css" });
-    await state.storage.addFile(archivePath, cssBlob, "text/css");
+    await state.storage.addFile(archivePath, cssBlob, "text/css", fullCssUrl);
+
+    // Mirror the image handler's map: keyed by the raw as-authored
+    // reference AND the resolved absolute URL → archive path.
+    state.filenameMap.set(raw, archivePath);
+    state.filenameMap.set(fullCssUrl, archivePath);
 
     if (isTopLevel) state.successCount++;
     else state.importsSucceeded++;
@@ -300,7 +329,11 @@ async function processCssItem(
         const resolvedImport = resolveResourceUrl(importTarget, fullCssUrl);
         if (!resolvedImport || state.visited.has(resolvedImport)) continue;
         state.visited.add(resolvedImport);
-        state.spawn({ url: resolvedImport, depth: depth + 1 });
+        state.spawn({
+          url: resolvedImport,
+          depth: depth + 1,
+          raw: importTarget,
+        });
       }
     }
   } catch (error) {
@@ -379,7 +412,14 @@ async function downloadBackgroundImages(
         : new Uint8Array();
       const blob = new Blob([bytes]);
 
-      await storage.addFile(buildArchivePath(fullImageUrl, "images"), blob);
+      // The absolute source URL rides along as originalUrl so the server's
+      // storage-path seed can resolve CSS url() references to these files.
+      await storage.addFile(
+        buildArchivePath(fullImageUrl, "images"),
+        blob,
+        undefined,
+        fullImageUrl,
+      );
       successCount++;
     } catch {
       failCount++;

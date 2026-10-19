@@ -61,6 +61,12 @@ function docContentTypeFromExtension(filename: string): string {
  *
  * Relative URLs resolve against the document URL (design D2). Uploaded
  * paths preserve the URL's directory structure (design D5).
+ *
+ * Returns a filename map (mirroring the image handler): each uploaded
+ * document is keyed BOTH by its raw as-authored attribute and by its
+ * resolved absolute URL (query string included), with the archive path as
+ * the value — uploaded to the server so archived-HTML document links can
+ * resolve to the exact stored paths.
  */
 export async function addDocumentFiles(
   documents: string[],
@@ -69,9 +75,10 @@ export async function addDocumentFiles(
   sendMessage: SendMessage,
   downloadId?: string,
   options?: FileHandlerOptions,
-) {
+): Promise<Map<string, string>> {
+  const filenameMap = new Map<string, string>();
   if (!documents?.length) {
-    return;
+    return filenameMap;
   }
 
   const documentUrl = options?.documentUrl;
@@ -158,10 +165,17 @@ export async function addDocumentFiles(
       const blob = new Blob([bytes]);
 
       // Collision-free archive path preserving the directory structure.
+      // The 4th argument carries the resolved ABSOLUTE source URL (query
+      // string included) so the server stores it as resources.original_url
+      // — archived-HTML document links are looked up by absolute URL in
+      // the session filename map (fix G).
       const archivePath = buildArchivePath(fullDocumentUrl, "documents");
       const docContentType = docContentTypeFromExtension(archivePath);
 
-      await storage.addFile(archivePath, blob, docContentType);
+      await storage.addFile(archivePath, blob, docContentType, fullDocumentUrl);
+      // Mirror the image handler's map: raw attribute AND absolute URL.
+      filenameMap.set(document, archivePath);
+      filenameMap.set(fullDocumentUrl, archivePath);
       successCount++;
     } catch (error) {
       const category = toFailureCategory(error);
@@ -186,4 +200,6 @@ export async function addDocumentFiles(
       },
     });
   }
+
+  return filenameMap;
 }

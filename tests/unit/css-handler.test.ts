@@ -230,20 +230,22 @@ describe("addCssFiles", () => {
         "styles/a/main.css",
         expect.any(Blob),
         "text/css",
+        "https://host/a/main.css",
       );
       expect(storage.addFile).toHaveBeenCalledWith(
         "styles/b/main.css",
         expect.any(Blob),
         "text/css",
+        "https://host/b/main.css",
       );
 
       // Each file keeps its own content.
-      const a = await (storage.addFile as any).mock.calls.find(
-        (c) => c[0] === "styles/a/main.css",
-      )[1].text();
-      const b = await (storage.addFile as any).mock.calls.find(
-        (c) => c[0] === "styles/b/main.css",
-      )[1].text();
+      const a = await (storage.addFile as any).mock.calls
+        .find((c) => c[0] === "styles/a/main.css")[1]
+        .text();
+      const b = await (storage.addFile as any).mock.calls
+        .find((c) => c[0] === "styles/b/main.css")[1]
+        .text();
       expect(a).toBe(".a{}");
       expect(b).toBe(".b{}");
     });
@@ -291,16 +293,10 @@ describe("addCssFiles", () => {
     }
 
     it("decodes Shift_JIS content via the Content-Type charset header", async () => {
-      configureEnqueue(
-        okCss("", "text/css; charset=Shift_JIS"),
-      );
+      configureEnqueue(okCss("", "text/css; charset=Shift_JIS"));
       // Override the responder to hand back raw Shift_JIS bytes (no @charset).
       configureEnqueue((url) =>
-        makeResult(
-          shiftJisBytes(false),
-          "text/css; charset=Shift_JIS",
-          url,
-        ),
+        makeResult(shiftJisBytes(false), "text/css; charset=Shift_JIS", url),
       );
 
       await addCssFiles(
@@ -376,8 +372,15 @@ describe("addCssFiles", () => {
       // Shift_JIS bytes with an @charset rule and NO charset header: only a
       // bytes-based decoder that honors @charset can round-trip this.
       const sjis = Uint8Array.from([
-        ...new TextEncoder().encode('@charset "Shift_JIS";\nbody::before{content:"'),
-        0x83, 0x65, 0x83, 0x58, 0x83, 0x67, // テスト
+        ...new TextEncoder().encode(
+          '@charset "Shift_JIS";\nbody::before{content:"',
+        ),
+        0x83,
+        0x65,
+        0x83,
+        0x58,
+        0x83,
+        0x67, // テスト
         ...new TextEncoder().encode('";}'),
       ]);
       configureEnqueue((url) => makeResult(sjis, "text/css", url));
@@ -446,7 +449,9 @@ describe("addCssFiles", () => {
 
     it("keeps processing the remaining stylesheets after an opaque failure", async () => {
       const byUrl: Record<string, RequestResult | Error> = {
-        "https://host/blocked.css": makeOpaqueResult("https://host/blocked.css"),
+        "https://host/blocked.css": makeOpaqueResult(
+          "https://host/blocked.css",
+        ),
         "https://host/fine.css": okCss(".fine{}")("https://host/fine.css"),
       };
       configureEnqueue((url) => byUrl[url]);
@@ -462,6 +467,7 @@ describe("addCssFiles", () => {
         "styles/fine.css",
         expect.any(Blob),
         "text/css",
+        "https://host/fine.css",
       );
       const summary = messages.find(
         (m) => typeof m === "object" && m.key === "status.cssSummary",
@@ -549,15 +555,15 @@ describe("addCssFiles", () => {
   describe("@import extraction (task 3.4)", () => {
     it("downloads a nested import chain (url form + string form)", async () => {
       const byUrl: Record<string, RequestResult | Error> = {
-        "https://host/css/main.css": okCss(
-          '@import url("theme.css");',
-        )("https://host/css/main.css"),
-        "https://host/css/theme.css": okCss(
-          '@import "reset.css";',
-        )("https://host/css/theme.css"),
-        "https://host/css/reset.css": okCss(
-          "*{margin:0}",
-        )("https://host/css/reset.css"),
+        "https://host/css/main.css": okCss('@import url("theme.css");')(
+          "https://host/css/main.css",
+        ),
+        "https://host/css/theme.css": okCss('@import "reset.css";')(
+          "https://host/css/theme.css",
+        ),
+        "https://host/css/reset.css": okCss("*{margin:0}")(
+          "https://host/css/reset.css",
+        ),
       };
       configureEnqueue((url) => byUrl[url]);
 
@@ -572,32 +578,39 @@ describe("addCssFiles", () => {
         "styles/css/main.css",
         expect.any(Blob),
         "text/css",
+        "https://host/css/main.css",
       );
       expect(storage.addFile).toHaveBeenCalledWith(
         "styles/css/theme.css",
         expect.any(Blob),
         "text/css",
+        "https://host/css/theme.css",
       );
       expect(storage.addFile).toHaveBeenCalledWith(
         "styles/css/reset.css",
         expect.any(Blob),
         "text/css",
+        "https://host/css/reset.css",
       );
       // Imported stylesheets are uploaded to the styles bucket exactly once
       // each — they are not also fetched as url() "background images".
       const paths = (storage.addFile as any).mock.calls.map((c) => c[0]);
-      expect(paths.filter((p: string) => p.startsWith("styles/css/"))).toHaveLength(3);
-      expect(paths.filter((p: string) => p.startsWith("images/"))).toHaveLength(0);
+      expect(
+        paths.filter((p: string) => p.startsWith("styles/css/")),
+      ).toHaveLength(3);
+      expect(paths.filter((p: string) => p.startsWith("images/"))).toHaveLength(
+        0,
+      );
     });
 
     it("resolves import targets against the importing stylesheet's URL", async () => {
       const byUrl: Record<string, RequestResult | Error> = {
-        "https://host/dir/css/main.css": okCss(
-          '@import url(pieces/x.css);',
-        )("https://host/dir/css/main.css"),
-        "https://host/dir/css/pieces/x.css": okCss(
-          ".x{}",
-        )("https://host/dir/css/pieces/x.css"),
+        "https://host/dir/css/main.css": okCss("@import url(pieces/x.css);")(
+          "https://host/dir/css/main.css",
+        ),
+        "https://host/dir/css/pieces/x.css": okCss(".x{}")(
+          "https://host/dir/css/pieces/x.css",
+        ),
       };
       configureEnqueue((url) => byUrl[url]);
 
@@ -615,17 +628,18 @@ describe("addCssFiles", () => {
         "styles/dir/css/pieces/x.css",
         expect.any(Blob),
         "text/css",
+        "https://host/dir/css/pieces/x.css",
       );
     });
 
     it("downloads each side of an import cycle exactly once", async () => {
       const byUrl: Record<string, RequestResult | Error> = {
-        "https://host/a.css": okCss(
-          '@import url("b.css");',
-        )("https://host/a.css"),
-        "https://host/b.css": okCss(
-          '@import url("a.css");',
-        )("https://host/b.css"),
+        "https://host/a.css": okCss('@import url("b.css");')(
+          "https://host/a.css",
+        ),
+        "https://host/b.css": okCss('@import url("a.css");')(
+          "https://host/b.css",
+        ),
       };
       configureEnqueue((url) => byUrl[url]);
 
@@ -641,8 +655,12 @@ describe("addCssFiles", () => {
       expect(paths.sort()).toEqual(["styles/a.css", "styles/b.css"]);
       // The cycle terminates: a.css enqueued once, b.css once.
       const enqueuedUrls = mockEnqueue.mock.calls.map((c) => c[0].url);
-      expect(enqueuedUrls.filter((u) => u === "https://host/a.css")).toHaveLength(1);
-      expect(enqueuedUrls.filter((u) => u === "https://host/b.css")).toHaveLength(1);
+      expect(
+        enqueuedUrls.filter((u) => u === "https://host/a.css"),
+      ).toHaveLength(1);
+      expect(
+        enqueuedUrls.filter((u) => u === "https://host/b.css"),
+      ).toHaveLength(1);
     });
 
     it("stops recursion at the depth cap of 3", async () => {
@@ -676,9 +694,9 @@ describe("addCssFiles", () => {
         "https://host/page.css": okCss(
           '@import url("shared.css");@import url("shared.css");',
         )("https://host/page.css"),
-        "https://host/shared.css": okCss(
-          ".shared{}",
-        )("https://host/shared.css"),
+        "https://host/shared.css": okCss(".shared{}")(
+          "https://host/shared.css",
+        ),
       };
       configureEnqueue((url) => byUrl[url]);
 
@@ -696,9 +714,7 @@ describe("addCssFiles", () => {
     });
 
     it("skips data: imports and never enqueues them", async () => {
-      configureEnqueue(
-        okCss('@import url("data:text/css,body{}");.a{}'),
-      );
+      configureEnqueue(okCss('@import url("data:text/css,body{}");.a{}'));
 
       await addCssFiles(
         ["https://host/only.css"],

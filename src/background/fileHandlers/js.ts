@@ -44,6 +44,12 @@ function enqueueRequest(
  * Relative URLs resolve against the document URL (design D2). Opaque
  * (no-cors) responses are recorded as a categorized `cors` failure — their
  * body is unreadable and must never be read (task 2.4).
+ *
+ * Returns a filename map (mirroring the image handler): each uploaded
+ * script is keyed BOTH by its raw as-authored attribute and by its resolved
+ * absolute URL (query string included), with the archive path as the value —
+ * uploaded to the server so the archived-HTML converter can resolve script
+ * srcs to the exact stored paths.
  */
 export async function addJsFiles(
   jss: string[],
@@ -52,8 +58,9 @@ export async function addJsFiles(
   sendMessage: SendMessage,
   downloadId?: string,
   options?: FileHandlerOptions,
-) {
-  if (!jss?.length) return;
+): Promise<Map<string, string>> {
+  const filenameMap = new Map<string, string>();
+  if (!jss?.length) return filenameMap;
 
   const documentUrl = options?.documentUrl;
   // Legacy fallback base: the site origin (previous behavior).
@@ -134,8 +141,20 @@ export async function addJsFiles(
       const blob = new Blob([bytes]);
 
       // Collision-free archive path preserving the directory structure.
+      // The 4th argument carries the resolved ABSOLUTE source URL (query
+      // string included) so the server stores it as resources.original_url
+      // — the archived-HTML converter looks scripts up by absolute URL
+      // in the session filename map (fix G).
       const archivePath = buildArchivePath(fullJsUrl, "scripts");
-      await storage.addFile(archivePath, blob, "application/javascript");
+      await storage.addFile(
+        archivePath,
+        blob,
+        "application/javascript",
+        fullJsUrl,
+      );
+      // Mirror the image handler's map: raw attribute AND absolute URL.
+      filenameMap.set(js, archivePath);
+      filenameMap.set(fullJsUrl, archivePath);
       successCount++;
     } catch (error) {
       const category = toFailureCategory(error);
@@ -160,4 +179,6 @@ export async function addJsFiles(
       },
     });
   }
+
+  return filenameMap;
 }

@@ -63,3 +63,18 @@ The archived HTML's stylesheet, script, and preload references SHALL point at th
 - **WHEN** the assembler's deterministic collision dedup (3.7) renames a colliding resource's archive path
 - **THEN** the seeded reference for that resource's URL is rewritten to the final (suffixed) archive path like any image-map entry
 - **AND** every emitted reference still resolves to a file present in the assembled archive
+
+### Requirement: Absolute source URLs stored for stylesheet, script, and document uploads
+
+Fix F's map seed keys on `resources.original_url`, so that column must carry the real source URL for every reference kind. When the extension uploads a stylesheet, script, or document resource, it SHALL pass the resolved ABSOLUTE source URL (the exact `resolveResourceUrl` result, query string included) as the upload's `originalUrl`, so `resources.original_url` carries that absolute URL and never falls back to the local archive path. The session filename map the extension uploads SHALL cover stylesheets, scripts, and documents in addition to images: every uploaded resource of those kinds SHALL appear keyed BOTH by its raw as-authored attribute AND by its absolute resolved URL, each mapping to the stored archive path (query-queried files at their `<name>_<hash8>` paths). Map merging SHALL keep image entries authoritative — later categories are added only for keys not already present. Linked-page asset processing SHALL feed the same merged map into the incremental (delta) filename-map uploads.
+
+#### Scenario: Queried stylesheet upload produces map entry and original_url
+
+- **WHEN** a page referencing `<link href="https://site/wp-content/a/b/styles.css?ver=9">` is downloaded and the stylesheet is uploaded at `styles/wp-content/a/b/styles_<hash8>.css`
+- **THEN** the stored resource's `original_url` is the absolute URL `https://site/wp-content/a/b/styles.css?ver=9` (query included), not the archive path
+- **AND** the session filename map contains an entry from that absolute URL — and from the raw attribute as authored — to `styles/wp-content/a/b/styles_<hash8>.css`, so the assembled HTML's `<link>` href resolves through the map instead of the basename fallback
+
+#### Scenario: Filename map and resume manifest cover all asset kinds
+
+- **WHEN** the main page's assets finish uploading (or a linked page's incremental delta is uploaded), and later a service-worker death triggers a checkpoint resume
+- **THEN** the uploaded filename map includes stylesheet, script, and document entries alongside image entries with image entries kept on key conflicts, and the checkpoint manifest's css/js entries carry absolute source URLs the resume path can re-fetch directly

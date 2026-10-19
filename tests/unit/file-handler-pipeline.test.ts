@@ -191,11 +191,13 @@ describe("addJsFiles", () => {
       "scripts/a/app.js",
       expect.any(Blob),
       "application/javascript",
+      "https://host/a/app.js",
     );
     expect(storage.addFile).toHaveBeenCalledWith(
       "scripts/b/app.js",
       expect.any(Blob),
       "application/javascript",
+      "https://host/b/app.js",
     );
   });
 
@@ -222,9 +224,7 @@ describe("addJsFiles", () => {
   });
 
   it("surfaces queue failure categories in the summary", async () => {
-    configureEnqueue(
-      () => new RequestQueueError("Timed out", "timeout"),
-    );
+    configureEnqueue(() => new RequestQueueError("Timed out", "timeout"));
 
     const messages: any[] = [];
     await addJsFiles(
@@ -350,7 +350,11 @@ describe("addImageFiles", () => {
         "https://host/ok/img.png",
       ),
     };
-    const opaqueSpy = vi.spyOn(byUrl["https://host/blocked/img.png"], "response", "get");
+    const opaqueSpy = vi.spyOn(
+      byUrl["https://host/blocked/img.png"],
+      "response",
+      "get",
+    );
     configureEnqueue((url) => byUrl[url]);
 
     const messages: any[] = [];
@@ -448,11 +452,13 @@ describe("addDocumentFiles", () => {
       "documents/2024/report.pdf",
       expect.any(Blob),
       "application/pdf",
+      "https://host/2024/report.pdf",
     );
     expect(storage.addFile).toHaveBeenCalledWith(
       "documents/2025/report.pdf",
       expect.any(Blob),
       "application/pdf",
+      "https://host/2025/report.pdf",
     );
   });
 

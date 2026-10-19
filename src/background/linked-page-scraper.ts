@@ -19,7 +19,7 @@ import {
 } from "./fileHandlers";
 import { serverClient, HttpError } from "./server-client";
 import type { DownloadContext } from "./download-state";
-import type { HandlerOptions } from "./download-processors";
+import { mergeFilenameMaps, type HandlerOptions } from "./download-processors";
 
 export interface LinkedPageJob {
   url: string;
@@ -40,9 +40,10 @@ export interface ScrapedPageData {
   htmlChunks: string[];
   url: string;
   finalUrl: string; // After redirects
-  /** Image filename map for this page's newly downloaded images.
-   * Used to build incremental filename map uploads. */
-  localImageMap: Map<string, string>;
+  /** Filename map for this page's newly downloaded assets (images,
+   * stylesheets, scripts, documents — raw reference AND absolute URL →
+   * archive path). Used to build incremental filename map uploads. */
+  localFilenameMap: Map<string, string>;
   /** Body text extracted from the page via getResources().text.
    * Used to accumulate content text across all linked pages. */
   text: string;
@@ -358,9 +359,9 @@ export class LinkedPageScraper {
 
         // Upload incremental filename map after this linked page's
         // assets are downloaded. The delta map contains only the new entries
-        // discovered for this linked page.
+        // discovered for this linked page (images AND css/js/documents — fix G).
         const deltaMap: Record<string, string> = {};
-        for (const [key, value] of scrapedData.localImageMap ?? []) {
+        for (const [key, value] of scrapedData.localFilenameMap ?? []) {
           if (!sharedImageFilenameMap.has(key)) {
             deltaMap[key] = value;
           }
@@ -453,8 +454,10 @@ export class LinkedPageScraper {
             ),
           );
 
+          // Delta map: only entries this linked page newly discovered
+          // (images AND css/js/documents — fix G).
           const deltaMap: Record<string, string> = {};
-          for (const [key, value] of scrapedData.localImageMap ?? []) {
+          for (const [key, value] of scrapedData.localFilenameMap ?? []) {
             if (!sharedImageFilenameMap.has(key)) {
               deltaMap[key] = value;
             }
@@ -530,9 +533,10 @@ export class LinkedPageScraper {
     const pageText = resources.text;
 
     // Download assets (checking registry first to avoid duplicates).
-    // Returns the image filename map for this page's newly downloaded images.
+    // Returns the filename map for this page's newly downloaded assets
+    // (images, stylesheets, scripts, documents — fix G).
     // The linked page's own URL is its document URL (D2 / task 1.5).
-    const localImageMap = await this.downloadAssets(
+    const localFilenameMap = await this.downloadAssets(
       resources,
       storage,
       finalUrl,
@@ -546,7 +550,7 @@ export class LinkedPageScraper {
       htmlChunks,
       url,
       finalUrl,
-      localImageMap,
+      localFilenameMap,
       text: pageText,
       assets: {
         images: resources.images,
@@ -821,7 +825,8 @@ export class LinkedPageScraper {
 
   /**
    * Download assets for a linked page, checking registry first.
-   * Returns the image filename map for this page's newly downloaded images.
+   * Returns the filename map for this page's newly downloaded assets
+   * (images, stylesheets, scripts, documents — fix G).
    *
    * Dedup resolution (task 1.6): relative hrefs are resolved against
    * `pageUrl` — the same document URL passed to the handlers — so the
@@ -839,7 +844,7 @@ export class LinkedPageScraper {
     sendMessage: (message: string | { key: string; options?: any }) => void,
     context?: DownloadContext,
   ): Promise<Map<string, string>> {
-    const localImageFilenameMap = new Map<string, string>();
+    const localFilenameMap = new Map<string, string>();
     const handlerOptions: HandlerOptions = { documentUrl: pageUrl };
 
     // Filter out assets that are already downloaded
@@ -863,54 +868,67 @@ export class LinkedPageScraper {
       return !this.assetRegistry.has(fullUrl);
     });
 
-    // Download new assets
-    if (newCss.length > 0) {
-      await addCssFiles(
-        newCss,
-        storage,
-        pageUrl,
-        sendMessage,
-        context?.downloadId,
-        handlerOptions,
-      );
-    }
+    // Download new assets — each handler returns its filename map
+    // (raw reference AND absolute URL → archive path; fix G).
+    const cssMap =
+      newCss.length > 0
+        ? await addCssFiles(
+            newCss,
+            storage,
+            pageUrl,
+            sendMessage,
+            context?.downloadId,
+            handlerOptions,
+          )
+        : undefined;
 
-    if (newJs.length > 0) {
-      await addJsFiles(
-        newJs,
-        storage,
-        pageUrl,
-        sendMessage,
-        context?.downloadId,
-        handlerOptions,
-      );
-    }
+    const jsMap =
+      newJs.length > 0
+        ? await addJsFiles(
+            newJs,
+            storage,
+            pageUrl,
+            sendMessage,
+            context?.downloadId,
+            handlerOptions,
+          )
+        : undefined;
 
-    if (newImages.length > 0) {
-      const downloadedMap = await addImageFiles(
-        newImages,
-        storage,
-        pageUrl,
-        sendMessage,
-        context?.downloadId,
-        handlerOptions,
-      );
-      // Merge into this page's local map and the per-download shared map
-      for (const [key, value] of downloadedMap) {
-        localImageFilenameMap.set(key, value);
-        context?.imageFilenameMap.set(key, value);
-      }
-    }
+    const downloadedMap =
+      newImages.length > 0
+        ? await addImageFiles(
+            newImages,
+            storage,
+            pageUrl,
+            sendMessage,
+            context?.downloadId,
+            handlerOptions,
+          )
+        : undefined;
 
-    if (newDocuments.length > 0) {
-      await addDocumentFiles(
-        newDocuments,
-        storage,
-        pageUrl,
-        sendMessage,
-        context?.downloadId,
-        handlerOptions,
-      );
+    const docsMap =
+      newDocuments.length > 0
+        ? await addDocumentFiles(
+            newDocuments,
+            storage,
+            pageUrl,
+            sendMessage,
+            context?.downloadId,
+            handlerOptions,
+          )
+        : undefined;
+
+    // Merge into this page's local map and the per-download shared map.
+    // Image entries first and never overwritten, then css/js/documents —
+    // mirroring the main-page merge in download-core (fix G).
+    const sharedMap = context?.imageFilenameMap;
+    for (const [key, value] of downloadedMap ?? []) {
+      localFilenameMap.set(key, value);
+      sharedMap?.set(key, value);
+    }
+    for (const [key, value] of mergeFilenameMaps(cssMap, jsMap, docsMap)) {
+      if (!localFilenameMap.has(key)) localFilenameMap.set(key, value);
+      if (sharedMap && !sharedMap.has(key)) sharedMap.set(key, value);
     }
 
     // Register all assets (including ones we skipped).
@@ -959,7 +977,7 @@ export class LinkedPageScraper {
       }
     }
 
-    return localImageFilenameMap;
+    return localFilenameMap;
   }
 
   /**

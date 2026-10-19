@@ -31,6 +31,7 @@ class PanelUnavailableError extends Error {
 }
 
 import {
+  mergeFilenameMaps,
   processAssets,
   processDocuments,
   processImages,
@@ -648,7 +649,7 @@ async function executeDownloadServerMode(
           context,
           mainPageOptions,
         )
-      : Promise.resolve();
+      : Promise.resolve(EMPTY_MAP);
 
     const docsPromise = downloadOptions.downloadDocuments
       ? processDocuments(
@@ -659,7 +660,7 @@ async function executeDownloadServerMode(
           context,
           mainPageOptions,
         )
-      : Promise.resolve();
+      : Promise.resolve(EMPTY_MAP);
 
     const [imagesResult, assetsResult, docsResult] = await Promise.allSettled([
       imagesPromise,
@@ -687,18 +688,34 @@ async function executeDownloadServerMode(
     }
     const imageFilenameMap = imagesResult.value;
 
-    // (D7 / task 4.1) Share the main page's image filename map with linked
-    // page processing via the per-download context (replaces the former
+    // (Fix G) The css/js/documents handlers now return filename maps too.
+    // Merge them with the image map into ONE map for upload: image entries
+    // first and never overwritten, then assets, then documents (see
+    // mergeFilenameMaps — sequential guarded set loops, not spread).
+    const assetFilenameMap =
+      assetsResult.status === "fulfilled" ? assetsResult.value : undefined;
+    const docFilenameMap =
+      docsResult.status === "fulfilled" ? docsResult.value : undefined;
+    const fullFilenameMap = mergeFilenameMaps(
+      imageFilenameMap,
+      assetFilenameMap,
+      docFilenameMap,
+    );
+
+    // (D7 / task 4.1) Share the main page's filename map with linked page
+    // processing via the per-download context (replaces the former
     // module-global map).
-    for (const [key, value] of imageFilenameMap) {
+    for (const [key, value] of fullFilenameMap) {
       context.imageFilenameMap.set(key, value);
     }
 
-    // Upload filename map (needed for HTML conversion during assembly).
-    if (imageFilenameMap.size > 0) {
+    // Upload filename map (needed for HTML conversion during assembly) —
+    // now covering images AND stylesheets/scripts/documents, so the
+    // converter resolves every reference to its exact stored path (fix G).
+    if (fullFilenameMap.size > 0) {
       await serverClient.uploadFilenameMap(
         sessionId,
-        Object.fromEntries(imageFilenameMap),
+        Object.fromEntries(fullFilenameMap),
       );
     }
 
