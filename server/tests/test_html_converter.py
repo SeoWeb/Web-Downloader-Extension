@@ -135,11 +135,26 @@ def test_script_conversion():
 
 
 def test_stylesheet_conversion():
-    """Stylesheet href converted to ./styles/ (5.6)."""
-    html = '<html><head><link rel="stylesheet" href="https://example.com/css/style.css"></head><body></body></html>'
-    result = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
-    assert _has_attr(result, "link", "href", "./styles/style.css"), (
-        f"Expected ./styles/style.css, got: {_get_attr(result, 'link', 'href')}"
+    """Stylesheet href resolves to the mapped storage path (5.6, Fix F).
+
+    WP-style URLs (nested path + query string) must map to the exact stored
+    asset path — full nested directory + _hash8 suffix — never the legacy
+    ``styles/<basename>.css`` fallback that 404s in the archived page.
+    """
+    filename_map = {
+        **SAMPLE_FILENAME_MAP,
+        "https://example.com/wp-content/themes/x/css/bootstrap.css?ver=6.4.2":
+            "styles/wp-content/themes/x/css/bootstrap_f553b9a5.css",
+    }
+    html = (
+        '<html><head><link rel="stylesheet" '
+        'href="https://example.com/wp-content/themes/x/css/bootstrap.css?ver=6.4.2">'
+        '</head><body></body></html>'
+    )
+    result = convert_html(html, TAB_URL, filename_map=filename_map)
+    expected = "./styles/wp-content/themes/x/css/bootstrap_f553b9a5.css"
+    assert _has_attr(result, "link", "href", expected), (
+        f"Expected {expected}, got: {_get_attr(result, 'link', 'href')}"
     )
 
 
@@ -148,8 +163,21 @@ def test_preload_link_conversion():
 
     Next.js references most JS chunks and fonts via preload/modulepreload
     links rather than <script src> / <link rel="stylesheet">. Without this
-    they stay absolute and 404 in the archived preview.
+    they stay absolute and 404 in the archived preview.  With the assembler
+    seeding the map from stored resources (Fix F), each preload href resolves
+    to the exact stored asset path.
     """
+    filename_map = {
+        **SAMPLE_FILENAME_MAP,
+        "https://example.com/_next/static/chunks/1s6lcszef--st.js?dpl=dpl_abc":
+            "scripts/_next/static/chunks/1s6lcszef--st.js_9f2c11ab.js",
+        "https://example.com/_next/static/chunks/vendor.js":
+            "scripts/_next/static/chunks/vendor_4d1e77c0.js",
+        "https://example.com/_next/static/css/main.css":
+            "styles/_next/static/css/main_08a3d2f1.css",
+        "https://example.com/_next/static/media/roboto.woff2":
+            "fonts/_next/static/media/roboto_c81e728d.woff2",
+    }
     html = (
         '<html><head>'
         '<link rel="preload" as="script" href="https://example.com/_next/static/chunks/1s6lcszef--st.js?dpl=dpl_abc">'
@@ -158,20 +186,35 @@ def test_preload_link_conversion():
         '<link rel="preload" as="font" href="https://example.com/_next/static/media/roboto.woff2" crossorigin>'
         '</head><body></body></html>'
     )
-    result = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
-    assert _has_attr(result, "link", "href", "./scripts/1s6lcszef-st.js"), (
-        f"Expected ./scripts/1s6lcszef-st.js, got: {_get_attr(result, 'link', 'href')}"
+    result = convert_html(html, TAB_URL, filename_map=filename_map)
+    assert _has_attr(
+        result, "link", "href",
+        "./scripts/_next/static/chunks/1s6lcszef--st.js_9f2c11ab.js",
+    ), (
+        f"Expected mapped chunk path, got: {_get_attr(result, 'link', 'href')}"
     )
     # All preload references must be archive-relative, never host-absolute.
-    assert "/_next/" not in result, f"Absolute /_next/ path leaked: {result}"
-    assert _has_attr(result, "link", "href", "./scripts/vendor.js"), (
-        f"Expected ./scripts/vendor.js, got: {_get_attr(result, 'link', 'href')}"
+    assert 'href="https://example.com/_next' not in result, (
+        f"Absolute _next URL leaked: {result}"
     )
-    assert _has_attr(result, "link", "href", "./styles/main.css"), (
-        f"Expected ./styles/main.css, got: {_get_attr(result, 'link', 'href')}"
+    assert 'href="/_next' not in result, f"Host-absolute /_next/ leaked: {result}"
+    assert _has_attr(
+        result, "link", "href",
+        "./scripts/_next/static/chunks/vendor_4d1e77c0.js",
+    ), (
+        f"Expected mapped vendor path, got: {_get_attr(result, 'link', 'href')}"
     )
-    assert _has_attr(result, "link", "href", "./images/roboto.woff2"), (
-        f"Expected ./images/roboto.woff2, got: {_get_attr(result, 'link', 'href')}"
+    assert _has_attr(
+        result, "link", "href",
+        "./styles/_next/static/css/main_08a3d2f1.css",
+    ), (
+        f"Expected mapped style path, got: {_get_attr(result, 'link', 'href')}"
+    )
+    assert _has_attr(
+        result, "link", "href",
+        "./fonts/_next/static/media/roboto_c81e728d.woff2",
+    ), (
+        f"Expected mapped font path, got: {_get_attr(result, 'link', 'href')}"
     )
 
 

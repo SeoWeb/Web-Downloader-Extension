@@ -47,3 +47,19 @@ CORS echoing alone cannot unblock the sandboxed viewer: CORS-mode subresource lo
 
 - **WHEN** `ASSET_TOKEN_SECRET` is unset or empty
 - **THEN** no token is minted, the served HTML is byte-identical to the un-rewritten behavior, and its cache-control handling is unchanged
+
+### Requirement: Stylesheet and script references resolve to stored assets
+
+The archived HTML's stylesheet, script, and preload references SHALL point at the resources exactly as they are stored. When the assembler rewrites stylesheet/script/preload URLs (assembler conversion pass in the monolith), each reference SHALL be resolved through the storage path map seeded from the session's stored resources (resource `original_url` → `local_path`) and SHALL emit the exact stored asset path for that resource's original URL (map-hit — e.g. `styles/wp-content/themes/x/css/bootstrap_f553b9a5.css` for a `?ver=`-queried source URL), never a legacy basename fallback (`styles/<basename>.css`). Resources lacking an `original_url` or `local_path` are skipped by the seed and keep the existing fallback; image entries already present in the extension-uploaded filename map remain authoritative, and collision-deduplicated paths (3.7) are rewritten to their final archive paths exactly as for image entries.
+
+#### Scenario: WordPress-style stylesheet resolves to its stored path
+
+- **WHEN** an archived page's HTML references a stylesheet whose source URL carries a query string and a nested path (e.g. `https://site/wp-content/themes/x/css/bootstrap.css?ver=6.4.2`) and the resource is stored at `styles/wp-content/themes/x/css/bootstrap_f553b9a5.css`
+- **THEN** the assembled HTML's `<link rel="stylesheet">` href is that exact stored path (archive-relative), not `styles/bootstrap.css`
+- **AND** the same holds for `<script src>` and preload/modulepreload links referencing stored scripts and styles
+
+#### Scenario: Stored assets and references stay consistent through collision dedup
+
+- **WHEN** the assembler's deterministic collision dedup (3.7) renames a colliding resource's archive path
+- **THEN** the seeded reference for that resource's URL is rewritten to the final (suffixed) archive path like any image-map entry
+- **AND** every emitted reference still resolves to a file present in the assembled archive

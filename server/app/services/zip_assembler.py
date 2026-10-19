@@ -151,6 +151,25 @@ class ZipAssemblerService:
                     if r.content_type
                 }
 
+                # Fix F: seed the conversion filename map with EVERY stored
+                # resource's original_url → local_path.  The extension only
+                # uploads filename-map entries for images, so stylesheet /
+                # script / preload URLs used to miss the map and fall back to
+                # the legacy basename convention (styles/<basename>.css) —
+                # which 404s, because storage keeps buildArchivePath's full
+                # nested path + hash (styles/wp-content/.../<name>_<hash8>.css).
+                # Existing image entries stay authoritative (the extension map
+                # wins on conflict), and resolve_archive_path_collisions()
+                # below rewrites any seeded entry whose resource loses a path
+                # collision (3.7).  A new dict avoids mutating the ORM-loaded
+                # session.filename_map in place.
+                resource_url_paths: dict[str, str] = {
+                    r.original_url: r.local_path
+                    for r in all_resources
+                    if r.original_url and r.local_path
+                }
+                filename_map = {**resource_url_paths, **filename_map}
+
                 # Build local_path → storage_path mapping for disk lookups.
                 # Resources are stored with UUID filenames on disk, but the
                 # HTML references them by local_path (e.g., "styles/main.css").

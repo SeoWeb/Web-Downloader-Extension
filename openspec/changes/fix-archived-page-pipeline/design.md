@@ -20,6 +20,7 @@ On the monolith, the resource upload route works end-to-end (multipart POST → 
 | E8  | `sessions.py:193-196` comment + git history                                                        | The column is stale BY DOCUMENTED DECISION ("no longer updated per-upload — deadlock fix"); status endpoint computes live (`:424`)                                    |
 | E9  | Repo-wide grep                                                                                     | Zero COOP/COEP anywhere in first-party source — no cross-origin-isolation constraints constrain the CORS decision                                                     |
 | E10 | `upload-queue.ts:637-646,695-716`                                                                  | `isAbortError` matches only `AbortError`; `TimeoutError` from `AbortSignal.timeout()` falls through to non-retryable → hung upload = single-attempt permanent failure |
+| E11 | Prod page `054feafd` (alkostar.hr) archived HTML vs stored assets                                  | 44/44 stylesheet hrefs 404: HTML says `styles/<basename>.css` (legacy fallback), storage says `styles/wp-content/…/<name>_<hash8>.css` (`buildArchivePath`)           |
 
 ## Goals / Non-Goals
 
@@ -82,12 +83,23 @@ The scoped fix: the finalize route already computes the authoritative `resource_
 
 **Implementation shape (BFF side, implemented).** `src/lib/asset-token.ts` holds the pure mint/inject helpers (injectable clock, unit-tested against an independent node:crypto HMAC vector); `src/lib/env.ts` gains optional `ASSET_TOKEN_SECRET` / `ASSET_TOKEN_TTL_SECONDS` with `assetTokenConfig()` resolved per request — unset/empty secret ⇒ feature OFF, HTML byte-identical. `src/app/api/pp/[...path]/route.ts` mints for (page_id, user_id) — the user id comes from the already-decoded `pp_access` JWT `sub` — and rewrites the buffered HTML before returning, dropping stale `Content-Length`/`Content-Encoding` framing headers. One prerequisite fell out of this work: `ARCHIVE_FILE_ROUTE` matched only `/archive/{page_id}/f/*`, while the real viewer shape is `/archive/pages/{page_id}/f/*` (page-viewer-shell.tsx; the viewer iframe src and the gateway route both use `pages/`) — so fix A's CORS echo, the sandbox-header overlay, and private cache-control were ALL unreachable for the actual archived-file traffic; the route pattern now admits both shapes, which is what makes the token injection (and fix A itself) reachable in production.
 
+### Fix F — stylesheet/script hrefs use the storage path map
+
+**Evidence.** Prod page `054feafd` (alkostar.hr, a WordPress site): all 44 stylesheet hrefs in the archived HTML 404. The stored HTML references `styles/bootstrap.css`-style names, while the assets on disk sit at `styles/wp-content/themes/x/css/bootstrap_<hash8>.css` — the extension's `buildArchivePath` (`src/background/urlUtils.ts:593-675`) keeps the full nested URL path plus a hash suffix (and folds `?ver=` query strings into the hash), but the references were rewritten with a different convention.
+
+**Root cause chain.** `zip_assembler.assemble_session()` seeded the conversion filename map from `session.filename_map` (`server/app/services/zip_assembler.py:114`) — which the extension populates with IMAGE-only entries (`src/background/download-core.ts:698-703`). Stylesheet/script/preload URLs therefore missed the map and fell back to the legacy basename convention in `html_converter.py` (`_convert_stylesheets` ≈:783, `_convert_scripts` ≈:722, `_convert_preload_links` ≈:847): `styles/<basename>.css`. Meanwhile storage (and the ZIP writer) place every resource at its `Resource.local_path` — the full `buildArchivePath` value. The canonical URL → stored-path mapping already existed in memory: `all_resources` is fetched at `zip_assembler.py:147` with `Resource.original_url` + `Resource.local_path` (`server/app/api/routes/resources.py:389-398`).
+
+**Chosen fix.** In `assemble_session()`, after `all_resources` is fetched and BEFORE `resolve_archive_path_collisions`, seed the conversion map with `{r.original_url: r.local_path for r in all_resources if r.original_url and r.local_path}`, merged UNDER the extension-uploaded image map (existing image entries stay authoritative if both exist — their values already survive the 3.7 collision dedup, which rewrites map entries for collision losers; seeding before the dedup pass means seeded entries get the same rewrite treatment, keeping dedup consistent for all resource kinds). The new dict replaces the ORM-loaded `session.filename_map` binding without mutating it in place. With the map populated, `_convert_stylesheets`/`_convert_scripts`/`_convert_preload_links` take the map-hit branch (`html_converter.py:759-761, 698-700, 840-843`) and emit the exact stored paths.
+
+**Rejected alternative — extension uploads css/js into the filename map**: more moving parts across two codebases (extension map-building + upload wiring + server acceptance), and redundant: the server already holds the authoritative mapping in the `resources` table. The monolith-side seed is one dict merge at the single point where all maps converge.
+
 ### Failure-isolation rules
 
 - **C logs but never blocks**: the finalize deficit warning is emitted and finalize proceeds; no new refusal path.
 - **D failures always visible**: every terminal failure class logs; the completion payload carries `failedCount`; a resume that cannot re-fetch a resource skips and logs (existing semantics) but the final `failedCount` reflects it.
 - **A/B fail closed**: absent `Origin` → no ACAO; disallowed route → 400 exactly as today.
 - **E fails open to today's behavior**: secret unset/empty, no session user, non-200/non-HTML, or any mint/inject error → the unrewritten bytes are served exactly as before (the feature can never break document serving); an invalid token at the gateway fails closed (401 like a missing credential).
+- **F degrades to today's fallback**: a resource without `original_url`/`local_path` is skipped by the seed (guarded dict comprehension) and its URLs stay on the legacy basename fallback; image-map entries win conflicts, so existing image naming is byte-identical to before.
 
 ## Risks / Trade-offs
 

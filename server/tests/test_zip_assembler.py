@@ -1964,3 +1964,186 @@ class TestArchivePathCollisionDedup:
             assert names.count("images/logo.png") == 1
             assert zf.read("images/logo.png") == b"AAA"
             assert zf.read(suffixed) == b"BBBB"
+
+
+# ---------------------------------------------------------------------------
+# Fix F — stylesheet/script hrefs resolve to the stored asset paths
+# ---------------------------------------------------------------------------
+
+
+class TestStoragePathMapSeeding:
+    """Regression for the prod bug (alkostar.hr, page 054feafd): all 44
+    stylesheet hrefs 404'd because the conversion filename map only held the
+    extension's image-only entries, so stylesheet/script/preload URLs fell
+    back to the legacy ``styles/<basename>.css`` convention while storage
+    kept buildArchivePath's full nested path + ``_hash8`` suffix.  The
+    assembler must seed the conversion map from ``all_resources`` so every
+    reference resolves to the exact stored asset path."""
+
+    @staticmethod
+    def _wp_resources(tmp_path):
+        """A stylesheet + script stored under nested wp-content paths whose
+        original URLs carry ``?ver=`` query strings (classic WordPress)."""
+        import types
+
+        css_local = "styles/wp-content/themes/x/css/bootstrap_f553b9a5.css"
+        js_local = "scripts/wp-content/themes/x/js/theme_0d6d0f9b.js"
+        css_storage = tmp_path / "bootstrap.css"
+        js_storage = tmp_path / "theme.js"
+        css_storage.write_text("body { color: red; }")
+        js_storage.write_text("/* theme js */")
+
+        css = types.SimpleNamespace(
+            id="res-css",
+            local_path=css_local,
+            storage_path=str(css_storage),
+            original_url=(
+                "https://shop.example/wp-content/themes/x/css/bootstrap.css?ver=6.4.2"
+            ),
+            content_type="text/css",
+            size=css_storage.stat().st_size,
+        )
+        js = types.SimpleNamespace(
+            id="res-js",
+            local_path=js_local,
+            storage_path=str(js_storage),
+            original_url=(
+                "https://shop.example/wp-content/themes/x/js/theme.js?ver=1.0.0"
+            ),
+            content_type="application/javascript",
+            size=js_storage.stat().st_size,
+        )
+        return css, js
+
+    def test_assembled_refs_use_stored_paths(self, assembler, tmp_path):
+        """<link href>/<script src> equal the stored local_path, never the
+        legacy basename fallback (styles/bootstrap.css)."""
+        import types
+
+        from app.services.html_converter import html_converter_service
+        from app.services.html_merger import MergeResult, html_merger_service
+
+        session_id = "wp-style-session"
+        os.makedirs(os.path.join(assembler.storage_root, session_id), exist_ok=True)
+        css, js = self._wp_resources(tmp_path)
+
+        main_html = (
+            "<!DOCTYPE html><html><head>"
+            '<link rel="stylesheet" '
+            'href="https://shop.example/wp-content/themes/x/css/bootstrap.css?ver=6.4.2">'
+            "</head><body>"
+            '<script src="https://shop.example/wp-content/themes/x/js/theme.js?ver=1.0.0">'
+            "</script></body></html>"
+        )
+
+        session = types.SimpleNamespace(
+            id=session_id,
+            url="https://shop.example/",
+            status="assembling",
+            assembly_phase=None,
+            assembly_progress_pct=None,
+            options={"singleFile": False},
+            filename_map={},  # extension uploads map entries for images only
+            pagepocket_user_id=None,
+        )
+
+        class _DB:
+            async def flush(self):
+                pass
+
+        class _SessionFactory:
+            async def __aenter__(self):
+                return _DB()
+
+            async def __aexit__(self, *exc):
+                return False
+
+        # Capture the converter's output (before CSS inlining replaces
+        # stylesheet <link> tags with <style>).
+        converted: dict[str, str] = {}
+        original_convert = html_converter_service.convert_html
+        original_merge = html_merger_service.merge_session
+        original_get_session = assembler._get_session
+        original_update = assembler._update_progress
+        original_all_resources = assembler._get_all_resources
+        original_by_prefix = assembler._get_resources_by_prefix
+        original_convert_css = assembler._convert_css_resource
+
+        def capturing_convert(html_string, *args, **kwargs):
+            result = original_convert(html_string, *args, **kwargs)
+            converted["html"] = result
+            return result
+
+        def mock_merge(sid):
+            return {"main": MergeResult(
+                success=True, html=main_html, reason=None, page_url=None,
+            )}
+
+        async def mock_get_session(db, sid):
+            return session
+
+        async def silent_progress(db, sess, phase, pct, **kwargs):
+            pass
+
+        async def mock_all_resources(db, sid):
+            return [css, js]
+
+        async def mock_by_prefix(db, sid, prefix):
+            return [css] if prefix == "styles/" else []
+
+        async def noop_convert_css(*args, **kwargs):
+            pass
+
+        html_converter_service.convert_html = capturing_convert
+        html_merger_service.merge_session = mock_merge
+        assembler._get_session = mock_get_session
+        assembler._update_progress = silent_progress
+        assembler._get_all_resources = mock_all_resources
+        assembler._get_resources_by_prefix = mock_by_prefix
+        assembler._convert_css_resource = noop_convert_css
+
+        try:
+            asyncio.run(assembler.assemble_session(session_id, _SessionFactory))
+        finally:
+            html_converter_service.convert_html = original_convert
+            html_merger_service.merge_session = original_merge
+            assembler._get_session = original_get_session
+            assembler._update_progress = original_update
+            assembler._get_all_resources = original_all_resources
+            assembler._get_resources_by_prefix = original_by_prefix
+            assembler._convert_css_resource = original_convert_css
+
+        assert getattr(session.status, "value", session.status) == "ready", (
+            f"Assembly did not succeed: status={session.status}"
+        )
+
+        css_stored = "styles/wp-content/themes/x/css/bootstrap_f553b9a5.css"
+        js_stored = "scripts/wp-content/themes/x/js/theme_0d6d0f9b.js"
+
+        # Converter output: href/src are the exact stored paths.
+        assert f'href="./{css_stored}"' in converted["html"], (
+            f"Expected stylesheet href to equal the stored path "
+            f"./{css_stored}, got: {converted['html']}"
+        )
+        assert f'src="./{js_stored}"' in converted["html"], (
+            f"Expected script src to equal the stored path "
+            f"./{js_stored}, got: {converted['html']}"
+        )
+        # The legacy basename fallback must not appear anywhere.
+        assert "styles/bootstrap.css" not in converted["html"]
+        assert "scripts/theme.js\"" not in converted["html"]
+
+        # Final archive: entries exist at the stored paths and index.html
+        # references them (the stylesheet is inlined from the mapped file,
+        # proving the seeded href resolved through local_path → storage).
+        with zipfile.ZipFile(session.zip_path, "r") as zf:
+            names = zf.namelist()
+            assert css_stored in names
+            assert js_stored in names
+            index_html = zf.read("index.html").decode("utf-8")
+        assert f'src="./{js_stored}"' in index_html
+        assert "styles/bootstrap.css" not in index_html
+        assert "body { color: red; }" in index_html, (
+            "Stylesheet content not inlined — the seeded href did not "
+            f"resolve through the storage map. index.html: {index_html}"
+        )
