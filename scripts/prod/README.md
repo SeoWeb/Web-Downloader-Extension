@@ -578,3 +578,21 @@ drift:`DB*USER*_`were never in`.env`, and old containers predated the
   exceeds the publish cap (fail before uploading N assets); monolith ingest
   batching for pages above the cap; harvester gap — CSS `mask: url(...)`
   references are not captured (day-cloudy.svg class of misses).
+
+### Deploy record — 2026-10-19 (fix F: stylesheet/script href storage-path map, `96da85e`)
+
+- Prod finding (alkostar.hr, page `054feafd…`): all 44 stylesheet hrefs 404 —
+  stored HTML referenced `styles/<basename>.css` (legacy basename fallback,
+  html_converter.py) while storage uses full path + `_hash8`
+  (buildArchivePath). Root cause: assembler seeded the conversion map from
+  the extension's IMAGE-ONLY filename map; CSS/JS never matched.
+- Fix: zip_assembler seeds the map from `all_resources`
+  (`original_url → local_path`), image map stays authoritative; collision
+  dedup unchanged. 412 monolith tests incl. a red/green regression test that
+  fails with the exact prod symptom when reverted.
+- Deploy: monolith rebuilt on host from `96da85e` (runbook §3 step 3b:
+  reset → build → alembic upgrade head → up -d). Health 200. CI run
+  `39281563100` green before rebuild (was queued ~20 min on runner capacity).
+- Existing pages keep their broken links (stored HTML is immutable);
+  re-download produces correct refs. Nuxt-style pages were unaffected by
+  luck (hashed basenames coincide with storage keys).
