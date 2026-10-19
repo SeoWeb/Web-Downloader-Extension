@@ -15,25 +15,27 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Copy `.env.example` to `.env.local` and fill in values:
 
-| Variable | Required | Description |
-|---|---|---|
-| `NEXT_PUBLIC_API_BASE_URL` | Yes | Gateway API base URL (e.g. `http://localhost:8080/api/v1`) |
-| `NEXT_PUBLIC_MARKETING_SITE_URL` | Yes | Public marketing URL (e.g. `http://localhost:3000`) |
-| `COOKIE_DOMAIN` | No | Cookie domain override (default: `localhost`) |
-| `COOKIE_SECRET` | Yes | Secret for signing cookies |
+| Variable                         | Required | Description                                                                                                                                                                            |
+| -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_BASE_URL`       | Yes      | Gateway API base URL (e.g. `http://localhost:8080/api/v1`)                                                                                                                             |
+| `NEXT_PUBLIC_MARKETING_SITE_URL` | Yes      | Public marketing URL (e.g. `http://localhost:3000`)                                                                                                                                    |
+| `COOKIE_DOMAIN`                  | No       | Cookie domain override (default: `localhost`)                                                                                                                                          |
+| `COOKIE_SECRET`                  | Yes      | Secret for signing cookies                                                                                                                                                             |
+| `ASSET_TOKEN_SECRET`             | No       | HMAC key for signed asset tokens (sandboxed-viewer credential-less subresource loads). MUST equal the api-gateway's `ASSET_TOKEN_SECRET`. Unset = feature off (HTML served untouched). |
+| `ASSET_TOKEN_TTL_SECONDS`        | No       | Asset-token bucket size; default `604800` (7 days). Must match the gateway.                                                                                                            |
 
 ## Scripts
 
-| Command | Description |
-|---|---|
-| `pnpm dev` | Start dev server (Turbopack) |
-| `pnpm build` | Production build |
-| `pnpm lint` | ESLint |
-| `pnpm typecheck` | TypeScript type check |
-| `pnpm test` | Run Vitest |
-| `pnpm test:watch` | Vitest watch mode |
-| `pnpm format` | Format with Prettier |
-| `pnpm format:check` | Check formatting |
+| Command             | Description                  |
+| ------------------- | ---------------------------- |
+| `pnpm dev`          | Start dev server (Turbopack) |
+| `pnpm build`        | Production build             |
+| `pnpm lint`         | ESLint                       |
+| `pnpm typecheck`    | TypeScript type check        |
+| `pnpm test`         | Run Vitest                   |
+| `pnpm test:watch`   | Vitest watch mode            |
+| `pnpm format`       | Format with Prettier         |
+| `pnpm format:check` | Check formatting             |
 
 ## Architecture
 
