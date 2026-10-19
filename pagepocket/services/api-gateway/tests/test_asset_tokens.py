@@ -10,7 +10,6 @@ Layers covered:
   token segment present, and the feature-disabled case.
 """
 
-import asyncio
 import base64
 import hashlib
 import hmac
@@ -131,7 +130,7 @@ class TestVerifyAssetToken(unittest.TestCase):
 
     def test_tampered_payload_rejected_without_remac(self):
         token = _mint(user_id="u1")
-        payload_b64, _, mac_b64 = token.partition(".")
+        _, _, mac_b64 = token.partition(".")
         forged = base64.urlsafe_b64encode(
             json.dumps({"p": "p1", "u": "attacker", "e": 2**31}, separators=(",", ":")).encode()
         ).rstrip(b"=").decode()
@@ -287,8 +286,6 @@ class TestArchiveFileTokenFlow(unittest.TestCase):
         self.assertEqual(call.user_id, "jwt-user")
 
     def test_invalid_bearer_401_even_with_valid_token(self):
-        from jwt_utils import issue_access_token
-
         url = _token_url(_mint())
         r = self._get(url, headers={"Authorization": "Bearer not-a-jwt"})
         self.assertEqual(r.status_code, 401)
