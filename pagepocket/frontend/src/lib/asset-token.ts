@@ -6,10 +6,11 @@
  * subresource loads (webfonts always; `crossorigin`-tagged css/js/img) without
  * cookies, so the authenticated BFF file route answered 401 and the browser
  * masked it as a CORS error. Fix E: this BFF mints an HMAC token bound to
- * (page_id, user_id, exp-bucket) and injects it into the served HTML's asset
- * URLs as a PATH segment — `/f/X` becomes `/f/at/{token}/X` — which the
- * gateway's archive file route accepts as an alternative to the session
- * cookie (validated identically on both sides; see services/api-gateway).
+ * (page_id, user_id, exp-bucket) and injects it into the served HTML via a
+ * `<base>` element — `<base href="./at/{token}/">` right after `<head>` —
+ * which the gateway's archive file route accepts as an alternative to the
+ * session cookie (validated identically on both sides; see
+ * services/api-gateway).
  *
  * Wire contract (do not deviate — the gateway validates the same format):
  * - token string: `payload_b64url + "." + mac_b64url`
@@ -20,10 +21,18 @@
  *   the current TTL bucket (browser-cached asset URLs keep working for the
  *   rest of the bucket AND the next one, so image caches stay warm).
  *
+ * Stored archived HTML references its assets RELATIVELY (`./styles/x.css`,
+ * `./images/x.svg`, inline `<style>url("./images/x.svg")</style>`) and has no
+ * `<base>` tag, so the browser resolves every ref against the iframe document
+ * URL `/api/pp/archive/pages/{id}/f/index.html`. Injecting
+ * `<base href="./at/{token}/">` makes ALL of them — `./`, `../`, plain, and
+ * inline CSS `url()` — resolve to `/f/at/{token}/…` in one single-element
+ * insert; the gateway strips the `at/{token}` segment and serves the file.
+ *
  * The token is a PATH segment (not a query param) because relative url() refs
- * inside CSS resolve against the rewritten URL and inherit the token
- * automatically; only text/html bodies are rewritten — asset bytes are never
- * modified.
+ * inside CSS resolve against the document's base URL and inherit the token
+ * automatically; only text/html documents get the base element — asset bytes
+ * are never modified.
  *
  * Pure and injectable (`nowMs`) so the mint is deterministic and unit-testable
  * without timers; the route resolves the secret/TTL per request via
@@ -97,49 +106,126 @@ export async function mintAssetToken({
 }
 
 /**
- * The archived asset URL prefix as it appears in stored HTML — both absolute
- * (`https://app.pagepocket.app/api/pp/archive/pages/{id}/f/…`) and
- * root-relative forms contain this exact path prefix, so matching on the path
- * (never the host) covers both.
+ * The archived asset f-route path prefix for THIS page. Stored HTML no longer
+ * carries absolute asset URLs (refs are relative and covered by the injected
+ * `<base>`), so the prefix is used only to recognize an EXISTING `<base
+ * href>` that points at this page's f-route — the fail-safe rewrite path.
+ * Host-agnostic: absolute (`https://app.pagepocket.app/api/pp/…`) and
+ * root-relative (`/api/pp/…`) hrefs both contain this exact path prefix.
  */
 export function assetFileUrlPrefix(pageId: string): string {
   return `/api/pp/archive/pages/${pageId}/f/`;
 }
 
-/** Escape a literal string for embedded use in a RegExp. */
-const REGEX_ESCAPE = /[.*+?^${}()|[\]\\]/g;
-
 export interface InjectAssetTokenResult {
   html: string;
-  /** Number of URLs rewritten (0 → html is byte-identical to the input). */
-  replaced: number;
+  /**
+   * Whether the document was changed (a `<base>` was injected or an existing
+   * f-route base href was retokenized). When false, `html` is byte-identical
+   * to the input.
+   */
+  modified: boolean;
 }
 
+/** The first `<base>` tag, if any (case-insensitive, attribute-tolerant). */
+const BASE_TAG_PATTERN = /<base\b[^>]*>/i;
+
+/** The href attribute of a base tag: `href="…"`, `href='…'`, or `href=…`. */
+const BASE_HREF_PATTERN = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
+
+/** Opening `<head>` / `<html>` tags (case-insensitive, attribute-tolerant). */
+const HEAD_OPEN_PATTERN = /<head\b[^>]*>/i;
+const HTML_OPEN_PATTERN = /<html\b[^>]*>/i;
+
 /**
- * Rewrite THIS page's archived-file URLs to carry the token as a path
- * segment: `…/pages/{page_id}/f/X` → `…/pages/{page_id}/f/at/{token}/X`.
+ * Inject this view's asset token into an archived HTML document:
  *
- * - Host-agnostic: matches the path prefix, so absolute app URLs and
- *   root-relative URLs are both rewritten.
- * - Idempotent: URLs that already contain `/f/at/` are skipped (the negative
- *   lookahead) — never `/f/at/at/`.
- * - Scoped: only THIS page's `f`-URLs match (the page id is part of the
- *   prefix); other pages' links and `/api/sc/…` share URLs never match.
+ * - No `<base>` tag (the stored-HTML reality): insert
+ *   `<base href="./at/{token}/">` immediately after the opening `<head>`
+ *   (case-insensitive), else right after `<html…>`, else prepend to the
+ *   string. `./at/{token}/` resolves against the document URL
+ *   `/api/pp/archive/pages/{id}/f/index.html` → `/f/at/{token}/`, so every
+ *   relative ref (`./`, `../`, plain, inline CSS `url()`) inherits the token
+ *   segment — no asset URL is rewritten.
+ * - A `<base href>` that already exists: insert `at/{token}/` after its
+ *   `/f/` boundary — but ONLY when the href points at THIS page's f-route
+ *   (same host-agnostic path-prefix rule as the previous body-rewrite
+ *   implementation). Anything else is left untouched, byte-identical — the
+ *   feature fails safe and degrades to serving the document as-is.
+ *
+ * Idempotent: an href already carrying the token segment (or a bare
+ * `./at/…` base from a previous injection) is never double-inserted — no
+ * `at/at/`.
  */
 export function injectAssetToken(
   html: string,
   pageId: string,
   token: string,
 ): InjectAssetTokenResult {
-  const prefix = assetFileUrlPrefix(pageId);
-  const pattern = new RegExp(
-    `${prefix.replace(REGEX_ESCAPE, "\\$&")}(?!at/)`,
-    "g",
+  const baseTag = BASE_TAG_PATTERN.exec(html);
+  if (!baseTag) {
+    return injectBaseTag(html, token);
+  }
+  return retokenExistingBaseHref(
+    html,
+    baseTag[0],
+    baseTag.index,
+    pageId,
+    token,
   );
-  let replaced = 0;
-  const rewritten = html.replace(pattern, () => {
-    replaced += 1;
-    return `${prefix}at/${token}/`;
-  });
-  return { html: rewritten, replaced };
+}
+
+/** The base-element insert for documents without one. */
+function injectBaseTag(html: string, token: string): InjectAssetTokenResult {
+  const baseTag = `<base href="./at/${token}/">`;
+  const anchor = HEAD_OPEN_PATTERN.exec(html) ?? HTML_OPEN_PATTERN.exec(html);
+  if (anchor) {
+    const insertAt = anchor.index + anchor[0].length;
+    return {
+      html: `${html.slice(0, insertAt)}${baseTag}${html.slice(insertAt)}`,
+      modified: true,
+    };
+  }
+  // Neither <head> nor <html> — prepend; the base URL applies document-wide.
+  return { html: `${baseTag}${html}`, modified: true };
+}
+
+/** Retokenize an EXISTING base href when it points at this page's f-route. */
+function retokenExistingBaseHref(
+  html: string,
+  baseTag: string,
+  baseTagStart: number,
+  pageId: string,
+  token: string,
+): InjectAssetTokenResult {
+  const href = BASE_HREF_PATTERN.exec(baseTag);
+  // A <base> without href establishes no base URL — nothing to rewrite.
+  if (!href) {
+    return { html, modified: false };
+  }
+  const value = href[1] ?? href[2] ?? href[3] ?? "";
+  const prefix = assetFileUrlPrefix(pageId);
+  const boundary = value.indexOf(prefix);
+  if (boundary === -1) {
+    // Not this page's f-route — leave the document untouched (fail-safe).
+    return { html, modified: false };
+  }
+  const bodyStart = boundary + prefix.length;
+  if (value.slice(bodyStart).startsWith("at/")) {
+    // Already tokenized — never `at/at/`.
+    return { html, modified: false };
+  }
+  const tokenized = `${value.slice(0, bodyStart)}at/${token}/${value.slice(bodyStart)}`;
+  const quote = href[1] !== undefined ? '"' : href[2] !== undefined ? "'" : "";
+  const newBaseTag = baseTag.replace(
+    BASE_HREF_PATTERN,
+    () => `href=${quote}${tokenized}${quote}`,
+  );
+  return {
+    html:
+      html.slice(0, baseTagStart) +
+      newBaseTag +
+      html.slice(baseTagStart + baseTag.length),
+    modified: true,
+  };
 }

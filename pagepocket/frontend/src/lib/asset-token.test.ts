@@ -140,73 +140,147 @@ describe("mintAssetToken — wire contract", () => {
   });
 });
 
-describe("injectAssetToken — HTML rewrite", () => {
+describe("injectAssetToken — <base> href injection", () => {
   const token = "abcDEF123_-xyz.987ZYX_w-1";
   const prefix = assetFileUrlPrefix(PAGE_ID);
+  // The iframe document URL the browser resolves relative refs against.
+  const documentUrl = `https://app.pagepocket.app/api/pp/archive/pages/${PAGE_ID}/f/index.html`;
 
-  it("rewrites absolute (any host) and root-relative f-URLs for THIS page", () => {
-    const html = [
-      `<link href="https://app.pagepocket.app${prefix}assets/style.css" rel="stylesheet">`,
-      `<link href="http://localhost:3000${prefix}assets/app.js" rel="stylesheet">`,
-      `<img src="${prefix}img.png">`,
-    ].join("\n");
+  /** Resolve `ref` the way the browser does, against `base`. */
+  function resolve(ref: string, base: string): string {
+    return new URL(ref, new URL(base, documentUrl)).href;
+  }
 
-    const { html: rewritten, replaced } = injectAssetToken(
-      html,
-      PAGE_ID,
-      token,
-    );
+  it("injects <base href='./at/{token}/'> immediately after <head> when the HTML has no <base>", () => {
+    const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>t</title></head><body><link href="./styles/entry.B_c7_SPs.css" rel="stylesheet"><img src="./images/x.svg"></body></html>`;
 
-    expect(replaced).toBe(3);
-    expect(rewritten).toContain(
-      `https://app.pagepocket.app${prefix}at/${token}/assets/style.css`,
+    const { html: out, modified } = injectAssetToken(html, PAGE_ID, token);
+
+    expect(modified).toBe(true);
+    expect(out).toBe(
+      `<!doctype html><html lang="en"><head><base href="./at/${token}/"><meta charset="utf-8"><title>t</title></head><body><link href="./styles/entry.B_c7_SPs.css" rel="stylesheet"><img src="./images/x.svg"></body></html>`,
     );
-    expect(rewritten).toContain(
-      `http://localhost:3000${prefix}at/${token}/assets/app.js`,
-    );
-    expect(rewritten).toContain(`src="${prefix}at/${token}/img.png"`);
   });
 
-  it("is idempotent — URLs already carrying a token are never double-injected", () => {
-    const html = `<img src="${prefix}at/${token}/x.png">`;
+  it("relative refs (./, ../, plain, inline CSS url()) resolve to the gateway's /f/at/{token}/ route via the injected base", () => {
+    const html = `<head></head><body><link href="./styles/entry.B_c7_SPs.css" rel="stylesheet"><img src="../images/up.svg"><img src="images/plain.svg"><style>mask:url("./images/day-cloudy.svg")</style></body>`;
 
-    const { html: rewritten, replaced } = injectAssetToken(
-      html,
-      PAGE_ID,
-      token,
+    const { html: out } = injectAssetToken(html, PAGE_ID, token);
+    const base = /<base href="([^"]+)">/.exec(out)![1]!;
+
+    expect(resolve(base, documentUrl)).toBe(
+      `https://app.pagepocket.app/api/pp/archive/pages/${PAGE_ID}/f/at/${token}/`,
     );
-
-    expect(replaced).toBe(0);
-    expect(rewritten).toBe(html);
-    expect(rewritten).not.toContain("/at/at/");
+    // Every ref kind under the base resolves inside the token segment…
+    expect(resolve("./styles/entry.B_c7_SPs.css", base)).toBe(
+      `https://app.pagepocket.app/api/pp/archive/pages/${PAGE_ID}/f/at/${token}/styles/entry.B_c7_SPs.css`,
+    );
+    expect(resolve("images/plain.svg", base)).toBe(
+      `https://app.pagepocket.app/api/pp/archive/pages/${PAGE_ID}/f/at/${token}/images/plain.svg`,
+    );
+    expect(resolve("./images/day-cloudy.svg", base)).toBe(
+      `https://app.pagepocket.app/api/pp/archive/pages/${PAGE_ID}/f/at/${token}/images/day-cloudy.svg`,
+    );
+    // …except a `../` that climbs OUT of the token segment (base sits at
+    // /f/at/{token}/, so one `../` pops the token and lands on /f/at/) —
+    // inherent to the scheme; documented here so the resolution is pinned,
+    // not assumed.
+    expect(resolve("../images/up.svg", base)).toBe(
+      `https://app.pagepocket.app/api/pp/archive/pages/${PAGE_ID}/f/at/images/up.svg`,
+    );
   });
 
-  it("never touches other pages' f-URLs or share (/api/sc) URLs", () => {
-    const html = [
-      `<img src="/api/pp/archive/pages/other-page/f/x.png">`,
-      `<a href="/api/sc/tok/f/index.html">share</a>`,
-      `<img src="/api/sc/tok/f/at/${token}/y.png">`,
-    ].join("\n");
-
-    const { html: rewritten, replaced } = injectAssetToken(
-      html,
+  it("matches <head> case-insensitively and with attributes; falls back to <html>, then prepends", () => {
+    const withHeadAttrs = injectAssetToken(
+      `<HTML lang="en"><HEAD profile="x"><title>t</title></HEAD>`,
       PAGE_ID,
       token,
     );
+    expect(withHeadAttrs.html).toContain(
+      `<HEAD profile="x"><base href="./at/${token}/">`,
+    );
 
-    expect(replaced).toBe(0);
-    expect(rewritten).toBe(html);
+    const noHead = injectAssetToken(
+      `<html><body><p>hi</p></body></html>`,
+      PAGE_ID,
+      token,
+    );
+    expect(noHead.html).toBe(
+      `<html><base href="./at/${token}/"><body><p>hi</p></body></html>`,
+    );
+
+    const neither = injectAssetToken(`<p>fragment</p>`, PAGE_ID, token);
+    expect(neither.html).toBe(`<base href="./at/${token}/"><p>fragment</p>`);
   });
 
-  it("leaves HTML without matching URLs byte-identical (replaced: 0)", () => {
-    const html = `<p>relative refs only</p><img src="assets/logo.png"><a href="#top">top</a>`;
-    const { html: rewritten, replaced } = injectAssetToken(
-      html,
+  it("inline <style> url() bytes are NOT rewritten — the base element does the work", () => {
+    const style = `<style>.i{mask:url("./images/day-cloudy.svg")}</style>`;
+    const html = `<html><head>${style}</head><body><img src="./images/x.svg"></body></html>`;
+
+    const { html: out, modified } = injectAssetToken(html, PAGE_ID, token);
+
+    expect(modified).toBe(true);
+    // Only the base element was inserted — the style rule is byte-identical.
+    expect(out).toContain(style);
+    expect(out).toBe(
+      `<html><head><base href="./at/${token}/">${style}</head><body><img src="./images/x.svg"></body></html>`,
+    );
+    // No asset URL anywhere gained a token segment.
+    expect(out.match(/at\//g)).toHaveLength(1);
+  });
+
+  it("retokenizes an EXISTING <base href> that points at this page's f-route (root-relative and absolute)", () => {
+    const rootRelative = injectAssetToken(
+      `<html><head><base href="${prefix}"></head></html>`,
       PAGE_ID,
       token,
     );
-    expect(replaced).toBe(0);
-    expect(rewritten).toBe(html);
+    expect(rootRelative.modified).toBe(true);
+    expect(rootRelative.html).toContain(`<base href="${prefix}at/${token}/">`);
+
+    const absolute = injectAssetToken(
+      `<html><head><base href="https://app.pagepocket.app${prefix}" target="_blank"></head></html>`,
+      PAGE_ID,
+      token,
+    );
+    expect(absolute.modified).toBe(true);
+    expect(absolute.html).toContain(
+      `<base href="https://app.pagepocket.app${prefix}at/${token}/" target="_blank">`,
+    );
+  });
+
+  it("leaves the document untouched when an existing <base> points elsewhere (fail-safe)", () => {
+    for (const href of [
+      "/f/",
+      "/api/pp/archive/pages/other-page/f/",
+      "/api/sc/tok/f/",
+      "https://cdn.example.com/assets/",
+    ]) {
+      const html = `<html><head><base href="${href}"></head><body><img src="./x.png"></body></html>`;
+      const { html: out, modified } = injectAssetToken(html, PAGE_ID, token);
+      expect(modified).toBe(false);
+      expect(out).toBe(html);
+    }
+  });
+
+  it("a <base> without href establishes no base URL — document untouched", () => {
+    const html = `<html><head><base target="_blank"></head></html>`;
+    const { html: out, modified } = injectAssetToken(html, PAGE_ID, token);
+    expect(modified).toBe(false);
+    expect(out).toBe(html);
+  });
+
+  it("is idempotent — an already-injected ./at/ base or an already-tokenized f-route base is never double-inserted", () => {
+    const injected = `<html><head><base href="./at/${token}/"></head></html>`;
+    const again = injectAssetToken(injected, PAGE_ID, token);
+    expect(again.modified).toBe(false);
+    expect(again.html).toBe(injected);
+
+    const tokenized = `<html><head><base href="${prefix}at/${token}/x/"></head></html>`;
+    const retok = injectAssetToken(tokenized, PAGE_ID, token);
+    expect(retok.modified).toBe(false);
+    expect(retok.html).toBe(tokenized);
+    expect(retok.html).not.toContain("/at/at/");
   });
 });
 

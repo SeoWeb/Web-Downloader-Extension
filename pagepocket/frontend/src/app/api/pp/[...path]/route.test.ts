@@ -671,15 +671,19 @@ describe("signed asset tokens (fix E — credential-less viewer loads)", () => {
     });
   }
 
-  it("rewrites THIS page's absolute and root-relative f-URLs in the served HTML", async () => {
+  it("injects <base href='./at/{token}/'> after <head> of the served HTML — relative refs stay untouched", async () => {
     const pageId = "p-1";
-    const prefix = `/api/pp/archive/pages/${pageId}/f/`;
+    // Realistic stored HTML (prod finding): RELATIVE asset refs, inline
+    // <style> url(), modulepreload with crossorigin, and NO <base> tag.
     const html = [
-      `<link href="https://app.pagepocket.app${prefix}assets/style.css" rel="stylesheet">`,
-      `<img src="${prefix}img.png">`,
+      `<!doctype html><html lang="en"><head><meta charset="utf-8">`,
+      `<link rel="modulepreload" href="./_app/entry.B_c7_SPs.js" crossorigin="">`,
+      `<link rel="stylesheet" href="./styles/entry.B_c7_SPs.css">`,
+      `<style>.i{mask:url("./images/day-cloudy.svg")}</style>`,
+      `</head><body><img src="./images/x.svg">`,
       `<img src="/api/pp/archive/pages/p-2/f/other.png">`,
-      `<a href="/api/sc/tok/f/index.html">share</a>`,
-    ].join("\n");
+      `<a href="/api/sc/tok/f/index.html">share</a></body></html>`,
+    ].join("");
     fetchMock.mockResolvedValue(
       gatewayResponse(html, { "Content-Type": "text/html; charset=utf-8" }),
     );
@@ -691,26 +695,58 @@ describe("signed asset tokens (fix E — credential-less viewer loads)", () => {
     const body = await res.text();
 
     const token = await expectedToken(pageId, "user-e1");
+    // The base element lands immediately after <head>, before every ref.
     expect(body).toContain(
-      `https://app.pagepocket.app${prefix}at/${token}/assets/style.css`,
+      `<head><base href="./at/${token}/"><meta charset="utf-8">`,
     );
-    expect(body).toContain(`src="${prefix}at/${token}/img.png"`);
-    // Other pages' links and share URLs are never touched.
+    // …and resolves to the tokenized f-route the gateway accepts.
+    expect(
+      new URL(
+        `./at/${token}/`,
+        "https://x.test/api/pp/archive/pages/p-1/f/index.html",
+      ).pathname,
+    ).toBe(`/api/pp/archive/pages/p-1/f/at/${token}/`);
+    // No asset URL is rewritten — relative refs and the inline style keep
+    // their bytes; other pages' links and share URLs are never touched.
+    expect(body).toContain(`href="./styles/entry.B_c7_SPs.css"`);
+    expect(body).toContain(`mask:url("./images/day-cloudy.svg")`);
     expect(body).toContain("/api/pp/archive/pages/p-2/f/other.png");
     expect(body).toContain("/api/sc/tok/f/index.html");
     expect(body).not.toContain("/at/at/");
-    // The upstream request URL is untouched — the rewrite is response-only.
+    expect(body.match(/at\//g)).toHaveLength(1);
+    // The upstream request URL is untouched — the injection is response-only.
     expect(String(fetchMock.mock.calls[0]![0])).toBe(
       `${API_BASE}/archive/pages/${pageId}/f/index.html?`,
     );
   });
 
+  it("retokenizes an existing <base href> that points at this page's f-route", async () => {
+    const prefix = "/api/pp/archive/pages/p-1/f/";
+    fetchMock.mockResolvedValue(
+      gatewayResponse(
+        `<html><head><base href="${prefix}"></head><body><img src="./x.png"></body></html>`,
+        { "Content-Type": "text/html; charset=utf-8" },
+      ),
+    );
+
+    const res = await callGet(
+      ["archive", "pages", "p-1", "f", "index.html"],
+      cookieFor("user-e1b"),
+    );
+
+    const token = await expectedToken("p-1", "user-e1b");
+    expect(await res.text()).toContain(`<base href="${prefix}at/${token}/">`);
+  });
+
   it("rewritten HTML carries Cache-Control: private, no-cache and keeps the sandbox headers", async () => {
     fetchMock.mockResolvedValue(
-      gatewayResponse('<img src="/api/pp/archive/pages/p-1/f/i.png">', {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, max-age=3600",
-      }),
+      gatewayResponse(
+        `<html><head><title>t</title></head><body><img src="./i.png"></body></html>`,
+        {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=3600",
+        },
+      ),
     );
 
     const res = await callGet(
@@ -729,12 +765,13 @@ describe("signed asset tokens (fix E — credential-less viewer loads)", () => {
     // A fresh Response per call — mockResolvedValue would replay one consumed
     // body for every repeat view.
     fetchMock.mockImplementation(() =>
-      gatewayResponse('<img src="/api/pp/archive/pages/p-1/f/i.png">', {
-        "Content-Type": "text/html",
-      }),
+      gatewayResponse(
+        `<html><head></head><body><img src="./i.png"></body></html>`,
+        { "Content-Type": "text/html" },
+      ),
     );
     const extract = (body: string) =>
-      /\/f\/at\/([A-Za-z0-9_.-]+)\//.exec(body)?.[1];
+      /<base href="\.\/at\/([^"]+)">/.exec(body)?.[1];
 
     const a = await callGet(
       ["archive", "pages", "p-1", "f", "index.html"],
@@ -756,8 +793,8 @@ describe("signed asset tokens (fix E — credential-less viewer loads)", () => {
     expect(extract(await other.text())).not.toBe(tokenA);
   });
 
-  it("is idempotent — URLs already carrying a token are skipped (no /f/at/at/)", async () => {
-    const html = '<img src="/api/pp/archive/pages/p-1/f/at/abc.def/x.png">';
+  it("is idempotent — an already-tokenized base href is left untouched (no /at/at/)", async () => {
+    const html = `<html><head><base href="/api/pp/archive/pages/p-1/f/at/abc.def/"></head><body><img src="./x.png"></body></html>`;
     fetchMock.mockResolvedValue(
       gatewayResponse(html, { "Content-Type": "text/html; charset=utf-8" }),
     );
@@ -765,6 +802,21 @@ describe("signed asset tokens (fix E — credential-less viewer loads)", () => {
     const res = await callGet(
       ["archive", "pages", "p-1", "f", "index.html"],
       cookieFor("user-e4"),
+    );
+
+    expect(await res.text()).toBe(html);
+    expect(res.headers.get("cache-control")).not.toContain("no-cache");
+  });
+
+  it("leaves HTML with a base pointing elsewhere byte-identical (fail-safe, no no-cache)", async () => {
+    const html = `<html><head><base href="/f/"></head><body><img src="./x.png"></body></html>`;
+    fetchMock.mockResolvedValue(
+      gatewayResponse(html, { "Content-Type": "text/html; charset=utf-8" }),
+    );
+
+    const res = await callGet(
+      ["archive", "pages", "p-1", "f", "index.html"],
+      cookieFor("user-e4b"),
     );
 
     expect(await res.text()).toBe(html);

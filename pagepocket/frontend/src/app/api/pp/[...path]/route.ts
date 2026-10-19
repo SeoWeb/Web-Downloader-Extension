@@ -117,11 +117,14 @@ async function proxyResponse(
 
   // Signed asset tokens (archived-html-serving "Credential-less archived
   // asset access"): the sandboxed viewer's CORS-mode subresource loads cannot
-  // send cookies, so served HTML gets this page's asset URLs rewritten to
-  // carry `/f/at/{token}/` — the gateway accepts the token instead of the
-  // cookie. ONLY text/html bodies are rewritten; css/js/img bytes stream
-  // through untouched (relative url() refs inside CSS inherit the token
-  // segment automatically because it is a PATH segment).
+  // send cookies, so served HTML gets `<base href="./at/{token}/">` injected
+  // after <head> — the document URL is
+  // /api/pp/archive/pages/{id}/f/index.html, so the stored HTML's RELATIVE
+  // refs (./, ../, plain, inline CSS url()) resolve to /f/at/{token}/…,
+  // which the gateway accepts instead of the cookie. ONLY text/html bodies
+  // are touched (one element insert — asset URLs are never rewritten);
+  // css/js/img bytes stream through untouched (they are fetched under the
+  // tokenized URL the base element produced).
   const tokenConfig = assetTokenConfig();
   if (tokenConfig && isHtml && pageId && userId && response.status === 200) {
     let html: string | null = null;
@@ -143,7 +146,7 @@ async function proxyResponse(
           ttlSeconds: tokenConfig.ttlSeconds,
         });
         const rewritten = injectAssetToken(html, pageId, token);
-        if (rewritten.replaced > 0) {
+        if (rewritten.modified) {
           // Fresh tokens every view: browsers must re-fetch the document
           // instead of reusing a cached copy whose token may be from an
           // older bucket (archived-html-serving fix E).
