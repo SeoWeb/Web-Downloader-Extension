@@ -12,6 +12,7 @@ from starlette.concurrency import run_in_threadpool
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared", "proto_generated"))
 
 import archive_pb2
+from asset_tokens import strip_asset_token_segment
 from grpc_clients import archive_stub
 from ingest_pool import run_ingest
 from serving import content_type_for_path, sandbox_headers
@@ -271,6 +272,12 @@ async def ingest_page(
 @router.get("/pages/{page_id}/f/{file_path:path}")
 async def get_page_file(request: Request, page_id: str, file_path: str):
     """Authenticated endpoint - serve an archived file for a page."""
+    # Fix E: asset-token-authenticated requests carry the credential INSIDE
+    # file_path (`at/{token}/{real-path}`) — strip that leading segment so
+    # BOTH the primary fetch and the assets/ fallback retry below see the
+    # real archived path. Purely shape-based and a no-op for every other
+    # path (plain-Bearer requests without the segment pass through intact).
+    file_path = strip_asset_token_segment(file_path)
     try:
         file_resp = await run_in_threadpool(
             archive_stub().GetArchiveFile,

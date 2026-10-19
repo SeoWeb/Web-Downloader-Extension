@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 ENVIRONMENT = "ENVIRONMENT"
 JWT_SECRET = "JWT_SECRET"
+ASSET_TOKEN_SECRET = "ASSET_TOKEN_SECRET"
+ASSET_TOKEN_TTL_SECONDS = "ASSET_TOKEN_TTL_SECONDS"
 CORS_ALLOW_ORIGINS = "CORS_ALLOW_ORIGINS"
 TRUSTED_PROXIES = "TRUSTED_PROXIES"
 REDIS_URL = "REDIS_URL"
@@ -31,6 +33,13 @@ DEV_JWT_SECRET_DEFAULT = "dev-secret-change-me"
 # Pinned by default; chrome-extension:// origins of published extensions can
 # be appended via CORS_ALLOW_ORIGINS (comma-separated).
 DEFAULT_ALLOWED_ORIGINS = ("https://pagepocket.app", "https://app.pagepocket.app")
+
+# Fix E: signed asset tokens on the archive file route. The expiry is
+# bucketed with this TTL (e = (floor(now / TTL) + 2) * TTL) so minted URLs
+# are stable within a bucket and stay valid through the end of the NEXT
+# bucket — cache-friendly, and the minting BFF must be configured with the
+# same value or tokens die early / outlive their intended bucket.
+DEFAULT_ASSET_TOKEN_TTL_SECONDS = 604800  # 7 days
 
 # D4: remediation hint carried by the drift log line — the command that names
 # the bridge's REAL gateway IP, so TRUSTED_PROXIES can be aligned with it.
@@ -84,6 +93,36 @@ def enforce_startup_config() -> None:
         )
     except ConfigError as exc:
         raise SystemExit(f"api-gateway configuration error: {exc}") from exc
+
+
+def asset_token_secret(raw: str | None = None) -> str:
+    """Parse ASSET_TOKEN_SECRET — the HMAC key for archive file-route tokens.
+
+    Empty by default, which DISABLES the feature: token-authenticated
+    attempts fail closed (the middleware falls through to the normal 401)
+    and the route behaves exactly as before. Deliberately independent of
+    JWT_SECRET — separate rotation, separate blast radius.
+    """
+    source = os.environ.get(ASSET_TOKEN_SECRET) if raw is None else raw
+    return (source or "").strip()
+
+
+def asset_token_ttl_seconds(raw: str | None = None) -> int:
+    """Parse ASSET_TOKEN_TTL_SECONDS (expiry bucket size). Default 604800.
+
+    Non-integer or <1 values fall back to the default. Validation itself
+    only uses the absolute expiry `e` inside the token payload — the TTL
+    exists so the gateway documents/shares the bucketing the minting BFF
+    applies when computing `e`.
+    """
+    source = os.environ.get(ASSET_TOKEN_TTL_SECONDS) if raw is None else raw
+    if not source or not source.strip():
+        return DEFAULT_ASSET_TOKEN_TTL_SECONDS
+    try:
+        value = int(source)
+    except ValueError:
+        return DEFAULT_ASSET_TOKEN_TTL_SECONDS
+    return value if value >= 1 else DEFAULT_ASSET_TOKEN_TTL_SECONDS
 
 
 def allowed_origins(raw: str | None = None) -> list[str]:

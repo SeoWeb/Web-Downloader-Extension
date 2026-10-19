@@ -208,6 +208,12 @@ services:
       dockerfile: services/api-gateway/Dockerfile
     environment:
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      # fix-archived-page-pipeline E: HMAC key for signed asset tokens
+      # (credential-less viewer subresource loads). MUST equal the BFF's
+      # ASSET_TOKEN_SECRET (host frontend/.env.production.local). Empty =
+      # feature disabled (token attempts 401; Bearer behavior unchanged).
+      ASSET_TOKEN_SECRET: ${ASSET_TOKEN_SECRET:-}
+      ASSET_TOKEN_TTL_SECONDS: ${ASSET_TOKEN_TTL_SECONDS:-604800}
       AUTH_SERVICE_ADDR: auth-service:50051
       ARCHIVE_SERVICE_ADDR: archive-service:50052
       LIBRARY_SERVICE_ADDR: library-service:50053

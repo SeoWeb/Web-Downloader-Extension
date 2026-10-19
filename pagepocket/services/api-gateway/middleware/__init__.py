@@ -3,6 +3,8 @@
 import os
 import sys
 
+from asset_tokens import ASSET_TOKEN_PATH_RE, verify_asset_token
+from config import asset_token_secret
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -26,6 +28,24 @@ def _unauthorized():
     )
 
 
+def _asset_token_user_id(request: Request) -> str | None:
+    """User id embedded in a valid path asset token, or None.
+
+    Matches ONLY the archive file route carrying the token segment
+    (`/f/at/{token}/{rest}`); any other path — and any invalid token,
+    including with the feature disabled (empty ASSET_TOKEN_SECRET) —
+    returns None so the caller falls through to the normal 401.
+    """
+    match = ASSET_TOKEN_PATH_RE.match(request.url.path)
+    if match is None:
+        return None
+    return verify_asset_token(
+        match.group("tok"),
+        page_id=match.group("page"),
+        secret=asset_token_secret(),
+    )
+
+
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
@@ -45,6 +65,20 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Require Authorization header
         auth = request.headers.get("Authorization")
         if not auth or not auth.startswith("Bearer "):
+            # Fix E: with NO Authorization header at all, the archive FILE
+            # route accepts a signed asset token embedded in the path as the
+            # credential — the sandboxed viewer iframe runs on an opaque
+            # origin, so its CORS-mode subresource loads (crossorigin tags,
+            # webfonts) cannot carry cookies and would otherwise all 401.
+            # The BFF mints the token; this side only validates. Any failure
+            # (wrong page binding, expired, tampered, feature disabled)
+            # falls through to the normal 401; Bearer-present requests never
+            # enter this branch and never look at `at`.
+            if not auth:
+                asset_user_id = _asset_token_user_id(request)
+                if asset_user_id is not None:
+                    request.state.user_id = asset_user_id
+                    return await call_next(request)
             return _unauthorized()
 
         token = auth[7:]

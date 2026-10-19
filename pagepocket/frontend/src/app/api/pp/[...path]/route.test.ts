@@ -1,12 +1,22 @@
 import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
+import { webcrypto } from "node:crypto";
 import { NextRequest } from "next/server";
 
 // env.ts parses process.env at import time — seed before importing the route.
 process.env.NEXT_PUBLIC_API_BASE_URL ||= "http://localhost:8090/api/v1";
 process.env.NEXT_PUBLIC_MARKETING_SITE_URL ||= "http://localhost:3000";
 process.env.COOKIE_SECRET ||= "test-cookie-secret";
+// Signed asset tokens (fix E) are ON for this suite; the OFF cases toggle
+// process.env per test (the route resolves the config per request).
+process.env.ASSET_TOKEN_SECRET ||= "test-asset-secret";
+
+// jsdom may not expose WebCrypto — mintAssetToken needs crypto.subtle.
+if (!globalThis.crypto?.subtle) {
+  vi.stubGlobal("crypto", webcrypto);
+}
 
 const { GET, POST, DELETE } = await import("./route");
+const { mintAssetToken } = await import("@/lib/asset-token");
 
 const API_BASE = "http://localhost:8090/api/v1";
 const fetchMock = vi.fn();
@@ -645,5 +655,197 @@ describe("refresh hardening", () => {
     const [, init] = fetchMock.mock.calls[0]!;
     const upstreamHeaders = init!.headers! as Record<string, string>;
     expect(upstreamHeaders["X-Forwarded-For"]).toBe("203.0.113.7, 10.0.0.2");
+  });
+});
+
+describe("signed asset tokens (fix E — credential-less viewer loads)", () => {
+  const ASSET_SECRET = "test-asset-secret";
+  const cookieFor = (sub: string) => `pp_access=${makeAccessToken(sub)}`;
+
+  function expectedToken(pageId: string, userId: string) {
+    return mintAssetToken({
+      secret: ASSET_SECRET,
+      pageId,
+      userId,
+      ttlSeconds: 604800,
+    });
+  }
+
+  it("rewrites THIS page's absolute and root-relative f-URLs in the served HTML", async () => {
+    const pageId = "p-1";
+    const prefix = `/api/pp/archive/pages/${pageId}/f/`;
+    const html = [
+      `<link href="https://app.pagepocket.app${prefix}assets/style.css" rel="stylesheet">`,
+      `<img src="${prefix}img.png">`,
+      `<img src="/api/pp/archive/pages/p-2/f/other.png">`,
+      `<a href="/api/sc/tok/f/index.html">share</a>`,
+    ].join("\n");
+    fetchMock.mockResolvedValue(
+      gatewayResponse(html, { "Content-Type": "text/html; charset=utf-8" }),
+    );
+
+    const res = await callGet(
+      ["archive", "pages", pageId, "f", "index.html"],
+      cookieFor("user-e1"),
+    );
+    const body = await res.text();
+
+    const token = await expectedToken(pageId, "user-e1");
+    expect(body).toContain(
+      `https://app.pagepocket.app${prefix}at/${token}/assets/style.css`,
+    );
+    expect(body).toContain(`src="${prefix}at/${token}/img.png"`);
+    // Other pages' links and share URLs are never touched.
+    expect(body).toContain("/api/pp/archive/pages/p-2/f/other.png");
+    expect(body).toContain("/api/sc/tok/f/index.html");
+    expect(body).not.toContain("/at/at/");
+    // The upstream request URL is untouched — the rewrite is response-only.
+    expect(String(fetchMock.mock.calls[0]![0])).toBe(
+      `${API_BASE}/archive/pages/${pageId}/f/index.html?`,
+    );
+  });
+
+  it("rewritten HTML carries Cache-Control: private, no-cache and keeps the sandbox headers", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse('<img src="/api/pp/archive/pages/p-1/f/i.png">', {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "public, max-age=3600",
+      }),
+    );
+
+    const res = await callGet(
+      ["archive", "pages", "p-1", "f", "index.html"],
+      cookieFor("user-e2"),
+    );
+
+    expect(res.headers.get("cache-control")).toBe("private, no-cache");
+    expect(res.headers.get("content-security-policy")).toBe(
+      "sandbox allow-popups allow-forms",
+    );
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("mints the same token for repeated views within the bucket", async () => {
+    // A fresh Response per call — mockResolvedValue would replay one consumed
+    // body for every repeat view.
+    fetchMock.mockImplementation(() =>
+      gatewayResponse('<img src="/api/pp/archive/pages/p-1/f/i.png">', {
+        "Content-Type": "text/html",
+      }),
+    );
+    const extract = (body: string) =>
+      /\/f\/at\/([A-Za-z0-9_.-]+)\//.exec(body)?.[1];
+
+    const a = await callGet(
+      ["archive", "pages", "p-1", "f", "index.html"],
+      cookieFor("user-e3"),
+    );
+    const b = await callGet(
+      ["archive", "pages", "p-1", "f", "index.html"],
+      cookieFor("user-e3"),
+    );
+
+    const tokenA = extract(await a.text());
+    expect(tokenA).toBeTruthy();
+    expect(extract(await b.text())).toBe(tokenA);
+    // A different user viewing the same page gets a different token.
+    const other = await callGet(
+      ["archive", "pages", "p-1", "f", "index.html"],
+      cookieFor("user-e3b"),
+    );
+    expect(extract(await other.text())).not.toBe(tokenA);
+  });
+
+  it("is idempotent — URLs already carrying a token are skipped (no /f/at/at/)", async () => {
+    const html = '<img src="/api/pp/archive/pages/p-1/f/at/abc.def/x.png">';
+    fetchMock.mockResolvedValue(
+      gatewayResponse(html, { "Content-Type": "text/html; charset=utf-8" }),
+    );
+
+    const res = await callGet(
+      ["archive", "pages", "p-1", "f", "index.html"],
+      cookieFor("user-e4"),
+    );
+
+    expect(await res.text()).toBe(html);
+    expect(res.headers.get("cache-control")).not.toContain("no-cache");
+  });
+
+  it("never rewrites css/js/img bytes — they keep the privatized cache-control", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("body{color:red}", {
+        "Content-Type": "text/css; charset=utf-8",
+        "Cache-Control": "public, max-age=31536000, immutable",
+      }),
+    );
+
+    const res = await callGet(
+      ["archive", "pages", "p-1", "f", "at", "abc.def", "assets", "style.css"],
+      cookieFor("user-e5"),
+    );
+
+    expect(await res.text()).toBe("body{color:red}");
+    // privatizeCacheControl strips public/immutable, keeps max-age.
+    expect(res.headers.get("cache-control")).toBe("private, max-age=31536000");
+    expect(res.headers.get("content-security-policy")).toBe(
+      "sandbox allow-popups allow-forms",
+    );
+  });
+
+  it("feature OFF (secret unset or empty) serves HTML byte-identical to today", async () => {
+    const html = '<img src="/api/pp/archive/pages/p-1/f/i.png">';
+    fetchMock.mockImplementation(() =>
+      gatewayResponse(html, { "Content-Type": "text/html; charset=utf-8" }),
+    );
+
+    try {
+      for (const secret of [undefined, ""]) {
+        if (secret === undefined) {
+          delete process.env.ASSET_TOKEN_SECRET;
+        } else {
+          process.env.ASSET_TOKEN_SECRET = secret;
+        }
+        const res = await callGet(
+          ["archive", "pages", "p-1", "f", "index.html"],
+          cookieFor("user-e6"),
+        );
+        expect(await res.text()).toBe(html);
+        expect(res.headers.get("cache-control")).toBe("private");
+      }
+    } finally {
+      process.env.ASSET_TOKEN_SECRET = ASSET_SECRET;
+    }
+  });
+
+  it("serves HTML untouched without an authenticated user (nothing to bind the token to)", async () => {
+    const html = '<img src="/api/pp/archive/pages/p-1/f/i.png">';
+    fetchMock.mockResolvedValue(
+      gatewayResponse(html, { "Content-Type": "text/html; charset=utf-8" }),
+    );
+
+    const res = await callGet(["archive", "pages", "p-1", "f", "index.html"]);
+
+    expect(await res.text()).toBe(html);
+    expect(res.headers.get("cache-control")).toBe("private");
+  });
+
+  it("classifies /archive/pages/{id}/f/* as a file route (sandbox + opaque-origin CORS + private)", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("png-bytes", { "Content-Type": "image/png" }),
+    );
+
+    const res = await callApi(
+      "GET",
+      ["archive", "pages", "p-1", "f", "assets", "logo.png"],
+      { headers: { origin: "null" } },
+    );
+
+    expect(res.headers.get("access-control-allow-origin")).toBe("null");
+    expect(res.headers.get("access-control-allow-credentials")).toBe("true");
+    expect(res.headers.get("vary")).toBe("Origin");
+    expect(res.headers.get("content-security-policy")).toBe(
+      "sandbox allow-popups allow-forms",
+    );
+    expect(res.headers.get("cache-control")).toBe("private");
   });
 });

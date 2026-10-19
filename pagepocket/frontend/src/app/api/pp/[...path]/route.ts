@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { setAuthCookies, clearAuthCookies } from "@/lib/auth/cookies";
-import { API_GATEWAY_URL } from "@/lib/env";
+import { API_GATEWAY_URL, assetTokenConfig } from "@/lib/env";
+import { injectAssetToken, mintAssetToken } from "@/lib/asset-token";
 import {
   contentTypeForPath,
   corsEchoHeaders,
@@ -13,10 +14,13 @@ const API_BASE = API_GATEWAY_URL;
 
 const refreshPromises = new Map<string, Promise<RefreshOutcome>>();
 
-// Authenticated archived-file serving route (/api/pp/archive/{page_id}/f/*).
-// Archived content must never leave this proxy without the sandbox header set
+// Authenticated archived-file serving route
+// (/api/pp/archive/pages/{page_id}/f/* — the gateway's
+// /api/v1/archive/pages/{page_id}/f/{file_path} — plus the legacy
+// single-segment /api/pp/archive/{page_id}/f/* shape). Archived content must
+// never leave this proxy without the sandbox header set
 // (archived-html-serving) — same semantics as the gateway's serving.py.
-const ARCHIVE_FILE_ROUTE = /^\/archive\/[^/]+\/f\/(.+)$/;
+const ARCHIVE_FILE_ROUTE = /^\/archive\/(?:pages\/)?([^/]+)\/f\/(.+)$/;
 
 // Route allow-list (archived-file-proxy / design D11): the COMPOSED upstream
 // path (gateway base path + proxied route) must stay inside these route
@@ -31,6 +35,12 @@ const ALLOWED_UPSTREAM =
 const GATEWAY_BASE_PATH = new URL(API_BASE).pathname.replace(/\/+$/, "");
 
 function archiveFilePath(route: string): string | null {
+  const match = route.match(ARCHIVE_FILE_ROUTE);
+  return match ? match[2]! : null;
+}
+
+/** The page id of an archive file route (page_id owns the requested files). */
+function archivePageId(route: string): string | null {
   const match = route.match(ARCHIVE_FILE_ROUTE);
   return match ? match[1]! : null;
 }
@@ -71,11 +81,13 @@ function privatizeCacheControl(headers: Headers): void {
   headers.set("cache-control", directives.join(", "));
 }
 
-function proxyResponse(
+async function proxyResponse(
   response: Response,
   filePath: string | null,
   requestOrigin: string | null,
-): Response {
+  pageId: string | null,
+  userId: string | null,
+): Promise<Response> {
   if (!filePath) {
     // Non-file API responses gain no CORS headers — the Origin echo exists
     // only for the archived-file routes consumed by the sandboxed viewer
@@ -90,6 +102,9 @@ function proxyResponse(
   const sandbox = sandboxHeaders(
     response.headers.get("content-type") ?? contentTypeForPath(filePath),
   );
+  const isHtml =
+    (sandbox["Content-Type"] ?? "").split(";", 1)[0]!.trim().toLowerCase() ===
+    "text/html";
   for (const [name, value] of Object.entries(sandbox)) {
     headers.set(name, value);
   }
@@ -99,6 +114,60 @@ function proxyResponse(
     headers.set(name, value);
   }
   privatizeCacheControl(headers);
+
+  // Signed asset tokens (archived-html-serving "Credential-less archived
+  // asset access"): the sandboxed viewer's CORS-mode subresource loads cannot
+  // send cookies, so served HTML gets this page's asset URLs rewritten to
+  // carry `/f/at/{token}/` — the gateway accepts the token instead of the
+  // cookie. ONLY text/html bodies are rewritten; css/js/img bytes stream
+  // through untouched (relative url() refs inside CSS inherit the token
+  // segment automatically because it is a PATH segment).
+  const tokenConfig = assetTokenConfig();
+  if (tokenConfig && isHtml && pageId && userId && response.status === 200) {
+    let html: string | null = null;
+    try {
+      html = await response.text();
+    } catch {
+      html = null;
+    }
+    if (html !== null) {
+      // The body is now buffered (and possibly decompressed) — a stale
+      // Content-Encoding would corrupt it; drop it. Content-Length is
+      // refreshed by undici when the body changes (rewritten return below).
+      headers.delete("Content-Encoding");
+      try {
+        const token = await mintAssetToken({
+          secret: tokenConfig.secret,
+          pageId,
+          userId,
+          ttlSeconds: tokenConfig.ttlSeconds,
+        });
+        const rewritten = injectAssetToken(html, pageId, token);
+        if (rewritten.replaced > 0) {
+          // Fresh tokens every view: browsers must re-fetch the document
+          // instead of reusing a cached copy whose token may be from an
+          // older bucket (archived-html-serving fix E).
+          headers.set("Cache-Control", "private, no-cache");
+          headers.delete("Content-Length");
+          return new Response(rewritten.html, {
+            status: response.status,
+            statusText: response.statusText,
+            headers,
+          });
+        }
+      } catch {
+        // Mint/inject failure must never break document serving — fall
+        // through and serve the unrewritten bytes (exactly today's behavior;
+        // the feature degrades gracefully when OFF).
+      }
+      return new Response(html, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    }
+    // Body unreadable — fall through and stream whatever remains.
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -295,11 +364,15 @@ async function proxyRequest(
     );
   }
   const filePath = archiveFilePath(route);
+  const pageId = archivePageId(route);
   const url = new URL(request.url);
   const gatewayUrl = `${API_BASE}${route}?${url.searchParams.toString()}`;
 
   const cookieStore = await request.cookies;
   const accessToken = cookieStore.get("pp_access")?.value;
+  // Asset-token owner (fix E): the sub claim of the session used for the
+  // upstream Bearer header — tokens are minted bound to (page_id, user_id).
+  const userId = accessToken ? decodeJwtSubject(accessToken) : null;
 
   // Forward the caller's Content-Type (never hardcode application/json), the
   // media/conditional headers (Range/Accept/If-*), and the inbound client
@@ -371,10 +444,12 @@ async function proxyRequest(
             ? { body: upstream.replayBody }
             : {}),
         });
-        const finalResponse = proxyResponse(
+        const finalResponse = await proxyResponse(
           response,
           filePath,
           request.headers.get("origin"),
+          pageId,
+          userId,
         );
         setAuthCookiesOn(finalResponse, outcome);
         return finalResponse;
@@ -409,5 +484,11 @@ async function proxyRequest(
     );
   }
 
-  return proxyResponse(response, filePath, request.headers.get("origin"));
+  return await proxyResponse(
+    response,
+    filePath,
+    request.headers.get("origin"),
+    pageId,
+    userId,
+  );
 }
