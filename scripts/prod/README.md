@@ -525,3 +525,30 @@ discovered resource(s) never uploaded; finalize proceeds)` — column = 1 ==
 - Pending user-side: Fix A visual (page `5ecce3ab…` renders fully), Fix B
   (UI share dialog + `/s/{token}`), 6.6 extension rebuild+reload checks
   (kill-the-SW resume, hung-upload retry, failed-count banner).
+
+### Deploy record — 2026-10-19 (fix E: signed asset tokens, `5a02a26`)
+
+- Prod finding: stored archived HTML references assets via RELATIVE urls
+  (`./styles/…`, inline CSS `mask: url("./images/…")`) with NO `<base>` tag;
+  the browser resolves them against the iframe document URL. CORS-mode loads
+  (`crossorigin` tags, webfonts) cannot send cookies by spec → the authed file
+  route 401s them; the browser masks this as "No 'Access-Control-Allow-Origin'".
+- Fix E shipped across `ba32a45` (gateway) + `5a02a26` (BFF base-href
+  injection; body-URL rewriting replaced after the R2 finding). Lint fix
+  `e648558`; deploy-frontend re-fired via `44e3bc6` (README env docs) after
+  the services-only push skipped it.
+- `ASSET_TOKEN_SECRET` provisioned 2026-10-19 on the host: gateway via
+  `pagepocket/.env` (compose substitution), BFF via
+  `pagepocket/frontend/.env.production.local`. Same 64-hex value both sides;
+  NOT in the repo. TTL 604800s both sides.
+- Deploy `39270583892` (backend ✓ 1m11s — gateway restarted with env) and
+  `39273648344` (frontend ✓ 53s). Note: first attempt `ba32a45` was CI-blocked
+  (3 ruff errors in the new tests) — gate worked as designed.
+- Prod proof (gateway, credential-less): valid token → 200 (`text/html` 213 KB
+  index, `image/svg+xml`, `text/css`); tampered / wrong-page / no-token → 401;
+  Bearer requests unaffected. Token mint: `payload_b64url.mac_b64url`,
+  HMAC-SHA256(ASSET_TOKEN_SECRET), bucket `e=(floor(now/TTL)+2)*TTL`.
+- Residual (capture-time, NOT serving): page `17860421…` references
+  `images/day-cloudy.svg` which was never uploaded (CSS-`mask` ref missed by
+  the extension harvester; 64 images + 4 svg + 28 scripts + 11 styles ARE
+  stored). Ingest-integrity gate / harvester improvement = follow-up change.
