@@ -596,3 +596,19 @@ drift:`DB*USER*_`were never in`.env`, and old containers predated the
 - Existing pages keep their broken links (stored HTML is immutable);
   re-download produces correct refs. Nuxt-style pages were unaffected by
   luck (hashed basenames coincide with storage keys).
+
+### Deploy record — 2026-10-20 (professional-marketing-site, `caae50f`)
+
+- Marketing site rework shipped via CI-gated `deploy-frontend` (run `39468822896`:
+  ci-gate 1m39s → deploy-frontend 1m9s). Frontend-only change; monolith/services untouched.
+- Live checks: all 19 public routes 200 (incl. /privacy, /terms — previously 404);
+  og:image 1200×630 PNG via hashed metadata route; JSON-LD on `/` = FAQPage +
+  Organization + SoftwareApplication (2 offers, no aggregateRating); robots.txt
+  disallows /app, /s/, /api/ + sitemap ref; sitemap lists all marketing/content routes;
+  CSP on non-API paths gained script-src 'self' 'unsafe-inline' static.cloudflareinsights.com
+  (beacon renders only when NEXT_PUBLIC_CF_BEACON_TOKEN is set — currently unset);
+  share page /s/ 200 (flow untouched).
+- Follow-ups in openspec/changes/professional-marketing-site/handoff.md: CF analytics
+  token, Search Console + sitemap submit, Chrome Web Store listing rename (description
+  text ready in description/en.md, 44 locales surgically fixed), nginx root-vs-app
+  server_name decision.

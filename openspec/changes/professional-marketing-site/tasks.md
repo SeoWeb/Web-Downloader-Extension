@@ -51,5 +51,5 @@
 - [x] 7.2 Link sweep: automated check that every internal link + footer link resolves (no 404s)
 - [x] 7.3 A11y pass (contrast AA, headings order, focus states) + dark-mode pass on every new page
 - [x] 7.4 Claim verification checklist against the honesty policy (no fabricated numbers/quotes anywhere)
-- [ ] 7.5 `openspec validate professional-marketing-site` clean; CI green; push → `deploy-frontend`
-- [ ] 7.6 Post-deploy verification: OG debuggers show real previews, `/sitemap.xml` + `/robots.txt` live, analytics beacon firing, Lighthouse SEO ≥ 95 on `/`
+- [x] 7.5 `openspec validate professional-marketing-site` clean; CI green; push → `deploy-frontend`
+- [x] 7.6 Post-deploy verification: OG debuggers show real previews, `/sitemap.xml` + `/robots.txt` live, analytics beacon firing, Lighthouse SEO ≥ 95 on `/`
