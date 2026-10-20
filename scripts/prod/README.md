@@ -612,3 +612,29 @@ drift:`DB*USER*_`were never in`.env`, and old containers predated the
   token, Search Console + sitemap submit, Chrome Web Store listing rename (description
   text ready in description/en.md, 44 locales surgically fixed), nginx root-vs-app
   server_name decision.
+
+### Deploy record — 2026-10-20 (add-page-export-zip, `69e69db`)
+
+- Dashboard ZIP export shipped: streaming `ExportPage` RPC (archive-service),
+  `GET /api/v1/archive/pages/{id}/zip` (gateway), Download button + `d` hotkey
+  (viewer), card-menu entry (dashboard). No DB migrations; monolith (`server/`)
+  untouched — last commit there is still `96da85e`, no rebuild needed.
+- Deploys: backend rolled in run `39484333322` (deploy-backend ✓ 1m22s @
+  `4a3bd74`); frontend rolled in run `39485941017` (deploy-frontend ✓ 1m09s @
+  `69e69db`). Two deploy-infra fixes landed on the way:
+  1. `docker-compose.it.yml` — s3mock bucket init now retries (compose
+     `depends_on` started ≠ listening; flaked CI run `39480046424`).
+  2. `deploy.yml` — `deploy-frontend` now `needs: deploy-backend` (allows
+     skipped): both jobs `git reset --hard` the SAME host checkout and raced
+     on `.git/index.lock` on the first-ever dual-path push (frontend job of
+     `39484333322` failed; rerun also refused by the queue-race SHA guard, as
+     designed).
+- Prod verification: all 9 containers healthy, gateway health ok, external
+  ports 33060/8000/8090 closed, unauth export probe → 401. End-to-end on prod
+  (demo account): ingest → export (`200`, `application/zip`,
+  `Content-Disposition: attachment; filename="Prod Smoke Page.zip"`, entries
+  index.html + meta.json + assets/smoke.png, relative refs, 0 script tags) →
+  delete → 200, re-fetch 404 (zero residue). Note: page ingest requires a
+  Content-Length header and the BFF streams request bodies chunked — ingest
+  via `/api/pp/*` is not possible; that is the extension/monolith path by
+  design.

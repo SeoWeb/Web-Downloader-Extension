@@ -24,4 +24,4 @@
 
 - [x] 5.1 Full gate: gateway + archive-service + frontend test suites, lint, typecheck green; manual smoke via docker compose: download a real page, unzip, open `index.html` offline (assets resolve, no scripts), confirm `Content-Disposition` filename
 - [x] 5.2 Docs: getting-started download section (honest static-snapshot wording); changelog entry; verify features-page ZIP-export claim now holds end-to-end
-- [ ] 5.3 `openspec validate add-page-export-zip` clean; commit; deploy (monolith rebuild per runbook §3 + `deploy-frontend`) only on explicit user order; post-deploy verification
+- [x] 5.3 `openspec validate add-page-export-zip` clean; commit; deploy (monolith rebuild per runbook §3 + `deploy-frontend`) only on explicit user order; post-deploy verification
