@@ -5,9 +5,12 @@ import logging
 import os
 import posixpath
 import re
+import shutil
 import sys
+import tempfile
 import time
 import uuid
+import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 
@@ -65,6 +68,13 @@ _EXTENSION_JOB_ID_RE = re.compile(r"^[A-Za-z0-9._:-]{1,36}$")
 _ORPHAN_GRACE_PERIOD_SECONDS = 7 * 24 * 3600
 _ORPHAN_SCAN_BATCH = 500
 
+# Page ZIP export (add-page-export-zip, D3): the ZIP is assembled into a
+# SpooledTemporaryFile that spills to disk past the RAM threshold, then
+# streamed back in chunks well under gRPC's 4 MB default message cap.
+_EXPORT_SPOOL_MAX_BYTES = 64 * 1024 * 1024
+_EXPORT_CHUNK_BYTES = 512 * 1024
+_EXPORT_ZIP_COMPRESS_LEVEL = 6  # DEFLATE level 6 (matches monolith zip_assembler)
+
 
 def _classify_r2_error(exc: Exception) -> grpc.StatusCode:
     """Classify an R2/S3 exception into a gRPC status (2.13, design note f).
@@ -97,6 +107,30 @@ def _classify_r2_error(exc: Exception) -> grpc.StatusCode:
     ):
         return grpc.StatusCode.UNAVAILABLE
     return grpc.StatusCode.INTERNAL
+
+
+def _normalize_archive_rel_path(file_path: str) -> str | None:
+    """Normalize a page-relative archive path; None when it must be rejected.
+
+    Security (2.8): the path is normalized and anything that escapes the
+    page's archive root is invalid — any '..' segment or an absolute path,
+    regardless of the object store's flat namespace. A leading '../' slips
+    past a naive substring check, hence the segment check. Shared by
+    GetArchiveFile (request validation) and ExportPage (every object read /
+    ZIP entry name).
+    """
+    if not file_path:
+        return None
+    normalized = posixpath.normpath(file_path)
+    segments = normalized.split("/")
+    if (
+        normalized.startswith("/")
+        or file_path.startswith("/")
+        or normalized == ".."
+        or any(seg == ".." for seg in segments)
+    ):
+        return None
+    return normalized
 
 
 def _get_search_stub():
@@ -567,18 +601,9 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             return archive_pb2.ArchiveFileResponse()
 
         # Security (2.8): normalize the path and reject anything that escapes
-        # the page's archive root — any '..' segment or an absolute path is
-        # invalid regardless of the object store's flat namespace. A leading
-        # '../' slips past a naive substring check, hence the segment check.
-        normalized = posixpath.normpath(file_path)
-        segments = normalized.split("/")
-        if (
-            not file_path
-            or normalized.startswith("/")
-            or file_path.startswith("/")
-            or normalized == ".."
-            or any(seg == ".." for seg in segments)
-        ):
+        # the page's archive root (see _normalize_archive_rel_path).
+        normalized = _normalize_archive_rel_path(file_path)
+        if normalized is None:
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             context.set_details("Invalid file path")
             return archive_pb2.ArchiveFileResponse()
@@ -614,6 +639,139 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                 "File not found" if code == grpc.StatusCode.NOT_FOUND else "Storage error"
             )
             return archive_pb2.ArchiveFileResponse()
+
+    def ExportPage(self, request, context):
+        """Stream one archived page as a zip64 ZIP (add-page-export-zip, D1–D3).
+
+        All R2 work (prefix listing, object reads, spool assembly) happens
+        BEFORE the first chunk is yielded, so listing/read failures classify
+        into a clean gRPC status instead of killing a half-sent stream. The
+        spool keeps service RAM flat — only one object is decompressed-in/
+        compressed-out at a time, and past 64 MB the ZIP itself lives on pod
+        disk; the returned generator merely slices the spool.
+        """
+        # Mandatory ownership (2.3): an empty user_id is a hard error, never
+        # a wildcard (same contract as GetArchiveFile).
+        if not request.user_id:
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details("user_id is required")
+            return iter(())
+
+        with db_session(self.engine) as session:
+            page = session.execute(
+                select(Page).where(Page.id == request.page_id)
+            ).scalar_one_or_none()
+
+            # Identical answer for missing and foreign pages — no existence
+            # leak (Export Authorization spec scenario).
+            if not page or page.user_id != request.user_id:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details("Page not found")
+                return iter(())
+
+            # Read before the session closes (commit would expire instances).
+            user_id = page.user_id
+            page_id = page.id
+
+        page_prefix = f"{user_id}/{page_id}/"
+
+        # D2: the R2 prefix listing is the source of truth — works for every
+        # existing page with no asset manifest and no backfill. The thumbnail
+        # ({user_id}/{page_id}.webp) sits OUTSIDE the prefix and is excluded
+        # naturally.
+        try:
+            listed_keys: list[str] = []
+            paginator = self.r2.client.get_paginator("list_objects_v2")
+            for listed in paginator.paginate(Bucket=self.r2.bucket, Prefix=page_prefix):
+                listed_keys.extend(obj["Key"] for obj in listed.get("Contents", []))
+        except Exception as exc:
+            code = _classify_r2_error(exc)
+            logger.error("ExportPage: R2 listing failed for %s: %s", page_prefix, exc)
+            context.set_code(code)
+            context.set_details("Storage error")
+            return iter(())
+
+        # Zip entries must be safe relative paths: a listed key that cannot be
+        # represented as one (e.g. contains '..') is skipped — never shipped in
+        # a downloadable artifact (zip-slip guard), logged for visibility.
+        entries: list[tuple[str, str]] = []  # (zip-relative name, R2 key)
+        for key in listed_keys:
+            rel = key[len(page_prefix):]
+            if not rel or _normalize_archive_rel_path(rel) != rel:
+                logger.warning("ExportPage: skipping unsafe object key %s", key)
+                continue
+            entries.append((rel, key))
+
+        # D3 deterministic order: index.html, meta.json, then assets sorted by
+        # key; any other object sorts after assets. Stable archives, happy tests.
+        def _entry_order(item: tuple[str, str]) -> tuple[int, str]:
+            rel = item[0]
+            if rel == "index.html":
+                return (0, rel)
+            if rel == "meta.json":
+                return (1, rel)
+            if rel.startswith("assets/"):
+                return (2, rel)
+            return (3, rel)
+
+        entries.sort(key=_entry_order)
+
+        # SIM115: the spool's lifetime intentionally spans the streaming
+        # generator returned below; it is closed in that generator's finally.
+        spool = tempfile.SpooledTemporaryFile(  # noqa: SIM115
+            max_size=_EXPORT_SPOOL_MAX_BYTES,
+            mode="w+b",
+            prefix="pagepocket-export-",
+        )
+        key = ""  # bound for the failure log before the first loop iteration
+        try:
+            with zipfile.ZipFile(
+                spool,
+                "w",
+                compression=zipfile.ZIP_DEFLATED,
+                compresslevel=_EXPORT_ZIP_COMPRESS_LEVEL,
+                allowZip64=True,  # D3: zip64 — per-page archives can outgrow 32-bit bounds
+            ) as zf:
+                for _rel, key in entries:
+                    # Path hardening reuse: entry names came from the normalized
+                    # listing above; reads target the listed key verbatim.
+                    response = self.r2.client.get_object(Bucket=self.r2.bucket, Key=key)
+                    body = response["Body"]
+                    try:
+                        with zf.open(_rel, "w") as entry:
+                            # Stream the object through in bounded pieces — the
+                            # whole archive is never held in RAM (spec scenario).
+                            shutil.copyfileobj(body, entry, length=_EXPORT_CHUNK_BYTES)
+                    finally:
+                        body.close()
+        except Exception as exc:
+            spool.close()
+            # Classified mapping (2.13/design note f): R2 read/listing causes
+            # surface as NOT_FOUND/UNAVAILABLE, everything else (zip assembly
+            # itself) as INTERNAL — and all of it BEFORE the first chunk is
+            # yielded, never a half-streamed "success".
+            code = _classify_r2_error(exc)
+            logger.error(
+                "ExportPage: export of %s/%s failed (while reading %s): %s",
+                user_id, page_id, key, exc,
+            )
+            context.set_code(code)
+            context.set_details("Storage error")
+            return iter(())
+
+        spool.seek(0)
+
+        def _chunks():
+            try:
+                while True:
+                    data = spool.read(_EXPORT_CHUNK_BYTES)
+                    if not data:
+                        return
+                    yield archive_pb2.ExportPageChunk(data=data)
+            finally:
+                spool.close()
+
+        return _chunks()
 
     def DeletePage(self, request, context):
         # Tombstone-then-delete (2.2/D6): commit the row deletion + quota

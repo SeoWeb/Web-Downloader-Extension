@@ -265,7 +265,7 @@ const faqs = [
   {
     question: "Can I keep a local copy of my pages?",
     answer:
-      "Yes — alongside the cloud archive, the extension can save the full page structure as a ZIP archive to your device. The cloud library is for search and sharing; the local export is yours to keep.",
+      "Yes — alongside the cloud archive, the extension can save the full page structure as a ZIP archive to your device, and you can download any saved page as a ZIP from your dashboard at any time. The cloud library is for search and sharing; the local export is yours to keep.",
   },
   {
     question: "How is this different from bookmarks or the Wayback Machine?",

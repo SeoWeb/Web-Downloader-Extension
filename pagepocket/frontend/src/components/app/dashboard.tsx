@@ -176,11 +176,18 @@ export function Dashboard({ initialData, collectionId }: DashboardProps) {
     setShareOpen(true);
   }
 
+  // Download (pagepocket-frontend-dashboard): plain navigation to the BFF
+  // archive ZIP route — the browser owns the download UX; the dropdown menu
+  // closes via the item's default select behavior, as with Share/Move/Delete.
+  function handleDownload(pageId: string) {
+    window.location.assign(`/api/pp/archive/pages/${pageId}/zip`);
+  }
+
   // Shift+M keyboard shortcut for move
   const [focusedPageId, setFocusedPageId] = useState<string | null>(null);
-  const [focusedCollectionId, setFocusedCollectionId] = useState<
-    string | null
-  >(null);
+  const [focusedCollectionId, setFocusedCollectionId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -201,10 +208,10 @@ export function Dashboard({ initialData, collectionId }: DashboardProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+        <div className="bg-muted h-8 w-48 animate-pulse rounded" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-32 animate-pulse rounded-lg bg-muted" />
+            <div key={i} className="bg-muted h-32 animate-pulse rounded-lg" />
           ))}
         </div>
       </div>
@@ -236,7 +243,7 @@ export function Dashboard({ initialData, collectionId }: DashboardProps) {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">
           {collectionName ?? "All Pages"}{" "}
-          <span className="text-sm font-normal text-muted-foreground">
+          <span className="text-muted-foreground text-sm font-normal">
             ({totalCount})
           </span>
         </h1>
@@ -269,6 +276,7 @@ export function Dashboard({ initialData, collectionId }: DashboardProps) {
               onDelete={handleDelete}
               onMove={handleMove}
               onShare={handleShare}
+              onDownload={handleDownload}
             />
           </div>
         ))}
@@ -279,12 +287,12 @@ export function Dashboard({ initialData, collectionId }: DashboardProps) {
 
       {isFetchingNextPage && (
         <div className="flex justify-center py-4">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+          <div className="border-muted-foreground h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
         </div>
       )}
 
       {!hasNextPage && totalCount > 0 && (
-        <p className="py-4 text-center text-sm text-muted-foreground">
+        <p className="text-muted-foreground py-4 text-center text-sm">
           You&apos;ve reached the end
         </p>
       )}

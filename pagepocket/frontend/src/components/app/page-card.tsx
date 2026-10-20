@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { MoreVertical, Share2, FolderInput, Trash2 } from "lucide-react";
+import {
+  MoreVertical,
+  Download,
+  Share2,
+  FolderInput,
+  Trash2,
+} from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +29,16 @@ type PageCardProps = {
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
   onMove?: (id: string) => void;
+  onDownload?: (id: string) => void;
 };
 
-export function PageCard({ page, onDelete, onShare, onMove }: PageCardProps) {
+export function PageCard({
+  page,
+  onDelete,
+  onShare,
+  onMove,
+  onDownload,
+}: PageCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `page-${page.id}`,
     data: {
@@ -53,22 +66,22 @@ export function PageCard({ page, onDelete, onShare, onMove }: PageCardProps) {
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`group rounded-lg border border-border bg-card p-4 transition-shadow hover:shadow-md ${isDragging ? "opacity-50" : ""}`}
+      className={`group border-border bg-card rounded-lg border p-4 transition-shadow hover:shadow-md ${isDragging ? "opacity-50" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-semibold">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="bg-primary text-primary-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold">
             {initial}
           </div>
           <div className="min-w-0">
             <Link
               href={`/app/pages/${page.id}`}
-              className="text-sm font-medium hover:underline line-clamp-1"
+              className="line-clamp-1 text-sm font-medium hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
               {page.title}
             </Link>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">
+            <p className="text-muted-foreground mt-0.5 truncate text-xs">
               {hostname}
             </p>
           </div>
@@ -79,7 +92,7 @@ export function PageCard({ page, onDelete, onShare, onMove }: PageCardProps) {
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                className="opacity-0 transition-opacity group-hover:opacity-100"
                 aria-label="Page actions"
               />
             }
@@ -87,26 +100,33 @@ export function PageCard({ page, onDelete, onShare, onMove }: PageCardProps) {
             <MoreVertical className="size-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onDownload?.(page.id)}>
+              <Download className="mr-2 size-4" />
+              Download
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onShare?.(page.id)}>
-              <Share2 className="size-4 mr-2" />
+              <Share2 className="mr-2 size-4" />
               Share
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onMove?.(page.id)}>
-              <FolderInput className="size-4 mr-2" />
+              <FolderInput className="mr-2 size-4" />
               Move to collection
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive"
               onClick={() => onDelete?.(page.id)}
             >
-              <Trash2 className="size-4 mr-2" />
+              <Trash2 className="mr-2 size-4" />
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
-        Archived {formatDistanceToNow(new Date(page.archived_at + "Z"), { addSuffix: true })}
+      <p className="text-muted-foreground mt-2 text-xs">
+        Archived{" "}
+        {formatDistanceToNow(new Date(page.archived_at + "Z"), {
+          addSuffix: true,
+        })}
       </p>
     </div>
   );

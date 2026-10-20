@@ -3,11 +3,13 @@
 import os
 import re
 import sys
+import urllib.parse
 
 import grpc
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import Response as FastAPIResponse
-from starlette.concurrency import run_in_threadpool
+from fastapi.responses import StreamingResponse
+from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared", "proto_generated"))
 
@@ -328,5 +330,108 @@ async def get_page_file(request: Request, page_id: str, file_path: str):
         headers={
             "Cache-Control": cache_control,
             **sandbox_headers(content_type),
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Page ZIP export (add-page-export-zip 3.1/D4): authenticated streaming
+# download of one archived page.
+# ---------------------------------------------------------------------------
+
+# Whole-download budget for the ExportPage stream (the service spools + reads
+# R2 before the first chunk; ingest/push-class calls use 120 s for comparison).
+_EXPORT_TIMEOUT_SECONDS = 300
+
+# Content-Disposition hygiene (D4): control characters, quotes, and path
+# separators never belong in a filename; whitespace collapses; leading/trailing
+# dots are trimmed (hidden files, '..', trailing-dot tricks).
+_ZIP_FILENAME_STRIP_RE = re.compile(r'[\x00-\x1f\x7f"\\/]')
+
+
+def _sanitize_filename_base(text: str) -> str:
+    """Filename-safe base name: sanitized, whitespace-collapsed, trimmed."""
+    cleaned = _ZIP_FILENAME_STRIP_RE.sub(" ", text or "")
+    cleaned = " ".join(cleaned.split())  # collapse every whitespace run
+    return cleaned.strip(" .")
+
+
+def _zip_content_disposition(title: str, page_id: str) -> str:
+    """`attachment` header value with a sanitized ZIP name derived from the
+    page title (D4).
+
+    Unicode word characters survive sanitization and travel in an RFC 5987
+    `filename*=UTF-8''` parameter (plain `filename=` always carries ASCII, as
+    required by the header encoding). An unusable title falls back to
+    `page-{page_id}.zip`.
+    """
+    base = _sanitize_filename_base(title)
+    if not base:
+        base = f"page-{_sanitize_filename_base(page_id)}"
+    filename = f"{base}.zip"
+    if filename.isascii():
+        return f'attachment; filename="{filename}"'
+    ascii_base = _sanitize_filename_base(
+        "".join(ch for ch in page_id if ch.isascii())
+    )
+    encoded = urllib.parse.quote(filename, safe="")
+    return (
+        f'attachment; filename="page-{ascii_base}.zip"; '
+        f"filename*=UTF-8''{encoded}"
+    )
+
+
+@router.get("/pages/{page_id}/zip")
+async def export_page_zip(request: Request, page_id: str):
+    """Authenticated streaming ZIP download of one archived page (D4).
+
+    GetPage enforces ownership upstream — unknown/foreign ids arrive as
+    NOT_FOUND and surface as 404 with no existence leak — and yields the
+    title for Content-Disposition. The ExportPage stream is then piped
+    through chunk-by-chunk: the archive is never fully buffered in the
+    gateway (gRPC transport discipline + bounded-memory response path).
+    """
+    try:
+        page = await run_in_threadpool(
+            archive_stub().GetPage,
+            archive_pb2.GetPageRequest(
+                page_id=page_id,
+                user_id=request.state.user_id,
+            ),
+            timeout=30,
+        )
+    except grpc.RpcError as e:
+        handle_grpc_error(e)
+
+    try:
+        call = await run_in_threadpool(
+            archive_stub().ExportPage,
+            archive_pb2.ExportPageRequest(
+                page_id=page_id,
+                user_id=request.state.user_id,
+            ),
+            timeout=_EXPORT_TIMEOUT_SECONDS,
+        )
+        # Pull the FIRST chunk here (on a worker thread), before any response
+        # is sent: every upstream failure (R2 outage → UNAVAILABLE, missing
+        # page → NOT_FOUND, deadline → DEADLINE_EXCEEDED) then maps through
+        # the shared handler to a real HTTP status — never a partial 200
+        # (spec "Error mapping"). Remaining chunks stream via
+        # iterate_in_threadpool, so the gateway never buffers the archive.
+        first_chunk = await run_in_threadpool(next, call, None)
+    except grpc.RpcError as e:
+        handle_grpc_error(e)
+
+    async def _stream():
+        if first_chunk is not None:
+            yield first_chunk.data
+        async for chunk in iterate_in_threadpool(call):
+            yield chunk.data
+
+    return StreamingResponse(
+        _stream(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": _zip_content_disposition(page.title, page_id),
         },
     )

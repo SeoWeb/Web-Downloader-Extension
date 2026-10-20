@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -17,10 +18,31 @@ vi.mock("../share-dialog", () => ({
 const { PageViewerShell } = await import("../page-viewer-shell");
 
 function renderShell() {
-  return render(
-    <PageViewerShell pageId="test-page-id" pageMeta={null} />,
-  );
+  return render(<PageViewerShell pageId="test-page-id" pageMeta={null} />);
 }
+
+// jsdom marks Location members ([LegacyUnforgeable]) non-configurable, so
+// vi.spyOn(window.location, "assign") cannot wrap it. window.location itself
+// IS a configurable own property of window — swap it for a stub exposing
+// `assign` and restore the original descriptor afterwards.
+const DOWNLOAD_LABEL =
+  "Download as ZIP — static snapshot, scripts not included";
+const ZIP_URL = "/api/pp/archive/pages/test-page-id/zip";
+const locationDescriptor = Object.getOwnPropertyDescriptor(window, "location")!;
+let assign: ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  assign = vi.fn();
+  Object.defineProperty(window, "location", {
+    value: { assign },
+    writable: true,
+    configurable: true,
+  });
+});
+
+afterEach(() => {
+  Object.defineProperty(window, "location", locationDescriptor);
+});
 
 describe("PageViewerShell", () => {
   it("renders iframe with correct sandbox attribute", () => {
@@ -44,5 +66,36 @@ describe("PageViewerShell", () => {
     renderShell();
     const iframe = screen.getByTitle("Saved page content");
     expect(iframe).not.toHaveAttribute("allowfullscreen");
+  });
+
+  it("renders a Download button with honest static-snapshot labeling", () => {
+    renderShell();
+    const button = screen.getByRole("button", { name: DOWNLOAD_LABEL });
+    expect(button).toBeInTheDocument();
+    expect(button).toHaveAttribute("title", DOWNLOAD_LABEL);
+  });
+
+  it("navigates to the archive ZIP endpoint when Download is clicked", async () => {
+    renderShell();
+    await userEvent.click(screen.getByRole("button", { name: DOWNLOAD_LABEL }));
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(assign).toHaveBeenCalledWith(ZIP_URL);
+  });
+
+  it("navigates to the archive ZIP endpoint on the d hotkey", () => {
+    renderShell();
+    fireEvent.keyDown(document.body, { key: "d" });
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(assign).toHaveBeenCalledWith(ZIP_URL);
+  });
+
+  it("ignores the d hotkey while typing in an input", () => {
+    renderShell();
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+    fireEvent.keyDown(input, { key: "d" });
+    expect(assign).not.toHaveBeenCalled();
+    input.remove();
   });
 });

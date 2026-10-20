@@ -79,7 +79,7 @@ export const DOC_FAQS: readonly DocFaq[] = [
       {
         question: "Can I read my saved pages offline?",
         answer:
-          "Not today. PagePocket is a cloud library, so opening a saved page needs a connection — that is what makes it available on every device you sign in from. You can export a copy to your computer as a ZIP or single-file HTML at save time by turning cloud storage off in the extension panel.",
+          "Opening a saved page in the viewer needs a connection — that is what makes it available on every device you sign in from. But you can download any saved page as a ZIP from your dashboard (viewer toolbar or page menu) and read that copy offline. You can also export a copy to your computer as a ZIP or single-file HTML at save time by turning cloud storage off in the extension panel.",
       },
       {
         question: "Is PagePocket available for Firefox or Edge?",

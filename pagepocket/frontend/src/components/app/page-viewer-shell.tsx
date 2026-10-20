@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ExternalLink, Share2, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  ExternalLink,
+  Share2,
+  Trash2,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,10 +38,7 @@ type PageViewerShellProps = {
 // - Scripts never run: `allow-scripts` is granted by neither layer.
 const IFRAME_SANDBOX = "allow-popups allow-forms";
 
-export function PageViewerShell({
-  pageId,
-  pageMeta,
-}: PageViewerShellProps) {
+export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
   const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -82,10 +85,25 @@ export function PageViewerShell({
     }
   }
 
+  // Download (pagepocket-frontend-page-viewer): a plain navigation to the BFF
+  // archive ZIP route — the browser owns download UX, so there is no fetch,
+  // no progress state, and nothing to clean up. The label states honestly
+  // (honesty surface) that this is a static snapshot without scripts.
+  function handleDownload() {
+    window.location.assign(`/api/pp/archive/pages/${pageId}/zip`);
+  }
+
   useHotkeys([
     {
       key: "Escape",
       handler: () => handleBack(),
+    },
+    {
+      key: "d",
+      handler: (e) => {
+        e.preventDefault();
+        handleDownload();
+      },
     },
     {
       key: "s",
@@ -106,9 +124,9 @@ export function PageViewerShell({
 
   return (
     <>
-      <div className="flex flex-col h-[calc(100dvh-3rem)]">
-        <div className="sticky top-0 z-10 flex h-12 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-4">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
+      <div className="flex h-[calc(100dvh-3rem)] flex-col">
+        <div className="border-border bg-background/95 sticky top-0 z-10 flex h-12 items-center justify-between border-b px-4 backdrop-blur">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <Button
               variant="ghost"
               size="icon-sm"
@@ -117,25 +135,37 @@ export function PageViewerShell({
             >
               <ArrowLeft className="size-4" />
             </Button>
-            <span className="text-sm font-medium truncate">{title}</span>
+            <span className="truncate text-sm font-medium">{title}</span>
             {sourceUrl && (
               <a
                 href={sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-muted-foreground hover:text-foreground shrink-0 flex items-center gap-1"
+                className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-xs"
               >
                 <ExternalLink className="size-3" />
                 source
               </a>
             )}
             {archivedAt && (
-              <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">
-                saved {formatDistanceToNow(new Date(archivedAt + "Z"), { addSuffix: true })}
+              <span className="text-muted-foreground hidden shrink-0 text-xs sm:inline">
+                saved{" "}
+                {formatDistanceToNow(new Date(archivedAt + "Z"), {
+                  addSuffix: true,
+                })}
               </span>
             )}
           </div>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleDownload}
+              aria-label="Download as ZIP — static snapshot, scripts not included"
+              title="Download as ZIP — static snapshot, scripts not included"
+            >
+              <Download className="size-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -158,7 +188,7 @@ export function PageViewerShell({
         <iframe
           src={iframeSrc}
           sandbox={IFRAME_SANDBOX}
-          className="flex-1 w-full border-0"
+          className="w-full flex-1 border-0"
           title="Saved page content"
         />
       </div>
