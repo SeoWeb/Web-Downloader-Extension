@@ -19,21 +19,22 @@ import {
 } from "lucide-react";
 import { ProductMockup } from "@/components/marketing/product-mockup";
 
+// og:image / twitter:image come from the sibling opengraph-image.tsx /
+// twitter-image.tsx routes. metadataBase keeps canonical + image URLs absolute.
 export const metadata: Metadata = {
-  title: "PagePocket — Save, organise, search, and share web pages",
+  metadataBase: new URL("https://pagepocket.app"),
+  title: {
+    absolute: "PagePocket — Save, organise, search, and share web pages",
+  },
   description:
     "The web archive that works for you. Save any page instantly, organise into collections, search full text, and share with links.",
+  alternates: {
+    canonical: "https://pagepocket.app",
+  },
   openGraph: {
     title: "PagePocket",
     description: "Save, organise, search, and share web pages",
     type: "website",
-    images: [
-      {
-        url: "https://pagepocket.app/og-landing.png",
-        width: 1200,
-        height: 630,
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -87,14 +88,12 @@ const testimonials = [
     role: "Researcher",
   },
   {
-    quote:
-      "Sources disappear overnight. My archive doesn\u2019t.",
+    quote: "Sources disappear overnight. My archive doesn\u2019t.",
     name: "Marcus Webb",
     role: "Journalist",
   },
   {
-    quote:
-      "Bookmark folders are chaos. Collections are the answer.",
+    quote: "Bookmark folders are chaos. Collections are the answer.",
     name: "Aiko Tanaka",
     role: "Developer",
   },
@@ -132,10 +131,10 @@ export default function LandingPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden py-28 px-4">
+      <section className="relative overflow-hidden px-4 py-28">
         {/* Background glow + grid */}
         <div className="absolute inset-0 -z-10">
-          <div className="absolute left-1/2 top-0 -translate-x-1/2 h-[600px] w-[900px] rounded-full bg-primary/8 blur-3xl" />
+          <div className="bg-primary/8 absolute top-0 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full blur-3xl" />
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
@@ -147,18 +146,18 @@ export default function LandingPage() {
         </div>
 
         <div className="relative mx-auto max-w-3xl text-center">
-          <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+          <div className="border-primary/20 bg-primary/5 text-primary mb-6 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium">
             <Sparkles className="size-3" />
             Browser extension for Chrome
           </div>
           <h1 className="text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
             Web pages vanish.
             <br />
-            <span className="bg-gradient-to-r from-primary to-teal-400 bg-clip-text text-transparent">
+            <span className="from-primary bg-gradient-to-r to-teal-400 bg-clip-text text-transparent">
               Your archive doesn&apos;t.
             </span>
           </h1>
-          <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
+          <p className="text-muted-foreground mx-auto mt-6 max-w-xl text-lg leading-relaxed">
             Save any page instantly, organise into collections, search full
             text, and share with links. The web archive that works for you.
           </p>
@@ -180,7 +179,7 @@ export default function LandingPage() {
               See how it works
             </Button>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="text-muted-foreground mt-3 text-xs">
             Free forever &middot; No credit card required
           </p>
         </div>
@@ -191,32 +190,32 @@ export default function LandingPage() {
       </section>
 
       {/* Pain / Solution */}
-      <section className="py-20 px-4">
+      <section className="px-4 py-20">
         <div className="mx-auto max-w-5xl">
-          <h2 className="text-2xl font-semibold text-center mb-4">
+          <h2 className="mb-4 text-center text-2xl font-semibold">
             Sound familiar?
           </h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-lg mx-auto">
+          <p className="text-muted-foreground mx-auto mb-12 max-w-lg text-center">
             The modern web is fragile. PagePocket isn&apos;t.
           </p>
-          <div className="grid gap-6 sm:grid-cols-3 mb-12">
+          <div className="mb-12 grid gap-6 sm:grid-cols-3">
             {painPoints.map((pain) => (
               <div
                 key={pain.title}
-                className="rounded-xl border border-border bg-card p-6 text-center"
+                className="border-border bg-card rounded-xl border p-6 text-center"
               >
-                <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                <div className="bg-destructive/10 text-destructive mx-auto mb-4 flex size-12 items-center justify-center rounded-full">
                   <pain.icon className="size-5" />
                 </div>
-                <h3 className="font-semibold mb-1">{pain.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <h3 className="mb-1 font-semibold">{pain.title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
                   {pain.description}
                 </p>
               </div>
             ))}
           </div>
           <div className="text-center">
-            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
+            <span className="bg-primary/10 text-primary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium">
               <Archive className="size-4" />
               PagePocket solves all three.
             </span>
@@ -225,27 +224,27 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 px-4 bg-muted/30">
+      <section className="bg-muted/30 px-4 py-20">
         <div className="mx-auto max-w-4xl">
-          <h2 className="text-2xl font-semibold text-center mb-4">
+          <h2 className="mb-4 text-center text-2xl font-semibold">
             Three steps to your personal web archive
           </h2>
-          <p className="text-center text-muted-foreground mb-14 max-w-md mx-auto">
+          <p className="text-muted-foreground mx-auto mb-14 max-w-md text-center">
             From browser tab to searchable archive in seconds.
           </p>
-          <div className="grid gap-8 sm:grid-cols-3 relative">
+          <div className="relative grid gap-8 sm:grid-cols-3">
             {/* Connecting line */}
-            <div className="absolute top-6 left-[20%] right-[20%] hidden sm:block border-t border-dashed border-primary/30" />
+            <div className="border-primary/30 absolute top-6 right-[20%] left-[20%] hidden border-t border-dashed sm:block" />
             {steps.map((step, i) => (
-              <div key={step.label} className="text-center relative">
-                <div className="relative mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-lg shadow-lg shadow-primary/20">
+              <div key={step.label} className="relative text-center">
+                <div className="bg-primary text-primary-foreground shadow-primary/20 relative mx-auto mb-4 flex size-12 items-center justify-center rounded-full text-lg font-bold shadow-lg">
                   {i + 1}
                 </div>
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <step.icon className="size-4 text-primary" />
+                <div className="mb-2 flex items-center justify-center gap-2">
+                  <step.icon className="text-primary size-4" />
                   <h3 className="font-semibold">{step.label}</h3>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   {step.description}
                 </p>
               </div>
@@ -255,93 +254,95 @@ export default function LandingPage() {
       </section>
 
       {/* Feature Bento Grid */}
-      <section className="py-24 px-4">
+      <section className="px-4 py-24">
         <div className="mx-auto max-w-5xl">
-          <h2 className="text-2xl font-semibold text-center mb-4">
+          <h2 className="mb-4 text-center text-2xl font-semibold">
             Everything you need to never lose a web page again
           </h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-lg mx-auto">
+          <p className="text-muted-foreground mx-auto mb-12 max-w-lg text-center">
             Save, read, search, and share &mdash; all from a single extension.
           </p>
-          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr">
+          <div className="grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {/* Cloud Save — large card, spans 2 cols */}
-            <div className="group rounded-xl border border-border bg-card p-6 transition-all hover:shadow-lg hover:border-primary/30 sm:col-span-2 relative overflow-hidden">
-              <div className="absolute right-0 top-0 w-48 h-48 bg-primary/5 rounded-bl-full -z-0" />
+            <div className="group border-border bg-card hover:border-primary/30 relative overflow-hidden rounded-xl border p-6 transition-all hover:shadow-lg sm:col-span-2">
+              <div className="bg-primary/5 absolute top-0 right-0 -z-0 h-48 w-48 rounded-bl-full" />
               <div className="relative">
-                <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
                   <Archive className="size-5" />
                 </div>
-                <h3 className="font-semibold mb-2">Cloud Save</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
+                <h3 className="mb-2 font-semibold">Cloud Save</h3>
+                <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
                   Save any web page with one click. Full HTML, styles, and
                   images stored securely in the cloud &mdash; even if the
                   original goes offline.
                 </p>
                 {/* Mini illustration */}
-                <div className="mt-4 flex items-center gap-3 rounded-lg bg-muted/50 border border-border px-3 py-2">
-                  <div className="flex size-8 items-center justify-center rounded bg-primary/10">
-                    <Archive className="size-4 text-primary" />
+                <div className="bg-muted/50 border-border mt-4 flex items-center gap-3 rounded-lg border px-3 py-2">
+                  <div className="bg-primary/10 flex size-8 items-center justify-center rounded">
+                    <Archive className="text-primary size-4" />
                   </div>
                   <div className="flex-1 space-y-1">
-                    <div className="h-1.5 w-3/4 rounded bg-muted" />
-                    <div className="h-1.5 w-1/2 rounded bg-muted" />
+                    <div className="bg-muted h-1.5 w-3/4 rounded" />
+                    <div className="bg-muted h-1.5 w-1/2 rounded" />
                   </div>
-                  <div className="text-[10px] font-medium text-primary">Saved</div>
+                  <div className="text-primary text-[10px] font-medium">
+                    Saved
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Search — standard card */}
-            <div className="group rounded-xl border border-border bg-card p-6 transition-all hover:shadow-lg hover:border-primary/30">
-              <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+            <div className="group border-border bg-card hover:border-primary/30 rounded-xl border p-6 transition-all hover:shadow-lg">
+              <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
                 <Search className="size-5" />
               </div>
-              <h3 className="font-semibold mb-2">Full-Text Search</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <h3 className="mb-2 font-semibold">Full-Text Search</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 Search across every saved page with instant results and
                 highlighted snippets.
               </p>
             </div>
 
             {/* Clean Viewer — standard card */}
-            <div className="group rounded-xl border border-border bg-card p-6 transition-all hover:shadow-lg hover:border-primary/30">
-              <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+            <div className="group border-border bg-card hover:border-primary/30 rounded-xl border p-6 transition-all hover:shadow-lg">
+              <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
                 <Eye className="size-5" />
               </div>
-              <h3 className="font-semibold mb-2">Clean Viewer</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <h3 className="mb-2 font-semibold">Clean Viewer</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 Read saved pages in a distraction-free reader that strips
                 trackers while preserving layout.
               </p>
             </div>
 
             {/* Collections — large card, spans 2 cols */}
-            <div className="group rounded-xl border border-border bg-card p-6 transition-all hover:shadow-lg hover:border-primary/30 sm:col-span-2 relative overflow-hidden">
-              <div className="absolute left-0 bottom-0 w-48 h-48 bg-primary/5 rounded-tr-full -z-0" />
+            <div className="group border-border bg-card hover:border-primary/30 relative overflow-hidden rounded-xl border p-6 transition-all hover:shadow-lg sm:col-span-2">
+              <div className="bg-primary/5 absolute bottom-0 left-0 -z-0 h-48 w-48 rounded-tr-full" />
               <div className="relative">
-                <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
                   <FolderTree className="size-5" />
                 </div>
-                <h3 className="font-semibold mb-2">Collections</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
+                <h3 className="mb-2 font-semibold">Collections</h3>
+                <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
                   Organise pages into nested collections with drag and drop.
                   Colour-code, rename, and navigate your archive effortlessly.
                 </p>
                 {/* Mini illustration */}
-                <div className="mt-4 flex items-center gap-2 rounded-lg bg-muted/50 border border-border px-3 py-2">
-                  <FolderTree className="size-4 text-primary" />
+                <div className="bg-muted/50 border-border mt-4 flex items-center gap-2 rounded-lg border px-3 py-2">
+                  <FolderTree className="text-primary size-4" />
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-1.5">
-                      <div className="size-2 rounded-full bg-primary/60" />
-                      <div className="h-1.5 w-20 rounded bg-muted" />
+                      <div className="bg-primary/60 size-2 rounded-full" />
+                      <div className="bg-muted h-1.5 w-20 rounded" />
                     </div>
                     <div className="flex items-center gap-1.5 pl-3">
-                      <div className="size-1.5 rounded-full bg-muted-foreground/30" />
-                      <div className="h-1.5 w-16 rounded bg-muted" />
+                      <div className="bg-muted-foreground/30 size-1.5 rounded-full" />
+                      <div className="bg-muted h-1.5 w-16 rounded" />
                     </div>
                     <div className="flex items-center gap-1.5 pl-3">
-                      <div className="size-1.5 rounded-full bg-muted-foreground/30" />
-                      <div className="h-1.5 w-24 rounded bg-muted" />
+                      <div className="bg-muted-foreground/30 size-1.5 rounded-full" />
+                      <div className="bg-muted h-1.5 w-24 rounded" />
                     </div>
                   </div>
                 </div>
@@ -349,14 +350,14 @@ export default function LandingPage() {
             </div>
 
             {/* Shareable Links — standard card */}
-            <div className="group rounded-xl border border-border bg-card p-6 transition-all hover:shadow-lg hover:border-primary/30">
-              <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+            <div className="group border-border bg-card hover:border-primary/30 rounded-xl border p-6 transition-all hover:shadow-lg">
+              <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
                 <Share2 className="size-5" />
               </div>
-              <h3 className="font-semibold mb-2">Shareable Links</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Share any saved page with a public or private link. Set
-                expiry, control access, and track views.
+              <h3 className="mb-2 font-semibold">Shareable Links</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Share any saved page with a public or private link. Set expiry,
+                control access, and track views.
               </p>
             </div>
           </div>
@@ -364,45 +365,45 @@ export default function LandingPage() {
       </section>
 
       {/* Social Proof — Testimonials */}
-      <section className="py-20 px-4 bg-muted/30">
+      <section className="bg-muted/30 px-4 py-20">
         <div className="mx-auto max-w-5xl">
-          <h2 className="text-2xl font-semibold text-center mb-4">
+          <h2 className="mb-4 text-center text-2xl font-semibold">
             Trusted by archivers everywhere
           </h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-md mx-auto">
+          <p className="text-muted-foreground mx-auto mb-12 max-w-md text-center">
             Researchers, journalists, developers, and writers who can&apos;t
             afford to lose a page.
           </p>
-          <div className="grid gap-6 sm:grid-cols-3 mb-12">
+          <div className="mb-12 grid gap-6 sm:grid-cols-3">
             {testimonials.map((t) => (
               <div
                 key={t.name}
-                className="rounded-xl border border-border bg-card p-6"
+                className="border-border bg-card rounded-xl border p-6"
               >
-                <div className="mb-3 text-2xl leading-none text-primary/30 font-serif">
+                <div className="text-primary/30 mb-3 font-serif text-2xl leading-none">
                   &ldquo;
                 </div>
-                <p className="text-sm text-foreground leading-relaxed mb-4">
+                <p className="text-foreground mb-4 text-sm leading-relaxed">
                   {t.quote}
                 </p>
                 <div>
                   <div className="text-sm font-medium">{t.name}</div>
-                  <div className="text-xs text-muted-foreground">{t.role}</div>
+                  <div className="text-muted-foreground text-xs">{t.role}</div>
                 </div>
               </div>
             ))}
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-6 text-sm">
             <span className="flex items-center gap-1.5">
-              <Shield className="size-4 text-primary" />
+              <Shield className="text-primary size-4" />
               Your data is encrypted
             </span>
             <span className="flex items-center gap-1.5">
-              <Fingerprint className="size-4 text-primary" />
+              <Fingerprint className="text-primary size-4" />
               No tracking
             </span>
             <span className="flex items-center gap-1.5">
-              <Globe className="size-4 text-primary" />
+              <Globe className="text-primary size-4" />
               Open-source core
             </span>
           </div>
@@ -410,12 +411,12 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-20 px-4">
+      <section className="px-4 py-20">
         <div className="mx-auto max-w-2xl">
-          <h2 className="text-2xl font-semibold text-center mb-4">
+          <h2 className="mb-4 text-center text-2xl font-semibold">
             Frequently asked questions
           </h2>
-          <p className="text-center text-muted-foreground mb-12">
+          <p className="text-muted-foreground mb-12 text-center">
             Can&apos;t find what you&apos;re looking for?{" "}
             <Link
               href="https://github.com/anomalyco/opencode/issues"
@@ -429,13 +430,13 @@ export default function LandingPage() {
             {faqs.map((faq) => (
               <details
                 key={faq.question}
-                className="group rounded-xl border border-border bg-card"
+                className="group border-border bg-card rounded-xl border"
               >
-                <summary className="flex cursor-pointer items-center justify-between gap-4 p-4 text-sm font-medium select-none [&::-webkit-details-marker]:hover:text-foreground transition-colors">
+                <summary className="[&::-webkit-details-marker]:hover:text-foreground flex cursor-pointer items-center justify-between gap-4 p-4 text-sm font-medium transition-colors select-none">
                   {faq.question}
-                  <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                  <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed">
+                <div className="text-muted-foreground px-4 pb-4 text-sm leading-relaxed">
                   {faq.answer}
                 </div>
               </details>
@@ -445,12 +446,12 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Band */}
-      <section className="py-24 px-4">
-        <div className="mx-auto max-w-3xl rounded-3xl bg-gradient-to-br from-primary/10 via-primary/5 to-teal-400/10 border border-primary/20 px-8 py-16 text-center">
+      <section className="px-4 py-24">
+        <div className="from-primary/10 via-primary/5 border-primary/20 mx-auto max-w-3xl rounded-3xl border bg-gradient-to-br to-teal-400/10 px-8 py-16 text-center">
           <h2 className="text-3xl font-bold tracking-tight">
             Never lose a web page again
           </h2>
-          <p className="mt-4 text-muted-foreground text-lg">
+          <p className="text-muted-foreground mt-4 text-lg">
             Free forever. No credit card. Start archiving in 30 seconds.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">

@@ -1,0 +1,29 @@
+{
+  "seededAt": "2026-10-20T14:16:30.341Z",
+  "account": "demo@pagepocket.app",
+  "pages": {
+    "wikipedia-web-archiving": {
+      "pageId": "3a44e08e-2d6c-45be-9dc2-b62648103019",
+      "title": "Web archiving - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Web_archiving"
+    },
+    "wikipedia-digital-preservation": {
+      "pageId": "3fa604a6-a958-45cd-ab00-20afd49d7485",
+      "title": "Digital preservation - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Digital_preservation"
+    },
+    "mdn-fetch-api": {
+      "pageId": "d5779486-e6bc-439c-9910-888690af6615",
+      "title": "Fetch API - Web APIs | MDN",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API"
+    }
+  },
+  "collection": {
+    "id": "bca5ea7f-d2f5-48e2-820c-d69f43d874b7",
+    "name": "Research sources"
+  },
+  "share": {
+    "token": "f-SRhpDH5o6__Nt3O0F4hXdMMIlmnZVu-BogefYRdi8",
+    "url": "https://app.pagepocket.app/s/f-SRhpDH5o6__Nt3O0F4hXdMMIlmnZVu-BogefYRdi8"
+  }
+}

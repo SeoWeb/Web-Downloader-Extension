@@ -10,23 +10,26 @@ export default async function MarketingLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+    <div className="flex min-h-screen flex-col">
+      <header className="border-border bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 border-b backdrop-blur-md">
         <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2 font-semibold text-lg">
-            <Archive className="size-5 text-primary" />
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-lg font-semibold"
+          >
+            <Archive className="text-primary size-5" />
             PagePocket
           </Link>
           <div className="flex items-center gap-5">
             <Link
               href="/features"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             >
               Features
             </Link>
             <Link
               href="/pricing"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             >
               Pricing
             </Link>
@@ -36,16 +39,19 @@ export default async function MarketingLayout({
         </nav>
       </header>
       <main className="flex-1">{children}</main>
-      <footer className="border-t border-border">
+      <footer className="border-border border-t">
         <div className="mx-auto max-w-6xl px-4 py-12">
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {/* Brand */}
             <div>
-              <Link href="/" className="flex items-center gap-2 font-semibold text-lg">
-                <Archive className="size-5 text-primary" />
+              <Link
+                href="/"
+                className="flex items-center gap-2 text-lg font-semibold"
+              >
+                <Archive className="text-primary size-5" />
                 PagePocket
               </Link>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                 The web archive that works for you. Save, organise, search, and
                 share web pages.
               </p>
@@ -53,12 +59,12 @@ export default async function MarketingLayout({
 
             {/* Product */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Product</h3>
+              <h3 className="mb-3 text-sm font-semibold">Product</h3>
               <ul className="space-y-2">
                 <li>
                   <Link
                     href="/features"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                   >
                     Features
                   </Link>
@@ -66,17 +72,19 @@ export default async function MarketingLayout({
                 <li>
                   <Link
                     href="/pricing"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                   >
                     Pricing
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="/features#cloud-save"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    href="https://chromewebstore.google.com/detail/web-page-downloader/aeojmgngnebhbjpncamiplkimkbnmpmk"
+                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
-                    Install extension
+                    Install for Chrome
                   </Link>
                 </li>
               </ul>
@@ -84,12 +92,12 @@ export default async function MarketingLayout({
 
             {/* Resources */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Resources</h3>
+              <h3 className="mb-3 text-sm font-semibold">Resources</h3>
               <ul className="space-y-2">
                 <li>
                   <Link
-                    href="https://github.com/anomalyco/opencode"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    href="https://github.com/SeoWeb/Web-Downloader-Extension"
+                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -98,8 +106,8 @@ export default async function MarketingLayout({
                 </li>
                 <li>
                   <Link
-                    href="https://github.com/anomalyco/opencode/issues"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    href="https://github.com/SeoWeb/Web-Downloader-Extension/issues"
+                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -111,12 +119,12 @@ export default async function MarketingLayout({
 
             {/* Legal */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Legal</h3>
+              <h3 className="mb-3 text-sm font-semibold">Legal</h3>
               <ul className="space-y-2">
                 <li>
                   <Link
                     href="/privacy"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                   >
                     Privacy Policy
                   </Link>
@@ -124,7 +132,7 @@ export default async function MarketingLayout({
                 <li>
                   <Link
                     href="/terms"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
                   >
                     Terms of Service
                   </Link>
@@ -132,7 +140,7 @@ export default async function MarketingLayout({
               </ul>
             </div>
           </div>
-          <div className="mt-10 border-t border-border pt-6 text-center text-sm text-muted-foreground">
+          <div className="border-border text-muted-foreground mt-10 border-t pt-6 text-center text-sm">
             &copy; {new Date().getFullYear()} PagePocket. All rights reserved.
           </div>
         </div>

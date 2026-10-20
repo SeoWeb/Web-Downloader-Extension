@@ -193,3 +193,40 @@ body {
 .animation-delay-200 { animation-delay: 200ms; }
 .animation-delay-400 { animation-delay: 400ms; }
 .animation-delay-600 { animation-delay: 600ms; }
+
+/* ─── Marketing type scale & section rhythm (design D7) ───────────────────
+   Additive-only tokens for the shared marketing components (Section,
+   PageHero). Static values, so they live in their own `@theme` block
+   (the block above is `@theme inline` for runtime var indirection).
+
+   Type scale — generates text-display / text-h1 / text-h2 / text-h3 /
+   text-h4 utilities with paired line-height + tracking. Calm, professional:
+   tighter leading and slightly negative tracking as the size grows.
+   Components step down responsively (e.g. text-4xl sm:text-5xl lg:text-display)
+   so fixed pixel values never overflow small screens. */
+@theme {
+  --text-display: 3.75rem; /* 60px — page heroes */
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+
+  --text-h1: 2.75rem; /* 44px — content-page heroes (docs, blog posts) */
+  --text-h1--line-height: 1.1;
+  --text-h1--letter-spacing: -0.02em;
+
+  --text-h2: 2rem; /* 32px — section titles */
+  --text-h2--line-height: 1.2;
+  --text-h2--letter-spacing: -0.01em;
+
+  --text-h3: 1.5rem; /* 24px — card / subsection titles */
+  --text-h3--line-height: 1.3;
+
+  --text-h4: 1.25rem; /* 20px — minor headings, table headers */
+  --text-h4--line-height: 1.4;
+
+  /* Section spacing scale — generates py-section-sm / py-section /
+     py-section-lg (and every other spacing utility: mt-section, gap-section,
+     …). One rhythm for all marketing sections. */
+  --spacing-section-sm: 3.5rem; /* 56px — compact sections, mobile rhythm */
+  --spacing-section: 5rem; /* 80px — default section rhythm */
+  --spacing-section-lg: 7rem; /* 112px — heroes and feature bands */
+}

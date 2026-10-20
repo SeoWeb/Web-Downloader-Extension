@@ -3,13 +3,18 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 
+// og:image / twitter:image come from the sibling opengraph-image.tsx /
+// twitter-image.tsx routes. metadataBase keeps canonical + image URLs absolute.
 export const metadata: Metadata = {
+  metadataBase: new URL("https://pagepocket.app"),
   title: "Pricing — PagePocket",
   description: "Choose the plan that fits your research needs.",
+  alternates: {
+    canonical: "/pricing",
+  },
   openGraph: {
     title: "Pricing — PagePocket",
     description: "Choose the plan that fits your research needs.",
-    images: [{ url: "https://pagepocket.app/og-pricing.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
@@ -24,11 +29,7 @@ const plans = [
     price: "Free",
     period: "",
     quota: "50 pages/month · 500 MB storage",
-    features: [
-      "Full-text search",
-      "5 collections",
-      "Share links with expiry",
-    ],
+    features: ["Full-text search", "5 collections", "Share links with expiry"],
     cta: "Get started",
     ctaHref: "/register",
     disabled: false,
@@ -69,39 +70,41 @@ const plans = [
 
 export default function PricingPage() {
   return (
-    <section className="py-16 px-4">
+    <section className="px-4 py-16">
       <div className="mx-auto max-w-5xl">
-        <h1 className="text-3xl font-bold text-center mb-4">Pricing</h1>
-        <p className="text-center text-muted-foreground mb-12">
+        <h1 className="mb-4 text-center text-3xl font-bold">Pricing</h1>
+        <p className="text-muted-foreground mb-12 text-center">
           Choose the plan that fits your research needs.
         </p>
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className="rounded-lg border border-border bg-card p-6 flex flex-col"
+              className="border-border bg-card flex flex-col rounded-lg border p-6"
             >
               <h2 className="text-xl font-semibold">{plan.name}</h2>
               <div className="mt-4">
                 <span className="text-3xl font-bold">{plan.price}</span>
                 {plan.period && (
-                  <span className="text-muted-foreground ml-1">{plan.period}</span>
+                  <span className="text-muted-foreground ml-1">
+                    {plan.period}
+                  </span>
                 )}
               </div>
               {plan.note && (
-                <p className="text-xs text-muted-foreground">{plan.note}</p>
+                <p className="text-muted-foreground text-xs">{plan.note}</p>
               )}
-              <p className="mt-2 text-sm text-muted-foreground">{plan.quota}</p>
-              <ul className="mt-6 space-y-3 flex-1">
+              <p className="text-muted-foreground mt-2 text-sm">{plan.quota}</p>
+              <ul className="mt-6 flex-1 space-y-3">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2 text-sm">
-                    <Check className="size-4 text-primary shrink-0 mt-0.5" />
+                    <Check className="text-primary mt-0.5 size-4 shrink-0" />
                     {feature}
                   </li>
                 ))}
               </ul>
               <Button
-                className="w-full mt-6"
+                className="mt-6 w-full"
                 variant={plan.name === "Free" ? "default" : "outline"}
                 disabled={plan.disabled}
               >
@@ -112,7 +115,7 @@ export default function PricingPage() {
                 )}
               </Button>
               {plan.disabled && (
-                <p className="text-xs text-muted-foreground text-center mt-2">
+                <p className="text-muted-foreground mt-2 text-center text-xs">
                   Billing launches Q3
                 </p>
               )}

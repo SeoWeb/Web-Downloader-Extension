@@ -3,15 +3,20 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Archive, Eye, FolderTree, Search, Share2 } from "lucide-react";
 
+// og:image / twitter:image come from the sibling opengraph-image.tsx /
+// twitter-image.tsx routes. metadataBase keeps canonical + image URLs absolute.
 export const metadata: Metadata = {
+  metadataBase: new URL("https://pagepocket.app"),
   title: "Features — PagePocket",
   description:
     "Explore PagePocket features: cloud save, clean viewer, collections, search, and sharing.",
+  alternates: {
+    canonical: "/features",
+  },
   openGraph: {
     title: "Features — PagePocket",
     description:
       "Explore PagePocket features: cloud save, clean viewer, collections, search, and sharing.",
-    images: [{ url: "https://pagepocket.app/og-features.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
@@ -61,15 +66,15 @@ const sections = [
 
 export default function FeaturesPage() {
   return (
-    <section className="py-16 px-4">
+    <section className="px-4 py-16">
       <div className="mx-auto max-w-4xl">
-        <h1 className="text-3xl font-bold text-center mb-4">Features</h1>
-        <p className="text-center text-muted-foreground mb-12">
+        <h1 className="mb-4 text-center text-3xl font-bold">Features</h1>
+        <p className="text-muted-foreground mb-12 text-center">
           Five capabilities that make PagePocket your web archive.
         </p>
 
         {/* Table of Contents */}
-        <nav className="mb-12 rounded-lg border border-border bg-muted/50 p-4">
+        <nav className="border-border bg-muted/50 mb-12 rounded-lg border p-4">
           <ul className="space-y-2">
             {sections.map((section) => (
               <li key={section.id}>
@@ -77,7 +82,7 @@ export default function FeaturesPage() {
                   href={`#${section.id}`}
                   className="flex items-center gap-2 text-sm hover:underline"
                 >
-                  <section.icon className="size-4 text-primary" />
+                  <section.icon className="text-primary size-4" />
                   {section.title}
                 </a>
               </li>
@@ -89,8 +94,8 @@ export default function FeaturesPage() {
         <div className="space-y-16">
           {sections.map((section) => (
             <article key={section.id} id={section.id} className="scroll-mt-20">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="bg-primary text-primary-foreground flex h-10 w-10 items-center justify-center rounded-lg">
                   <section.icon className="size-5" />
                 </div>
                 <h2 className="text-2xl font-semibold">{section.title}</h2>
@@ -98,7 +103,7 @@ export default function FeaturesPage() {
               <p className="text-muted-foreground leading-relaxed">
                 {section.description}
               </p>
-              <div className="mt-6 h-48 rounded-lg border border-dashed border-border bg-muted/40 flex items-center justify-center text-sm text-muted-foreground">
+              <div className="border-border bg-muted/40 text-muted-foreground mt-6 flex h-48 items-center justify-center rounded-lg border border-dashed text-sm">
                 Screenshot placeholder
               </div>
             </article>
