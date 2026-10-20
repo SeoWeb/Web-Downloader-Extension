@@ -1,0 +1,157 @@
+export const meta = {
+  title: "SingleFile vs a Cloud Archive",
+  description:
+    "SingleFile is free, open source, and genuinely excellent. What saving pages locally actually costs you at real volume — and when a cloud archive is worth it.",
+  date: "2026-10-15",
+  author: "The PagePocket Team",
+  tags: ["web archiving", "comparisons"],
+}
+
+If you search for a SingleFile alternative, you will find plenty of pages
+eager to tell you the tool is lacking. We are not going to do that.
+[SingleFile](https://www.getsinglefile.com/) is a genuinely excellent
+piece of software, and this article will say so more than once. The
+interesting question is a different one: not "what is wrong with
+SingleFile" — often nothing — but "what does local-only saving cost you
+once saving becomes a habit?".
+
+This is that cost breakdown, stated as fairly as we can manage. By the
+end you should know whether you are the person SingleFile was built for,
+the person a cloud archive was built for, or — the most common answer —
+both.
+
+## What SingleFile gets right
+
+Start with what the tool actually is, from
+[its own materials](https://www.getsinglefile.com/) and
+[open-source repository](https://github.com/gildas-lormeau/SingleFile):
+SingleFile is a free, open-source browser extension — available for
+Chrome, Edge, Firefox, and Safari, with a companion command-line tool —
+that saves an entire web page, images, stylesheets, fonts and all, as a
+single standard HTML file.
+
+That last part is the engineering feat. The saved file is
+self-contained: download it, disconnect from the network, open it from
+disk, and the page displays exactly as it did. It will keep doing so in
+any browser without any service behind it — the kind of longevity most
+archiving tools cannot promise. If your criteria are fidelity, offline
+permanence, privacy, and price, SingleFile is hard to beat, and for
+certain jobs we recommend it without reservation. Our
+[full comparison](/compare/singlefile) lists those cases plainly.
+
+The costs below are not flaws in the implementation. They are the
+consequences of a design decision that is mostly a virtue: everything
+stays local, on your machine, in files.
+
+## The honest cost of local-only
+
+### Your library lives on one machine
+
+The files are wherever you saved them — usually a downloads folder on one
+computer. SingleFile can optionally send saves to GitHub, Amazon S3,
+Google Drive, or a WebDAV server, which is genuine flexibility, but it is
+plumbing you set up and maintain yourself. Switch laptops and your
+archive does not come along unless you moved it. There is no library that
+follows you, because there is no library — only files.
+
+### Nothing is searchable
+
+Six weeks from now you need the page about, say, a niche CSS behaviour —
+you remember saving it, not what it was called. With a folder of
+generated HTML files, your options are your operating system's file
+search crawling raw HTML, or scrolling filenames that mostly look alike.
+The words inside your saves are effectively locked away. This is the
+single biggest difference in practice: a cloud archive like
+[PagePocket](/features) makes every word of every save full-text
+searchable from one place, which turns "I know I saved this" into "here
+it is".
+
+### Sharing means sending files
+
+There are no share links, so sharing a save means transferring the file —
+as an attachment, an upload, a chat message. The recipient gets their own
+copy, not a view of yours, and there is nothing to expire or revoke when
+the moment passes. For handing one file to one person, that is fine. For
+"can you check the source in paragraph three?", a link to the exact saved
+page is a different experience entirely.
+
+### Backup and retention are your job
+
+Files get lost in unglamorous ways: a disk that dies, a "clean up
+Downloads" click, an old laptop that never makes it to the new one. Any
+cloud destination you configured helps only if you set it up before the
+loss — and even then you get your files back, not a library. A service
+that holds your archive is also, quietly, a backup story.
+
+### Organisation is manual
+
+No collections, no notes, no view of a project's sources together. A
+growing flat folder is workable at ten saves and demoralising at three
+hundred. Organisation is not cosmetic: it is what decides whether the
+archive gets used when it is needed.
+
+## When SingleFile is the right answer
+
+None of the above changes the verdict for these jobs, where SingleFile is
+simply the better tool:
+
+- **The copy must never touch anyone's server.** Nothing leaves your
+  machine — that is the design, and it is ideal for sensitive material.
+- **The copy must outlive every service.** A standard HTML file opens
+  offline, in any browser, with no account, today or in twenty years.
+- **Zero cost and zero sign-up matter.** Free and open source, no
+  account, nothing to subscribe to.
+- **You save occasionally.** For a handful of one-off copies, the folder
+  *is* the archive, and it is enough.
+
+If every one of those describes you, install SingleFile and be done — we
+mean it.
+
+## When a cloud archive wins
+
+The calculus flips as saving becomes part of how you work rather than
+something you did once:
+
+- **You save at volume** — pages accumulate across projects, stories, or
+  research faster than folders can absorb them.
+- **You work on more than one device** and expect the same library
+  everywhere.
+- **Finding things again matters** more than filing them perfectly —
+  full-text search across every save beats folder discipline.
+- **You share with editors, colleagues, or clients** and want a link to
+  the exact copy, kept private otherwise.
+
+That is the job [PagePocket](/features) was built for: one click saves
+the full page to a private, searchable library; collections and notes
+keep projects in order; share links (with optional expiry and
+revocation) hand out the exact copy when you choose to. There is a free
+plan — 50 pages a month, 500 MB — and [Pro is $2/month billed
+yearly](/pricing) when you outgrow it. The trade-offs are the mirror
+image of SingleFile's: it needs an account, it is a cloud service, and it
+does not produce single files you could open from a disk in twenty years.
+
+## The pattern we see most: both
+
+In practice the tools are complements, not rivals. A common shape of a
+working setup: SingleFile for the small set of pages that must live on
+disk forever — offline documentation, a snapshot for a records folder —
+and a cloud archive for everything you *work with*: the sources,
+references, and receipts that need to be findable and shareable across
+devices.
+
+If you are choosing a primary tool, anchor on the question of what
+happens after the save: if the answer is "open it offline later",
+local-only is right; if it is "find it and share it", that is the case we
+built PagePocket for. The [how to save a web page forever
+guide](/blog/how-to-save-a-web-page-forever) walks the full checklist,
+and the [Wayback Machine alternatives
+roundup](/blog/wayback-machine-alternatives-personal-archiving) places
+both tools among the other options.
+
+## Try the difference on your own archive
+
+If you already have a folder of saved pages, you know exactly which one
+you cannot find. [Create a free
+account](/register), save that page again, and search for a phrase from
+inside it. If it comes back in a second — that, in one sentence, is what
+the cloud part is for.

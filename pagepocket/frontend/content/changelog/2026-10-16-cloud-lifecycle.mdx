@@ -1,0 +1,14 @@
+export const meta = {
+  title: "Cloud library lifecycle and security hardening",
+  date: "2026-10-16",
+}
+
+- **Disconnect your account from the extension cleanly.** Unlinking no longer
+  leaves dangling state on either side.
+- **Optional cloud delete:** removing a local save can now also delete its
+  cloud copy, in one explicit step.
+- **Cloud library capacity is checked before an upload starts**, so pushes to
+  a full library fail fast instead of burning time on retries.
+- **Platform-wide security hardening:** stricter ownership checks on every
+  archived page and share link, rate limiting on sign-in and uploads,
+  registration throttling, and shorter-lived access tokens.

@@ -6,9 +6,8 @@ import { Section } from "@/components/marketing/section";
 import { MarketingCtaBand, PersonaCard } from "./persona-page";
 import { PERSONAS } from "./personas";
 
-// og:image / twitter:image come from sibling opengraph-image.tsx /
-// twitter-image.tsx routes when they are added (D5). metadataBase keeps the
-// canonical URL absolute.
+// og:image / twitter:image come from the sibling opengraph-image.tsx /
+// twitter-image.tsx routes. metadataBase keeps canonical + image URLs absolute.
 export const metadata: Metadata = {
   metadataBase: new URL("https://pagepocket.app"),
   title: "Use cases",
@@ -23,7 +22,7 @@ export const metadata: Metadata = {
       "How researchers, journalists, developers, and archivists use PagePocket: full-fidelity page saves, private by default, full-text search, and shareable links.",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Use cases · PagePocket",
     description:
       "How researchers, journalists, developers, and archivists use PagePocket: full-fidelity page saves, private by default, full-text search, and shareable links.",

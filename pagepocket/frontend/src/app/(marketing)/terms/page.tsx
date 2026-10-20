@@ -14,7 +14,7 @@ export const metadata: Metadata = {
       "The terms that apply when you use PagePocket: accounts, acceptable use, sharing, and liability.",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Terms of Service",
     description:
       "The terms that apply when you use PagePocket: accounts, acceptable use, sharing, and liability.",

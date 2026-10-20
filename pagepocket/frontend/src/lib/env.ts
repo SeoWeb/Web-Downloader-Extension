@@ -12,6 +12,14 @@ const envSchema = z.object({
   // Unset/empty disables the feature (HTML is served untouched).
   ASSET_TOKEN_SECRET: z.string().min(1).optional(),
   ASSET_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().optional(),
+  // Cloudflare Web Analytics beacon token (design D5, privacy-friendly
+  // analytics). OPTIONAL: unset or empty disables the beacon entirely —
+  // the (marketing) layout renders no analytics script at all (zero
+  // requests, zero bytes). Cookieless, so no consent banner is needed.
+  NEXT_PUBLIC_CF_BEACON_TOKEN: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() || undefined),
 });
 
 export const env = envSchema.parse({
@@ -22,6 +30,7 @@ export const env = envSchema.parse({
   API_GATEWAY_URL: process.env.API_GATEWAY_URL,
   ASSET_TOKEN_SECRET: process.env.ASSET_TOKEN_SECRET,
   ASSET_TOKEN_TTL_SECONDS: process.env.ASSET_TOKEN_TTL_SECONDS,
+  NEXT_PUBLIC_CF_BEACON_TOKEN: process.env.NEXT_PUBLIC_CF_BEACON_TOKEN,
 });
 
 /**
@@ -40,6 +49,16 @@ export const API_GATEWAY_URL =
  * browser-cached asset URLs keep working across a bucket flip.
  */
 export const DEFAULT_ASSET_TOKEN_TTL_SECONDS = 604800;
+
+/**
+ * Cloudflare Web Analytics beacon token (design D5), or `null` when unset
+ * or empty: the (marketing) layout then renders NO beacon at all, so
+ * analytics is purely opt-in via the environment. Prerendered marketing
+ * pages bake this at BUILD time — set it in the frontend env on the host
+ * before `pnpm build` (see openspec/changes/professional-marketing-site/
+ * handoff.md, §1).
+ */
+export const CF_BEACON_TOKEN = env.NEXT_PUBLIC_CF_BEACON_TOKEN ?? null;
 
 /**
  * Signed-asset-token feature config (fix E), resolved PER REQUEST — not from

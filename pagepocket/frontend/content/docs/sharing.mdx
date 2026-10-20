@@ -1,0 +1,57 @@
+export const meta = {
+  title: "Sharing saved pages",
+  description:
+    "Share any saved page with a link: expiry options, view counts, revoking access, and what recipients see — no account required.",
+  date: "2026-10-20",
+}
+
+Your library is private by default — nothing is visible to anyone else until
+you share it. When you do, a share link serves the archived copy itself, so
+the recipient sees exactly what you saved, not whatever the live page says
+today.
+
+## Creating a link
+
+Open a saved page and choose **Share**. Pick an expiry, then create the link:
+
+- **Never** — the link works until you revoke it.
+- **24 hours**, **7 days**, or **30 days** — the link stops working
+  automatically after that window.
+- **Custom date** — pick the exact day it should expire.
+
+The full URL is shown **once, at creation** — copy it there. For security,
+the link's secret is not stored in a form the app can re-reveal later; if you
+lose it, simply create a new link. Your share dialog always shows whether a
+link is active.
+
+## What recipients see
+
+Anyone with the link can open the archived page in their browser — **no
+PagePocket account, no sign-up**. The page is the archived copy, rendered in
+the same sandboxed viewer you use, under a "Shared via PagePocket" banner.
+Its scripts never run, for you or for them.
+
+Share links use unguessable tokens, and the link serves only that one page —
+not your library, not your other saves.
+
+## View counts and revoking
+
+The share dialog shows how many **views** a link has had (repeated opens by
+the same visitor are counted once), so you know whether a shared snapshot has
+been seen.
+
+**Revoke** removes access immediately — the link stops resolving, including
+for people who saved it. Nothing is deleted from your library; revoking only
+retires the link. Recreate one at any time.
+
+## When a shared link dies on its own
+
+A share link stops working when any of these happens:
+
+- you revoked it,
+- its expiry date passed, or
+- **the saved page was deleted from your library.** A share is a window onto
+  your archived copy — there is nothing to serve once the page is gone.
+
+If you are handing someone a link that must keep working, pick **Never** as
+the expiry and keep the page in your library.

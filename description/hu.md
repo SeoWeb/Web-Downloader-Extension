@@ -1,4 +1,4 @@
-Soha ne veszítse el a hozzáférést fontos webes tartalomhoz. A Web Page Downloader lehetővé teszi, hogy bármely webhely teljes, pixelpontos másolatát mentse offline megtekintéshez—internet nélkül.
+Soha ne veszítse el a hozzáférést fontos webes tartalomhoz. A PagePocket lehetővé teszi, hogy bármely webhely teljes, pixelpontos másolatát mentse offline megtekintéshez—internet nélkül.
 
 Akár leáll egy webhely, megváltozik, vagy egyszerűen offline hozzáférésre van szüksége, ez a bővítmény biztosítja, hogy mindig legyen egy állandó archívuma kéznél.
 
@@ -9,16 +9,16 @@ Főbb Jellemzők
 - Teljes Webhely Archiválás - HTML, képek, CSS, JavaScript és dokumentumok mentése
 - Részletes Letöltési Kontroll - Válassza ki pontosan, mit szeretne menteni
 - Vállalati Szintű Teljesítmény - Streaming letöltések és intelligens újrapróbálkozási logika
-- Adatvédelem és Biztonság - 100% helyi feldolgozás, nincs felhasználókövetés
+- Személyes Könyvtára - Az archívumok a privát PagePocket könyvtárába szinkronizálódnak: keressen minden mentett tartalomban, és ossza meg oldalait linkkel
 - Valóban Globális - Teljesen lokalizálva 45 nyelven
-Tökéletes...
+  Tökéletes...
 
 - Kutatók és Diákok számára
 - Utazók és Digitális Nomádok számára
 - Webfejlesztők és Tervezők számára
 - Újságírók és Tartalomkészítők számára
 - Digitális Archivátorok számára
-Hogyan Működik
+  Hogyan Működik
 
 1. Kattintson a bővítmény ikonjára bármely weboldalon, amelyet menteni szeretne
 2. Válassza ki a beállításokat

@@ -5,6 +5,7 @@ import {
   MARKETING_SITE_URL,
   marketingUrl,
 } from "./marketing-routes";
+import { DOC_ORDER } from "./docs";
 
 describe("marketing-routes — sitemap/robots contract", () => {
   it("production origin is the canonical bare URL", () => {
@@ -71,5 +72,33 @@ describe("marketing-routes — phase-3 content surface (design D6)", () => {
   it("blog post URLs stay out of the registry (dynamic from MDX content via app/sitemap.ts)", () => {
     const paths = MARKETING_ROUTES.map((r) => r.path);
     expect(paths.filter((path) => path.startsWith("/blog/"))).toEqual([]);
+  });
+});
+
+describe("marketing-routes — docs surface (design D6, task 4.4)", () => {
+  it("registers all six launch docs pages in reading order", () => {
+    const paths = MARKETING_ROUTES.map((r) => r.path);
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        "/docs/getting-started",
+        "/docs/saving-pages",
+        "/docs/collections",
+        "/docs/full-text-search",
+        "/docs/sharing",
+        "/docs/troubleshooting",
+      ]),
+    );
+  });
+
+  it("docs registry entries match the DOC_ORDER table of contents 1:1", () => {
+    const registered = MARKETING_ROUTES.map((r) => r.path).filter((path) =>
+      path.startsWith("/docs/"),
+    );
+    expect(registered).toEqual(DOC_ORDER.map((slug) => `/docs/${slug}`));
+  });
+
+  it("changelog entry URLs stay out of the registry (single listing page)", () => {
+    const paths = MARKETING_ROUTES.map((r) => r.path);
+    expect(paths.filter((path) => path.startsWith("/changelog/"))).toEqual([]);
   });
 });

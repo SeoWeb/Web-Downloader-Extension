@@ -1,0 +1,102 @@
+export const meta = {
+  title: "Troubleshooting",
+  description:
+    "Fixes for common PagePocket problems: failed or interrupted saves, quota errors, sign-in trouble, degraded captures on script-heavy sites, and broken share links.",
+  date: "2026-10-20",
+}
+
+Most PagePocket problems have a short, known cause. This page lists them
+honestly — including the cases where the limitation is ours or the web's.
+
+## Saving problems
+
+### "This page can't be downloaded"
+
+The extension works on regular web pages (http and https). Browser-internal
+pages — `chrome://` settings, the Chrome Web Store, the new-tab page — are
+blocked by the browser itself and cannot be captured by any extension.
+
+### "No internet connection — cannot download external resources"
+
+The page's resources (stylesheets, images) are fetched during the save. Check
+your connection and retry. If your network is fine, a firewall or proxy may
+be blocking the requests.
+
+### The save was interrupted
+
+If the extension's background service is restarted mid-save (browser update,
+memory pressure), the panel tells you which phase stopped and offers to
+**resume** the download or restart it. Resuming continues where the capture
+left off.
+
+### "Please keep this panel open…"
+
+The capture runs through the side panel. If the panel is closed or the tab is
+switched during a save, it cannot finish. Start the save again and leave the
+panel open until it reports **Ready**.
+
+### "Cannot start download due to critical memory pressure"
+
+Very large pages with every option enabled can exhaust the browser tab's
+memory. Retry with fewer options (for example, without linked pages), or
+without **single file** mode — the ZIP format is much lighter to produce.
+
+### The saved page renders oddly, or looks stripped
+
+Two separate causes, both worth knowing:
+
+- **Script-heavy pages may be degraded.** The archived copy is a static
+  document: scripts never run in the viewer (that is what keeps saved pages
+  safe to open). Feeds that load on scroll, embedded apps, and maps can only
+  preserve what was actually rendered while the page was captured. What you
+  see is what was saved — for sites that are essentially applications, a
+  snapshot is not the same as the app.
+- **Older saves had a stylesheet bug.** A fixed pipeline now resolves every
+  stylesheet, script, and document on the archived copy. If a page saved
+  before mid-October 2026 is missing its styling, simply save it again.
+
+## Cloud and account problems
+
+### "PagePocket storage quota exceeded" / save rejected with a quota error
+
+Cloud saves are limited per plan: **50 pages per rolling 30 days and 500 MB
+on Free**. When you hit either limit, the save is refused with a message
+naming the exact limit — nothing was half-saved. Your options: delete pages
+you no longer need (this frees storage but does not restore saves already
+counted), wait for the rolling window to move, or
+[upgrade to Pro](/pricing) for 99,999 pages and 10 GB.
+
+### "Authentication failed" when signing in
+
+Check the email and password — extension sign-in uses the same account as
+[the website](/login). If you have not registered yet, use the **Register**
+tab in the panel or [create an account](/register) on the site first.
+
+### Saved pages are not in my library
+
+Cloud saves appear in the [app](/app) within moments of the panel reporting
+**Ready**. If you saved with **PagePocket Cloud Storage** switched off, the
+result went to your Downloads folder as a ZIP or single-file HTML instead —
+that was the mode you asked for.
+
+## Sharing problems
+
+### A share link doesn't work
+
+In order of likelihood: it was **revoked**, its **expiry has passed**, or the
+**saved page was deleted** (a share serves the archived copy — no page, no
+link). Check the share dialog for the link's status; create a new one if
+needed.
+
+### I lost a share link I already created
+
+The full URL is shown only once, when the link is created — by design, the
+secret inside it cannot be looked up again afterwards. Open the page's share
+dialog and create a new link.
+
+## Still stuck?
+
+PagePocket is open source: search past issues or open a new one at the
+[GitHub repository](https://github.com/SeoWeb/Web-Downloader-Extension/issues)
+— the maintainers read and answer there. That is also the place to request
+[account deletion](/privacy), which is handled manually today.

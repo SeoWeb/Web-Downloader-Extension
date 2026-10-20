@@ -10,7 +10,18 @@ const SHELL_SECURITY_HEADERS = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains",
   },
-  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  {
+    key: "Content-Security-Policy",
+    // script-src allowlists exactly one external host: the Cloudflare Web
+    // Analytics beacon (cookieless, design D5, rendered only when
+    // NEXT_PUBLIC_CF_BEACON_TOKEN is set). 'self' covers the Next.js
+    // chunks and 'unsafe-inline' stays required by Next's own inline
+    // bootstrap/RSC-flight scripts (31 of them in the prerendered HTML);
+    // no other third-party script may load. The /api/* handlers set their
+    // own sandbox CSP and are unaffected (non-API source below).
+    value:
+      "frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+  },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

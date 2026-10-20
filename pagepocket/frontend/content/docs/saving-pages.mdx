@@ -1,0 +1,82 @@
+export const meta = {
+  title: "Saving web pages",
+  description:
+    "How saving works in PagePocket: what gets captured from a page, cloud saves vs. local ZIP export, save modes, and what the archived copy can and cannot preserve.",
+  date: "2026-10-20",
+}
+
+A PagePocket save is a self-contained copy of the page as your browser sees
+it: the HTML, the stylesheets, the images, and the documents it links. This
+page explains what happens during a save, what you can capture, and where the
+copy ends up.
+
+## What happens during a save
+
+When you click **Start download** in the side panel, the extension works
+through three phases, with progress shown for each:
+
+1. **Scraping** — the page is scrolled so lazily-loaded content appears, and
+   its resources are collected.
+2. **Uploading** — each resource (stylesheets, scripts, images, documents) is
+   uploaded, with a running count.
+3. **Assembling** — the cloud pipeline packages everything into the stored
+   copy and indexes it for search.
+
+If a few non-essential resources fail to upload, the save still completes and
+the panel tells you how many items failed. Keep the panel open and stay on
+the tab until the save finishes — closing it can abort the capture.
+
+## Choosing what to capture
+
+The panel lets you pick which parts of the page are included: the HTML,
+images, linked pages (saved as HTML files), assets like CSS and JS, documents
+like PDFs, or the content as plain text. For most archiving, the defaults are
+right.
+
+## Cloud saves and local exports
+
+Where the copy goes depends on the **PagePocket Cloud Storage** switch:
+
+- **On (default for signed-in users)** — the page is saved to your private
+  cloud library. It shows up in the [app](/app) on every device you sign in
+  from, becomes [searchable](/docs/full-text-search), and can be
+  [shared](/docs/sharing) with a link. Cloud saves count against your plan:
+  50 pages per rolling 30 days and 500 MB on Free.
+- **Off** — the same capture is handed to you directly as a download: a ZIP
+  archive with the full page structure, or a single HTML file that inlines
+  everything (best for quick archiving of simple pages). Local exports never
+  touch your account or quota — they are ordinary files in your Downloads
+  folder.
+
+There is also a **full website** mode, which follows the first level of
+linked pages and saves each one — useful when a set of pages belongs
+together. It takes noticeably longer than a single page.
+
+## Viewing an archived page
+
+Saved pages open in a sandboxed viewer that renders the archived copy with
+its original layout and styling. Two things matter about how it works:
+
+- **Scripts never run in the viewer.** The archived page is a document, not
+  the live site: its trackers and scripts are stripped out and the viewer
+  runs it in a locked-down sandbox. What you see is exactly what was saved —
+  nothing phones home, and nothing can execute on your machine.
+- **It is a snapshot of a moment.** Pages that depend heavily on client-side
+  scripting — feeds that load on scroll, embedded apps, maps — may not behave
+  identically to the live site. PagePocket preserves the page as a document:
+  the text, images, and layout you captured.
+
+## Honest limits
+
+- You can only save what your browser can see: a paywalled article is saved
+  as far as you can open it, and content behind a login you have not signed
+  into is not in the capture.
+- Very large or resource-heavy pages can hit memory limits; the extension
+  will tell you and clean up rather than fail silently. See
+  [Troubleshooting](/docs/troubleshooting).
+
+## Deleting a saved page
+
+Deleting a page from your library removes its archived copy and its search
+index entry, and immediately disables any share links pointing at it. Local
+ZIP exports are ordinary files — deleting them is up to you.

@@ -41,6 +41,26 @@
       "name": "Content /blog/[slug] (pillar post)",
       "path": ".next/server/app/blog/how-to-save-a-web-page-forever.html",
       "limit": "120 KB"
+    },
+    {
+      "name": "Marketing /use-cases (researchers)",
+      "path": ".next/server/app/use-cases/researchers.html",
+      "limit": "120 KB"
+    },
+    {
+      "name": "Marketing /compare (singlefile)",
+      "path": ".next/server/app/compare/singlefile.html",
+      "limit": "120 KB"
+    },
+    {
+      "name": "Content /changelog",
+      "path": ".next/server/app/changelog.html",
+      "limit": "120 KB"
+    },
+    {
+      "name": "Content /about",
+      "path": ".next/server/app/about.html",
+      "limit": "120 KB"
     }
   ],
   "dependencies": {

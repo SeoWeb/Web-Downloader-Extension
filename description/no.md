@@ -1,4 +1,4 @@
-Aldri mist tilgang til viktig nettinnhold igjen. Web Page Downloader lar deg lagre komplette, pixelperfekte kopier av hvilken som helst nettside for frakoblet visning—ingen internett påkrevd.
+Aldri mist tilgang til viktig nettinnhold igjen. PagePocket lar deg lagre komplette, pixelperfekte kopier av hvilken som helst nettside for frakoblet visning—ingen internett påkrevd.
 
 Enten et nettsted går ned, endres eller du bare trenger frakoblet tilgang, sikrer denne utvidelsen at du alltid har et permanent arkiv for hånden.
 
@@ -9,16 +9,16 @@ Nøkkelfunksjoner
 - Komplett Nettstedsarkivering - Lagre HTML, bilder, CSS, JavaScript og dokumenter
 - Granulær Nedlastingskontroll - Velg nøyaktig hva du vil lagre
 - Bedriftsnivå Ytelse - Strømming nedlastinger og smart gjentakelseslogikk
-- Personvern og Sikkerhet - 100% lokal behandling, ingen brukersporing
+- Ditt Bibliotek - Arkivene dine synkroniseres til ditt private PagePocket-bibliotek: søk i alt du har lagret og del med en lenke
 - Virkelig Global - Fullt lokalisert på 45 språk
-Perfekt For...
+  Perfekt For...
 
 - Forskere og Studenter
 - Reisende og Digitale Nomader
 - Webutviklere og Designere
 - Journalister og Innholdsskapere
 - Digitale Arkivarer
-Slik Fungerer Det
+  Slik Fungerer Det
 
 1. Klikk på utvidelsesikonet på hvilken som helst nettside du vil lagre
 2. Velg alternativene dine

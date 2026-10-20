@@ -1,0 +1,9 @@
+export const meta = {
+  title: "Big-page support",
+  date: "2025-11-23",
+}
+
+- Large downloads move to a dedicated offscreen pipeline, so multi-hundred-
+  megabyte captures no longer fight the panel for memory.
+- A comprehensive memory-management and cleanup system runs through the whole
+  save — heavy pages now degrade gracefully instead of stalling the browser.

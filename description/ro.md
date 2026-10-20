@@ -1,4 +1,4 @@
-Nu mai pierdeți niciodată accesul la conținut web important. Web Page Downloader vă permite să salvați copii complete, perfecte la nivel de pixel ale oricărui site web pentru vizualizare offline—fără internet necesar.
+Nu mai pierdeți niciodată accesul la conținut web important. PagePocket vă permite să salvați copii complete, perfecte la nivel de pixel ale oricărui site web pentru vizualizare offline—fără internet necesar.
 
 Fie că un site web cade, se schimbă sau pur și simplu aveți nevoie de acces offline, această extensie asigură că aveți întotdeauna un arhivă permanentă la îndemână.
 
@@ -7,6 +7,7 @@ Fie că un site web cade, se schimbă sau pur și simplu aveți nevoie de acces 
 Caracteristici Principale
 Arhivare Completă a Site-urilor Web
 Salvați tot ce face o pagină web să funcționeze:
+
 - Conținut HTML - Structura și textul paginii
 - Imagini - Toate fotografiile, graficele și imaginile de fundal
 - Foi de stil (CSS) - Păstrați designul vizual exact
@@ -15,6 +16,7 @@ Salvați tot ce face o pagină web să funcționeze:
 
 Control Granular al Descărcărilor
 Alegeți exact ce doriți să salvați cu sistemul nostru flexibil de filtre:
+
 - Descărcați doar imagini pentru o galerie foto
 - Salvați doar conținutul text fără dezordine
 - Obțineți resurse CSS/JS pentru referință de dezvoltare
@@ -22,15 +24,15 @@ Alegeți exact ce doriți să salvați cu sistemul nostru flexibil de filtre:
 
 Performanță de Nivel Enterprise
 Construit pentru a gestiona cele mai solicitante sarcini de arhivare:
+
 - Descărcări în Streaming - Procesați site-uri web de mai multe gigaocteți fără probleme de memorie
 - Asamblare Incrementală - Gestionați fișiere HTML uriașe care blochează alte instrumente
 - Logică Inteligentă de Reîncercare - Recuperare automată din întreruperi de rețea
 - Gestionare Coadă - Descărcați eficient mai multe resurse în paralel
 
-Confidențialitate și Securitate în Care Puteți Avea Încredere
-- Procesare 100% Locală - Toată munca se întâmplă în browserul dvs., nimic nu este trimis la servere
-- Fără Urmărire Utilizatori - Nu colectăm analize, istoric de navigare sau date personale
-- Fără Dependențe Externe - Datele dvs. nu părăsesc niciodată dispozitivul
+Biblioteca Dvs. Privată
+
+- Arhivele dvs. se sincronizează cu biblioteca dvs. privată PagePocket: căutați în tot ce ați salvat și partajați orice pagină cu un link
 
 Cu Adevărat Global
 Complet localizat în 45 de limbi incluzând:
@@ -41,26 +43,31 @@ Engleză, Spaniolă, Franceză, Germană, Japoneză, Chineză, Arabă, Rusă, Po
 Perfect Pentru...
 
 Cercetători și Studenți
+
 - Arhivați lucrări academice și citări înainte să dispară
 - Salvați materiale de cercetare pentru studiu offline
 - Creați copii de siguranță permanente ale materialelor de referință
 
 Călători și Nomazi Digitali
+
 - Descărcați ghiduri de călătorie pentru acces offline
 - Salvați hărți, itinerarii și confirmări de rezervare
 - Citiți articole în zboruri fără WiFi
 
 Dezvoltatori Web și Designeri
+
 - Inspectați structuri de site-uri web offline
 - Extrageți active și resurse pentru referință
 - Arhivați site-uri web ale clienților pentru portofoliu sau scopuri legale
 
 Jurnaliști și Creatori de Conținut
+
 - Păstrați dovezi și surse permanent
 - Arhivați articole înainte să fie editate sau eliminate
 - Creați biblioteci de cercetare offline
 
 Arhiviști Digitali
+
 - Păstrați istoria internetului înainte ca site-urile web să devină offline
 - Creați copii de siguranță ale conținutului cultural sau istoric important
 - Construiți depozite de cunoștințe offline
@@ -84,9 +91,8 @@ Cum Funcționează
 3. Faceți clic pe "Începe Descărcarea" - Urmăriți progresul în timp real
 4. Accesați arhiva - Găsiți fișierul ZIP sau fișierul HTML unic în folderul Descărcări
 
-Asta e tot! Fără configurare complicată, fără conturi, fără abonamente.
+Asta e tot! Salvați prima pagină în câteva secunde.
 
 ---
-
 
 NOTĂ! Unele site-uri web depun eforturi mari pentru a împiedica pe oricine să descarce conținutul lor și, prin urmare, pentru unele site-uri web, HTML-ul descărcat poate diferi de HTML-ul original.

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
       "What PagePocket collects, where your archives are stored, the cookies the site uses, and how to get your data deleted.",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Privacy Policy",
     description:
       "What PagePocket collects, where your archives are stored, the cookies the site uses, and how to get your data deleted.",

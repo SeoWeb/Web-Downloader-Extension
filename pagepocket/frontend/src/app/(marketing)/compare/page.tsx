@@ -19,6 +19,12 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/compare",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Compare — SingleFile, Wayback Machine, Perma.cc",
+    description:
+      "Honest, sourced comparisons of PagePocket with SingleFile, the Wayback Machine, and Perma.cc — including when the competitor is the better choice.",
+  },
 };
 
 /** Display names for the /compare index cards (differs from data keys). */

@@ -1,0 +1,50 @@
+export const meta = {
+  title: "Full-text search",
+  description:
+    "Search across every page you have saved — titles and body text, with highlighted snippets and collection filters, so a page is one query away.",
+  date: "2026-10-20",
+}
+
+An archive you cannot search is a shoebox. PagePocket indexes the full text
+of every page you save, so the words inside the page — not a folder name you
+had to remember — are how you find it again.
+
+## What is indexed
+
+For each saved page, the search index covers:
+
+- the page **title**, and
+- the page's **body text**, extracted from the archived copy.
+
+Search matches words and short phrases. Results return the page with a
+**highlighted snippet** of the matching passage, so you can judge a hit
+before opening it — often you will recognise the page from the snippet alone.
+
+## How to search
+
+Two entry points, same index:
+
+- The **search bar in the app's top bar** surfaces matching pages as a live
+  preview while you type; press through for the full result list.
+- The **search page** shows the complete result list with snippets, and adds
+  a **collection filter** — restrict the query to one collection when you
+  already know which project a page belongs to.
+
+## When a save becomes searchable
+
+Indexing happens automatically as part of the cloud save, and a page becomes
+searchable as soon as its index entry is written. If indexing is interrupted
+(never fully uploaded page, connection dropped mid-save), the system retries
+automatically rather than leaving the page permanently unsearchable.
+
+## Honest limits
+
+- **Images and PDFs are not transcribed.** A scanned page is found by its
+  title; the words inside the image are not in the index.
+- **Scripts don't run in the viewer**, so text that only materialises from
+  client-side code (infinite feeds, embedded app views) is only indexed as
+  far as it was actually captured — see
+  [Saving pages](/docs/saving-pages) for how scrolling capture handles this.
+- Search covers **your library only**. PagePocket is a private archive;
+  nothing you save is ever searched by, or visible to, anyone else unless you
+  [share it](/docs/sharing).

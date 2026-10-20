@@ -1,0 +1,173 @@
+export const meta = {
+  title: "Wayback Machine Alternatives for Personal Archiving",
+  description:
+    "The Wayback Machine is a treasure — but it is public, and it is not yours. An honest tour of the alternatives for keeping your own searchable archive.",
+  date: "2026-10-14",
+  author: "The PagePocket Team",
+  tags: ["web archiving", "comparisons"],
+}
+
+People usually arrive at the phrase "Wayback Machine alternative" after
+the same small disaster: a page they needed has changed or vanished, and
+the copy that was supposed to exist somewhere either does not — or it
+exists, but it is not theirs to use. The instinct to look for a
+replacement is understandable. It is also slightly misdirected.
+
+The Wayback Machine is not a bad tool that needs replacing. It is one of
+the most important projects on the web. The useful question is narrower:
+which parts of "keeping pages" it was ever designed to do for you, and
+which tools cover the rest. This article walks through the realistic
+options — archive.today, SingleFile, Perma.cc, your browser's own save,
+and PagePocket — and states plainly what each one is good at, including
+the cases where we would tell you to use something else.
+
+## What the Wayback Machine is genuinely great at
+
+Any honest comparison has to start here. The Wayback Machine is run by
+the Internet Archive, a non-profit, and it preserves the web for
+everyone, free of charge. Its
+[Save Page Now](https://web.archive.org/save/) captures the page you give
+it and returns a permanent web.archive.org URL that anyone can open,
+cite, and share — as the [Internet Archive's own
+documentation](https://help.archive.org/help/save-pages-in-the-wayback-machine/)
+describes. Beyond manual saves, it holds years of crawl history for
+popular URLs: a record of how pages changed over time that no personal
+tool can reconstruct.
+
+If your goal is "this page should exist somewhere public, for everyone,
+indefinitely", the Wayback Machine remains the right answer. Nothing in
+this article changes that.
+
+## Where a public archive stops being yours
+
+The limitations are not defects — they are what "public archive" means:
+
+- **Captures are not guaranteed.** What the Wayback Machine holds comes
+  from crawls and manual saves. Whether a capture exists for the exact
+  page and date you need is a matter of luck, and dynamic, personalised,
+  paywalled, or rarely visited pages are frequently captured badly or not
+  at all.
+- **It is public by design.** Anyone can view the collections, and site
+  owners can request that pages be
+  [excluded or removed](https://help.archive.org/help/using-the-wayback-machine/).
+  A page you depend on can leave the archive without your involvement.
+- **There is no private library.** Signing in to Save Page Now lets you
+  see your captures listed under "My Web Archive", but the saves
+  themselves join the shared public archive — there are no private
+  collections, no notes, no organisation around *your* work.
+- **There is no search across your own captures.** The Wayback Machine
+  helps you locate archived URLs. It does not index the contents of the
+  pages you personally saved so you can find that paragraph you
+  half-remember.
+
+For the web at large, those trade-offs are worth it. For a personal
+archive — the pages your work, research, or record-keeping depends on —
+they are exactly the wrong trade-offs. That gap is what the alternatives
+below try to fill.
+
+## The alternatives, honestly
+
+### archive.today: anonymous public snapshots
+
+[archive.today](https://archive.ph/) is a free archive that needs no
+account: you submit a URL and it produces a snapshot on its own domain.
+Captures are public, and the site is ad-supported. It has operated under
+several domain names over the years — archive.ph, archive.is, archive.md,
+among others — so links to captures may point at a different mirror than
+the one you originally bookmarked.
+
+It is a reasonable pick when you want a quick public copy of a single
+page. Like the Wayback Machine, it has no accounts, which means no
+private library, no collections, and no way to search across the pages
+*you* have saved. It archives pages; it does not keep an archive for you.
+
+### SingleFile: excellent files, but a folder is not an archive
+
+[SingleFile](https://www.getsinglefile.com/) is a free, open-source
+browser extension that saves an entire page — images, stylesheets, fonts
+— as one standard HTML file that opens offline in any browser, today or
+in twenty years. We think it is the best local tool there is, and our
+[SingleFile comparison](/compare/singlefile) says so plainly rather than
+pretending otherwise.
+
+What it does not give you is the layer above files. Saves land in a
+folder on your machine; keeping them synced, backed up, organised, and
+findable is entirely your job, and there is no way to share a save except
+by sending the file itself. We cover what that costs at real volume in
+[SingleFile vs a cloud archive](/blog/singlefile-vs-cloud-archive).
+
+### Perma.cc: permanence for citations
+
+[Perma.cc](https://perma.cc/) is built and supported by libraries, with
+records preserved by the Harvard Law School Library, and it exists for
+one job: turning cited web sources into permanent records that do not
+rot — primarily for courts, law reviews, and academic writing. Through
+its [accounts documentation](https://perma.cc/docs/accounts), many
+courts and members of registrar institutions get unlimited free service;
+individual plans otherwise start at $10 a month for 10 links.
+
+If your pages are citations in formal legal or scholarly work, Perma.cc
+is the recognised standard — we explain when and why in [how to cite web
+pages that won't rot](/blog/cite-web-pages-that-wont-rot). For everyday
+archiving at working volume, its per-link pricing model is built for a
+different job than yours.
+
+### Your browser's "Save Page As": quick, forgettable
+
+The save built into every browser produces a folder of files or a single
+MHTML file. For a one-off copy you will read this week, it is fine. As an
+archive it fails quietly: saves land in a downloads folder
+indistinguishable from every other download, nothing is searchable across
+saves, nothing follows you to another device, and script-heavy pages
+often reassemble incorrectly when opened from disk.
+
+### PagePocket: a private Wayback Machine for your pages
+
+[PagePocket](/features) is our answer to the gap above. A browser
+extension saves the full page — complete HTML, styles, images — with one
+click, and the copy lands in your private cloud library instead of a
+public archive. From there:
+
+- pages are **private by default**; nothing is public unless you create a
+  share link, and links can expire or be revoked;
+- every word of every save is **full-text searchable**, so a page you
+  half-remember is one query away;
+- **collections and notes** keep projects and stories organised;
+- share links give anyone the **exact copy you saved**, which cannot be
+  edited under their feet.
+
+There is a [free plan](/pricing) — 50 pages a month, 500 MB — and Pro is
+$2/month billed yearly when your archive outgrows it. To be plain about
+the trade-offs: it requires an account, it is a cloud service that needs
+a connection, and saving privately contributes nothing to the public
+record. Those are the costs of the opposite design from the Wayback
+Machine, not a claim that the trade-offs do not exist.
+
+## Which alternative should you pick?
+
+- **The save should be public record?** The [Wayback
+  Machine](/compare/wayback) — free, citable, for everyone.
+- **A quick anonymous public copy of one page?** archive.today.
+- **A copy that must open offline, from disk, forever?**
+  [SingleFile](/compare/singlefile) — genuinely unbeatable at that.
+- **A citation in legal or academic work that must never break?**
+  [Perma.cc](/compare/perma-cc), ideally through your institution.
+- **The pages you personally depend on — private, organised, searchable,
+  shareable on your terms?** That is [PagePocket](/features).
+
+These tools are not rivals so much as layers. Reporters keep a private
+archive of sources *and* publish public receipts; researchers keep local
+copies of datasets *and* a searchable library of papers. Picking one tool
+for all four jobs is where archives go to die.
+
+## Keep the pages you actually need
+
+Pick the page whose loss would genuinely hurt you, and give it a real
+copy: [create a free account](/register), save the page, then search for
+a phrase from inside it. If the words come back, you have an archive —
+not just a folder or a bookmark.
+
+For the full picture of what a save should survive, start with [how to
+save a web page forever](/blog/how-to-save-a-web-page-forever); for the
+evidence-heavy version of this problem, see how [journalists archive
+sources that won't rot](/blog/journalists-archive-sources-link-rot).

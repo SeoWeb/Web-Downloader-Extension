@@ -1,0 +1,21 @@
+export const meta = {
+  title: "Saved pages render reliably",
+  date: "2026-10-19",
+}
+
+A cross-cutting fix for the most reported rendering problem, plus quiet
+reliability work across the platform:
+
+- **Stylesheets, scripts, and documents now resolve on archived pages.** An
+  asset-addressing overhaul across the extension, the cloud pipeline, and the
+  viewer fixed saved pages coming up unstyled or missing files.
+- **Archived files are served behind signed, per-view tokens** — archive
+  content responds only to you and to the share links you created.
+- **Revoking a share link now takes effect immediately**, and view counts
+  count a visitor once instead of once per refresh.
+- **New saves become searchable immediately**, with automatic retry if
+  indexing is ever interrupted.
+- **Sessions last 30 days** — you stay signed in instead of re-authenticating
+  daily.
+- **Quota errors name the exact limit** ("monthly page limit reached" vs
+  "storage limit reached") instead of a generic failure.

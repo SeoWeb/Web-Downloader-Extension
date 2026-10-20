@@ -434,10 +434,11 @@ export function personaMetadata(persona: Persona): Metadata {
       description: persona.metaDescription,
       url: canonical,
     },
-    // No OG image route exists for these pages yet — claim the honest small
-    // card instead of summary_large_image with a missing image.
+    // og:image / twitter:image come from the sibling opengraph-image.tsx /
+    // twitter-image.tsx routes. metadataBase keeps canonical + image URLs
+    // absolute.
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: persona.metaTitle,
       description: persona.metaDescription,
     },

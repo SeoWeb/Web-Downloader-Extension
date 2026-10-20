@@ -1,6 +1,6 @@
- Chrome Store Description Translations
+Chrome Store Description Translations
 
-This directory contains translations of the Chrome Web Store description for the WebsiteDownloader extension in all 45 supported languages.
+This directory contains translations of the Chrome Web Store description for the PagePocket extension in all 45 supported languages.
 Translation Status
 
 All 45 language files have been created. The translations are organized by language code:
@@ -27,8 +27,8 @@ These translations have been carefully translated with full content:
 18. ko - Korean
 19. cs - Czech
 20. ro - Romanian
-Translated (Standard Quality)
-These translations have been created with good quality:
+    Translated (Standard Quality)
+    These translations have been created with good quality:
 
 21. tr - Turkish
 22. id - Indonesian
@@ -55,14 +55,15 @@ These translations have been created with good quality:
 43. fa - Persian (RTL)
 44. fil - Filipino
 45. sw - Swahili
-RTL Languages
+    RTL Languages
 
 The following languages use Right-to-Left (RTL) text direction:
+
 - ar - Arabic
 - he - Hebrew
 - fa - Persian
 - ur - Urdu
-File Structure
+  File Structure
 
 Each translation file follows the same structure as the original English version:
 
@@ -72,21 +73,22 @@ Each translation file follows the same structure as the original English version
 - Bonus Features section
 - How It Works section
 - Important note about website restrictions
-Usage
+  Usage
 
 When submitting to the Chrome Web Store, use the appropriate translation file for each language's store listing. The translations maintain the same formatting and structure to ensure consistency across all language versions.
 Notes
 
 - All translations preserve the original meaning and key selling points
 - Technical terms (HTML, CSS, JavaScript, etc.) are kept in English across all translations
-- The extension name "Web Page Downloader" remains in English
+- The extension name "PagePocket" remains in English
 - Feature counts and numbers (45 languages, etc.) are consistent across all versions
-Verification
+  Verification
 
 Total files: 45
 Last updated: 2026-01-01
 
 To verify all files exist:
+
 ```bash
 ls -1 description/*.md | wc -l
 ```

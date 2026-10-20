@@ -81,6 +81,9 @@ describe("persona content data", () => {
     expect(metadata.openGraph?.url).toBe(
       "https://pagepocket.app/use-cases/researchers",
     );
+    // Large card — the sibling opengraph-image/twitter-image routes supply
+    // a real 1200×630 image.
+    expect(metadata.twitter).toMatchObject({ card: "summary_large_image" });
   });
 
   it("builds BreadcrumbList JSON-LD with positions and absolute item URLs", () => {

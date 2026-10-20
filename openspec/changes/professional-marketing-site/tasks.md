@@ -22,34 +22,34 @@
 
 - [x] 3.1 Four use-case pages (researchers, journalists, developers, archivists): persona hero, ≥3 workflows with screenshots, ≥3 FAQ items + FAQPage JSON-LD, CTA, cross-links
 - [x] 3.2 Three comparison pages (singlefile, wayback, perma-cc): accurate feature tables, "when the competitor wins" section, CTA
-- [ ] 3.3 BreadcrumbList JSON-LD on all nested routes
+- [x] 3.3 BreadcrumbList JSON-LD on all nested routes
 
 ## 4. Blog, docs, changelog, about (Phase 2)
 
 - [x] 4.1 MDX infrastructure: `@next/mdx`, `content/blog/*.mdx` + `content/docs/*.mdx` + `content/changelog/*.md`, frontmatter schema (title, description, date, author, slug), RSC rendering
 - [x] 4.2 `/blog` index + `/blog/[slug]` (date, author, reading time, prev/next, per-post `ImageResponse` OG, BlogPosting JSON-LD, sitemap inclusion)
-- [ ] 4.3 Write the 5 launch articles per the approved keyword set
-- [ ] 4.4 `/docs` index + 6 pages (getting started, saving, collections, search, sharing, troubleshooting)
-- [ ] 4.5 `/changelog` from release notes (newest-first) — confirm source format with user
-- [ ] 4.6 `/about`: project story, repo link, store link
+- [x] 4.3 Write the 5 launch articles per the approved keyword set
+- [x] 4.4 `/docs` index + 6 pages (getting started, saving, collections, search, sharing, troubleshooting)
+- [x] 4.5 `/changelog` from release notes (newest-first) — confirm source format with user
+- [x] 4.6 `/about`: project story, repo link, store link
 
 ## 5. SEO & measurement (Phase 3)
 
-- [ ] 5.1 Full JSON-LD pass: SoftwareApplication + Organization site-wide; FAQPage on FAQ-bearing pages; verify against Rich Results Test
-- [ ] 5.2 Cloudflare Web Analytics: beacon snippet + narrow CSP addition (non-API paths only); confirm no cookies added; confirm share viewer unaffected
-- [ ] 5.3 Keyword map doc (`openspec/changes/professional-marketing-site/keyword-map.md`): route → primary/secondary keywords, for future content iterations
-- [ ] 5.4 Handoff notes for user: Search Console verification, store listing rename, nginx root-vs-app split decision
+- [x] 5.1 Full JSON-LD pass: SoftwareApplication + Organization site-wide; FAQPage on FAQ-bearing pages; verify against Rich Results Test
+- [x] 5.2 Cloudflare Web Analytics: beacon snippet + narrow CSP addition (non-API paths only); confirm no cookies added; confirm share viewer unaffected
+- [x] 5.3 Keyword map doc (`openspec/changes/professional-marketing-site/keyword-map.md`): route → primary/secondary keywords, for future content iterations
+- [x] 5.4 Handoff notes for user: Search Console verification, store listing rename, nginx root-vs-app split decision
 
 ## 6. Store description rebrand
 
-- [ ] 6.1 Rewrite `description/en.md` as PagePocket (remove "Web Page Downloader" branding and "100% local processing / no accounts"; add cloud library, search, sharing; repo + persona sections)
-- [ ] 6.2 Mechanical pass over all other `description/*.md` locales: brand name fix + local-processing claim removal (note full re-translation as follow-up)
+- [x] 6.1 Rewrite `description/en.md` as PagePocket (remove "Web Page Downloader" branding and "100% local processing / no accounts"; add cloud library, search, sharing; repo + persona sections)
+- [x] 6.2 Mechanical pass over all other `description/*.md` locales: brand name fix + local-processing claim removal (note full re-translation as follow-up)
 
 ## 7. QA & ship
 
-- [ ] 7.1 Performance budget: size-limit entries for every new route; `pnpm build` all green under 120 KB
-- [ ] 7.2 Link sweep: automated check that every internal link + footer link resolves (no 404s)
-- [ ] 7.3 A11y pass (contrast AA, headings order, focus states) + dark-mode pass on every new page
-- [ ] 7.4 Claim verification checklist against the honesty policy (no fabricated numbers/quotes anywhere)
+- [x] 7.1 Performance budget: size-limit entries for every new route; `pnpm build` all green under 120 KB
+- [x] 7.2 Link sweep: automated check that every internal link + footer link resolves (no 404s)
+- [x] 7.3 A11y pass (contrast AA, headings order, focus states) + dark-mode pass on every new page
+- [x] 7.4 Claim verification checklist against the honesty policy (no fabricated numbers/quotes anywhere)
 - [ ] 7.5 `openspec validate professional-marketing-site` clean; CI green; push → `deploy-frontend`
 - [ ] 7.6 Post-deploy verification: OG debuggers show real previews, `/sitemap.xml` + `/robots.txt` live, analytics beacon firing, Lighthouse SEO ≥ 95 on `/`

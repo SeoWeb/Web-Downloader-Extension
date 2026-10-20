@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: page.path,
   },
+  twitter: {
+    card: "summary_large_image",
+    title: page.metaTitle,
+    description: page.metaDescription,
+  },
 };
 
 export default function CompareSingleFilePage() {

@@ -3,6 +3,9 @@ import Link from "next/link";
 import { Archive } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { MarketingAuthCta } from "@/components/app/marketing-auth-cta";
+import { JsonLd } from "@/components/marketing/json-ld";
+import { siteJsonLd } from "@/components/marketing/site-json-ld";
+import { CF_BEACON_TOKEN } from "@/lib/env";
 
 export default async function MarketingLayout({
   children,
@@ -159,6 +162,25 @@ export default async function MarketingLayout({
           </div>
         </div>
       </footer>
+      {/* Site-wide structured data (design D5, task 5.1): Organization +
+          SoftwareApplication on every marketing page, in their own ld+json
+          script. Per-page FAQPage/BlogPosting/BreadcrumbList scripts from
+          individual routes are untouched — separate scripts are valid. */}
+      <JsonLd data={siteJsonLd()} />
+      {/* Cloudflare Web Analytics (design D5, task 5.2): cookieless beacon,
+          rendered ONLY when NEXT_PUBLIC_CF_BEACON_TOKEN is set (baked at
+          build time — unset means nothing renders: zero requests, zero
+          bytes). Plain <script defer> per the official CF snippet, so the
+          tag ships in the prerendered HTML (next/script's afterInteractive
+          injects client-side only; beforeInteractive needs the root
+          layout). No cookies → no consent banner required. */}
+      {CF_BEACON_TOKEN && (
+        <script
+          defer
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon={JSON.stringify({ token: CF_BEACON_TOKEN })}
+        />
+      )}
     </div>
   );
 }

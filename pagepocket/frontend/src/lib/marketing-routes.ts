@@ -53,6 +53,15 @@ export const MARKETING_ROUTES: readonly MarketingRoute[] = [
   { path: "/compare/wayback", priority: 0.7, changeFrequency: "monthly" },
   { path: "/compare/perma-cc", priority: 0.7, changeFrequency: "monthly" },
   { path: "/docs", priority: 0.7, changeFrequency: "monthly" },
+  // Individual docs URLs ARE registered statically (unlike blog posts): the
+  // six launch guides are a fixed, curated surface (content/docs + DOC_ORDER
+  // in src/lib/docs.ts must stay in sync — its loader asserts that).
+  { path: "/docs/getting-started", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/docs/saving-pages", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/docs/collections", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/docs/full-text-search", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/docs/sharing", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/docs/troubleshooting", priority: 0.6, changeFrequency: "monthly" },
   { path: "/changelog", priority: 0.5, changeFrequency: "weekly" },
   { path: "/about", priority: 0.6, changeFrequency: "monthly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
