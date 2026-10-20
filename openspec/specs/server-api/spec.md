@@ -168,14 +168,14 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/html` endpoint that recei
 
 ### Requirement: Resource File Upload
 
-The server SHALL provide a `POST /api/v1/sessions/{id}/resources` endpoint that receives a resource file (image, CSS, JS, document, video) via multipart upload. The endpoint SHALL support pre-compressed payloads using a custom header, and SHALL bound decompression BEFORE decompressing: the inflated size is computed or capped first, and payloads that would exceed the per-resource/session limits are rejected with 413 without allocating the full inflated buffer (gzip-bomb guard).
+The server SHALL provide a `POST /api/v1/sessions/{id}/resources` endpoint that receives a resource file (image, CSS, JS, document, video) via multipart upload. The endpoint SHALL support pre-compressed payloads using a custom header, and SHALL bound decompression BEFORE decompressing: the inflated size is computed or capped first, and payloads that would exceed the per-resource/session limits are rejected with 413 without allocating the full inflated buffer (gzip-bomb guard). The endpoint SHALL NOT update the session row's `resources_received` column per upload (per-upload session-row writes are the documented deadlock pattern); the authoritative live count is the status endpoint's aggregate over `resources` rows, and the session-row column is reconciled at finalization (see "Session Finalization").
 
 #### Scenario: Successful resource upload
 
 - **WHEN** a client uploads a resource file with `file` (blob), `path` (ZIP path), `originalUrl`, and `contentType` fields
 - **THEN** the server stores the file on disk at a unique location
 - **AND** records the resource metadata (original URL, local path, content type, size) in the database
-- **AND** increments the session's `resources_received` counter
+- **AND** the session's live `resources_received` (status endpoint aggregate) increases by one while the session-row column is left untouched mid-flight (no per-upload session-row updates)
 - **AND** the endpoint is idempotent: if the `originalUrl` already exists for this session, it returns 200 with the existing resource info without redundant storage
 - **AND** returns a 200 response with the resource ID and storage confirmation
 
@@ -203,6 +203,7 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/resources` endpoint that 
 - **WHEN** a client uploads a resource with an `originalUrl` that already exists in the session
 - **THEN** the server skips the duplicate resource (the extension handles deduplication via AssetRegistry)
 - **AND** returns a 200 response indicating the resource was deduplicated
+- **AND** no new row is created, so the live and reconciled counts do not increase
 
 #### Scenario: Upload exceeds total session size limit
 
@@ -246,7 +247,7 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/filename-map` endpoint th
 
 ### Requirement: Session Finalization
 
-The server SHALL provide a `POST /api/v1/sessions/{id}/finalize` endpoint that signals all uploads are complete and triggers HTML merging, URL conversion, and ZIP assembly. The status transition SHALL be race-safe: the transition check and write execute under a row lock (`SELECT ... FOR UPDATE`) or equivalent single-statement guard, so concurrent finalize calls cannot start two assembly pipelines. The client MUST ensure that both the `scrape-complete` signal and the final `filename-map` upload have been confirmed (received 200 ACK) before calling this endpoint.
+The server SHALL provide a `POST /api/v1/sessions/{id}/finalize` endpoint that signals all uploads are complete and triggers HTML merging, URL conversion, and ZIP assembly. The status transition SHALL be race-safe: the transition check and write execute under a row lock (`SELECT ... FOR UPDATE`) or equivalent single-statement guard, so concurrent finalize calls cannot start two assembly pipelines. The client MUST ensure that both the `scrape-complete` signal and the final `filename-map` upload have been confirmed (received 200 ACK) before calling this endpoint. At finalization the server SHALL reconcile the session row's `resources_received` column to the exact count of stored `resources` rows within the transition commit (one write per session lifetime — never per upload), and when the client-reported `resources_discovered` exceeds that reconciled count, the server SHALL emit a loud structured warning carrying the session id and both counts. The warning is observability only: it SHALL NOT refuse finalization or change any status code (partial downloads remain valid).
 
 #### Scenario: Successful finalization
 
@@ -255,6 +256,18 @@ The server SHALL provide a `POST /api/v1/sessions/{id}/finalize` endpoint that s
 - **AND** begins the assembly pipeline: merge HTML chunks, convert URLs in HTML, convert URLs in CSS files, assemble ZIP (or single HTML file)
 - **AND** returns a 202 response indicating assembly has started
 - AND the extension MUST ensure all resource uploads are complete (UploadQueue drained) before calling finalize
+
+#### Scenario: Column reconciled at finalize
+
+- **WHEN** finalization transitions a session whose `resources` table holds 103 rows
+- **THEN** the session row's `resources_received` column reads exactly 103 after the transition commit
+- **AND** a subsequent ops read of the column matches the status endpoint's live aggregate for the terminal session
+
+#### Scenario: Discovery/received deficit is logged, not refused
+
+- **WHEN** a client reported `resources_discovered = 105` but only 103 resources are stored at finalize
+- **THEN** the server logs a structured warning naming the session id, `resources_discovered: 105`, and `resources_received: 103`
+- **AND** finalization still proceeds and returns 202 (partial download semantics unchanged)
 
 #### Scenario: Concurrent finalize calls start exactly one assembly
 
