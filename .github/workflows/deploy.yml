@@ -220,8 +220,16 @@ jobs:
     # D13/4.3: CI-gated like the backend — the gate now always runs, so a
     # frontend-only push (where the old backend-conditioned gate skipped)
     # can no longer deploy with red or missing CI.
-    needs: [changes, ci-gate]
-    if: needs.changes.outputs.frontend == 'true'
+    # Serialized AFTER deploy-backend: both jobs git fetch/reset the SAME
+    # host checkout (/var/www/Web-Downloader-Extension) — in parallel they
+    # race on .git/index.lock (seen 2026-10-20, first dual-path push).
+    needs: [changes, ci-gate, deploy-backend]
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.changes.outputs.frontend == 'true' &&
+        (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped')
+      }}
     runs-on: ubuntu-latest
     steps:
       - name: Deploy frontend to Contabo
