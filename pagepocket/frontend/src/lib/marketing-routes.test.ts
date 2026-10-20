@@ -44,3 +44,32 @@ describe("marketing-routes — sitemap/robots contract", () => {
     );
   });
 });
+
+describe("marketing-routes — phase-3 content surface (design D6)", () => {
+  it("registers every route landing in this batch", () => {
+    const paths = new Set(MARKETING_ROUTES.map((r) => r.path));
+    const expected = [
+      "/blog",
+      "/use-cases",
+      "/use-cases/researchers",
+      "/use-cases/journalists",
+      "/use-cases/developers",
+      "/use-cases/archivists",
+      "/compare",
+      "/compare/singlefile",
+      "/compare/wayback",
+      "/compare/perma-cc",
+      "/docs",
+      "/changelog",
+      "/about",
+    ];
+    for (const path of expected) {
+      expect(paths.has(path)).toBe(true);
+    }
+  });
+
+  it("blog post URLs stay out of the registry (dynamic from MDX content via app/sitemap.ts)", () => {
+    const paths = MARKETING_ROUTES.map((r) => r.path);
+    expect(paths.filter((path) => path.startsWith("/blog/"))).toEqual([]);
+  });
+});

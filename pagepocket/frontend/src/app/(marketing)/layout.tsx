@@ -33,6 +33,20 @@ export default async function MarketingLayout({
             >
               Pricing
             </Link>
+            {/* Calm on small screens: secondary destinations hide instead of
+                collapsing into a dropdown menu. */}
+            <Link
+              href="/use-cases"
+              className="text-muted-foreground hover:text-foreground hidden text-sm transition-colors sm:inline"
+            >
+              Use cases
+            </Link>
+            <Link
+              href="/blog"
+              className="text-muted-foreground hover:text-foreground hidden text-sm transition-colors sm:inline"
+            >
+              Blog
+            </Link>
             <MarketingAuthCta />
             <ThemeToggle />
           </div>

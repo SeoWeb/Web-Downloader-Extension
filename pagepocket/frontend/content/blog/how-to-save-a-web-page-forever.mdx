@@ -1,0 +1,179 @@
+export const meta = {
+  title: "How to Save a Web Page Forever",
+  description:
+    "Bookmarks rot, screenshots lose the words, public archives miss pages. A practical comparison of every common way to save a web page — and how to pick the right one.",
+  date: "2026-10-20",
+  author: "The PagePocket Team",
+  tags: ["web archiving", "guides"],
+}
+
+You found a page worth keeping. Maybe it is the documentation for a library
+version your project still depends on, a news story you may need to cite, a
+pricing page that is about to change, or a forum thread that solved a problem
+nobody else has even hit yet. You want to be able to open it again in a year —
+with the words, the images, and the layout intact — and find it again when the
+moment comes.
+
+The uncomfortable truth is that most ways people "save" web pages do not
+survive that year. Links die, pages get redesigned or put behind paywalls,
+sites shut down. Saving a page properly is a small skill, and choosing the
+right method for the job makes the difference between a page you can rely on
+and a bookmark that leads to a 404.
+
+This guide walks through the methods people actually use, what each one
+preserves and what it silently throws away, and the checklist we think any
+long-term save should pass.
+
+## What "saving a web page" should mean
+
+Before comparing methods, it helps to be precise about the goal. A page you
+have truly saved is a copy that is:
+
+- **Faithful** — the text, images, and layout come back the way the page
+  looked when you saved it, not a mangled or partial reconstruction.
+- **Under your control** — it opens even if the original site edits the page,
+  moves it, or disappears entirely, and nobody else can edit or revoke it.
+- **Findable** — you can locate it later by searching the words inside it,
+  not by remembering which folder or bookmark folder you put it in.
+- **Shareable** — when someone else needs to see it, you can hand them the
+  saved copy without sending them to a page that may have changed.
+
+Every method below can be judged against those four properties.
+
+## The methods people actually use
+
+### Bookmarks: saving the address, not the page
+
+A bookmark stores a URL. It saves none of the page itself — no text, no
+images, no layout. When the page changes, your bookmark quietly points at
+something different from what you saved; when the page dies, it points at
+nothing. Bookmarks are excellent for remembering where to go back to, and
+worthless as an archive. If the page matters, a bookmark is where the job
+starts, not where it ends.
+
+### Print to PDF: readable, but rarely faithful
+
+Every browser can print a page to a PDF, and the result is genuinely useful:
+the text survives, the file is portable, and PDFs are easy to store. But a
+print-PDF is a re-rendering, not a capture. Layouts get reflowed or broken,
+sticky headers and cookie banners can end up stamped across pages, content
+that loads on scroll may never make it into the file, and anything interactive
+— embedded videos, maps, tabs — is reduced to whatever happened to be visible.
+For reading an article offline, a PDF is fine. As a record of what a page
+actually looked like, it is unreliable in ways that only show up when it is
+too late.
+
+### Screenshots: proof of a moment, silent on the words
+
+A screenshot is honest visual evidence and costs nothing to take. The
+weakness is the flip side: a screenshot is an image, so the words inside it
+are not text. You cannot search them, copy a quotation out of them, or
+structurally compare two captures. Long articles become a pile of images you
+have to scroll through, and six months later you cannot remember which pile
+holds the paragraph you need. Screenshots work well as a quick receipt of what
+a page showed — paired with a full copy of the page, they are even better.
+
+### "Save Page As": a snapshot stranded on one machine
+
+Browsers offer *Save Page As…*, producing either a folder of files or a
+single MHTML file. This is the most faithful of the local methods: the HTML,
+the styles, and usually the images come down exactly as served. The problems
+start after the save. Pages that build themselves with scripts often reassemble
+incorrectly when opened from disk. Your saves land in a downloads folder,
+indistinguishable from the PDF manual you grabbed last week. There is no way
+to search across everything you have saved, no way to share a save except by
+sending files around, and nothing follows you to another device. It is a good
+raw snapshot with no archive around it.
+
+### Public web archives: powerful, but not yours
+
+Services like the Internet Archive's Wayback Machine capture pages
+automatically and keep those captures publicly available, which is genuinely
+valuable — for popular pages, a capture of a given moment may already exist.
+But an automatic public archive is, by design, not under your control. Whether
+a capture exists for the page and date you need is luck. Dynamic,
+personalised, paywalled, or rarely visited pages are frequently captured badly
+or not at all. You cannot organise captures into collections, attach notes,
+or hand someone a private copy. Public archives are a wonderful safety net for
+the web at large — treating them as your personal archive means outsourcing
+your record-keeping to a crawler.
+
+## A checklist for a page you truly keep
+
+Whichever tool you use, a save worth trusting should pass this list:
+
+1. **Opens offline** — the copy renders from storage, with no live calls back
+   to the original site.
+2. **Full fidelity** — text is real text, images are present, layout matches
+   the original.
+3. **Searchable in bulk** — the words inside every page you have saved can be
+   searched from one place.
+4. **Organised** — pages land in collections you define, not in a downloads
+   folder.
+5. **Sharable on your terms** — you can produce a link to the saved copy when
+   you choose to, and keep it private otherwise.
+6. **Durable** — the copy lives somewhere that survives a new laptop, a
+   reinstalled browser, and a changed original page.
+
+Local tools cover points 1 and 2 at best. Public archives cover durability
+but not control. Very few workflows cover all six.
+
+## How PagePocket fits in
+
+[PagePocket](/features) is our attempt to make that full checklist the
+default rather than the exception. The flow is deliberately short:
+
+1. **Install the extension** — PagePocket lives in Chrome as a browser
+   extension, one click from the page you are reading.
+2. **Save the page** — one click captures a full-fidelity copy: the complete
+   HTML with styles and images, so the page opens the way it looked.
+3. **It lands in your private library** — saves are stored in your PagePocket
+   account and available from any browser. Your library is private by
+   default; nothing is published unless you create a share link.
+4. **Organise as you go** — group pages into collections, add notes, and keep
+   projects in order instead of scrolling a downloads list.
+5. **Search everything you have saved** — every word of every page is
+   full-text searchable, so the article you half-remember is one query away.
+6. **Share when you want to** — any saved page can be shared with a simple
+   link to your copy, which cannot be edited under the recipient's feet.
+
+To be plain about what PagePocket is and is not: it requires an account,
+because the archive has to live somewhere you can reach from any device, and
+yours alone. Pages are stored in the cloud, not only on your machine — that
+is what makes the library searchable and shareable everywhere. There is a
+free plan you can use the whole flow on, and Pro is $2/month (billed yearly)
+when you archive at volume — see [pricing](/pricing) for the details. The
+browser extension is open source and installable from the Chrome Web Store.
+
+If you want to see how this plays out for a specific kind of work, we wrote
+separate walkthroughs for [researchers](/use-cases/researchers),
+[journalists](/use-cases/journalists), [developers](/use-cases/developers),
+and [archivists](/use-cases/archivists). If you are weighing PagePocket
+against a tool you already use, we keep honest comparisons up for
+[SingleFile](/compare/singlefile), the
+[Wayback Machine](/compare/wayback), and [Perma.cc](/compare/perma-cc) —
+including the cases where the other tool is the better choice.
+
+## Choosing the right method for the job
+
+No single method wins every scenario, and you do not need one to:
+
+- **Just need to find the page again later?** A bookmark is fine — accept that
+  you are trusting the site to keep the page as it is.
+- **Reading an article on a flight?** Print to PDF.
+- **Need proof of what a page showed at a moment?** A screenshot, or better,
+  a full capture plus a screenshot.
+- **The page is evidence — cited in work, referenced in a dispute, part of a
+  project?** You need a controlled, faithful, searchable copy that belongs to
+  you. That is the case for a personal archive like PagePocket.
+
+## Keep your first page today
+
+Pick a page you would hate to lose — documentation for a version you depend
+on, a story you might cite, a thread you always end up re-googling — and save
+it properly. [Install the extension](/register), save the page, then search
+for a phrase from the article to confirm it is really in your library, not
+just in a folder.
+
+That is the whole habit: when a page matters, keep a copy that will still be
+there — and still be findable — when you need it.

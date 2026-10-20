@@ -1,11 +1,15 @@
 import type { NextConfig } from "next";
+import createMDX from "@next/mdx";
 
 // Shell security headers (pagepocket-frontend-shell). Deliberately scoped to
 // NON-API paths: the /api/pp and /api/sc route handlers set their own sandbox
 // Content-Security-Policy on archived content, and next.config headers would
 // clobber a route handler's CSP on the same response.
 const SHELL_SECURITY_HEADERS = [
-  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains",
+  },
   { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -13,6 +17,10 @@ const SHELL_SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  // MDX content engine (design D6): content/blog/*.mdx and content/docs/*.mdx
+  // are imported as RSC components (no file-based MDX routes today, but the
+  // extension must be listed for `@next/mdx` to compile imports at all).
+  pageExtensions: ["js", "jsx", "ts", "tsx", "mdx"],
   turbopack: {
     root: import.meta.dirname,
   },
@@ -28,7 +36,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// MDX compilation for both bundlers (webpack dev / Turbopack build). No
+// remark/rehype plugins: content stays plain markdown + exported meta.
+const withMDX = createMDX({});
+
+export default withMDX(nextConfig);
 
 // deploy pipeline probe (2026-10-02, rev 3): exercises the deploy-frontend gate.
 

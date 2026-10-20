@@ -29,11 +29,32 @@ export type MarketingRoute = {
 /**
  * Routes that exist after Phase 0. Privacy and terms land with the legal
  * pages; everything here must have a `page.tsx` in the same release.
+ *
+ * Phase 3 (content engine, design D6): the use-case, compare, docs,
+ * changelog, about and blog-index routes below ship in the same batch as
+ * this registry extension — the pages are created in parallel and land
+ * together. Individual BLOG POST URLs are deliberately NOT listed here:
+ * they are dynamic from the MDX content and appended in `app/sitemap.ts`
+ * (via `src/lib/blog.ts`), which also keeps this registry statically
+ * analyzable and importable from unit tests without pulling in content.
  */
 export const MARKETING_ROUTES: readonly MarketingRoute[] = [
   { path: "/", priority: 1, changeFrequency: "weekly" },
   { path: "/features", priority: 0.9, changeFrequency: "monthly" },
   { path: "/pricing", priority: 0.9, changeFrequency: "monthly" },
+  { path: "/blog", priority: 0.7, changeFrequency: "weekly" },
+  { path: "/use-cases", priority: 0.8, changeFrequency: "monthly" },
+  { path: "/use-cases/researchers", priority: 0.8, changeFrequency: "monthly" },
+  { path: "/use-cases/journalists", priority: 0.8, changeFrequency: "monthly" },
+  { path: "/use-cases/developers", priority: 0.8, changeFrequency: "monthly" },
+  { path: "/use-cases/archivists", priority: 0.8, changeFrequency: "monthly" },
+  { path: "/compare", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/compare/singlefile", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/compare/wayback", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/compare/perma-cc", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/docs", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/changelog", priority: 0.5, changeFrequency: "weekly" },
+  { path: "/about", priority: 0.6, changeFrequency: "monthly" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly" },
   { path: "/terms", priority: 0.3, changeFrequency: "yearly" },
 ];

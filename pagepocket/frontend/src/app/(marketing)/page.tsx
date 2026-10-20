@@ -1,174 +1,328 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import {
   Archive,
   Search,
   FolderTree,
   Share2,
   Eye,
-  Download,
-  Sparkles,
   Link2,
   SearchX,
   LayoutGrid,
-  ChevronDown,
-  Shield,
-  Fingerprint,
-  Globe,
+  ArrowRight,
+  FlaskConical,
+  Newspaper,
+  Code2,
+  LibraryBig,
 } from "lucide-react";
-import { ProductMockup } from "@/components/marketing/product-mockup";
+import { Button } from "@/components/ui/button";
+import { Section } from "@/components/marketing/section";
+import { PageHero } from "@/components/marketing/page-hero";
+import { FaqList } from "@/components/marketing/faq-list";
+import {
+  ComparisonTable,
+  type ComparisonColumn,
+  type ComparisonRow,
+} from "@/components/marketing/comparison-table";
 
 // og:image / twitter:image come from the sibling opengraph-image.tsx /
 // twitter-image.tsx routes. metadataBase keeps canonical + image URLs absolute.
 export const metadata: Metadata = {
   metadataBase: new URL("https://pagepocket.app"),
   title: {
-    absolute: "PagePocket — Save, organise, search, and share web pages",
+    absolute: "PagePocket — Your private Wayback Machine",
   },
   description:
-    "The web archive that works for you. Save any page instantly, organise into collections, search full text, and share with links.",
+    "Save any web page in full fidelity — HTML, CSS, images, fonts — to a private, full-text searchable cloud archive. Organise collections, share with clean links. Free to start.",
   alternates: {
     canonical: "https://pagepocket.app",
   },
   openGraph: {
-    title: "PagePocket",
-    description: "Save, organise, search, and share web pages",
+    title: "PagePocket — Your private Wayback Machine",
+    description: "Save, organise, search, and share web pages.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "PagePocket",
-    description: "Save, organise, search, and share web pages",
+    title: "PagePocket — Your private Wayback Machine",
+    description: "Save, organise, search, and share web pages.",
   },
 };
+
+/* ------------------------------------------------------------------------ */
+/* Pain recognition                                                          */
+/* ------------------------------------------------------------------------ */
 
 const painPoints = [
   {
     icon: Link2,
     title: "Link rot",
-    description: "That article you bookmarked? Gone. 404.",
+    description:
+      "The source you cited is a 404. Pages disappear or get rewritten without notice — and your work depends on what they said.",
   },
   {
     icon: LayoutGrid,
     title: "Tab overload",
-    description: "37 open tabs and you still can\u2019t find the one you need.",
+    description:
+      "37 open tabs “to read later”, gone the moment the browser crashes. Tabs are a to-do list, not an archive.",
   },
   {
     icon: SearchX,
-    title: "No search",
+    title: "Unsearchable bookmarks",
     description:
-      "Bookmarks save URLs, not content. Good luck finding that quote.",
+      "Bookmarks store URLs, not content. You know the page said it — good luck finding where.",
   },
 ];
+
+/* ------------------------------------------------------------------------ */
+/* How it works                                                              */
+/* ------------------------------------------------------------------------ */
 
 const steps = [
   {
-    icon: Download,
-    label: "Install",
-    description: "Add the browser extension in one click.",
-  },
-  {
-    icon: Archive,
     label: "Save",
-    description: "Capture any page to your cloud archive instantly.",
+    description:
+      "Open any page and hit save in the PagePocket extension. The full page — HTML, CSS, images, fonts — goes straight to your cloud archive.",
+    image: {
+      src: "/screenshots/extension-onboarding.png",
+      alt: "PagePocket extension onboarding: “Save pages with PagePocket” — drop any web page into your personal cloud archive",
+      width: 420,
+      height: 780,
+      className: "mx-auto w-full max-w-64",
+    },
   },
   {
-    icon: Search,
+    label: "Organise",
+    description:
+      "Every saved page lands in your library. Group related pages into collections so the material stays yours to navigate.",
+    image: {
+      src: "/screenshots/library-light.png",
+      srcDark: "/screenshots/library-dark.png",
+      alt: "PagePocket library: three archived pages grouped in the “Research sources” collection",
+      width: 2880,
+      height: 1800,
+      className: "w-full",
+      sizes: "(min-width: 640px) 33vw, 100vw",
+    },
+  },
+  {
     label: "Find & share",
-    description: "Search full text and share with a link.",
+    description:
+      "Search every word of every saved page, then share any page with a clean link — with an optional expiry.",
+    image: {
+      src: "/screenshots/share-light.png",
+      srcDark: "/screenshots/share-dark.png",
+      alt: "A PagePocket shared link: the full archived Wikipedia article with a “Shared via PagePocket” banner",
+      width: 2880,
+      height: 1800,
+      className: "w-full",
+      sizes: "(min-width: 640px) 33vw, 100vw",
+    },
+  },
+] as const;
+
+/* ------------------------------------------------------------------------ */
+/* Persona strip                                                             */
+/* ------------------------------------------------------------------------ */
+
+const personas = [
+  {
+    icon: FlaskConical,
+    href: "/use-cases/researchers",
+    title: "Researchers",
+    description:
+      "Papers, preprints, and sources that are still there — unchanged — when you cite them.",
+  },
+  {
+    icon: Newspaper,
+    href: "/use-cases/journalists",
+    title: "Journalists",
+    description:
+      "Keep every source exactly as it read on the day you reported it.",
+  },
+  {
+    icon: Code2,
+    href: "/use-cases/developers",
+    title: "Developers",
+    description:
+      "Freeze docs, issues, and changelogs before the next redesign erases them.",
+  },
+  {
+    icon: LibraryBig,
+    href: "/use-cases/archivists",
+    title: "Archivists",
+    description:
+      "Curate web history into private, searchable, shareable collections.",
   },
 ];
 
-const testimonials = [
+/* ------------------------------------------------------------------------ */
+/* Comparison                                                                */
+/* ------------------------------------------------------------------------ */
+
+const comparisonColumns: readonly ComparisonColumn[] = [
+  { id: "pagepocket", name: "PagePocket" },
+  { id: "bookmarks", name: "Browser bookmarks" },
+  { id: "singlefile", name: "Local-only saver (SingleFile)" },
+  { id: "wayback", name: "Public archive (Wayback Machine)" },
+];
+
+const comparisonRows: readonly ComparisonRow[] = [
   {
-    quote:
-      "I save 20+ papers a week. PagePocket is my searchable reading list.",
-    name: "Dr. Sarah Chen",
-    role: "Researcher",
+    feature: "Saves the full page — styles, images, fonts",
+    values: {
+      pagepocket: true,
+      bookmarks: false,
+      singlefile: true,
+      wayback: true,
+    },
+    note: "SingleFile genuinely saves complete pages — as local files on one device. Wayback captures are automated and can miss assets or be blocked by a site’s robots rules.",
   },
   {
-    quote: "Sources disappear overnight. My archive doesn\u2019t.",
-    name: "Marcus Webb",
-    role: "Journalist",
+    feature: "Private — only you see what you saved",
+    values: {
+      pagepocket: true,
+      bookmarks: true,
+      singlefile: true,
+      wayback: false,
+    },
+    note: "Local tools are private too. What they can’t do is follow you across devices, stay searchable, or turn into a shareable link.",
   },
   {
-    quote: "Bookmark folders are chaos. Collections are the answer.",
-    name: "Aiko Tanaka",
-    role: "Developer",
+    feature: "Full-text search of everything you saved",
+    values: {
+      pagepocket: true,
+      bookmarks: false,
+      singlefile: false,
+      wayback: "Archive-wide, not your collection",
+    },
+  },
+  {
+    feature: "Share via a clean link",
+    values: {
+      pagepocket: true,
+      bookmarks: false,
+      singlefile: "You’d send the file",
+      wayback: "If a capture exists",
+    },
+  },
+  {
+    feature: "Works when the original site dies",
+    values: {
+      pagepocket: true,
+      bookmarks: false,
+      singlefile: true,
+      wayback: "Only what they captured",
+    },
+  },
+  {
+    feature: "Organised collections",
+    values: {
+      pagepocket: true,
+      bookmarks: "Folders only",
+      singlefile: "Manual file folders",
+      wayback: false,
+    },
   },
 ];
+
+/* ------------------------------------------------------------------------ */
+/* FAQ                                                                       */
+/* ------------------------------------------------------------------------ */
 
 const faqs = [
   {
     question: "What browsers are supported?",
     answer:
-      "PagePocket works on Chrome, Edge, Brave, and any Chromium-based browser. A Firefox version is planned.",
+      "PagePocket is built for Chrome and works in any Chromium-based browser — Chrome, Edge, Brave, Arc, and others. It’s published on the Chrome Web Store. There is no Firefox version.",
   },
   {
     question: "Is it really free?",
     answer:
-      "Yes \u2014 the Free plan gives you 50 page saves per month with 500 MB of cloud storage, full-text search, and shareable links. No credit card required.",
+      "Yes — the Free plan gives you 50 page saves per month and 500 MB of cloud storage, with full-text search and shareable links included. No credit card required. If you need more, Pro raises storage to 10 GB for $2/month (billed yearly).",
+  },
+  {
+    question: "What exactly gets saved when I save a page?",
+    answer:
+      "The complete page: HTML, CSS, images, and fonts are captured into a single-file archive in your cloud library. What you read later is the page as it was when you saved it — not a screenshot and not a summary.",
   },
   {
     question: "What happens if the original page goes offline?",
     answer:
-      "Your saved copy is preserved exactly as it was \u2014 HTML, CSS, images, and all. You can always view it in the clean reader, even if the source disappears.",
+      "Your saved copy is preserved exactly as it was — HTML, CSS, images, and all. You can always view it in the clean reader, even if the source disappears.",
   },
   {
-    question: "Can I share pages with people who don\u2019t have an account?",
+    question: "Who can see the pages I save?",
     answer:
-      "Absolutely. Generate a shareable link and anyone can view the saved page. You can set an expiry time and track how many times it\u2019s been viewed.",
+      "Only you. Your library is private to your account. A page becomes visible to someone else only when you create a share link — and you decide whether that link expires.",
+  },
+  {
+    question: "Can I share pages with people who don’t have an account?",
+    answer:
+      "Yes. Generate a shareable link and anyone can view the saved page — no account needed. You can set an expiry (from 24 hours to never) and see how many times the link has been viewed.",
+  },
+  {
+    question: "Can I keep a local copy of my pages?",
+    answer:
+      "Yes — alongside the cloud archive, the extension can save the full page structure as a ZIP archive to your device. The cloud library is for search and sharing; the local export is yours to keep.",
   },
   {
     question: "How is this different from bookmarks or the Wayback Machine?",
     answer:
-      "Bookmarks only save URLs \u2014 if the page changes or disappears, you lose the content. The Wayback Machine archives the public web, not pages you care about. PagePocket gives you a personal, searchable archive of the pages you choose.",
+      "Bookmarks store URLs — if the page changes or disappears, the content is gone. The Wayback Machine archives the public web at scale, but it decides what gets captured and every capture is public. PagePocket is your own archive: you choose the pages, they stay private, and every word is searchable.",
+  },
+  {
+    question: "Is PagePocket open source?",
+    answer:
+      "The browser extension is open source — you can read exactly what it captures at github.com/SeoWeb/Web-Downloader-Extension.",
   },
 ];
+
+/* ------------------------------------------------------------------------ */
+/* Hero screenshot annotations                                               */
+/* ------------------------------------------------------------------------ */
+
+const heroCallouts = [
+  {
+    label: "Searches every page you’ve saved",
+    dot: "left-[21%] top-[2.4%]",
+    chip: "left-[24%] top-[0.6%]",
+  },
+  {
+    label: "Organised into collections",
+    dot: "left-[5%] top-[12.2%]",
+    chip: "left-[3%] top-[16.5%]",
+  },
+  {
+    label: "Full page — styles, images & text intact",
+    dot: "left-[36%] top-[35%]",
+    chip: "left-[38.5%] top-[32.5%]",
+  },
+] as const;
 
 export default function LandingPage() {
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden px-4 py-28">
-        {/* Background glow + grid */}
-        <div className="absolute inset-0 -z-10">
-          <div className="bg-primary/8 absolute top-0 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full blur-3xl" />
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle, currentColor 1px, transparent 1px)",
-              backgroundSize: "24px 24px",
-            }}
-          />
-        </div>
-
-        <div className="relative mx-auto max-w-3xl text-center">
-          <div className="border-primary/20 bg-primary/5 text-primary mb-6 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium">
-            <Sparkles className="size-3" />
-            Browser extension for Chrome
-          </div>
-          <h1 className="text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-            Web pages vanish.
-            <br />
-            <span className="from-primary bg-gradient-to-r to-teal-400 bg-clip-text text-transparent">
-              Your archive doesn&apos;t.
-            </span>
-          </h1>
-          <p className="text-muted-foreground mx-auto mt-6 max-w-xl text-lg leading-relaxed">
-            Save any page instantly, organise into collections, search full
-            text, and share with links. The web archive that works for you.
-          </p>
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
+      {/* 1 + 2 · Hero + annotated real screenshot */}
+      <PageHero
+        eyebrow={
+          <>
+            <Archive className="size-3" aria-hidden="true" />
+            Private web archiving for professionals
+          </>
+        }
+        title="Your private Wayback Machine"
+        lede="PagePocket saves any web page in full fidelity — HTML, CSS, images, fonts — into a private, full-text searchable archive you own. Revisit it forever, or share it with a clean link."
+        actions={
+          <>
             <Button
               size="lg"
               nativeButton={false}
               render={<Link href="/register" />}
               className="bg-accent-warm text-accent-warm-foreground hover:bg-accent-warm/90"
             >
-              Save your first page &mdash; it&apos;s free
+              Start free
             </Button>
             <Button
               size="lg"
@@ -176,283 +330,375 @@ export default function LandingPage() {
               nativeButton={false}
               render={<Link href="/features" />}
             >
-              See how it works
+              Explore features
             </Button>
-          </div>
-          <p className="text-muted-foreground mt-3 text-xs">
-            Free forever &middot; No credit card required
-          </p>
-        </div>
+          </>
+        }
+        containerSize="default"
+        className="relative"
+      >
+        <p className="text-muted-foreground mx-auto mt-3 w-fit text-xs">
+          Free &middot; No credit card
+        </p>
 
-        <div className="mt-16 px-4">
-          <ProductMockup />
-        </div>
-      </section>
+        {/* Annotated product screenshot — the real viewer, not a mockup */}
+        <div className="relative mx-auto mt-12 max-w-4xl sm:mt-16">
+          <figure
+            data-slot="hero-screenshot"
+            className="border-border bg-card relative overflow-hidden rounded-xl border shadow-2xl"
+          >
+            {/* Both themes ship; the hidden variant never downloads because
+                lazy-loaded images with no layout box never intersect. */}
+            <Image
+              src="/screenshots/viewer-light.png"
+              alt="The PagePocket viewer: an archived Wikipedia article on web archiving, rendered with full fidelity beside the “Research sources” collection"
+              width={2880}
+              height={1800}
+              sizes="(min-width: 1024px) 896px, 100vw"
+              className="dark:hidden"
+            />
+            <Image
+              src="/screenshots/viewer-dark.png"
+              alt=""
+              aria-hidden="true"
+              width={2880}
+              height={1800}
+              sizes="(min-width: 1024px) 896px, 100vw"
+              className="hidden dark:block"
+            />
 
-      {/* Pain / Solution */}
-      <section className="px-4 py-20">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="mb-4 text-center text-2xl font-semibold">
-            Sound familiar?
-          </h2>
-          <p className="text-muted-foreground mx-auto mb-12 max-w-lg text-center">
-            The modern web is fragile. PagePocket isn&apos;t.
-          </p>
-          <div className="mb-12 grid gap-6 sm:grid-cols-3">
-            {painPoints.map((pain) => (
-              <div
-                key={pain.title}
-                className="border-border bg-card rounded-xl border p-6 text-center"
-              >
-                <div className="bg-destructive/10 text-destructive mx-auto mb-4 flex size-12 items-center justify-center rounded-full">
-                  <pain.icon className="size-5" />
+            {/* Annotation callouts — CSS-positioned, decorative */}
+            <div className="pointer-events-none absolute inset-0 hidden sm:block">
+              {heroCallouts.map((callout) => (
+                <div key={callout.label}>
+                  <span
+                    aria-hidden="true"
+                    className={`bg-primary absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-4 ring-teal-500/20 ${callout.dot}`}
+                  />
+                  <span
+                    className={`border-border bg-background/95 text-foreground absolute rounded-full border px-2.5 py-1 text-[11px] leading-none font-medium shadow-sm ${callout.chip}`}
+                  >
+                    {callout.label}
+                  </span>
                 </div>
-                <h3 className="mb-1 font-semibold">{pain.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  {pain.description}
-                </p>
-              </div>
-            ))}
-          </div>
-          <div className="text-center">
-            <span className="bg-primary/10 text-primary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium">
-              <Archive className="size-4" />
-              PagePocket solves all three.
-            </span>
-          </div>
-        </div>
-      </section>
+              ))}
+            </div>
 
-      {/* How It Works */}
-      <section className="bg-muted/30 px-4 py-20">
-        <div className="mx-auto max-w-4xl">
-          <h2 className="mb-4 text-center text-2xl font-semibold">
-            Three steps to your personal web archive
-          </h2>
-          <p className="text-muted-foreground mx-auto mb-14 max-w-md text-center">
-            From browser tab to searchable archive in seconds.
-          </p>
-          <div className="relative grid gap-8 sm:grid-cols-3">
-            {/* Connecting line */}
-            <div className="border-primary/30 absolute top-6 right-[20%] left-[20%] hidden border-t border-dashed sm:block" />
-            {steps.map((step, i) => (
-              <div key={step.label} className="relative text-center">
-                <div className="bg-primary text-primary-foreground shadow-primary/20 relative mx-auto mb-4 flex size-12 items-center justify-center rounded-full text-lg font-bold shadow-lg">
+            <figcaption className="sr-only">
+              The saved page renders exactly as the original: styles, images,
+              and text intact, searchable from the bar at the top, filed under
+              your collections in the sidebar.
+            </figcaption>
+          </figure>
+
+          {/* Callout list for small screens, where the chips won&apos;t fit */}
+          <ul className="text-muted-foreground mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs sm:hidden">
+            {heroCallouts.map((callout) => (
+              <li key={callout.label} className="flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="bg-primary size-1.5 rounded-full"
+                />
+                {callout.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </PageHero>
+
+      {/* 3 · Pain recognition */}
+      <Section
+        eyebrow="Sound familiar?"
+        title="Your work depends on pages the web won’t keep"
+        subtitle="The modern web is fragile. Citations rot, redesigns rewrite history, and “save for later” habits keep none of it."
+      >
+        <div className="grid gap-6 sm:grid-cols-3">
+          {painPoints.map((pain) => (
+            <div
+              key={pain.title}
+              className="border-border bg-card rounded-xl border p-6 text-center"
+            >
+              <div className="bg-destructive/10 text-destructive mx-auto mb-4 flex size-12 items-center justify-center rounded-full">
+                <pain.icon className="size-5" aria-hidden="true" />
+              </div>
+              <h3 className="mb-1 font-semibold">{pain.title}</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {pain.description}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-10 text-center">
+          <span className="bg-primary/10 text-primary inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium">
+            <Archive className="size-4" aria-hidden="true" />
+            PagePocket fixes all three.
+          </span>
+        </div>
+      </Section>
+
+      {/* 4 · How it works — real captures */}
+      <Section
+        eyebrow="How it works"
+        title="From open tab to permanent page in three steps"
+        subtitle="No import rituals, no manual filing. Save from the page you’re already reading."
+        className="bg-muted/30"
+      >
+        <ol className="grid gap-10 sm:grid-cols-3 sm:gap-8">
+          {steps.map((step, i) => (
+            <li key={step.label} className="flex flex-col">
+              <div className="mb-4 flex items-center gap-3">
+                <span className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold">
                   {i + 1}
-                </div>
-                <div className="mb-2 flex items-center justify-center gap-2">
-                  <step.icon className="text-primary size-4" />
-                  <h3 className="font-semibold">{step.label}</h3>
-                </div>
-                <p className="text-muted-foreground text-sm">
-                  {step.description}
-                </p>
+                </span>
+                <h3 className="font-semibold">{step.label}</h3>
               </div>
-            ))}
+              <p className="text-muted-foreground mb-5 text-sm leading-relaxed">
+                {step.description}
+              </p>
+              <div className="border-border bg-card mt-auto overflow-hidden rounded-xl border shadow-sm">
+                {"srcDark" in step.image ? (
+                  <>
+                    <Image
+                      src={step.image.src}
+                      alt={step.image.alt}
+                      width={step.image.width}
+                      height={step.image.height}
+                      sizes={step.image.sizes}
+                      className={`${step.image.className} dark:hidden`}
+                    />
+                    <Image
+                      src={step.image.srcDark}
+                      alt=""
+                      aria-hidden="true"
+                      width={step.image.width}
+                      height={step.image.height}
+                      sizes={step.image.sizes}
+                      className={`${step.image.className} hidden dark:block`}
+                    />
+                  </>
+                ) : (
+                  <Image
+                    src={step.image.src}
+                    alt={step.image.alt}
+                    width={step.image.width}
+                    height={step.image.height}
+                    className={step.image.className}
+                  />
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </Section>
+
+      {/* 5 · Feature bento */}
+      <Section
+        eyebrow="Features"
+        title="Everything a personal archive needs"
+        subtitle="Save, read, search, organise, and share — one extension, one library."
+      >
+        <div className="grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Cloud Save — large card, spans 2 cols */}
+          <div className="group border-border bg-card hover:border-primary/30 relative overflow-hidden rounded-xl border p-6 transition-all hover:shadow-lg sm:col-span-2">
+            <div className="bg-primary/5 absolute top-0 right-0 -z-0 h-48 w-48 rounded-bl-full" />
+            <div className="relative">
+              <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
+                <Archive className="size-5" aria-hidden="true" />
+              </div>
+              <h3 className="mb-2 font-semibold">Cloud Save</h3>
+              <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+                Save any web page with one click. Full HTML, styles, and images
+                stored securely in the cloud — even if the original goes
+                offline.
+              </p>
+              <div className="bg-muted/50 border-border mt-4 flex items-center gap-3 rounded-lg border px-3 py-2">
+                <div className="bg-primary/10 flex size-8 items-center justify-center rounded">
+                  <Archive className="text-primary size-4" aria-hidden="true" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="bg-muted h-1.5 w-3/4 rounded" />
+                  <div className="bg-muted h-1.5 w-1/2 rounded" />
+                </div>
+                <div className="text-primary text-[10px] font-medium">
+                  Saved
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Search — standard card */}
+          <div className="group border-border bg-card hover:border-primary/30 rounded-xl border p-6 transition-all hover:shadow-lg">
+            <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
+              <Search className="size-5" aria-hidden="true" />
+            </div>
+            <h3 className="mb-2 font-semibold">Full-Text Search</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Search across every saved page with instant results and
+              highlighted snippets.
+            </p>
+          </div>
+
+          {/* Clean Viewer — standard card */}
+          <div className="group border-border bg-card hover:border-primary/30 rounded-xl border p-6 transition-all hover:shadow-lg">
+            <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
+              <Eye className="size-5" aria-hidden="true" />
+            </div>
+            <h3 className="mb-2 font-semibold">Clean Viewer</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Read saved pages in a distraction-free reader that strips trackers
+              while preserving layout.
+            </p>
+          </div>
+
+          {/* Collections — large card, spans 2 cols */}
+          <div className="group border-border bg-card hover:border-primary/30 relative overflow-hidden rounded-xl border p-6 transition-all hover:shadow-lg sm:col-span-2">
+            <div className="bg-primary/5 absolute bottom-0 left-0 -z-0 h-48 w-48 rounded-tr-full" />
+            <div className="relative">
+              <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
+                <FolderTree className="size-5" aria-hidden="true" />
+              </div>
+              <h3 className="mb-2 font-semibold">Collections</h3>
+              <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+                Organise pages into nested collections with drag and drop.
+                Colour-code, rename, and navigate your archive effortlessly.
+              </p>
+              <div className="bg-muted/50 border-border mt-4 flex items-center gap-2 rounded-lg border px-3 py-2">
+                <FolderTree
+                  className="text-primary size-4"
+                  aria-hidden="true"
+                />
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <div className="bg-primary/60 size-2 rounded-full" />
+                    <div className="bg-muted h-1.5 w-20 rounded" />
+                  </div>
+                  <div className="flex items-center gap-1.5 pl-3">
+                    <div className="bg-muted-foreground/30 size-1.5 rounded-full" />
+                    <div className="bg-muted h-1.5 w-16 rounded" />
+                  </div>
+                  <div className="flex items-center gap-1.5 pl-3">
+                    <div className="bg-muted-foreground/30 size-1.5 rounded-full" />
+                    <div className="bg-muted h-1.5 w-24 rounded" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Shareable Links — standard card */}
+          <div className="group border-border bg-card hover:border-primary/30 rounded-xl border p-6 transition-all hover:shadow-lg">
+            <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
+              <Share2 className="size-5" aria-hidden="true" />
+            </div>
+            <h3 className="mb-2 font-semibold">Shareable Links</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Share any saved page with a public or private link. Set expiry,
+              control access, and track views.
+            </p>
           </div>
         </div>
-      </section>
+      </Section>
 
-      {/* Feature Bento Grid */}
-      <section className="px-4 py-24">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="mb-4 text-center text-2xl font-semibold">
-            Everything you need to never lose a web page again
-          </h2>
-          <p className="text-muted-foreground mx-auto mb-12 max-w-lg text-center">
-            Save, read, search, and share &mdash; all from a single extension.
-          </p>
-          <div className="grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Cloud Save — large card, spans 2 cols */}
-            <div className="group border-border bg-card hover:border-primary/30 relative overflow-hidden rounded-xl border p-6 transition-all hover:shadow-lg sm:col-span-2">
-              <div className="bg-primary/5 absolute top-0 right-0 -z-0 h-48 w-48 rounded-bl-full" />
-              <div className="relative">
-                <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
-                  <Archive className="size-5" />
-                </div>
-                <h3 className="mb-2 font-semibold">Cloud Save</h3>
-                <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                  Save any web page with one click. Full HTML, styles, and
-                  images stored securely in the cloud &mdash; even if the
-                  original goes offline.
-                </p>
-                {/* Mini illustration */}
-                <div className="bg-muted/50 border-border mt-4 flex items-center gap-3 rounded-lg border px-3 py-2">
-                  <div className="bg-primary/10 flex size-8 items-center justify-center rounded">
-                    <Archive className="text-primary size-4" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="bg-muted h-1.5 w-3/4 rounded" />
-                    <div className="bg-muted h-1.5 w-1/2 rounded" />
-                  </div>
-                  <div className="text-primary text-[10px] font-medium">
-                    Saved
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Search — standard card */}
-            <div className="group border-border bg-card hover:border-primary/30 rounded-xl border p-6 transition-all hover:shadow-lg">
-              <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
-                <Search className="size-5" />
-              </div>
-              <h3 className="mb-2 font-semibold">Full-Text Search</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Search across every saved page with instant results and
-                highlighted snippets.
-              </p>
-            </div>
-
-            {/* Clean Viewer — standard card */}
-            <div className="group border-border bg-card hover:border-primary/30 rounded-xl border p-6 transition-all hover:shadow-lg">
-              <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
-                <Eye className="size-5" />
-              </div>
-              <h3 className="mb-2 font-semibold">Clean Viewer</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Read saved pages in a distraction-free reader that strips
-                trackers while preserving layout.
-              </p>
-            </div>
-
-            {/* Collections — large card, spans 2 cols */}
-            <div className="group border-border bg-card hover:border-primary/30 relative overflow-hidden rounded-xl border p-6 transition-all hover:shadow-lg sm:col-span-2">
-              <div className="bg-primary/5 absolute bottom-0 left-0 -z-0 h-48 w-48 rounded-tr-full" />
-              <div className="relative">
-                <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
-                  <FolderTree className="size-5" />
-                </div>
-                <h3 className="mb-2 font-semibold">Collections</h3>
-                <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                  Organise pages into nested collections with drag and drop.
-                  Colour-code, rename, and navigate your archive effortlessly.
-                </p>
-                {/* Mini illustration */}
-                <div className="bg-muted/50 border-border mt-4 flex items-center gap-2 rounded-lg border px-3 py-2">
-                  <FolderTree className="text-primary size-4" />
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <div className="bg-primary/60 size-2 rounded-full" />
-                      <div className="bg-muted h-1.5 w-20 rounded" />
-                    </div>
-                    <div className="flex items-center gap-1.5 pl-3">
-                      <div className="bg-muted-foreground/30 size-1.5 rounded-full" />
-                      <div className="bg-muted h-1.5 w-16 rounded" />
-                    </div>
-                    <div className="flex items-center gap-1.5 pl-3">
-                      <div className="bg-muted-foreground/30 size-1.5 rounded-full" />
-                      <div className="bg-muted h-1.5 w-24 rounded" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Shareable Links — standard card */}
-            <div className="group border-border bg-card hover:border-primary/30 rounded-xl border p-6 transition-all hover:shadow-lg">
-              <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
-                <Share2 className="size-5" />
-              </div>
-              <h3 className="mb-2 font-semibold">Shareable Links</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Share any saved page with a public or private link. Set expiry,
-                control access, and track views.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Social Proof — Testimonials */}
-      <section className="bg-muted/30 px-4 py-20">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="mb-4 text-center text-2xl font-semibold">
-            Trusted by archivers everywhere
-          </h2>
-          <p className="text-muted-foreground mx-auto mb-12 max-w-md text-center">
-            Researchers, journalists, developers, and writers who can&apos;t
-            afford to lose a page.
-          </p>
-          <div className="mb-12 grid gap-6 sm:grid-cols-3">
-            {testimonials.map((t) => (
-              <div
-                key={t.name}
-                className="border-border bg-card rounded-xl border p-6"
-              >
-                <div className="text-primary/30 mb-3 font-serif text-2xl leading-none">
-                  &ldquo;
-                </div>
-                <p className="text-foreground mb-4 text-sm leading-relaxed">
-                  {t.quote}
-                </p>
-                <div>
-                  <div className="text-sm font-medium">{t.name}</div>
-                  <div className="text-muted-foreground text-xs">{t.role}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-6 text-sm">
-            <span className="flex items-center gap-1.5">
-              <Shield className="text-primary size-4" />
-              Your data is encrypted
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Fingerprint className="text-primary size-4" />
-              No tracking
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Globe className="text-primary size-4" />
-              Open-source core
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="px-4 py-20">
-        <div className="mx-auto max-w-2xl">
-          <h2 className="mb-4 text-center text-2xl font-semibold">
-            Frequently asked questions
-          </h2>
-          <p className="text-muted-foreground mb-12 text-center">
-            Can&apos;t find what you&apos;re looking for?{" "}
+      {/* 6 · Persona strip */}
+      <Section
+        eyebrow="Built for professionals"
+        title="Made for people whose work has to hold up"
+        subtitle="Different professions, same requirement: the page must still be there — and say what it said."
+        className="bg-muted/30"
+      >
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {personas.map((persona) => (
             <Link
-              href="https://github.com/anomalyco/opencode/issues"
+              key={persona.href}
+              href={persona.href}
+              className="group border-border bg-card hover:border-primary/30 flex flex-col rounded-xl border p-6 transition-all hover:shadow-lg"
+            >
+              <div className="bg-primary/10 text-primary group-hover:bg-primary/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors">
+                <persona.icon className="size-5" aria-hidden="true" />
+              </div>
+              <h3 className="mb-1.5 font-semibold">{persona.title}</h3>
+              <p className="text-muted-foreground mb-4 text-sm leading-relaxed">
+                {persona.description}
+              </p>
+              <span className="text-primary mt-auto inline-flex items-center gap-1 text-sm font-medium">
+                See the workflow
+                <ArrowRight
+                  className="size-3.5 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </Section>
+
+      {/* 7 · Honest comparison */}
+      <Section
+        eyebrow="Honest comparison"
+        title="How PagePocket compares"
+        subtitle="Every tool here is good at something. Here is what each does well — and where it stops."
+        containerSize="wide"
+      >
+        <ComparisonTable
+          columns={comparisonColumns}
+          rows={comparisonRows}
+          highlightColumn="pagepocket"
+          caption="PagePocket compared with browser bookmarks, local-only savers such as SingleFile, and public archives such as the Wayback Machine"
+        />
+        <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-center text-sm leading-relaxed">
+          Bookmarks are instant and universal. SingleFile is excellent at what
+          it does — complete local copies. The Wayback Machine preserves the
+          public web at a scale no individual could. PagePocket combines the
+          pieces professionals need: full fidelity plus privacy, search,
+          organisation, and sharing.{" "}
+          <Link
+            href="/compare/singlefile"
+            className="text-primary hover:underline"
+          >
+            PagePocket vs SingleFile
+          </Link>{" "}
+          and{" "}
+          <Link
+            href="/compare/wayback"
+            className="text-primary hover:underline"
+          >
+            PagePocket vs the Wayback Machine
+          </Link>{" "}
+          go deeper.
+        </p>
+      </Section>
+
+      {/* 8 · FAQ */}
+      <Section
+        eyebrow="FAQ"
+        title="Frequently asked questions"
+        subtitle={
+          <>
+            Can’t find what you’re looking for?{" "}
+            <Link
+              href="https://github.com/SeoWeb/Web-Downloader-Extension/issues"
               className="text-primary hover:underline"
             >
               Open an issue
             </Link>
             .
-          </p>
-          <div className="space-y-3">
-            {faqs.map((faq) => (
-              <details
-                key={faq.question}
-                className="group border-border bg-card rounded-xl border"
-              >
-                <summary className="[&::-webkit-details-marker]:hover:text-foreground flex cursor-pointer items-center justify-between gap-4 p-4 text-sm font-medium transition-colors select-none">
-                  {faq.question}
-                  <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="text-muted-foreground px-4 pb-4 text-sm leading-relaxed">
-                  {faq.answer}
-                </div>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
+          </>
+        }
+        containerSize="narrow"
+        className="bg-muted/30"
+      >
+        <FaqList items={faqs} />
+      </Section>
 
-      {/* CTA Band */}
-      <section className="px-4 py-24">
+      {/* 9 · CTA band */}
+      <section className="py-section">
         <div className="from-primary/10 via-primary/5 border-primary/20 mx-auto max-w-3xl rounded-3xl border bg-gradient-to-br to-teal-400/10 px-8 py-16 text-center">
           <h2 className="text-3xl font-bold tracking-tight">
-            Never lose a web page again
+            Start your private archive today
           </h2>
           <p className="text-muted-foreground mt-4 text-lg">
-            Free forever. No credit card. Start archiving in 30 seconds.
+            Free plan &middot; No credit card &middot; Your first page saved in
+            under a minute.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
             <Button
@@ -461,7 +707,7 @@ export default function LandingPage() {
               render={<Link href="/register" />}
               className="bg-accent-warm text-accent-warm-foreground hover:bg-accent-warm/90"
             >
-              Create free account
+              Start free
             </Button>
             <Button
               size="lg"

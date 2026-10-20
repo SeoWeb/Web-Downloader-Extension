@@ -7,27 +7,27 @@
 - [x] 1.5 Icons + manifest: favicon set, apple-icon, `manifest` via metadata (reuse `public/icons/*.png`)
 - [x] 1.6 Write `/privacy` and `/terms` (real content: what is stored — account data, archived pages in R2, auth cookies; third parties: Cloudflare, R2; no analytics cookies) — user reviews wording before ship
 - [x] 1.7 Footer: GitHub → `https://github.com/SeoWeb/Web-Downloader-Extension`, install link → Chrome Web Store URL; remove placeholder links; verify zero 404s
-- [ ] 1.8 Remove fabricated testimonials section from `/`
+- [x] 1.8 Remove fabricated testimonials section from `/`
 - [x] 1.9 Screenshot pipeline: Playwright capture script (seeded demo content, both themes) → `public/screenshots/`; capture the core set (library, viewer, share, search, extension popup)
 
 ## 2. Core pages (Phase 1)
 
 - [x] 2.1 Shared marketing components: `Section`, `Container`, `PageHero`, `JsonLd`, `ComparisonTable`, `FaqList` (JSON-LD-integrated), type scale + spacing rhythm in tokens
-- [ ] 2.2 Home rework per modified Landing Page requirement: hero → annotated screenshot → pain → 3-step → bento → persona strip → comparison table → 8+ item FAQ → CTA
-- [ ] 2.3 Features page: real screenshot per capability, TOC anchors, kill all placeholders
-- [ ] 2.4 Pricing page: Free + Pro $2/mo cards with honest quota table (verify actual quotas from gateway/monolith config), optional factual Perma.cc price context
-- [ ] 2.5 Nav/footer polish: use-case + blog links, consistent CTAs, dark-mode parity check
+- [x] 2.2 Home rework per modified Landing Page requirement: hero → annotated screenshot → pain → 3-step → bento → persona strip → comparison table → 8+ item FAQ → CTA
+- [x] 2.3 Features page: real screenshot per capability, TOC anchors, kill all placeholders
+- [x] 2.4 Pricing page: Free + Pro $2/mo cards with honest quota table (verify actual quotas from gateway/monolith config), optional factual Perma.cc price context
+- [x] 2.5 Nav/footer polish: use-case + blog links, consistent CTAs, dark-mode parity check
 
 ## 3. Content routes (Phase 1)
 
-- [ ] 3.1 Four use-case pages (researchers, journalists, developers, archivists): persona hero, ≥3 workflows with screenshots, ≥3 FAQ items + FAQPage JSON-LD, CTA, cross-links
-- [ ] 3.2 Three comparison pages (singlefile, wayback, perma-cc): accurate feature tables, "when the competitor wins" section, CTA
+- [x] 3.1 Four use-case pages (researchers, journalists, developers, archivists): persona hero, ≥3 workflows with screenshots, ≥3 FAQ items + FAQPage JSON-LD, CTA, cross-links
+- [x] 3.2 Three comparison pages (singlefile, wayback, perma-cc): accurate feature tables, "when the competitor wins" section, CTA
 - [ ] 3.3 BreadcrumbList JSON-LD on all nested routes
 
 ## 4. Blog, docs, changelog, about (Phase 2)
 
-- [ ] 4.1 MDX infrastructure: `@next/mdx`, `content/blog/*.mdx` + `content/docs/*.mdx` + `content/changelog/*.md`, frontmatter schema (title, description, date, author, slug), RSC rendering
-- [ ] 4.2 `/blog` index + `/blog/[slug]` (date, author, reading time, prev/next, per-post `ImageResponse` OG, BlogPosting JSON-LD, sitemap inclusion)
+- [x] 4.1 MDX infrastructure: `@next/mdx`, `content/blog/*.mdx` + `content/docs/*.mdx` + `content/changelog/*.md`, frontmatter schema (title, description, date, author, slug), RSC rendering
+- [x] 4.2 `/blog` index + `/blog/[slug]` (date, author, reading time, prev/next, per-post `ImageResponse` OG, BlogPosting JSON-LD, sitemap inclusion)
 - [ ] 4.3 Write the 5 launch articles per the approved keyword set
 - [ ] 4.4 `/docs` index + 6 pages (getting started, saving, collections, search, sharing, troubleshooting)
 - [ ] 4.5 `/changelog` from release notes (newest-first) — confirm source format with user

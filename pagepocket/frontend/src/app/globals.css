@@ -230,3 +230,69 @@ body {
   --spacing-section: 5rem; /* 80px — default section rhythm */
   --spacing-section-lg: 7rem; /* 112px — heroes and feature bands */
 }
+
+/* ─── Blog article prose (design D6) ────────────────────────────────────
+   Scoped typography for MDX long-form bodies (`/blog/[slug]`, later
+   `/docs/[slug]`). Deliberately NOT @tailwindcss/typography — zero extra
+   dependencies — and every rule maps onto the existing design tokens, so
+   light/dark mode follows the CSS variables automatically. */
+.prose-blog {
+  @apply text-foreground/90 text-base leading-relaxed;
+}
+
+/* Vertical rhythm between block elements */
+.prose-blog > * + * {
+  @apply mt-6;
+}
+
+.prose-blog h2 {
+  @apply text-h2 text-foreground mt-14 font-bold tracking-tight;
+}
+
+.prose-blog h3 {
+  @apply text-h3 text-foreground mt-10 font-semibold tracking-tight;
+}
+
+.prose-blog h4 {
+  @apply text-h4 text-foreground mt-8 font-semibold;
+}
+
+.prose-blog a {
+  @apply text-primary font-medium underline decoration-primary/40 underline-offset-4 hover:decoration-primary;
+}
+
+.prose-blog ul {
+  @apply list-disc space-y-2 pl-6;
+}
+
+.prose-blog ol {
+  @apply list-decimal space-y-2 pl-6;
+}
+
+.prose-blog li::marker {
+  @apply text-primary;
+}
+
+.prose-blog blockquote {
+  @apply border-primary/30 text-muted-foreground border-l-4 pl-4 italic;
+}
+
+.prose-blog strong {
+  @apply text-foreground font-semibold;
+}
+
+.prose-blog code {
+  @apply bg-muted rounded-md px-1.5 py-0.5 font-mono text-[0.875em];
+}
+
+.prose-blog pre {
+  @apply bg-muted overflow-x-auto rounded-lg p-4;
+}
+
+.prose-blog pre code {
+  @apply bg-transparent p-0;
+}
+
+.prose-blog hr {
+  @apply border-border mt-10;
+}
