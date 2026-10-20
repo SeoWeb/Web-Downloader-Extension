@@ -61,7 +61,28 @@ services:
     entrypoint:
       - python
       - -c
-      - "import boto3,os; c=boto3.client('s3',endpoint_url=os.environ['R2_ENDPOINT_URL'],aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'],aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'],region_name='auto'); c.create_bucket(Bucket=os.environ['R2_BUCKET_NAME']); print('bucket ready:', os.environ['R2_BUCKET_NAME'])"
+      - |
+        import boto3, os, time
+        from botocore.exceptions import EndpointConnectionError
+        c = boto3.client(
+            "s3",
+            endpoint_url=os.environ["R2_ENDPOINT_URL"],
+            aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+            region_name="auto",
+        )
+        bucket = os.environ["R2_BUCKET_NAME"]
+        # depends_on(started) does NOT mean s3mock is listening yet (no
+        # healthcheck on the Java image) — retry until it accepts us.
+        for attempt in range(30):
+            try:
+                c.create_bucket(Bucket=bucket)
+                print("bucket ready:", bucket, flush=True)
+                break
+            except EndpointConnectionError:
+                if attempt == 29:
+                    raise
+                time.sleep(2)
     networks:
       - default
     restart: "no"
