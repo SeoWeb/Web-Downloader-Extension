@@ -1,3 +1,9 @@
+# Server Storage Original URL Specification
+
+## Purpose
+
+Governs storage of each downloaded resource's actual web URL (rather than the local path) as `original_url` in server Resource records, via an optional `originalUrl` parameter on `addFile()` with backward-compatible fallback — enabling the server-side content-type map for HTML conversion.
+
 ## Requirements
 
 ### Requirement: Original web URL stored in server resource records

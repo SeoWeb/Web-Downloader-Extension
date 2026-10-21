@@ -1,4 +1,10 @@
-## ADDED Requirements
+# PagePocket Frontend Dashboard Specification
+
+## Purpose
+
+Governs the `/app` dashboard: paged listing of archived pages with infinite scroll, sort controls, per-card quick actions (open, share, move to collection, delete, download ZIP), and the zero-archive empty state.
+
+## Requirements
 
 ### Requirement: Dashboard Route
 

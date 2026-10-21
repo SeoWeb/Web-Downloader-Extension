@@ -80,6 +80,22 @@ Interactive UI SHALL have unique element IDs, expanded/collapsed disclosure cont
 
 If every retry of session finalization fails, the panel SHALL surface a distinct failure explanation (with server-unavailable wording) rather than looping generic "Download failed" states.
 
+#### Scenario: Finalization retries exhaust into a distinct server state
+
+- **WHEN** every retry of session finalization fails with `ServerUnavailableError`
+- **THEN** the panel shows the dedicated server-unavailable explanation (`status.serverUnavailable`), not the generic failure state
+- **AND** the failure message carries `canFallback: true`, so the UI offers "Retry" and "Download locally" instead of looping
+
+#### Scenario: Each terminal server failure class reports its own reason
+
+- **WHEN** the terminal error is an assembly timeout, assembly failure, or authentication failure
+- **THEN** the failure message carries the matching reason (`assembly_timeout`, `assembly_failed`, `auth_failed`) so the panel wording is specific, never the generic loop
+
+#### Scenario: Concrete fallback URL survives the failure
+
+- **WHEN** the server already produced a download URL for the session before the terminal failure
+- **THEN** the failure message includes that URL (`fallbackUrl`) so the user can still retrieve the artifact
+
 ### Requirement: Terminal upload failures are logged
 
 Every terminal failure class of the server-mode upload queue SHALL emit exactly one structured console warn/error at the moment the failure becomes terminal: `AuthenticationError` (after ServerClient's own re-registration attempts), per-task user-cancellation aborts, the 413 session-full fail-all drain (logged once for the session, not once per fast-failed task), and retries-exhausted (including timeout exhaustion). Retries that have not yet reached terminality SHALL NOT spam the log. Silence is a defect: a download whose uploads failed must leave evidence in the service-worker console.

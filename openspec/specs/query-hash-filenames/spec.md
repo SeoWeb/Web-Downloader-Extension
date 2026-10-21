@@ -1,3 +1,9 @@
+# Query Hash Filenames Specification
+
+## Purpose
+
+Governs server-side image filename generation for URLs with query strings: `generate_image_filename()` appends a DJB2 hash of the query string, byte-identical to the extension's TypeScript `getQueryHash()`, and omits the suffix when no query parameters are present.
+
 ## Requirements
 
 ### Requirement: DJB2 query hash in server-side image filename generation

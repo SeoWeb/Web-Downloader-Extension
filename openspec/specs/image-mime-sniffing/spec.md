@@ -1,4 +1,10 @@
-## ADDED Requirements
+# Image MIME Sniffing Specification
+
+## Purpose
+
+Governs client-side image MIME sniffing from a blob's leading bytes (binary signatures plus an SVG text sniff), its use to recover content types when the HTTP `Content-Type` header is absent or generic, and forwarding the effective MIME to `storage.addFile` so resource uploads carry real content types.
+
+## Requirements
 
 ### Requirement: Image MIME sniffer for blob contents
 
@@ -8,17 +14,17 @@ The sniffer SHALL read only the first 512 bytes of the blob to keep CPU and memo
 
 The sniffer SHALL recognize the following binary signatures and return the paired MIME type:
 
-| Format | Leading bytes (hex) | Returned MIME |
-|---|---|---|
-| PNG | `89 50 4E 47 0D 0A 1A 0A` | `image/png` |
-| JPEG | `FF D8 FF` | `image/jpeg` |
-| GIF | `47 49 46 38 37 61` or `47 49 46 38 39 61` | `image/gif` |
-| WebP | `52 49 46 46 ?? ?? ?? ?? 57 45 42 50` | `image/webp` |
-| BMP | `42 4D` | `image/bmp` |
-| ICO | `00 00 01 00` | `image/x-icon` |
-| AVIF | bytes 4–11 `66 74 79 70 61 76 69 (66\|73)` (`ftypavif` / `ftypavis`) | `image/avif` |
-| HEIC | bytes 4–11 `66 74 79 70` followed by `heic` / `heix` / `hevc` / `hevx` / `heim` / `heis` / `hevm` / `hevs` / `mif1` / `msf1` | `image/heic` |
-| TIFF | `49 49 2A 00` or `4D 4D 00 2A` | `image/tiff` |
+| Format | Leading bytes (hex)                                                                                                          | Returned MIME  |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| PNG    | `89 50 4E 47 0D 0A 1A 0A`                                                                                                    | `image/png`    |
+| JPEG   | `FF D8 FF`                                                                                                                   | `image/jpeg`   |
+| GIF    | `47 49 46 38 37 61` or `47 49 46 38 39 61`                                                                                   | `image/gif`    |
+| WebP   | `52 49 46 46 ?? ?? ?? ?? 57 45 42 50`                                                                                        | `image/webp`   |
+| BMP    | `42 4D`                                                                                                                      | `image/bmp`    |
+| ICO    | `00 00 01 00`                                                                                                                | `image/x-icon` |
+| AVIF   | bytes 4–11 `66 74 79 70 61 76 69 (66\|73)` (`ftypavif` / `ftypavis`)                                                         | `image/avif`   |
+| HEIC   | bytes 4–11 `66 74 79 70` followed by `heic` / `heix` / `hevc` / `hevx` / `heim` / `heis` / `hevm` / `hevs` / `mif1` / `msf1` | `image/heic`   |
+| TIFF   | `49 49 2A 00` or `4D 4D 00 2A`                                                                                               | `image/tiff`   |
 
 When no binary signature matches, the sniffer SHALL attempt a text sniff by decoding the first 512 bytes as UTF-8 (with replacement on invalid sequences) and returning `image/svg+xml` when the decoded text matches the regex `/<\?xml\b|<svg\b/i`. Otherwise the sniffer SHALL return `null`.
 

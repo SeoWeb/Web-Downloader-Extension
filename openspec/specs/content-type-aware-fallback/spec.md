@@ -1,3 +1,9 @@
+# Content-Type-Aware Fallback Specification
+
+## Purpose
+
+Governs how the server determines correct image file extensions when filename-map lookup fails: the assembler builds a URL-to-content-type map and a local-path-based extension map from session resources, and the HTML converter applies content-type-derived extensions in every image fallback path (`<img src>`, lazy-load attributes, `srcset`, `<source>`, CSS `url()`).
+
 ## Requirements
 
 ### Requirement: Local-path-based extension map construction
