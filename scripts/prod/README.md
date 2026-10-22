@@ -686,6 +686,27 @@ drift:`DB*USER*_`were never in`.env`, and old containers predated the
   `VITE_GOOGLE_CLIENT_ID` so the Google button stays hidden in store builds
   until that var is added as a build secret (pending follow-up).
 
+### Deploy records — 2026-10-22 (easier-auth follow-ups)
+
+- `0d3b498` — auth-service: log Google token-endpoint
+  `error`/`error_description` on exchange failure (diagnosing
+  invalid_grant vs invalid_client); CI run `39772601954`, deploy
+  `39772601856`, deploy-backend only. Diagnosis probe result:
+  `invalid_grant` on a deliberately bogus code → configured
+  GOOGLE_CLIENT_SECRET is correct.
+- `410242c` — frontend auth proxy: added `google` to ALLOWED_PATHS in
+  `pagepocket/frontend/src/app/api/v1/auth/[...path]/route.ts`
+  (POST /api/v1/auth/google previously 404'd "Unknown auth endpoint" at
+  app.pagepocket.app — root cause of the operator's first Google sign-in
+  test failure; extension traffic goes through the frontend proxy, not
+  the gateway directly). CI run `39774087908`, deploy `39774087931`,
+  deploy-frontend only. Post-fix E2E through the public URL: `{}` → 400
+  missing-code; invalid code → 401 google sign-in failed; full chain
+  proxy→gateway→auth-service→Google confirmed in logs. LESSON for the
+  runbook: deploy verification for extension-facing auth endpoints must
+  probe through app.pagepocket.app (the proxy), not the host-local
+  gateway port.
+
 ## 15. Extension ID & Google OAuth redirect URI (easier-auth)
 
 The extension ID is pinned by the `key` field in `public/manifest.json`

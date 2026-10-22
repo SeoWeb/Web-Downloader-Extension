@@ -33,3 +33,9 @@
 - [x] 4.2 Confirm `CORS_ALLOW_ORIGINS` in production includes the production `chrome-extension://` origin
 - [x] 4.3 Update production env/secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) — deployment itself only on explicit user order per `scripts/prod/README.md` (deploy order: backend + migration 002 first, extension last)
 - [x] 4.4 Update user-facing docs/release notes: keep-signed-in behavior, Google sign-in, shared-computer opt-out
+
+## 5. Follow-ups (discovered during implementation)
+
+- [x] 5.1 Frontend auth proxy: add `google` to `ALLOWED_PATHS` in `pagepocket/frontend/src/app/api/v1/auth/[...path]/route.ts` so `POST /api/v1/auth/google` forwards through app.pagepocket.app (was 404 "Unknown auth endpoint" — root cause of first user test failure). Commit `410242c`, deployed + E2E-verified through the public URL.
+- [x] 5.2 auth-service: log Google token-endpoint `error`/`error_description` on exchange failure (was status-only, made diagnosis blind). Commit `0d3b498`, deployed.
+- [ ] 5.3 Add `VITE_GOOGLE_CLIENT_ID` as a CI build secret so Web Store artifacts include the Google button (operator's local builds unaffected; button hidden in store builds until then).
