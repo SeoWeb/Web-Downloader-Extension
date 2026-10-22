@@ -638,3 +638,25 @@ drift:`DB*USER*_`were never in`.env`, and old containers predated the
   Content-Length header and the BFF streams request bodies chunked — ingest
   via `/api/pp/*` is not possible; that is the extension/monolith path by
   design.
+
+### Deploy record — 2026-10-22 (dashboard SSR resilience fix, `675d639`)
+
+- Trigger: user-reported "Something went wrong" on `/app` (Server Components
+  render error, digest-only in prod console), self-healing on reload.
+- Root cause (verified from gateway logs): expired `pp_access` + valid
+  `pp_refresh` → middleware passes through by design → SSR `listPages` in
+  `(app)/app/page.tsx` sent the stale bearer → gateway 401 → uncaught
+  `AuthenticationError` → error boundary. Reload worked because client calls
+  go through `/api/pp/[...path]`, which refreshes the cookie. It was the only
+  unguarded SSR fetch in the `(app)` tree.
+- Fix: `loadInitialPages()` try/catch → on any SSR fetch failure (401/network/
+  5xx) log server-side and render `<Dashboard initialData={undefined}>`;
+  client react-query fetches through the refreshing proxy. No login redirect
+  on 401 (refresh may still be valid). 5 new tests, 189 pass; build/typecheck/
+  lint green.
+- Deploy: run `39749785347` — `deploy-frontend` ✓ (1m16s), `deploy-backend`
+  skipped (frontend-only). Host tree pinned at `675d639`.
+- Prod verification: marketing `/` → 200; `/app` unauth → 307 login redirect;
+  regression case (garbage `pp_access` + `pp_refresh` present — previously the
+  error boundary) → **200 with dashboard fallback, no error boundary**;
+  demo-account real token → 200 hydrated dashboard.
