@@ -53,13 +53,15 @@ const initialData = {
   page_size: 20,
 };
 
-function renderDashboard() {
+function renderDashboard({
+  initialData: initial,
+}: { initialData?: typeof initialData } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <Dashboard initialData={initialData} />
+      <Dashboard initialData={initial} />
     </QueryClientProvider>,
   );
 }
@@ -84,7 +86,7 @@ afterEach(() => {
 
 describe("Dashboard card Download wiring", () => {
   it("offers Download in the card menu above Share", async () => {
-    renderDashboard();
+    renderDashboard({ initialData });
     await userEvent.click(screen.getByRole("button", { name: "Page actions" }));
     const download = await screen.findByRole("menuitem", { name: "Download" });
     const names = screen
@@ -96,7 +98,7 @@ describe("Dashboard card Download wiring", () => {
   });
 
   it("navigates to the archive ZIP endpoint for that page from the card menu", async () => {
-    renderDashboard();
+    renderDashboard({ initialData });
     await userEvent.click(screen.getByRole("button", { name: "Page actions" }));
     const download = await screen.findByRole("menuitem", { name: "Download" });
     await userEvent.click(download);
@@ -104,5 +106,41 @@ describe("Dashboard card Download wiring", () => {
     expect(assign).toHaveBeenCalledWith(
       "/api/pp/archive/pages/test-page-id/zip",
     );
+  });
+});
+
+// SSR fallback contract (app/page.tsx loadInitialPages): when the initial
+// server fetch fails, Dashboard mounts with no initialData and must show its
+// loading state, then hydrate from the client-side query — never crash.
+describe("Dashboard without SSR initialData (SSR fetch fallback)", () => {
+  it("renders the loading skeleton, then hydrates from the client fetch", async () => {
+    let resolveList: (value: typeof initialData) => void = () => {};
+    vi.mocked(clientApi.listPages).mockReturnValue(
+      new Promise((resolve) => {
+        resolveList = resolve;
+      }),
+    );
+
+    const { container } = renderDashboard();
+
+    // Query still in flight — skeleton, not the card list or empty state.
+    expect(screen.queryByText("Example Page")).not.toBeInTheDocument();
+    expect(container.querySelector(".animate-pulse")).not.toBeNull();
+
+    resolveList(initialData);
+    expect(await screen.findByText("Example Page")).toBeInTheDocument();
+  });
+
+  it("renders the empty state without crashing when the client fetch returns no pages", async () => {
+    vi.mocked(clientApi.listPages).mockResolvedValue({
+      pages: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+
+    renderDashboard();
+
+    expect(await screen.findByText("No saved pages yet")).toBeInTheDocument();
   });
 });

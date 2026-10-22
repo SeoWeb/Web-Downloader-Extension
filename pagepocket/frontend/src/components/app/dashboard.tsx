@@ -27,7 +27,9 @@ import type { ListPagesResponse } from "@/lib/api/schemas";
 import { useQK } from "@/components/providers/query-provider";
 
 type DashboardProps = {
-  initialData?: ListPagesResponse;
+  // Explicit undefined = SSR list fetch failed (app/page.tsx): the query
+  // hydrates from the client-side fetch through the /api/pp proxy instead.
+  initialData?: ListPagesResponse | undefined;
   collectionId?: string;
 };
 
