@@ -5,7 +5,7 @@ import { forwardedClientIpHeadersFrom } from "@/lib/api/client-ip";
 /**
  * Proxy route for extension auth requests.
  *
- * The Chrome extension calls /api/v1/auth/{login,register,refresh,logout}
+ * The Chrome extension calls /api/v1/auth/{login,register,refresh,logout,google}
  * directly. This catch-all proxies those requests to the API gateway and
  * returns the raw JSON response (including JWT tokens in the body) so the
  * extension can store them in chrome.storage.local.
@@ -17,7 +17,13 @@ import { forwardedClientIpHeadersFrom } from "@/lib/api/client-ip";
 const API_BASE = API_GATEWAY_URL;
 
 // Only allow known auth sub-paths
-const ALLOWED_PATHS = new Set(["login", "register", "refresh", "logout"]);
+const ALLOWED_PATHS = new Set([
+  "login",
+  "register",
+  "refresh",
+  "logout",
+  "google",
+]);
 
 export async function POST(
   request: NextRequest,
