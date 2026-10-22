@@ -17,14 +17,18 @@ Chrome extension for downloading complete websites with all assets, supporting l
 ## Storage Modes
 
 ### PagePocket Cloud Storage (Optional)
+
 - Uploads pages directly to your PagePocket account
 - No local file saved — cloud-only storage
 - Requires a PagePocket backend and user account (JWT auth)
+- Sign-in options: email + password, or **Continue with Google** (button appears only when the build sets `VITE_GOOGLE_CLIENT_ID`; signing in with Google using the email of an existing password account links the two into one account)
+- Optional **Keep me signed in on this device** (pre-checked): keeps you logged in across browser restarts via a refresh token stored locally on the device — it rotates automatically and is revoked on sign-out; untick on shared computers to require login after every browser restart
 - Enabled at build time via `VITE_PAGEPOCKET_URL` env var
 - Users toggle cloud storage ON/OFF per session via the extension UI
 - Shows upload progress, completion status, and "View in PagePocket" link
 
 ### IndexedDB (Default - Recommended)
+
 - Stores content on disk instead of RAM
 - Handles unlimited site sizes
 - Slightly slower but much more reliable
@@ -32,6 +36,7 @@ Chrome extension for downloading complete websites with all assets, supporting l
 - Multi-part ZIP support for files >100MB
 
 ### Legacy JSZip Mode
+
 - Stores all content in RAM
 - Fast for small sites (<100MB)
 - May fail on large sites due to memory limits
@@ -41,11 +46,11 @@ Chrome extension for downloading complete websites with all assets, supporting l
 
 This is a monorepo with three independent, deployable components, each with its own toolchain:
 
-| Component | Path | Stack | How it deploys |
-|---|---|---|---|
-| Browser extension | repo root (`src/`, `vite.config.ts`) | Vite + pnpm | `.zip` artifact (manual store publish) |
-| Frontend | `pagepocket/frontend/` | Next.js + pnpm | Contabo server (nginx → `:3000`; see "Production topology" below) |
-| Backend | `pagepocket/services/` + `shared/` + `proto/` | Python 3.12 gRPC, Docker | Contabo server (docker compose) |
+| Component         | Path                                          | Stack                    | How it deploys                                                    |
+| ----------------- | --------------------------------------------- | ------------------------ | ----------------------------------------------------------------- |
+| Browser extension | repo root (`src/`, `vite.config.ts`)          | Vite + pnpm              | `.zip` artifact (manual store publish)                            |
+| Frontend          | `pagepocket/frontend/`                        | Next.js + pnpm           | Contabo server (nginx → `:3000`; see "Production topology" below) |
+| Backend           | `pagepocket/services/` + `shared/` + `proto/` | Python 3.12 gRPC, Docker | Contabo server (docker compose)                                   |
 
 ## Development
 
@@ -103,23 +108,23 @@ GitHub Actions workflows live in `.github/workflows/` and are path-filtered so o
 
 ### Required repository secrets
 
-| Secret | Purpose |
-|---|---|
-| `CONTABO_HOST` | SSH host of the deployment server |
-| `CONTABO_USER` | SSH user |
-| `CONTABO_SSH_KEY` | Private key for SSH access |
+| Secret                | Purpose                                                                         |
+| --------------------- | ------------------------------------------------------------------------------- |
+| `CONTABO_HOST`        | SSH host of the deployment server                                               |
+| `CONTABO_USER`        | SSH user                                                                        |
+| `CONTABO_SSH_KEY`     | Private key for SSH access                                                      |
 | `CONTABO_DEPLOY_PATH` | (Optional) repo path on server; defaults to `/var/www/Web-Downloader-Extension` |
 
 ## Production topology
 
 Verified against the live host (185.213.25.5) in Oct 2026:
 
-| Host | Path | Backend |
-|---|---|---|
-| `server.pagepocket.app` | Cloudflare → nginx :443 → `127.0.0.1:8000` | **Monolith** (`server/`) — serves the extension contract |
-| `pagepocket.app` | nginx :443 → `127.0.0.1:3000` | Next.js frontend |
-| `app.pagepocket.app` | no dedicated nginx server block — falls through to the default vhost (`pagepocket.app`) → `:3000` | Same frontend (works by nginx default-server semantics; one explicit `server_name` block would make it intentional) |
-| (no public hostname) | direct :8090 | pagepocket API gateway — the gateway has no DNS name; it is reached only via the frontend proxy on the host |
+| Host                    | Path                                                                                              | Backend                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `server.pagepocket.app` | Cloudflare → nginx :443 → `127.0.0.1:8000`                                                        | **Monolith** (`server/`) — serves the extension contract                                                            |
+| `pagepocket.app`        | nginx :443 → `127.0.0.1:3000`                                                                     | Next.js frontend                                                                                                    |
+| `app.pagepocket.app`    | no dedicated nginx server block — falls through to the default vhost (`pagepocket.app`) → `:3000` | Same frontend (works by nginx default-server semantics; one explicit `server_name` block would make it intentional) |
+| (no public hostname)    | direct :8090                                                                                      | pagepocket API gateway — the gateway has no DNS name; it is reached only via the frontend proxy on the host         |
 
 - nginx sets `X-Forwarded-For`/`X-Forwarded-Proto`, `X-Real-IP` and `Host`; `CF-Connecting-IP` comes from the Cloudflare edge. Backends that derive client identity from forwarding headers (the gateway's rate limiter) must pin `TRUSTED_PROXIES` to the nginx host — direct-to-port traffic carries spoofable headers.
 - ⚠️ **Direct port exposure**: monolith `:8000`, gateway `:8090`, and monolith MySQL `:33060` are all reachable from the internet today. Closing them (loopback bind / firewall) + credential rotation is the first hardening sequence in [`scripts/prod/README.md`](scripts/prod/README.md) (deployment & hardening runbook: deploy flow, Alembic-in-deploy, backups/restore drill, rollback).

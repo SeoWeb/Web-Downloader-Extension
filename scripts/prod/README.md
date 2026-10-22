@@ -660,3 +660,41 @@ drift:`DB*USER*_`were never in`.env`, and old containers predated the
   regression case (garbage `pp_access` + `pp_refresh` present — previously the
   error boundary) → **200 with dashboard fallback, no error boundary**;
   demo-account real token → 200 hydrated dashboard.
+
+## 15. Extension ID & Google OAuth redirect URI (easier-auth)
+
+The extension ID is pinned by the `key` field in `public/manifest.json`
+(RSA-2048 public key, base64 SPKI/DER). The ID is the SHA-256 of that DER
+public key, first 16 bytes, each hex digit mapped to `a`–`p`:
+
+- **Extension ID:** `aeojmgngnebhbjpncamiplkimkbnmpmk`
+- **Google OAuth redirect URI:** `https://aeojmgngnebhbjpncamiplkimkbnmpmk.chromiumapp.org/`
+- The same ID is visible in the Chrome Web Store listing URL and
+  `tests/e2e/README.md`; `chrome.runtime.id` equals it at runtime.
+
+**Never rotate the manifest `key`** — a new key means a new extension ID,
+which orphans every install (new store listing) and breaks the Google
+OAuth client's authorized redirect URI (`docs/key-rotation-runbook.md`
+records a past private-key leak; the _public_ manifest key was never part
+of it). The private upload/signing key (`dist.pem`) lives OUTSIDE the repo
+(`~/.keys/`, `*.pem` gitignored) and is independent of the manifest key.
+
+To re-derive the ID from the key (verification only — no regeneration):
+
+    openssl rsa -in dist.pem -pubout -outform DER | base64   # manifest key form
+    # ID = sha256(DER public key)[0:16], hex digits mapped to a-p
+
+The Google OAuth client (Web application type, task 4.1 of
+`openspec/changes/easier-auth/`) must register EXACTLY the redirect URI
+above; its client ID goes into the extension build as
+`VITE_GOOGLE_CLIENT_ID` (empty = Google button hidden).
+
+Deploy prerequisites for Google sign-in (backend side):
+
+- The api-gateway and auth-service require `GOOGLE_CLIENT_ID` and
+  `GOOGLE_CLIENT_SECRET` in the environment — production config fails
+  fast without them once the Google route is enabled.
+- Deployment requires Alembic migration `002_google_signin`
+  (nullable unique `google_sub`, nullable `password_hash`) to run
+  **before** the new backend handles traffic — deploy backend + migration
+  first, extension build last.

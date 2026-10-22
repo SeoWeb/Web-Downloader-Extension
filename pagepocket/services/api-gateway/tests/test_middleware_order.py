@@ -145,5 +145,32 @@ class TestMalformedBodyHandling(unittest.TestCase):
         self.assertEqual(r.headers.get("access-control-allow-origin"), ORIGIN)
 
 
+class TestPublicGoogleAuthRoute(unittest.TestCase):
+    """easier-auth spec "Public Google auth route bypasses auth": a POST to
+    /api/v1/auth/google without Authorization must NOT 401 in the auth
+    middleware — it reaches the route (which 400s on the missing body
+    fields, gRPC never called), unlike any protected sibling path."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.main = _load_main()
+
+    def test_google_route_reachable_without_authorization(self):
+        with TestClient(self.main.app) as client:
+            r = client.post("/api/v1/auth/google", json={})
+        self.assertEqual(r.status_code, 400)  # route-level missing field — NOT 401
+        self.assertIn("code", r.json()["detail"].get("detail", ""))
+
+    def test_google_route_in_public_paths_set(self):
+        from middleware import PUBLIC_PATHS
+
+        self.assertIn("/api/v1/auth/google", PUBLIC_PATHS)
+
+    def test_protected_sibling_still_requires_token(self):
+        with TestClient(self.main.app) as client:
+            r = client.post("/api/v1/auth/logout")
+        self.assertEqual(r.status_code, 401)
+
+
 if __name__ == "__main__":
     unittest.main()

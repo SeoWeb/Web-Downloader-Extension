@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 ENVIRONMENT = "ENVIRONMENT"
 JWT_SECRET = "JWT_SECRET"
+GOOGLE_CLIENT_ID = "GOOGLE_CLIENT_ID"
+GOOGLE_CLIENT_SECRET = "GOOGLE_CLIENT_SECRET"
 ASSET_TOKEN_SECRET = "ASSET_TOKEN_SECRET"
 ASSET_TOKEN_TTL_SECONDS = "ASSET_TOKEN_TTL_SECONDS"
 CORS_ALLOW_ORIGINS = "CORS_ALLOW_ORIGINS"
@@ -61,12 +63,22 @@ def is_production() -> bool:
     return get_environment() == "production"
 
 
-def validate_prod_config(*, environment: str, jwt_secret: str | None) -> None:
+def validate_prod_config(
+    *,
+    environment: str,
+    jwt_secret: str | None,
+    google_client_id: str | None = None,
+    google_client_secret: str | None = None,
+) -> None:
     """Refuse unsafe production configurations.
 
     Raises ConfigError when running with ENVIRONMENT=production while JWT_SECRET
-    is unset or still the well-known development default. Non-production
-    environments pass unvalidated (dev must keep working with compose defaults).
+    is unset or still the well-known development default, or while the Google
+    OAuth client credentials (easier-auth D7 — AuthService exchanges the code
+    server-side and the gateway's own fail-fast keeps the deploy honest even
+    though the secret never passes through the gateway) are unset or blank.
+    Non-production environments pass unvalidated (dev must keep working with
+    compose defaults).
     """
     env = (environment or "").strip().lower()
     if env != "production":
@@ -83,6 +95,16 @@ def validate_prod_config(*, environment: str, jwt_secret: str | None) -> None:
             "with ENVIRONMENT=production. Generate a real secret before deploying."
         )
 
+    for name, value in (
+        (GOOGLE_CLIENT_ID, google_client_id),
+        (GOOGLE_CLIENT_SECRET, google_client_secret),
+    ):
+        if not value or not value.strip():
+            raise ConfigError(
+                f"{name} must be set when ENVIRONMENT=production — refusing to boot "
+                "without the Google sign-in credentials"
+            )
+
 
 def enforce_startup_config() -> None:
     """Validate the current process environment, failing fast (SystemExit)."""
@@ -90,6 +112,8 @@ def enforce_startup_config() -> None:
         validate_prod_config(
             environment=os.environ.get(ENVIRONMENT, "development"),
             jwt_secret=os.environ.get(JWT_SECRET),
+            google_client_id=os.environ.get(GOOGLE_CLIENT_ID),
+            google_client_secret=os.environ.get(GOOGLE_CLIENT_SECRET),
         )
     except ConfigError as exc:
         raise SystemExit(f"api-gateway configuration error: {exc}") from exc

@@ -2,7 +2,7 @@ export const meta = {
   title: "Troubleshooting",
   description:
     "Fixes for common PagePocket problems: failed or interrupted saves, quota errors, sign-in trouble, degraded captures on script-heavy sites, and broken share links.",
-  date: "2026-10-20",
+  date: "2026-10-22",
 }
 
 Most PagePocket problems have a short, known cause. This page lists them
@@ -71,6 +71,24 @@ counted), wait for the rolling window to move, or
 Check the email and password — extension sign-in uses the same account as
 [the website](/login). If you have not registered yet, use the **Register**
 tab in the panel or [create an account](/register) on the site first.
+
+One special case: an account created with **Continue with Google** has no
+password, so signing in with a password cannot work for it — sign in with
+Google instead (the same button, on the same form).
+
+### The "Continue with Google" button doesn't appear
+
+Google sign-in is an optional feature: the button shows up in the
+extension's sign-in and registration forms only when it has been enabled
+on the backend. Until then, email and password work exactly as before.
+
+### I'm asked to sign in after every browser restart
+
+By default the extension keeps you signed in on the device via the
+pre-checked **Keep me signed in on this device** box on the sign-in form.
+If you are signed out on every restart, that box was unticked when you
+signed in — sign in again and leave it ticked (on a shared computer,
+unticking it is the safer choice; that is what the option is for).
 
 ### Saved pages are not in my library
 

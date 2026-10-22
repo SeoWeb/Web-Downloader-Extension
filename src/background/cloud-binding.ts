@@ -6,7 +6,11 @@
  * POST /api/v1/cloud/link and persists the binding state in
  * chrome.storage.session (same lifetime as the PagePocket auth state and
  * the server API key — all three are re-established together after a
- * browser restart or re-registration).
+ * browser restart or re-registration). With keep-signed-in active
+ * (easier-auth D8) the record is additionally mirrored to
+ * chrome.storage.local and follows the persisted refresh token's
+ * lifecycle: written on link/refresh, restored on startup, cleared on
+ * logout / refresh failure.
  *
  * Lifecycle:
  * - login/register  → fire-and-forget `linkCloudAccount()` (never fails login)
@@ -20,11 +24,15 @@
  *                     is missing (link still in flight, transient failure)
  * - 403 cloud_not_linked at session creation → `ensureCloudBinding({ force })`
  *                     re-binds (the server-side client row was replaced)
+ * - browser restart → `restoreCloudBindingFromLocal()` copies the mirrored
+ *                     record back into session storage when a keep-signed-in
+ *                     session was restored (easier-auth D8)
  */
 
 import { serverClient } from "./server-client";
 import { pagepocketClient } from "./pagepocket-client";
 import {
+  PAGEPOCKET_AUTH_PERSISTED_KEY,
   PAGEPOCKET_AUTH_STORAGE_KEY,
   PAGEPOCKET_CLOUD_BINDING_KEY,
   type CloudBindingState,
@@ -68,6 +76,23 @@ export async function getCloudBinding(): Promise<CloudBindingState | null> {
   }
 }
 
+/**
+ * Keep-signed-in is active iff the opt-in auth slice exists on disk
+ * (easier-auth D8: the binding is persisted/cleared together with the
+ * refresh token, so its presence is the mirror trigger).
+ */
+async function hasPersistedAuth(): Promise<boolean> {
+  try {
+    if (!chrome?.storage?.local) return false;
+    const result = await chrome.storage.local.get(
+      PAGEPOCKET_AUTH_PERSISTED_KEY,
+    );
+    return result[PAGEPOCKET_AUTH_PERSISTED_KEY] !== undefined;
+  } catch {
+    return false;
+  }
+}
+
 /** Persist the binding state. */
 async function persistCloudBinding(state: CloudBindingState): Promise<void> {
   try {
@@ -75,18 +100,50 @@ async function persistCloudBinding(state: CloudBindingState): Promise<void> {
     await chrome.storage.session.set({
       [PAGEPOCKET_CLOUD_BINDING_KEY]: state,
     });
+    // easier-auth D8: mirror the binding to disk while keep-signed-in is
+    // active so it survives a browser restart alongside the refresh token.
+    if (await hasPersistedAuth()) {
+      await chrome.storage.local.set({
+        [PAGEPOCKET_CLOUD_BINDING_KEY]: state,
+      });
+    }
   } catch {
     // Non-critical — the lazy path re-binds on the next cloud download
   }
 }
 
-/** Clear the binding state (logout, rejected token). */
+/** Clear the binding state (logout, rejected token, refresh failure). */
 export async function clearCloudBinding(): Promise<void> {
   try {
     if (!chrome?.storage?.session) return;
     await chrome.storage.session.remove(PAGEPOCKET_CLOUD_BINDING_KEY);
+    // easier-auth D8: the mirrored disk copy dies with the session copy.
+    await chrome.storage.local.remove(PAGEPOCKET_CLOUD_BINDING_KEY);
   } catch {
     // Non-critical
+  }
+}
+
+/**
+ * easier-auth D8 (task 1.4): after a browser restart restored a
+ * keep-signed-in session, copy the mirrored binding record from
+ * chrome.storage.local back into chrome.storage.session so cloud mode
+ * knows its credential again without a re-link round-trip.
+ */
+export async function restoreCloudBindingFromLocal(): Promise<void> {
+  try {
+    if (!chrome?.storage?.local || !chrome?.storage?.session) return;
+    const result = await chrome.storage.local.get(PAGEPOCKET_CLOUD_BINDING_KEY);
+    const binding = result[PAGEPOCKET_CLOUD_BINDING_KEY] as
+      | CloudBindingState
+      | undefined;
+    if (binding) {
+      await chrome.storage.session.set({
+        [PAGEPOCKET_CLOUD_BINDING_KEY]: binding,
+      });
+    }
+  } catch {
+    // Non-critical — ensureCloudBinding() lazily re-binds on demand
   }
 }
 

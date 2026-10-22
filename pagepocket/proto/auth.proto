@@ -7,6 +7,7 @@ import "common.proto";
 service AuthService {
   rpc Register(RegisterRequest) returns (AuthResponse);
   rpc Login(LoginRequest) returns (AuthResponse);
+  rpc GoogleAuth(GoogleAuthRequest) returns (AuthResponse);
   rpc Verify(VerifyRequest) returns (VerifyResponse);
   rpc Refresh(RefreshRequest) returns (AuthResponse);
   rpc Logout(LogoutRequest) returns (common.StatusResponse);
@@ -21,6 +22,16 @@ message RegisterRequest {
 message LoginRequest {
   string email = 1;
   string password = 2;
+}
+
+// Google sign-in (easier-auth D4): the extension runs the PKCE
+// launchWebAuthFlow and hands over the authorization code; the backend does
+// the code exchange (client secret stays server-side) and verifies the ID
+// token before issuing the platform's normal token pair.
+message GoogleAuthRequest {
+  string code = 1;
+  string code_verifier = 2;
+  string redirect_uri = 3;
 }
 
 message VerifyRequest {

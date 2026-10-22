@@ -45,6 +45,11 @@ class AuthServiceStub(object):
                 request_serializer=auth__pb2.LoginRequest.SerializeToString,
                 response_deserializer=auth__pb2.AuthResponse.FromString,
                 _registered_method=True)
+        self.GoogleAuth = channel.unary_unary(
+                '/auth.AuthService/GoogleAuth',
+                request_serializer=auth__pb2.GoogleAuthRequest.SerializeToString,
+                response_deserializer=auth__pb2.AuthResponse.FromString,
+                _registered_method=True)
         self.Verify = channel.unary_unary(
                 '/auth.AuthService/Verify',
                 request_serializer=auth__pb2.VerifyRequest.SerializeToString,
@@ -72,6 +77,12 @@ class AuthServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Login(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GoogleAuth(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -106,6 +117,11 @@ def add_AuthServiceServicer_to_server(servicer, server):
             'Login': grpc.unary_unary_rpc_method_handler(
                     servicer.Login,
                     request_deserializer=auth__pb2.LoginRequest.FromString,
+                    response_serializer=auth__pb2.AuthResponse.SerializeToString,
+            ),
+            'GoogleAuth': grpc.unary_unary_rpc_method_handler(
+                    servicer.GoogleAuth,
+                    request_deserializer=auth__pb2.GoogleAuthRequest.FromString,
                     response_serializer=auth__pb2.AuthResponse.SerializeToString,
             ),
             'Verify': grpc.unary_unary_rpc_method_handler(
@@ -177,6 +193,33 @@ class AuthService(object):
             target,
             '/auth.AuthService/Login',
             auth__pb2.LoginRequest.SerializeToString,
+            auth__pb2.AuthResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GoogleAuth(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/auth.AuthService/GoogleAuth',
+            auth__pb2.GoogleAuthRequest.SerializeToString,
             auth__pb2.AuthResponse.FromString,
             options,
             channel_credentials,

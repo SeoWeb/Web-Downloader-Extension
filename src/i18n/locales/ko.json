@@ -70,7 +70,12 @@
       "cloudLoggedInAs": "Connected as {{email}}",
       "cloudNoAccount": "Don't have an account?",
       "cloudHasAccount": "Already have an account?",
-      "cloudAuthError": "Authentication failed"
+      "cloudAuthError": "Authentication failed",
+      "cloudKeepSignedIn": "Keep me signed in on this device",
+      "cloudOr": "or",
+      "cloudContinueWithGoogle": "Continue with Google",
+      "cloudGoogleCancelled": "Google sign-in was cancelled.",
+      "cloudGoogleFailed": "Google sign-in failed. Please try again."
     },
     "actions": {
       "title": "작업:",

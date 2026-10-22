@@ -1,0 +1,35 @@
+## 1. Phase 1 — Keep me signed in (extension, no server changes)
+
+- [x] 1.1 Add `KeepSignedIn` opt-in plumbing: extend auth-state persistence layer in `src/background/pagepocket-client.ts` so the refresh token, user record, and cloud binding are mirrored to `chrome.storage.local` when opted in, while the access token and expiry always stay in `chrome.storage.session`
+- [x] 1.2 Rework `scrubLegacyLocalAuth()` so local auth keys are removed only on logout, refresh failure, or keep-signed-in-off logins (no longer unconditionally on load)
+- [x] 1.3 Add "Keep me signed in on this device" checkbox (pre-checked) to login and register forms in `src/components/PagePocketAuth.tsx` and wire the choice through `src/stores/pagepocketStore.ts` into login/registration calls
+- [x] 1.4 Extend startup restore in `src/stores/pagepocketStore.ts` (`initializeFromStorage`) to load the refresh token/user from `chrome.storage.local` when the session store is empty and run the existing proactive refresh
+- [x] 1.5 Update logout and refresh-failure paths to clear both `chrome.storage.session` and `chrome.storage.local` auth keys (client + `src/background/cloud-binding.ts`)
+- [x] 1.6 Update refresh rotation to replace the persisted copy in both storage areas when keep-signed-in is active
+- [ ] 1.7 Manual verification pass: restart browser with opt-in (stays logged in, access token never on disk), restart with opt-out (login form shown, local empty), logout (both areas wiped)
+
+## 2. Phase 2 — Backend: Google sign-in
+
+- [x] 2.1 Create Alembic migration `002_google_signin`: add nullable unique `google_sub` to `users` and make `password_hash` nullable; update `services/auth-service/models.py`
+- [x] 2.2 Add `GoogleAuth` RPC to the proto (`pagepocket-proto-contracts`): request `{code, code_verifier, redirect_uri}`, response = existing `AuthResponse`; regenerate stubs
+- [x] 2.3 Implement `GoogleAuth` in `services/auth-service/servicer.py`: server-side code exchange with `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, ID-token verification (Google JWKS signature, `aud`, `exp`, `email_verified=true`), account resolution (match `google_sub` → link by verified email → create free user with `is_verified=true`, NULL `password_hash`), issue tokens via the existing issuance/refresh-token path
+- [x] 2.4 Handle failure modes: invalid code/token → `UNAUTHENTICATED`, Google outage → safe non-enumerating `UNAUTHENTICATED`, never mutate users on failure; password login with NULL `password_hash` returns the generic `UNAUTHENTICATED`
+- [x] 2.5 Add gateway route `POST /api/v1/auth/google` in `services/api-gateway/routers/auth.py` and add it to the public-path exception list in `middleware/__init__.py`
+- [x] 2.6 Add `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` to `services/api-gateway/config.py` + `services/auth-service` config with production fail-fast validation, and to `docker-compose.yml` (dev defaults commented/marked)
+- [x] 2.7 Backend tests: token verification edge cases, auto-link vs duplicate prevention, Google-only account login rejection, exchange-failure handling
+
+## 3. Phase 2 — Extension: Google button + PKCE flow
+
+- [x] 3.1 Pin the extension ID: generate/add public `key` to `public/manifest.json` and confirm the resulting stable ID; document it in the deploy runbook
+- [x] 3.2 Add `identity` permission to `public/manifest.json`
+- [x] 3.3 Create `src/background/google-auth.ts`: PKCE (S256) verifier/challenge + `state` generation, pending-flow state in `chrome.storage.session` with short TTL, `chrome.identity.launchWebAuthFlow` with scope `openid email profile` and redirect `https://<extension-id>.chromiumapp.org/`, redirect validation (state match, exact redirect origin)
+- [x] 3.4 Add `googleLogin({code, code_verifier, redirect_uri})` to `src/background/pagepocket-client.ts` calling `POST /api/v1/auth/google` and storing returned tokens through the shared storage layer (respecting keep-signed-in)
+- [x] 3.5 Add "Continue with Google" button + divider to `src/components/PagePocketAuth.tsx` (shown only when `VITE_GOOGLE_CLIENT_ID` is set); handle popup-closed and access-denied as form messages; add `VITE_GOOGLE_CLIENT_ID` to `.env`/`.env.example`
+- [ ] 3.6 Manual verification: new Google user creation, linking with an existing password account, returning Google user, password-login rejection for Google-only account, button hidden when client ID unset
+
+## 4. Release prep
+
+- [x] 4.1 Register Google OAuth client (Web application type) in Google Cloud Console with redirect URI `https://<extension-id>.chromiumapp.org/`; record client ID/secret for env config
+- [ ] 4.2 Confirm `CORS_ALLOW_ORIGINS` in production includes the production `chrome-extension://` origin
+- [ ] 4.3 Update production env/secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) — deployment itself only on explicit user order per `scripts/prod/README.md` (deploy order: backend + migration 002 first, extension last)
+- [x] 4.4 Update user-facing docs/release notes: keep-signed-in behavior, Google sign-in, shared-computer opt-out

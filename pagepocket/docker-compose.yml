@@ -77,6 +77,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       REDIS_URL: redis://:${REDIS_PASSWORD:-dev-redis-change-me}@redis:6379/0
       MTLS_ENABLED: "false"
+      # easier-auth (Google sign-in): OAuth client credentials, exchanged
+      # SERVER-SIDE — never shipped to the extension. Empty dev default
+      # disables GoogleAuth (service warns and rejects sign-ins generically);
+      # production requires real values via the prod overlay + host .env.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     depends_on:
       mysql:
         condition: service_healthy
@@ -208,6 +214,12 @@ services:
       dockerfile: services/api-gateway/Dockerfile
     environment:
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      # easier-auth (Google sign-in): passthrough only — the gateway itself
+      # never uses the secret (AuthService does), but the credentials are
+      # part of its production fail-fast contract (D7). Empty dev default
+      # disables nothing on the gateway; production requires real values.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       # fix-archived-page-pipeline E: HMAC key for signed asset tokens
       # (credential-less viewer subresource loads). MUST equal the BFF's
       # ASSET_TOKEN_SECRET (host frontend/.env.production.local). Empty =

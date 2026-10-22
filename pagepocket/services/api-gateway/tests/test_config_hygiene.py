@@ -37,10 +37,20 @@ class TestProdSecretFailFast(unittest.TestCase):
             validate_prod_config(environment="production", jwt_secret="   ")
 
     def test_real_secret_accepted_in_production(self):
-        validate_prod_config(environment="production", jwt_secret="a-real-long-random-secret")
+        validate_prod_config(
+            environment="production",
+            jwt_secret="a-real-long-random-secret",
+            google_client_id="a-google-client-id",
+            google_client_secret="a-google-client-secret",
+        )
 
     def test_environment_matching_is_case_and_space_tolerant(self):
-        validate_prod_config(environment=" PRODUCTION ", jwt_secret="real-secret")
+        validate_prod_config(
+            environment=" PRODUCTION ",
+            jwt_secret="real-secret",
+            google_client_id="gid",
+            google_client_secret="gsecret",
+        )
         validate_prod_config(environment="Development", jwt_secret=DEV_JWT_SECRET_DEFAULT)
         validate_prod_config(environment="", jwt_secret=None)
 
@@ -51,6 +61,58 @@ class TestProdSecretFailFast(unittest.TestCase):
 
     def test_enforce_startup_config_passes_in_development(self):
         env = {"ENVIRONMENT": "development", "JWT_SECRET": DEV_JWT_SECRET_DEFAULT}
+        with mock.patch.dict("os.environ", env):
+            enforce_startup_config()  # must not raise
+
+
+class TestGoogleCredentialsFailFast(unittest.TestCase):
+    """easier-auth D7: GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are required in
+    production (both services), optional with a dev warning elsewhere."""
+
+    def _validate(self, *, environment="production", google_client_id="gid", google_client_secret="gsecret"):
+        return validate_prod_config(
+            environment=environment,
+            jwt_secret="a-real-long-random-secret",
+            google_client_id=google_client_id,
+            google_client_secret=google_client_secret,
+        )
+
+    def test_missing_google_id_refused_in_production(self):
+        with self.assertRaises(ConfigError):
+            self._validate(google_client_id=None)
+        with self.assertRaises(ConfigError):
+            self._validate(google_client_id="   ")
+
+    def test_missing_google_secret_refused_in_production(self):
+        with self.assertRaises(ConfigError):
+            self._validate(google_client_secret=None)
+        with self.assertRaises(ConfigError):
+            self._validate(google_client_secret="")
+
+    def test_both_credentials_accepted_in_production(self):
+        self._validate()  # must not raise
+
+    def test_google_credentials_optional_outside_production(self):
+        self._validate(environment="development", google_client_id=None, google_client_secret=None)
+        self._validate(environment="", google_client_id=None, google_client_secret=None)
+
+    def test_enforce_startup_config_refuses_prod_without_google_env(self):
+        env = {
+            "ENVIRONMENT": "production",
+            "JWT_SECRET": "a-real-long-random-secret",
+            "GOOGLE_CLIENT_ID": "",
+            "GOOGLE_CLIENT_SECRET": "",
+        }
+        with mock.patch.dict("os.environ", env), self.assertRaises(SystemExit):
+            enforce_startup_config()
+
+    def test_enforce_startup_config_passes_in_dev_without_google_env(self):
+        env = {
+            "ENVIRONMENT": "development",
+            "JWT_SECRET": DEV_JWT_SECRET_DEFAULT,
+            "GOOGLE_CLIENT_ID": "",
+            "GOOGLE_CLIENT_SECRET": "",
+        }
         with mock.patch.dict("os.environ", env):
             enforce_startup_config()  # must not raise
 

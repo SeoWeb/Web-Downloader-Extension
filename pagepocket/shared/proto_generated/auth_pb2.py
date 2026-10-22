@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 import common_pb2 as common__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\x12\x04\x61uth\x1a\x0c\x63ommon.proto\"@\n\x0fRegisterRequest\x12\r\n\x05\x65mail\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\"/\n\x0cLoginRequest\x12\r\n\x05\x65mail\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"\x1e\n\rVerifyRequest\x12\r\n\x05token\x18\x01 \x01(\t\"\'\n\x0eRefreshRequest\x12\x15\n\rrefresh_token\x18\x01 \x01(\t\" \n\rLogoutRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"f\n\x04User\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05\x65mail\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x0c\n\x04plan\x18\x04 \x01(\t\x12\x13\n\x0bis_verified\x18\x05 \x01(\x08\x12\x12\n\ncreated_at\x18\x06 \x01(\t\"i\n\x0c\x41uthResponse\x12\x14\n\x0c\x61\x63\x63\x65ss_token\x18\x01 \x01(\t\x12\x15\n\rrefresh_token\x18\x02 \x01(\t\x12\x12\n\nexpires_at\x18\x03 \x01(\x03\x12\x18\n\x04user\x18\x04 \x01(\x0b\x32\n.auth.User\"M\n\x0eVerifyResponse\x12\r\n\x05valid\x18\x01 \x01(\x08\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\r\n\x05\x65mail\x18\x03 \x01(\t\x12\x0c\n\x04plan\x18\x04 \x01(\t2\x96\x02\n\x0b\x41uthService\x12\x35\n\x08Register\x12\x15.auth.RegisterRequest\x1a\x12.auth.AuthResponse\x12/\n\x05Login\x12\x12.auth.LoginRequest\x1a\x12.auth.AuthResponse\x12\x33\n\x06Verify\x12\x13.auth.VerifyRequest\x1a\x14.auth.VerifyResponse\x12\x33\n\x07Refresh\x12\x14.auth.RefreshRequest\x1a\x12.auth.AuthResponse\x12\x35\n\x06Logout\x12\x13.auth.LogoutRequest\x1a\x16.common.StatusResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\x12\x04\x61uth\x1a\x0c\x63ommon.proto\"@\n\x0fRegisterRequest\x12\r\n\x05\x65mail\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\"/\n\x0cLoginRequest\x12\r\n\x05\x65mail\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"N\n\x11GoogleAuthRequest\x12\x0c\n\x04\x63ode\x18\x01 \x01(\t\x12\x15\n\rcode_verifier\x18\x02 \x01(\t\x12\x14\n\x0credirect_uri\x18\x03 \x01(\t\"\x1e\n\rVerifyRequest\x12\r\n\x05token\x18\x01 \x01(\t\"\'\n\x0eRefreshRequest\x12\x15\n\rrefresh_token\x18\x01 \x01(\t\" \n\rLogoutRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"f\n\x04User\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05\x65mail\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x0c\n\x04plan\x18\x04 \x01(\t\x12\x13\n\x0bis_verified\x18\x05 \x01(\x08\x12\x12\n\ncreated_at\x18\x06 \x01(\t\"i\n\x0c\x41uthResponse\x12\x14\n\x0c\x61\x63\x63\x65ss_token\x18\x01 \x01(\t\x12\x15\n\rrefresh_token\x18\x02 \x01(\t\x12\x12\n\nexpires_at\x18\x03 \x01(\x03\x12\x18\n\x04user\x18\x04 \x01(\x0b\x32\n.auth.User\"M\n\x0eVerifyResponse\x12\r\n\x05valid\x18\x01 \x01(\x08\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\r\n\x05\x65mail\x18\x03 \x01(\t\x12\x0c\n\x04plan\x18\x04 \x01(\t2\xd1\x02\n\x0b\x41uthService\x12\x35\n\x08Register\x12\x15.auth.RegisterRequest\x1a\x12.auth.AuthResponse\x12/\n\x05Login\x12\x12.auth.LoginRequest\x1a\x12.auth.AuthResponse\x12\x39\n\nGoogleAuth\x12\x17.auth.GoogleAuthRequest\x1a\x12.auth.AuthResponse\x12\x33\n\x06Verify\x12\x13.auth.VerifyRequest\x1a\x14.auth.VerifyResponse\x12\x33\n\x07Refresh\x12\x14.auth.RefreshRequest\x1a\x12.auth.AuthResponse\x12\x35\n\x06Logout\x12\x13.auth.LogoutRequest\x1a\x16.common.StatusResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -36,18 +36,20 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_REGISTERREQUEST']._serialized_end=98
   _globals['_LOGINREQUEST']._serialized_start=100
   _globals['_LOGINREQUEST']._serialized_end=147
-  _globals['_VERIFYREQUEST']._serialized_start=149
-  _globals['_VERIFYREQUEST']._serialized_end=179
-  _globals['_REFRESHREQUEST']._serialized_start=181
-  _globals['_REFRESHREQUEST']._serialized_end=220
-  _globals['_LOGOUTREQUEST']._serialized_start=222
-  _globals['_LOGOUTREQUEST']._serialized_end=254
-  _globals['_USER']._serialized_start=256
-  _globals['_USER']._serialized_end=358
-  _globals['_AUTHRESPONSE']._serialized_start=360
-  _globals['_AUTHRESPONSE']._serialized_end=465
-  _globals['_VERIFYRESPONSE']._serialized_start=467
-  _globals['_VERIFYRESPONSE']._serialized_end=544
-  _globals['_AUTHSERVICE']._serialized_start=547
-  _globals['_AUTHSERVICE']._serialized_end=825
+  _globals['_GOOGLEAUTHREQUEST']._serialized_start=149
+  _globals['_GOOGLEAUTHREQUEST']._serialized_end=227
+  _globals['_VERIFYREQUEST']._serialized_start=229
+  _globals['_VERIFYREQUEST']._serialized_end=259
+  _globals['_REFRESHREQUEST']._serialized_start=261
+  _globals['_REFRESHREQUEST']._serialized_end=300
+  _globals['_LOGOUTREQUEST']._serialized_start=302
+  _globals['_LOGOUTREQUEST']._serialized_end=334
+  _globals['_USER']._serialized_start=336
+  _globals['_USER']._serialized_end=438
+  _globals['_AUTHRESPONSE']._serialized_start=440
+  _globals['_AUTHRESPONSE']._serialized_end=545
+  _globals['_VERIFYRESPONSE']._serialized_start=547
+  _globals['_VERIFYRESPONSE']._serialized_end=624
+  _globals['_AUTHSERVICE']._serialized_start=627
+  _globals['_AUTHSERVICE']._serialized_end=964
 # @@protoc_insertion_point(module_scope)

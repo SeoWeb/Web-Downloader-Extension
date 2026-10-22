@@ -79,6 +79,44 @@ async def login(body: dict):
     }
 
 
+@router.post("/google")
+async def google(body: dict):
+    """Google sign-in (easier-auth): the extension runs the PKCE
+    launchWebAuthFlow and posts {code, code_verifier, redirect_uri}; the
+    auth service exchanges the code server-side, verifies the ID token and
+    issues the normal token pair. UNAUTHENTICATED from the service (invalid
+    code, unverifiable token, Google outage) maps to 401 via the shared
+    handler — no Google internals leak to the client."""
+    code = require_field(body, "code")
+    code_verifier = require_field(body, "code_verifier")
+    redirect_uri = require_field(body, "redirect_uri")
+    try:
+        resp = await run_in_threadpool(
+            auth_stub().GoogleAuth,
+            auth_pb2.GoogleAuthRequest(
+                code=code,
+                code_verifier=code_verifier,
+                redirect_uri=redirect_uri,
+            ),
+            timeout=30,
+        )
+    except grpc.RpcError as e:
+        handle_grpc_error(e)
+    return {
+        "access_token": resp.access_token,
+        "refresh_token": resp.refresh_token,
+        "expires_at": resp.expires_at,
+        "user": {
+            "id": resp.user.id,
+            "email": resp.user.email,
+            "name": resp.user.name,
+            "plan": resp.user.plan,
+            "is_verified": resp.user.is_verified,
+            "created_at": resp.user.created_at,
+        },
+    }
+
+
 @router.post("/refresh")
 async def refresh(body: dict):
     refresh_token = require_field(body, "refresh_token")

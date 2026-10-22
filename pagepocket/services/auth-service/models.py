@@ -25,7 +25,11 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Nullable since easier-auth 002: Google-created accounts have no password.
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Google subject (id_token `sub`), unique when present. Nullable: password
+    # accounts keep NULL until a first Google sign-in auto-links them.
+    google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     plan: Mapped[str] = mapped_column(String(50), nullable=False, default="free")
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

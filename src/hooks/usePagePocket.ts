@@ -10,6 +10,7 @@ export function usePagePocket() {
     setCloudStorageEnabled,
     login,
     register,
+    googleLogin,
     logout,
     initializeFromStorage,
   } = usePagePocketStore();
@@ -31,6 +32,7 @@ export function usePagePocket() {
     setCloudStorageEnabled,
     login,
     register,
+    googleLogin,
     logout,
   };
 }

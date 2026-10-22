@@ -32,11 +32,14 @@ vi.mock("../../src/background/pagepocket-client", () => ({
 const clearCloudBindingMock = vi.fn();
 const clearServerBindingMock = vi.fn();
 const linkCloudAccountMock = vi.fn();
+const restoreCloudBindingFromLocalMock = vi.fn();
 
 vi.mock("../../src/background/cloud-binding", () => ({
   linkCloudAccount: (...args: unknown[]) => linkCloudAccountMock(...args),
   clearCloudBinding: (...args: unknown[]) => clearCloudBindingMock(...args),
   clearServerBinding: (...args: unknown[]) => clearServerBindingMock(...args),
+  restoreCloudBindingFromLocal: (...args: unknown[]) =>
+    restoreCloudBindingFromLocalMock(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -59,6 +62,7 @@ describe("pagepocketStore.logout (server unbind is non-blocking)", () => {
     clearCloudBindingMock.mockReset();
     clearServerBindingMock.mockReset();
     linkCloudAccountMock.mockReset();
+    restoreCloudBindingFromLocalMock.mockReset();
     usePagePocketStore.setState({ isAuthenticated: true, authUser: null });
   });
 

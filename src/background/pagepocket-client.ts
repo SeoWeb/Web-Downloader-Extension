@@ -6,8 +6,16 @@
  * upload, and health checks.
  */
 
-import type { PagePocketAuthState, PagePocketUser } from "../types/authTypes";
-import { PAGEPOCKET_AUTH_STORAGE_KEY } from "../types/authTypes";
+import type {
+  PagePocketAuthState,
+  PagePocketPersistedAuth,
+  PagePocketUser,
+} from "../types/authTypes";
+import {
+  PAGEPOCKET_AUTH_PERSISTED_KEY,
+  PAGEPOCKET_AUTH_STORAGE_KEY,
+  PAGEPOCKET_CLOUD_BINDING_KEY,
+} from "../types/authTypes";
 import { PAGEPOCKET_URL } from "../common/pagepocket-mode";
 import { assertSecureBaseUrl } from "./server-client";
 
@@ -141,6 +149,7 @@ export class PagePocketClient {
     email: string,
     password: string,
     name: string,
+    keepSignedIn = false,
   ): Promise<PagePocketAuthState> {
     const res = await this.unauthenticatedFetch("/api/v1/auth/register", {
       method: "POST",
@@ -153,10 +162,14 @@ export class PagePocketClient {
     }
 
     const data = (await res.json()) as AuthResponse;
-    return this.saveAuth(data);
+    return this.saveAuth(data, keepSignedIn);
   }
 
-  async login(email: string, password: string): Promise<PagePocketAuthState> {
+  async login(
+    email: string,
+    password: string,
+    keepSignedIn = false,
+  ): Promise<PagePocketAuthState> {
     const res = await this.unauthenticatedFetch("/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -168,7 +181,37 @@ export class PagePocketClient {
     }
 
     const data = (await res.json()) as AuthResponse;
-    return this.saveAuth(data);
+    return this.saveAuth(data, keepSignedIn);
+  }
+
+  /**
+   * easier-auth D4 (task 3.4): exchange a Google authorization code for the
+   * platform's normal token pair. The extension sends the PKCE-bound
+   * `{code, code_verifier, redirect_uri}`; the backend holds the client
+   * secret and verifies the Google identity. Error handling and the
+   * post-auth persistence path (saveAuth → session storage + opt-in local
+   * mirror; the access token never touches disk) are identical to login().
+   */
+  async googleLogin(
+    params: { code: string; code_verifier: string; redirect_uri: string },
+    keepSignedIn = false,
+  ): Promise<PagePocketAuthState> {
+    const res = await this.unauthenticatedFetch("/api/v1/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: params.code,
+        code_verifier: params.code_verifier,
+        redirect_uri: params.redirect_uri,
+      }),
+    });
+
+    if (!res.ok) {
+      await this.throwForStatus(res, "googleLogin");
+    }
+
+    const data = (await res.json()) as AuthResponse;
+    return this.saveAuth(data, keepSignedIn);
   }
 
   async refreshToken(token?: string): Promise<string> {
@@ -199,6 +242,13 @@ export class PagePocketClient {
         expiresAt: data.expires_at,
       };
       await this.persistAuth();
+      // easier-auth D1/D8 (task 1.6): when keep-signed-in is active (a
+      // persisted copy exists on disk), the rotated refresh token replaces
+      // the old copy in chrome.storage.local too. The access token still
+      // never leaves session storage.
+      if (await this.hasPersistedAuthLocal()) {
+        await this.persistAuthLocal();
+      }
     }
 
     return access_token;
@@ -546,13 +596,21 @@ export class PagePocketClient {
   }
 
   // -----------------------------------------------------------------------
-  // Token persistence (chrome.storage.session — D11 / task 7.2)
+  // Token persistence (chrome.storage.session + opt-in local mirror —
+  // easier-auth D1, supersedes the D11 session-only decision)
   //
-  // Auth state never lives on disk: chrome.storage.session is cleared when
-  // the browser closes, so the user re-authenticates per browser session.
+  // The access token and its expiry ALWAYS stay in chrome.storage.session
+  // (memory-only, cleared when the browser closes). When the user opts in
+  // via "Keep me signed in on this device", the refresh token + user record
+  // are additionally mirrored to chrome.storage.local so the session
+  // survives browser restarts. This layer is the single writer for auth
+  // state; the password is never persisted anywhere.
   // -----------------------------------------------------------------------
 
-  private async saveAuth(data: AuthResponse): Promise<PagePocketAuthState> {
+  private async saveAuth(
+    data: AuthResponse,
+    keepSignedIn: boolean,
+  ): Promise<PagePocketAuthState> {
     const state: PagePocketAuthState = {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
@@ -561,6 +619,13 @@ export class PagePocketClient {
     };
     this.authState = state;
     await this.persistAuth();
+    if (keepSignedIn) {
+      await this.persistAuthLocal();
+    } else {
+      // easier-auth D3: a keep-signed-in-OFF login must not leave a
+      // persisted session behind — drop any stale on-disk copies.
+      await this.clearPersistedAuthLocal();
+    }
     return state;
   }
 
@@ -575,14 +640,75 @@ export class PagePocketClient {
     }
   }
 
+  /** Mirror the keep-signed-in slice (refresh token + user) to disk. */
+  private async persistAuthLocal(): Promise<void> {
+    if (!this.authState) return;
+    try {
+      if (!chrome?.storage?.local) return;
+      const persisted: PagePocketPersistedAuth = {
+        refreshToken: this.authState.refreshToken,
+        user: this.authState.user,
+      };
+      await chrome.storage.local.set({
+        [PAGEPOCKET_AUTH_PERSISTED_KEY]: persisted,
+      });
+    } catch {
+      // Non-critical — the session copy is unaffected
+    }
+  }
+
+  /** Read the keep-signed-in slice from disk (null when absent). */
+  private async loadPersistedAuthLocal(): Promise<PagePocketPersistedAuth | null> {
+    try {
+      if (!chrome?.storage?.local) return null;
+      const result = await chrome.storage.local.get(
+        PAGEPOCKET_AUTH_PERSISTED_KEY,
+      );
+      return (
+        (result[PAGEPOCKET_AUTH_PERSISTED_KEY] as PagePocketPersistedAuth) ??
+        null
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  /** Keep-signed-in is active iff a persisted slice exists on disk. */
+  private async hasPersistedAuthLocal(): Promise<boolean> {
+    return (await this.loadPersistedAuthLocal()) !== null;
+  }
+
+  /**
+   * Remove the keep-signed-in slice and the mirrored cloud binding from
+   * disk. Called on logout, refresh failure, and keep-signed-in-OFF logins
+   * (easier-auth D3/D8) — never on a mere storage read.
+   */
+  private async clearPersistedAuthLocal(): Promise<void> {
+    try {
+      if (!chrome?.storage?.local) return;
+      await chrome.storage.local.remove([
+        PAGEPOCKET_AUTH_PERSISTED_KEY,
+        PAGEPOCKET_CLOUD_BINDING_KEY,
+      ]);
+    } catch {
+      // Non-critical
+    }
+  }
+
   private async clearAuth(): Promise<void> {
     this.authState = null;
     try {
       if (!chrome?.storage?.session) return;
       await chrome.storage.session.remove(PAGEPOCKET_AUTH_STORAGE_KEY);
+      // easier-auth D8: the cloud binding follows the refresh token
+      // lifecycle — drop it from session storage together with the auth.
+      await chrome.storage.session.remove(PAGEPOCKET_CLOUD_BINDING_KEY);
     } catch {
       // Non-critical
     }
+    // Logout / refresh failure must also wipe the persisted keep-signed-in
+    // session and the mirrored binding from disk (task 1.5).
+    await this.clearPersistedAuthLocal();
   }
 
   private async loadAuthFromStorage(): Promise<PagePocketAuthState | null> {
@@ -601,9 +727,44 @@ export class PagePocketClient {
   }
 
   /**
-   * Remove the auth state persisted by older versions in
-   * chrome.storage.local (on disk). Auth is session-only since D11 —
-   * leftovers from previous versions must not outlive the browser session.
+   * easier-auth D1/D3 (tasks 1.2/1.4): restore a keep-signed-in session
+   * after a browser restart. Reads the persisted refresh token + user from
+   * chrome.storage.local and mints a fresh access token via the normal
+   * refresh flow (which also rotates and re-persists the refresh token —
+   * task 1.6). Returns the restored auth state, or null when nothing is
+   * persisted or the refresh fails (a failed refresh clears BOTH storage
+   * areas via clearAuth, so a revoked token can't linger on disk).
+   */
+  async restorePersistedSession(): Promise<PagePocketAuthState | null> {
+    const persisted = await this.loadPersistedAuthLocal();
+    if (!persisted) return null;
+
+    // Hydrate the in-memory state from the persisted slice. The access
+    // token is intentionally empty: refreshWithMutex sees the expired
+    // session and mints a real one before any authenticated call.
+    this.authState = {
+      accessToken: "",
+      refreshToken: persisted.refreshToken,
+      expiresAt: 0,
+      user: persisted.user,
+    };
+
+    try {
+      await this.refreshToken();
+    } catch {
+      return null;
+    }
+    return this.authState;
+  }
+
+  /**
+   * Remove the auth state persisted by pre-D11 versions in
+   * chrome.storage.local (on disk). That legacy `pagepocket_auth` record
+   * contains an ACCESS TOKEN, which must never live on disk — the migration
+   * wipe stays. It targets only the legacy key: the opt-in keep-signed-in
+   * slice uses a dedicated key (pagepocket_auth_persisted) that holds no
+   * access token and is cleared solely on logout / refresh failure /
+   * keep-signed-in-OFF login (D3), never here.
    */
   private async scrubLegacyLocalAuth(): Promise<void> {
     try {

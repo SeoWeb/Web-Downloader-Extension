@@ -19,6 +19,23 @@ export const PAGEPOCKET_AUTH_STORAGE_KEY = "pagepocket_auth";
 export const PAGEPOCKET_CLOUD_ENABLED_KEY = "pagepocket_cloud_enabled";
 
 /**
+ * Keep-me-signed-in persistence slice (easier-auth D1).
+ *
+ * When the user opts in on the login/register form, exactly this data is
+ * mirrored to chrome.storage.local so the session survives a browser
+ * restart. The access token and its expiry MUST stay in
+ * chrome.storage.session — only the rotating refresh token and the user
+ * record ever touch disk, and the password is never persisted anywhere.
+ */
+export interface PagePocketPersistedAuth {
+  refreshToken: string;
+  user: PagePocketUser;
+}
+
+/** chrome.storage.local key for the keep-signed-in slice (never the access token). */
+export const PAGEPOCKET_AUTH_PERSISTED_KEY = "pagepocket_auth_persisted";
+
+/**
  * Cloud binding state (task 6.5 / design D4 — harden-backend-security-and-ops).
  *
  * The monolith binds a PagePocket user to the API-key client via

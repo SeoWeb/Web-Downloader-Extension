@@ -12,6 +12,11 @@
 #                       D12/2.16 — prod compose refuses to render without
 #                       them; create the users first with
 #                       scripts/prod/rotate-db-users.sh (it writes them)
+#   GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+#                       easier-auth — Google OAuth client credentials
+#                       (easier-auth D7). Passthrough only below (no default,
+#                       no committed secret): both services fail fast at boot
+#                       with ENVIRONMENT=production when they are unset.
 # Env vars OPTIONAL (sane pinned defaults in this file):
 #   CORS_ALLOW_ORIGINS, TRUSTED_PROXIES, MAX_UPLOAD_BYTES,
 #   MAX_INGEST_ASSETS, GATEWAY_WORKERS
@@ -51,6 +56,12 @@ services:
       # pagepocket/.env (the :? guards below make an unprovisioned render
       # fail fast instead of falling back to root).
       DB_URL: mysql+pymysql://pagepocket_auth:${DB_PASSWORD_AUTH:?DB_PASSWORD_AUTH must be set in pagepocket/.env - run scripts/prod/rotate-db-users.sh first}@mysql:3306/auth_db
+      # easier-auth: Google OAuth client credentials — env passthrough ONLY
+      # (no default, no committed secret; the value lives in the host
+      # pagepocket/.env). Required for GoogleAuth to work; the fail-fast
+      # arms via ENVIRONMENT=production (config.py).
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       # 5.6: Alembic is the single authoritative schema mechanism; implicit
       # create_all must never shape prod schema.
       AUTO_CREATE: "false"
@@ -149,6 +160,10 @@ services:
       AUTO_CREATE: "false"
       # 4.6: prod fail-fast on dev-default JWT_SECRET needs this to be set.
       ENVIRONMENT: production
+      # easier-auth: passthrough only — required by the gateway's production
+      # fail-fast (D7); the actual exchange happens in auth-service.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       MTLS_ENABLED: "true"
       CA_CERT: /certs/ca.pem
       CLIENT_KEY: /certs/api-gateway-key.pem

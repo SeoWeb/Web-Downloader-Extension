@@ -24,6 +24,12 @@ const chromeMock = {
       set: async (items) => {
         Object.assign(mockStorage, items);
       },
+      remove: async (keys) => {
+        const keyArr = Array.isArray(keys) ? keys : [keys];
+        for (const k of keyArr) {
+          delete mockStorage[k];
+        }
+      },
     },
   },
 };
@@ -44,15 +50,22 @@ class MockCompressionStream {
     const gzip = createGzip();
     const compressedChunks = [];
     let writeResolve;
-    const writeReady = new Promise((r) => { writeResolve = r; });
+    const writeReady = new Promise((r) => {
+      writeResolve = r;
+    });
 
     gzip.on("data", (chunk) => compressedChunks.push(new Uint8Array(chunk)));
-    gzip.on("end", () => { writeResolve(); });
+    gzip.on("end", () => {
+      writeResolve();
+    });
 
     this.writable = {
       getWriter: () => ({
         write: async (chunk) => {
-          const buf = chunk instanceof ArrayBuffer ? Buffer.from(chunk) : Buffer.from(chunk);
+          const buf =
+            chunk instanceof ArrayBuffer
+              ? Buffer.from(chunk)
+              : Buffer.from(chunk);
           if (!gzip.write(buf)) {
             await new Promise((r) => gzip.once("drain", r));
           }
@@ -72,11 +85,15 @@ class MockCompressionStream {
             if (delivered) return { done: true, value: undefined };
             await writeReady;
             delivered = true;
-            if (compressedChunks.length === 0) return { done: true, value: undefined };
+            if (compressedChunks.length === 0)
+              return { done: true, value: undefined };
             const total = compressedChunks.reduce((s, c) => s + c.length, 0);
             const result = new Uint8Array(total);
             let offset = 0;
-            for (const c of compressedChunks) { result.set(c, offset); offset += c.length; }
+            for (const c of compressedChunks) {
+              result.set(c, offset);
+              offset += c.length;
+            }
             return { done: false, value: result };
           },
         };

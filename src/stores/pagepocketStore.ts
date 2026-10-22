@@ -9,10 +9,12 @@ import {
   pagepocketClient,
   PagePocketAuthError,
 } from "../background/pagepocket-client";
+import { launchGoogleSignIn } from "../background/google-auth";
 import {
   linkCloudAccount,
   clearCloudBinding,
   clearServerBinding,
+  restoreCloudBindingFromLocal,
 } from "../background/cloud-binding";
 
 interface PagePocketState {
@@ -24,8 +26,19 @@ interface PagePocketState {
 
   // Actions
   setCloudStorageEnabled: (enabled: boolean) => void;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  login: (
+    email: string,
+    password: string,
+    keepSignedIn: boolean,
+  ) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    name: string,
+    keepSignedIn: boolean,
+  ) => Promise<void>;
+  /** easier-auth D4: passwordless Google sign-in (task 3.5). */
+  googleLogin: (keepSignedIn: boolean) => Promise<void>;
   logout: () => Promise<void>;
   initializeFromStorage: () => Promise<void>;
 }
@@ -48,10 +61,16 @@ export const usePagePocketStore = create<PagePocketState>()(
         });
     },
 
-    login: async (email, password) => {
+    login: async (email, password, keepSignedIn) => {
       set({ isAuthLoading: true });
       try {
-        const authState = await pagepocketClient.login(email, password);
+        // easier-auth D2: the checkbox choice decides whether this session
+        // is persisted to chrome.storage.local (client storage layer).
+        const authState = await pagepocketClient.login(
+          email,
+          password,
+          keepSignedIn,
+        );
         // Task 6.5 / D4: bind the PagePocket identity to the download server
         // (POST /api/v1/cloud/link). Best-effort and non-blocking — a slow or
         // unreachable monolith must never fail the login itself; the lazy
@@ -72,18 +91,50 @@ export const usePagePocketStore = create<PagePocketState>()(
       }
     },
 
-    register: async (email, password, name) => {
+    register: async (email, password, name, keepSignedIn) => {
       set({ isAuthLoading: true });
       try {
+        // easier-auth D2: same keep-signed-in semantics as login.
         const authState = await pagepocketClient.register(
           email,
           password,
           name,
+          keepSignedIn,
         );
         // Task 6.5 / D4: same binding flow as login (registration on the
         // PagePocket side returns a fresh auth state).
         linkCloudAccount(authState.accessToken).catch((err) => {
           console.warn("[CloudBinding] link after register failed:", err);
+        });
+        set({
+          isAuthenticated: true,
+          authUser: authState.user,
+          isAuthLoading: false,
+        });
+      } catch (err) {
+        set({ isAuthLoading: false });
+        throw err;
+      }
+    },
+
+    /**
+     * easier-auth D4/D7 (task 3.5): passwordless sign-in. Runs the PKCE
+     * launchWebAuthFlow (google-auth.ts), exchanges the code via
+     * POST /api/v1/auth/google, and finishes through the exact same
+     * post-auth path as password login — saveAuth (session storage +
+     * opt-in keep-signed-in mirror) and the fire-and-forget cloud binding.
+     */
+    googleLogin: async (keepSignedIn) => {
+      set({ isAuthLoading: true });
+      try {
+        const { code, codeVerifier, redirectUri } = await launchGoogleSignIn();
+        const authState = await pagepocketClient.googleLogin(
+          { code, code_verifier: codeVerifier, redirect_uri: redirectUri },
+          keepSignedIn,
+        );
+        // Task 6.5 / D4: same binding flow as login.
+        linkCloudAccount(authState.accessToken).catch((err) => {
+          console.warn("[CloudBinding] link after Google login failed:", err);
         });
         set({
           isAuthenticated: true,
@@ -159,6 +210,22 @@ export const usePagePocketStore = create<PagePocketState>()(
             } catch {
               // Refresh failed — stay unauthenticated
             }
+          }
+        } else {
+          // easier-auth D1 (task 1.4): session store empty — a keep-signed-in
+          // session may be persisted on disk. Restore the refresh token +
+          // user from chrome.storage.local and mint an access token via the
+          // normal proactive refresh flow. On failure the client already
+          // cleared both storage areas (D3); drop any stale binding too.
+          const restored = await pagepocketClient.restorePersistedSession();
+          if (restored) {
+            authenticated = true;
+            user = restored.user;
+            // D8: bring the mirrored cloud binding back into session
+            // storage alongside the restored refresh token.
+            await restoreCloudBindingFromLocal();
+          } else {
+            await clearCloudBinding();
           }
         }
 
