@@ -20,6 +20,21 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((value) => value?.trim() || undefined),
+  // Google sign-in (easier-auth D9). OPTIONAL: unset/empty disables the
+  // feature entirely — /api/auth/google/start 404s and the "Continue with
+  // Google" button does not render on /login and /register. The client ID
+  // is public; the OAuth client SECRET lives only in the API gateway.
+  GOOGLE_CLIENT_ID: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() || undefined),
+  // Optional override of the OAuth redirect_uri passed to Google (must
+  // exactly match a URI registered in Google Cloud Console). Defaults to
+  // {origin}/api/auth/google/callback (easier-auth D9).
+  GOOGLE_OAUTH_REDIRECT_URI: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() || undefined),
 });
 
 export const env = envSchema.parse({
@@ -31,6 +46,8 @@ export const env = envSchema.parse({
   ASSET_TOKEN_SECRET: process.env.ASSET_TOKEN_SECRET,
   ASSET_TOKEN_TTL_SECONDS: process.env.ASSET_TOKEN_TTL_SECONDS,
   NEXT_PUBLIC_CF_BEACON_TOKEN: process.env.NEXT_PUBLIC_CF_BEACON_TOKEN,
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_OAUTH_REDIRECT_URI: process.env.GOOGLE_OAUTH_REDIRECT_URI,
 });
 
 /**
@@ -81,4 +98,22 @@ export function assetTokenConfig(): {
         ? parsed
         : DEFAULT_ASSET_TOKEN_TTL_SECONDS,
   };
+}
+
+/**
+ * Google sign-in config (easier-auth D9), resolved PER REQUEST — not from
+ * the import-time `env` object — so the feature can be toggled by the
+ * environment without a module reload (and tests can flip it). Returns null
+ * when the client ID is unset/empty: Google sign-in is OFF (the start route
+ * 404s; the /login and /register buttons do not render — those pages read
+ * the import-time `env.GOOGLE_CLIENT_ID`, i.e. the build-time value).
+ */
+export function googleOAuthConfig(): {
+  clientId: string;
+  redirectUri?: string;
+} | null {
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim() || "";
+  if (!clientId) return null;
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI?.trim() || "";
+  return redirectUri ? { clientId, redirectUri } : { clientId };
 }
