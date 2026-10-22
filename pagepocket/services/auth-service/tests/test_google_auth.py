@@ -131,6 +131,36 @@ class TestExchangeGoogleCode(unittest.TestCase):
         with unittest.mock.patch.object(_servicer_mod.httpx, "post", return_value=resp):
             self.assertIsNone(self.svc._exchange_google_code("c", "v", "r"))
 
+    def test_non_200_logs_google_error_fields(self):
+        resp = types.SimpleNamespace(
+            status_code=400,
+            json=lambda: {"error": "invalid_grant", "error_description": "Code was already redeemed."},
+        )
+        with (
+            unittest.mock.patch.object(_servicer_mod.httpx, "post", return_value=resp),
+            self.assertLogs(_servicer_mod.logger, level="WARNING") as captured,
+        ):
+            self.assertIsNone(self.svc._exchange_google_code("c", "v", "r"))
+        self.assertTrue(
+            any(
+                "HTTP 400" in line and "error=invalid_grant" in line
+                and "description=Code was already redeemed." in line
+                for line in captured.output
+            )
+        )
+
+    def test_non_200_non_json_logs_truncated_raw_text(self):
+        resp = types.SimpleNamespace(status_code=400, text="x" * 500)
+        with (
+            unittest.mock.patch.object(_servicer_mod.httpx, "post", return_value=resp),
+            self.assertLogs(_servicer_mod.logger, level="WARNING") as captured,
+        ):
+            self.assertIsNone(self.svc._exchange_google_code("c", "v", "r"))
+        self.assertTrue(
+            any(f"HTTP 400 description={'x' * 200}" in line for line in captured.output)
+        )
+        self.assertFalse(any("x" * 201 in line for line in captured.output))
+
     def test_non_json_body_returns_none(self):
         resp = types.SimpleNamespace(status_code=200, json=lambda: (_ for _ in ()).throw(ValueError()))
         with unittest.mock.patch.object(_servicer_mod.httpx, "post", return_value=resp):

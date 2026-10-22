@@ -136,7 +136,27 @@ class AuthServicer(auth_pb2_grpc.AuthServiceServicer):
             logger.warning("Google token endpoint unreachable: %s", exc.__class__.__name__)
             return None
         if resp.status_code != 200:
-            logger.warning("Google token exchange failed with HTTP %d", resp.status_code)
+            # Diagnostic-only: surface Google's `error` / `error_description`
+            # fields. Those two carry only error codes/descriptions — no token
+            # material — and nothing else from the body is ever logged (the
+            # non-JSON fallback is truncated to 200 chars).
+            try:
+                payload = resp.json()
+            except (ValueError, AttributeError):
+                payload = None
+            if isinstance(payload, dict):
+                logger.warning(
+                    "Google token exchange failed with HTTP %d error=%s description=%s",
+                    resp.status_code,
+                    payload.get("error"),
+                    str(payload.get("error_description") or "")[:200],
+                )
+            else:
+                logger.warning(
+                    "Google token exchange failed with HTTP %d description=%s",
+                    resp.status_code,
+                    (getattr(resp, "text", "") or "")[:200],
+                )
             return None
         try:
             body = resp.json()
