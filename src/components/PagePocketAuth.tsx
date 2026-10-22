@@ -141,6 +141,36 @@ export function PagePocketAuth() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-3">
+        {/* easier-auth D4/D7: passwordless Google sign-in, shared by both
+            tabs; rendered only when VITE_GOOGLE_CLIENT_ID was set at build
+            time. The keep-signed-in checkbox below applies to this path
+            too. */}
+        {IS_GOOGLE_SIGN_IN_AVAILABLE && (
+          <>
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isAuthLoading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-white text-slate-700 text-sm font-medium rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              {isAuthLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <GoogleIcon />
+              )}
+              {t("filter.cloudContinueWithGoogle")}
+            </button>
+
+            <div className="flex items-center gap-3 py-1" role="separator">
+              <span className="h-px flex-1 bg-slate-200" />
+              <span className="text-xs text-slate-400 select-none">
+                {t("filter.cloudOr")}
+              </span>
+              <span className="h-px flex-1 bg-slate-200" />
+            </div>
+          </>
+        )}
+
         {tab === "register" && (
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -203,36 +233,6 @@ export function PagePocketAuth() {
           {isAuthLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           {tab === "login" ? t("filter.cloudLogin") : t("filter.cloudRegister")}
         </button>
-
-        {/* easier-auth D4/D7: passwordless Google sign-in, shared by both
-            tabs; rendered only when VITE_GOOGLE_CLIENT_ID was set at build
-            time. The keep-signed-in checkbox above applies to this path
-            too. */}
-        {IS_GOOGLE_SIGN_IN_AVAILABLE && (
-          <>
-            <div className="flex items-center gap-3 py-1" role="separator">
-              <span className="h-px flex-1 bg-slate-200" />
-              <span className="text-xs text-slate-400 select-none">
-                {t("filter.cloudOr")}
-              </span>
-              <span className="h-px flex-1 bg-slate-200" />
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={isAuthLoading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-white text-slate-700 text-sm font-medium rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-            >
-              {isAuthLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <GoogleIcon />
-              )}
-              {t("filter.cloudContinueWithGoogle")}
-            </button>
-          </>
-        )}
       </form>
 
       {/* Switch tab link */}
