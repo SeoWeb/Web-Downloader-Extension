@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, type NextResponse } from "next/server";
 import { setAuthCookies } from "@/lib/auth/cookies";
 import { API_GATEWAY_URL, googleOAuthConfig } from "@/lib/env";
 import { forwardedClientIpHeadersFrom } from "@/lib/api/client-ip";
@@ -8,6 +8,7 @@ import {
   decodeGoogleOAuthState,
   googleOAuthCookieClearAttrs,
   googleOAuthRedirectUri,
+  relativeRedirect,
 } from "@/lib/auth/google-oauth";
 
 /**
@@ -20,8 +21,11 @@ import {
 export async function GET(request: NextRequest) {
   // Every response leaves with the state cookie cleared — read-once
   // semantics (a replayed callback finds no cookie and fails state check).
+  // The Location is RELATIVE: request.url shows the proxy's internal Host
+  // behind nginx, so an absolute Location would send browsers to a dead
+  // localhost URL (see relativeRedirect).
   function finish(target: string): NextResponse {
-    const response = NextResponse.redirect(new URL(target, request.url), 302);
+    const response = relativeRedirect(target);
     response.cookies.set({
       name: GOOGLE_OAUTH_COOKIE,
       value: "",

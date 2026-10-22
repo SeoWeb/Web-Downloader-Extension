@@ -1,5 +1,7 @@
 import "server-only";
 
+import { NextResponse } from "next/server";
+
 /**
  * Shared plumbing for the server-side Google authorization-code + PKCE flow
  * (easier-auth D9). Both /api/auth/google route handlers use these so the
@@ -86,4 +88,19 @@ export function decodeGoogleOAuthState(
  */
 export function googleOAuthRedirectUri(origin: string, override?: string) {
   return override || `${origin}/api/auth/google/callback`;
+}
+
+/**
+ * 302 with a RELATIVE Location header. NextResponse.redirect() resolves its
+ * target against request.url, and behind a Host-rewriting proxy (nginx
+ * passing an internal Host) request.url shows the internal origin (e.g.
+ * https://localhost:3000) — browsers would then be sent to a dead absolute
+ * URL. A relative Location is RFC 7231-valid: every browser resolves it
+ * against the address it actually visited, so this works behind any proxy.
+ */
+export function relativeRedirect(location: string): NextResponse {
+  return new NextResponse(null, {
+    status: 302,
+    headers: { Location: location },
+  });
 }

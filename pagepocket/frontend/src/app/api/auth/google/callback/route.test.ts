@@ -58,24 +58,24 @@ function gatewayOk(
   });
 }
 
-function locationOf(res: Awaited<RouteResult>): URL {
+/** Raw Location header — the route must emit RELATIVE Locations (proxy-safe). */
+function locationOf(res: Awaited<RouteResult>): string {
   const location = res.headers.get("location");
   expect(location).toBeDefined();
-  return new URL(location!);
+  return location!;
 }
 
 describe("GET /api/auth/google/callback — Google-reported errors (D9)", () => {
   it("redirects access_denied to /login?error=google_cancelled, gateway untouched", async () => {
     const res = await callGet(`?error=access_denied&state=${STATE}`);
     expect(res.status).toBe(302);
-    expect(locationOf(res).pathname).toBe("/login");
-    expect(locationOf(res).searchParams.get("error")).toBe("google_cancelled");
+    expect(locationOf(res)).toBe("/login?error=google_cancelled");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("redirects other Google errors to /login?error=google", async () => {
     const res = await callGet("?error=server_error");
-    expect(locationOf(res).searchParams.get("error")).toBe("google");
+    expect(locationOf(res)).toBe("/login?error=google");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
@@ -83,13 +83,13 @@ describe("GET /api/auth/google/callback — Google-reported errors (D9)", () => 
 describe("GET /api/auth/google/callback — state validation (D9)", () => {
   it("redirects a missing state cookie to /login?error=google", async () => {
     const res = await callGet(`?code=abc&state=${STATE}`);
-    expect(locationOf(res).searchParams.get("error")).toBe("google");
+    expect(locationOf(res)).toBe("/login?error=google");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("redirects a state mismatch to /login?error=google", async () => {
     const res = await callGet("?code=abc&state=tampered", stateCookieValue());
-    expect(locationOf(res).searchParams.get("error")).toBe("google");
+    expect(locationOf(res)).toBe("/login?error=google");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
@@ -114,7 +114,7 @@ describe("GET /api/auth/google/callback — code exchange + session (D9)", () =>
     });
 
     expect(res.status).toBe(302);
-    expect(locationOf(res).pathname).toBe("/app/settings");
+    expect(locationOf(res)).toBe("/app/settings");
 
     const setCookies = res.headers.getSetCookie().join("\n");
     expect(setCookies).toContain("pp_access=access.jwt.value");
@@ -157,9 +157,7 @@ describe("GET /api/auth/google/callback — code exchange + session (D9)", () =>
       }),
     );
     const res = await callGet(`?code=bad&state=${STATE}`, stateCookieValue());
-    const location = locationOf(res);
-    expect(location.pathname).toBe("/login");
-    expect(location.searchParams.get("error")).toBe("google");
+    expect(locationOf(res)).toBe("/login?error=google");
 
     const setCookies = res.headers.getSetCookie().join("\n");
     expect(setCookies).not.toContain("pp_access=");
@@ -169,7 +167,7 @@ describe("GET /api/auth/google/callback — code exchange + session (D9)", () =>
   it("redirects a malformed gateway success (no access_token) to /login?error=google", async () => {
     fetchMock.mockResolvedValueOnce(gatewayOk({ access_token: "" }));
     const res = await callGet(`?code=c&state=${STATE}`, stateCookieValue());
-    expect(locationOf(res).searchParams.get("error")).toBe("google");
+    expect(locationOf(res)).toBe("/login?error=google");
   });
 
   it("honors GOOGLE_OAUTH_REDIRECT_URI in the exchange body", async () => {
@@ -186,5 +184,57 @@ describe("GET /api/auth/google/callback — code exchange + session (D9)", () =>
       if (original === undefined) delete process.env.GOOGLE_OAUTH_REDIRECT_URI;
       else process.env.GOOGLE_OAUTH_REDIRECT_URI = original;
     }
+  });
+});
+
+describe("GET /api/auth/google/callback — relative-only Locations (proxy-safe)", () => {
+  it("no issued Location ever starts with http — every branch stays relative", async () => {
+    const responses: RouteResult[] = [];
+
+    // Google-reported errors (cancelled + generic).
+    responses.push(await callGet(`?error=access_denied&state=${STATE}`));
+    responses.push(await callGet("?error=server_error"));
+    // State failures (missing cookie + tampered state).
+    responses.push(await callGet(`?code=abc&state=${STATE}`));
+    responses.push(
+      await callGet("?code=abc&state=tampered", stateCookieValue()),
+    );
+    // Gateway network failure.
+    fetchMock.mockRejectedValueOnce(new TypeError("gateway unreachable"));
+    responses.push(await callGet(`?code=c&state=${STATE}`, stateCookieValue()));
+    // Gateway rejection.
+    fetchMock.mockResolvedValueOnce(new Response("{}", { status: 401 }));
+    responses.push(
+      await callGet(`?code=bad&state=${STATE}`, stateCookieValue()),
+    );
+    // Malformed gateway success (no access_token).
+    fetchMock.mockResolvedValueOnce(gatewayOk({ access_token: "" }));
+    responses.push(await callGet(`?code=c&state=${STATE}`, stateCookieValue()));
+    // Success — the post-login redirect is the one that matters most.
+    fetchMock.mockResolvedValueOnce(gatewayOk());
+    responses.push(
+      await callGet(
+        `?code=c&state=${STATE}`,
+        stateCookieValue("/app/settings"),
+      ),
+    );
+
+    const expected = [
+      "/login?error=google_cancelled",
+      "/login?error=google",
+      "/login?error=google",
+      "/login?error=google",
+      "/login?error=google",
+      "/login?error=google",
+      "/login?error=google",
+      "/app/settings",
+    ];
+    responses.forEach((res, i) => {
+      expect(res.status).toBe(302);
+      // Behind the host's nginx, request.url resolves to an internal origin
+      // (https://localhost:3000) — a Location may NEVER be absolute here.
+      expect(res.headers.get("location")).not.toMatch(/^https?:\/\//i);
+      expect(locationOf(res)).toBe(expected[i]);
+    });
   });
 });
