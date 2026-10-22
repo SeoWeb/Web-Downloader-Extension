@@ -65,6 +65,19 @@ The Google button renders only when `VITE_GOOGLE_CLIENT_ID` is set at build time
 
 The `pagepocket_cloud_binding` record is persisted/cleared together with the refresh token. Persisting auth but not the binding would strand users signed-in-but-unlinked after a restart; the binding contains no credentials beyond the server API key reference already covered by the hardening spec.
 
+### D9 — Web app: server-side authorization-code + PKCE, reusing the gateway exchange (follow-up)
+
+The web app (app.pagepocket.app) gets Google sign-in via two server-side Next route handlers, so the browser never sees tokens or the client secret:
+
+- `GET /api/auth/google/start` — generates PKCE (S256) verifier + `state`, stores `{verifier, state, redirect}` in a short-lived httpOnly cookie scoped to `/api/auth/google` (10-min TTL), 302s to Google's authorize endpoint (`prompt=select_account`, scope `openid email profile`).
+- `GET /api/auth/google/callback` — validates `state`, POSTs `{code, code_verifier, redirect_uri}` to the existing gateway `POST /auth/google`, establishes the session via the existing `setAuthCookies` BFF pattern (`pp_access`/`pp_refresh` httpOnly cookies), redirects to the validated target.
+
+No backend changes: `redirect_uri` is a passthrough at the gateway/auth-service and the response shape equals login/register. `redirect_uri` is `https://app.pagepocket.app/api/auth/google/callback`, registered in Google Cloud Console on the same OAuth client (operator action). `GOOGLE_CLIENT_ID` (+ optional `GOOGLE_OAUTH_REDIRECT_URI` override) are server env vars in the frontend; the button renders only when the client ID is set (same gating philosophy as D7). Errors redirect to `/login?error=google|google_cancelled` and surface in the existing form-error banner. Post-Google target: login page threads its `?redirect=` param; the register page targets `/app/onboarding` for new-user parity with password registration.
+
+### D10 — UI order: Google first (follow-up)
+
+On the web login and register pages and in the extension (both tabs), the "Continue with Google" button renders **first**, then an "or" divider, then the email/password form — Google is the primary path, password the fallback.
+
 ## Risks / Trade-offs
 
 - [Refresh token on disk is readable by local malware] → mitigated by rotation-on-every-use + reuse detection revoking all sessions (`servicer.py:174-181`); logout revokes server-side; the password is never persisted; users can opt out per device.

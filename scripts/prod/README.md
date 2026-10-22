@@ -707,6 +707,32 @@ drift:`DB*USER*_`were never in`.env`, and old containers predated the
   probe through app.pagepocket.app (the proxy), not the host-local
   gateway port.
 
+### Deploy record — 2026-10-22 (easier-auth web follow-up)
+
+- `82dced8` — web Google sign-in: server-side PKCE start/callback routes
+  (`/api/auth/google/start`, `/api/auth/google/callback`), Google-first
+  login/register UI. CI run `39783560013` (frontend + extension green,
+  server/backend skipped) → deploy run `39783559921`, deploy-frontend ✓.
+- `8b5a3e2` — extension UI: Google sign-in button first in the auth form.
+- Host (pre-push, authorized like §15): `GOOGLE_CLIENT_ID` +
+  `GOOGLE_OAUTH_REDIRECT_URI` appended to
+  `pagepocket/frontend/.env.production.local`; picked up by the deploy's
+  `nohup next start` restart (no pm2-managed process on host — pm2 branch
+  in deploy.yml is a dormant fallback), so no manual restart was needed.
+- Post-deploy E2E through the public URL (all pass): start → 302 to
+  accounts.google.com with client_id/redirect_uri/response_type/scope=
+  openid+email+profile/S256/state/code_challenge/prompt=select_account +
+  `pp_g_oauth` cookie (HttpOnly, Path=/api/auth/google, Max-Age=600);
+  callback without cookie → 302 `/login?error=google`, cookie cleared;
+  login/register render "Continue with Google" (client component — SSR
+  payload carries `googleEnabled:true`, label confirmed in shipped chunk
+  and rendered DOM); extension proxy regression `POST /api/v1/auth/google`
+  `{}` → 400; `/login` → 200. NOTE (cosmetic): the error-path redirect
+  Location is absolute `https://localhost:3000/login?error=google`
+  (Host derived from the internal port behind Cloudflare); the success
+  path redirects to the relative target from the signed cookie (`/app`),
+  so the real flow is unaffected.
+
 ## 15. Extension ID & Google OAuth redirect URI (easier-auth)
 
 The extension ID is pinned by the `key` field in `public/manifest.json`
