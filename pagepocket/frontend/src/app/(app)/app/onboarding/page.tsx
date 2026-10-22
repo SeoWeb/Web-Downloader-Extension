@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
+import { CHROME_WEB_STORE_URL } from "@/components/marketing/site-json-ld";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -14,9 +15,9 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex flex-1 items-center justify-center">
-      <div className="text-center space-y-4 max-w-md">
-        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary/10">
-          <Sparkles className="size-8 text-primary" />
+      <div className="max-w-md space-y-4 text-center">
+        <div className="bg-primary/10 mx-auto flex size-16 items-center justify-center rounded-full">
+          <Sparkles className="text-primary size-8" />
         </div>
         <h1 className="text-2xl font-semibold">Welcome to PagePocket!</h1>
         <p className="text-muted-foreground">
@@ -24,14 +25,14 @@ export default function OnboardingPage() {
           pages, then find them here anytime.
         </p>
         <a
-          href="https://chromewebstore.google.com/category/extensions"
+          href={CHROME_WEB_STORE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
         >
           Install the extension
         </a>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           Redirecting to your dashboard...
         </p>
       </div>

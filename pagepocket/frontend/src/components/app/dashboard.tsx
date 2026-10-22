@@ -13,6 +13,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { clientApi } from "@/lib/client-api";
+import { CHROME_WEB_STORE_URL } from "@/components/marketing/site-json-ld";
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Select,
@@ -229,7 +230,7 @@ export function Dashboard({ initialData, collectionId }: DashboardProps) {
         actions={[
           {
             label: "Install the extension",
-            href: "https://chromewebstore.google.com/category/extensions",
+            href: CHROME_WEB_STORE_URL,
           },
           {
             label: "Watch a 60-second demo",

@@ -15,9 +15,11 @@ import {
   Newspaper,
   Code2,
   LibraryBig,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/marketing/section";
+import { CHROME_WEB_STORE_URL } from "@/components/marketing/site-json-ld";
 import { PageHero } from "@/components/marketing/page-hero";
 import { FaqList } from "@/components/marketing/faq-list";
 import {
@@ -596,6 +598,89 @@ export default function LandingPage() {
               control access, and track views.
             </p>
           </div>
+        </div>
+      </Section>
+
+      {/* 5b · Browser extension — one click from reading to archived */}
+      <Section
+        eyebrow="Browser extension"
+        title="One click from any page to your archive"
+        subtitle="The PagePocket extension adds a side panel to Chrome: while you read, one click saves the full page — HTML, CSS, images, fonts — to your private, full-text searchable archive."
+        id="extension"
+      >
+        <div className="grid items-center gap-10 lg:grid-cols-2">
+          <div>
+            <ul className="text-muted-foreground space-y-3 text-sm leading-relaxed">
+              <li className="flex items-start gap-2.5">
+                <Check
+                  className="text-primary mt-0.5 size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                Full-fidelity capture — the page as it was, not a screenshot.
+              </li>
+              <li className="flex items-start gap-2.5">
+                <Check
+                  className="text-primary mt-0.5 size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                Everything lands in your own library — no account sharing, no
+                public by default.
+              </li>
+              <li className="flex items-start gap-2.5">
+                <Check
+                  className="text-primary mt-0.5 size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                Save without interrupting your reading — the panel sits beside
+                the page.
+              </li>
+            </ul>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Button
+                size="lg"
+                nativeButton={false}
+                render={
+                  <a
+                    href={CHROME_WEB_STORE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+              >
+                Install for Chrome
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                nativeButton={false}
+                render={<Link href="/features" />}
+              >
+                Explore features
+              </Button>
+            </div>
+            <p className="text-muted-foreground mt-3 text-xs">
+              Free to start &middot; No credit card
+            </p>
+          </div>
+
+          {/* Real side-panel capture (proof, not mockups). No dark variant
+              exists for this PNG, so the light capture renders in both
+              themes — no dark:hidden pair here. */}
+          <figure>
+            <div className="border-border bg-card mx-auto max-w-[360px] overflow-hidden rounded-xl border p-2 shadow-sm">
+              <Image
+                src="/screenshots/extension-sidepanel-ready.png"
+                alt="The PagePocket browser extension side panel connected to a web page, showing the Start download button and the save progress steps"
+                width={420}
+                height={780}
+                sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, calc(100vw - 2rem)"
+                className="h-auto w-full"
+              />
+            </div>
+            <figcaption className="text-muted-foreground mt-3 text-center text-xs">
+              The PagePocket side panel — save and read anywhere.
+            </figcaption>
+          </figure>
         </div>
       </Section>
 

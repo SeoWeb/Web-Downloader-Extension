@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CHROME_WEB_STORE_URL } from "@/components/marketing/site-json-ld";
 
 // Client-side auth CTA so the marketing layout stays statically rendered.
 // Renders the anonymous actions by default (matching the prerendered HTML)
@@ -30,7 +31,7 @@ export function MarketingAuthCta() {
     return (
       <Link
         href="/app"
-        className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+        className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
       >
         Open dashboard
       </Link>
@@ -39,18 +40,27 @@ export function MarketingAuthCta() {
 
   return (
     <>
+      {/* Install points straight at the Chrome Web Store listing (marketing
+          spec "Trust Links": install links go to the exact listing, never a
+          generic category page) and opens in a new tab. */}
       <Button
         size="sm"
         variant="outline"
         nativeButton={false}
-        render={<Link href="/features" />}
+        render={
+          <a
+            href={CHROME_WEB_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          />
+        }
       >
         <Download className="size-3.5" />
         Install
       </Button>
       <Link
         href="/login"
-        className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+        className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
       >
         Sign in
       </Link>
