@@ -661,6 +661,31 @@ drift:`DB*USER*_`were never in`.env`, and old containers predated the
   error boundary) → **200 with dashboard fallback, no error boundary**;
   demo-account real token → 200 hydrated dashboard.
 
+### Deploy record — 2026-10-22 (easier-auth, `291bc67`)
+
+- Deploy: commit `291bc67` (feat(auth): keep-signed-in + Google sign-in),
+  CI run `39769377370` (3m25s, all jobs green) → deploy run `39769377390`
+  (7m03s: ci-gate, extension-artifact, deploy-backend 2m06s,
+  deploy-frontend 1m02s — frontend redeployed due to docs content changes).
+- Env provisioning (pre-push): `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` +
+  `CORS_ALLOW_ORIGINS=https://pagepocket.app,https://app.pagepocket.app,chrome-extension://aeojmgngnebhbjpncamiplkimkbnmpmk`
+  appended to `pagepocket/.env` (backup `pagepocket/.env.bak-20261022_131340`);
+  compose render verified pre-push (fail-fast guard would have blocked boot
+  otherwise).
+- Migration: auth-service alembic `001 → 002` (google_sub nullable-unique
+  `ix_users_google_sub`; `password_hash` now nullable) applied by
+  deploy-backend; other services no-op at head.
+- Post-deploy verification (all pass): health ok (rate_limiter/trusted_proxies
+  ok); `POST /api/v1/auth/google` `{}` → 400 "Missing required field: code"
+  (public route live); invalid-code E2E → 401 "google sign-in failed"
+  (server-side exchange reached Google, failed closed); CORS preflight from
+  the extension origin echoed; all ports still localhost-bound (33060
+  unpublished); frontend :3000 → 200; compose ps all healthy.
+- Note: extension distribution remains manual — operator rebuild + reload;
+  the CI store artifact (extension-artifact) is built WITHOUT
+  `VITE_GOOGLE_CLIENT_ID` so the Google button stays hidden in store builds
+  until that var is added as a build secret (pending follow-up).
+
 ## 15. Extension ID & Google OAuth redirect URI (easier-auth)
 
 The extension ID is pinned by the `key` field in `public/manifest.json`

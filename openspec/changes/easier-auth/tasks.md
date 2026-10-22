@@ -30,6 +30,6 @@
 ## 4. Release prep
 
 - [x] 4.1 Register Google OAuth client (Web application type) in Google Cloud Console with redirect URI `https://<extension-id>.chromiumapp.org/`; record client ID/secret for env config
-- [ ] 4.2 Confirm `CORS_ALLOW_ORIGINS` in production includes the production `chrome-extension://` origin
-- [ ] 4.3 Update production env/secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) — deployment itself only on explicit user order per `scripts/prod/README.md` (deploy order: backend + migration 002 first, extension last)
+- [x] 4.2 Confirm `CORS_ALLOW_ORIGINS` in production includes the production `chrome-extension://` origin
+- [x] 4.3 Update production env/secrets (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) — deployment itself only on explicit user order per `scripts/prod/README.md` (deploy order: backend + migration 002 first, extension last)
 - [x] 4.4 Update user-facing docs/release notes: keep-signed-in behavior, Google sign-in, shared-computer opt-out
