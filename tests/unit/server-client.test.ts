@@ -203,6 +203,75 @@ describe("ServerClient", () => {
       });
       expect(id).toBe("sess-456");
     });
+
+    // download-as-markdown task 3.8 / design D5: the option rides the
+    // POST /api/v1/sessions body; the extension never converts itself.
+    it("sends downloadContentAsMarkdown: true when enabled", async () => {
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            const body = JSON.parse(init.body as string);
+            expect(body.options.downloadContentAsMarkdown).toBe(true);
+            return mockResponse(201, {
+              id: "sess-md-1",
+              url: "",
+              status: "scraping",
+              html_chunks: 0,
+              resources_discovered: null,
+              resources_received: 0,
+              created_at: "",
+              expires_at: "",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      const id = await client.createSession("https://example.com", {
+        downloadContentAsMarkdown: true,
+      });
+      expect(id).toBe("sess-md-1");
+    });
+
+    it("sends downloadContentAsMarkdown: false when the option is unset", async () => {
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            const body = JSON.parse(init.body as string);
+            // Spec: the field is sent on every session creation.
+            expect(body.options.downloadContentAsMarkdown).toBe(false);
+            return mockResponse(201, {
+              id: "sess-md-0",
+              url: "",
+              status: "scraping",
+              html_chunks: 0,
+              resources_discovered: null,
+              resources_received: 0,
+              created_at: "",
+              expires_at: "",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      const id = await client.createSession("https://example.com", {
+        retentionDays: 1,
+      });
+      expect(id).toBe("sess-md-0");
+    });
   });
 
   // -----------------------------------------------------------------------

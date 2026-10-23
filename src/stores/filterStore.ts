@@ -50,6 +50,7 @@ function validateFilterOptions(options: FilterOptions): FilterOptions {
       downloadLinks: false,
       downloadAssets: false,
       downloadContentAsText: false,
+      downloadContentAsMarkdown: false,
       downloadDocuments: false,
     };
   }
@@ -61,6 +62,7 @@ function validateFilterOptions(options: FilterOptions): FilterOptions {
     validated.downloadLinks ||
     validated.downloadAssets ||
     validated.downloadContentAsText ||
+    validated.downloadContentAsMarkdown ||
     validated.downloadDocuments;
 
   if (!hasContent) {
@@ -203,6 +205,7 @@ export const useFilterStore = create<FilterState>()(
         options.downloadLinks ||
         options.downloadAssets ||
         options.downloadContentAsText ||
+        options.downloadContentAsMarkdown ||
         options.downloadDocuments ||
         options.singleFile
       );
@@ -223,6 +226,7 @@ export const useFilterStore = create<FilterState>()(
         options.downloadLinks ||
         options.downloadAssets ||
         options.downloadContentAsText ||
+        options.downloadContentAsMarkdown ||
         options.downloadDocuments
       );
     },

@@ -14,6 +14,7 @@ export interface DownloadOptions {
   downloadLinks: boolean;
   downloadAssets: boolean;
   downloadContentAsText: boolean;
+  downloadContentAsMarkdown?: boolean;
   downloadDocuments: boolean;
   downloadLinksFullScraping?: boolean;
   singleFile: boolean;
@@ -130,6 +131,10 @@ export function useScrapingDownloader({
             url: tabUrl,
             options: {
               singleFile: downloadOptions?.singleFile ?? false,
+              // Forwarded so the pre-created session (reused by
+              // download-core) carries the markdown option too.
+              downloadContentAsMarkdown:
+                downloadOptions?.downloadContentAsMarkdown ?? false,
               retentionDays: 1,
             },
             setActive: true, // Store as active session in background
@@ -296,6 +301,7 @@ export function useScrapingDownloader({
     setMessages,
     scrollAttempts,
     downloadOptions?.singleFile,
+    downloadOptions?.downloadContentAsMarkdown,
   ]);
 
   useEffect(() => {

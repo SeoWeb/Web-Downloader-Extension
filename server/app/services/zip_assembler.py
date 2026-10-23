@@ -35,6 +35,7 @@ from app.services.html_converter import (
     html_converter_service,
 )
 from app.services.html_merger import MergeResult, html_merger_service
+from app.services.markdown_converter import convert_html_to_markdown
 
 logger = logging.getLogger(__name__)
 
@@ -233,6 +234,43 @@ class ZipAssemblerService:
                     page_filename_map[lp_result.page_url] = filename
                     page_hash_to_filename[page_hash] = filename
 
+                # ---- Phase 1b: Markdown conversion (download-as-markdown D2) ----
+                # Convert the MERGED documents BEFORE any Phase-2 URL rewriting
+                # (the conversion call below is what rewrites `main_html`; the
+                # linked pages here are read from the merge output that Phase 2b
+                # also consumes) so EVERY produced markdown file's links/images
+                # carry original absolute URLs: the main page resolves against
+                # the session's original URL, each linked page against its
+                # stored page URL. Failure isolation (D6): a conversion error
+                # only omits that markdown output — assembly never fails because
+                # of markdown. The results are consumed exclusively by the
+                # multi-file ZIP branch; single-file and cloud branches
+                # intentionally skip markdown in v1 (D7).
+                content_md: Optional[str] = None
+                page_md_list: dict[str, str] = {}
+                if bool(
+                    session.options
+                    and session.options.get("downloadContentAsMarkdown")
+                ):
+                    try:
+                        content_md = await asyncio.to_thread(
+                            convert_html_to_markdown, main_html, tab_url,
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Markdown conversion failed (omitting content.md): "
+                            "session=%s exc=%s",
+                            session_id, exc,
+                        )
+                        content_md = None
+
+                    for page_hash, lp_result in linked_results.items():
+                        page_md = await self._convert_linked_page_markdown(
+                            lp_result.html, lp_result.page_url, session_id,
+                        )
+                        if page_md is not None:
+                            page_md_list[page_hash] = page_md
+
                 main_html = await asyncio.to_thread(
                     html_converter_service.convert_html,
                     main_html, tab_url,
@@ -329,6 +367,9 @@ class ZipAssemblerService:
                     await self._update_progress(db, session, "inlining_css", 100)
 
                 # ---- Cloud-only assembly branch ----
+                # v1 (download-as-markdown D7): the cloud push branch ignores the
+                # downloadContentAsMarkdown option — no markdown is converted into
+                # the pushed payload or embedded in single-file cloud output.
                 if session.pagepocket_user_id:
                     await self._update_progress(db, session, "assembling_zip", 0)
                     # 3.2 — plan comes from the server-side binding stamped on
@@ -415,6 +456,10 @@ class ZipAssemblerService:
                 content_text = self._read_content_txt(session_id)
 
                 if is_single_file:
+                    # v1 (download-as-markdown D7): single-file output does not
+                    # embed markdown — the option is forced off under singleFile
+                    # by the extension's validation and is intentionally ignored
+                    # here, so `content_md` (if computed) is never consumed.
                     output_path = await self._assemble_single_file(
                         session_id, db, session,
                         main_html, tab_url, conv_filename_map, content_text,
@@ -427,6 +472,8 @@ class ZipAssemblerService:
                         page_hash_to_filename, conv_filename_map, content_text,
                         all_resources,
                         archive_paths=archive_path_by_resource_id,
+                        content_md=content_md,
+                        page_md_list=page_md_list,
                     )
 
                 if output_path is None:
@@ -481,18 +528,23 @@ class ZipAssemblerService:
         content_text: Optional[str],
         all_resources: list | None = None,
         archive_paths: Optional[dict[str, str]] = None,
+        content_md: Optional[str] = None,
+        page_md_list: Optional[dict[str, str]] = None,
     ) -> Optional[str]:
         """Assemble a ZIP archive with the correct directory structure.
 
         Structure:
           index.html          – merged main page
           content.txt         – text content (if uploaded)
+          content.md          – main page markdown (when the
+                                downloadContentAsMarkdown option is on)
           images/             – image resources
           styles/             – CSS files
           scripts/            – JS files
           fonts/              – font files
           documents/          – document resources
-          pages/              – linked page HTML files
+          pages/              – linked page HTML files (+ .md when the
+                                markdown option is on)
 
         ``archive_paths`` (3.7): resource id → final archive path from
         ``resolve_archive_path_collisions``; colliding paths carry a stable
@@ -522,6 +574,18 @@ class ZipAssemblerService:
                 # 2. Write content.txt if present (6.3)
                 if content_text is not None:
                     zf.writestr("content.txt", content_text)
+                    steps_done += 1
+                    await self._update_progress(
+                        db, session, "assembling_zip",
+                        int(steps_done / max(total_steps, 1) * 100),
+                    )
+
+                # 2b. Write content.md if the markdown option produced one
+                # (download-as-markdown): main-page markdown in the ZIP root,
+                # next to content.txt. When the option is off (or conversion
+                # failed per D6) `content_md` is None and nothing is written.
+                if content_md is not None:
+                    zf.writestr("content.md", content_md)
                     steps_done += 1
                     await self._update_progress(
                         db, session, "assembling_zip",
@@ -578,6 +642,18 @@ class ZipAssemblerService:
                     page_filename = sanitize_zip_path(f"pages/{filename}")
                     if page_filename:
                         zf.writestr(page_filename, page_html)
+                    # 4b. Per-page markdown beside the .html (download-as-markdown
+                    # D4): same hash/filename mapping with a .md extension. The
+                    # markdown strings are PRE-CONVERTED in assemble_session()
+                    # from the pre-rewrite page HTML (D2 — original absolute
+                    # URLs, never archive-relative paths). Per-page failure
+                    # isolation (D6): a page whose conversion failed has no
+                    # entry in `page_md_list`, so only its .md is omitted.
+                    page_md = (page_md_list or {}).get(page_hash)
+                    if page_md is not None and page_filename:
+                        md_filename = markdown_zip_path_for(page_filename)
+                        if md_filename:
+                            zf.writestr(md_filename, page_md)
                     steps_done += 1
                     await self._update_progress(
                         db, session, "assembling_zip",
@@ -833,6 +909,58 @@ class ZipAssemblerService:
                 "Failed to convert CSS file: session=%s path=%s exc=%s",
                 session_id, resource.local_path, exc,
             )
+
+    # ------------------------------------------------------------------
+    # Markdown conversion helpers (download-as-markdown)
+    # ------------------------------------------------------------------
+
+    async def _convert_linked_page_markdown(
+        self,
+        page_html: str,
+        page_url: Optional[str],
+        session_id: str,
+    ) -> Optional[str]:
+        """Convert one linked page to stamped Markdown (download-as-markdown D4).
+
+        Called from ``assemble_session`` (Phase 1b) on the PRE-rewrite page
+        HTML — the same merge output Phase 2b consumes — so the markdown's
+        links/images reference original absolute URLs, resolved against the
+        page's original URL. The result begins with
+        ``<!-- source: <original-url> -->`` followed by the page title as an
+        H1 when a title is available, then the converted markdown. Conversion
+        runs off the event loop.
+
+        Failure isolation (D6): returns ``None`` on any conversion error —
+        the page gets no ``page_md_list`` entry, so the ZIP omits only this
+        page's ``.md`` file and the rest of the archive is unaffected.
+        """
+        try:
+            page_md = await asyncio.to_thread(
+                convert_html_to_markdown, page_html, page_url or "",
+            )
+        except Exception as exc:
+            logger.warning(
+                "Linked-page markdown conversion failed (omitting this .md): "
+                "session=%s url=%s exc=%s",
+                session_id, page_url, exc,
+            )
+            return None
+
+        if not page_md:
+            # Conversion succeeded but produced empty markdown (e.g. a page
+            # with only non-content elements) — still emit the stamped file
+            # so every pages/<hash>.html has its pages/<hash>.md sibling.
+            page_md = ""
+
+        parts: list[str] = []
+        if page_url:
+            parts.append(f"<!-- source: {page_url} -->")
+        title = self._extract_title(page_html.encode("utf-8"))
+        if title:
+            parts.append(f"# {title}")
+        if page_md:
+            parts.append(page_md)
+        return "\n\n".join(parts)
 
     # ------------------------------------------------------------------
     # Database helpers
@@ -1346,6 +1474,18 @@ def resolve_archive_path_collisions(
         conv_local_path_to_storage,
         conv_filename_ext_map,
     )
+
+
+def markdown_zip_path_for(html_zip_path: str) -> Optional[str]:
+    """Map an HTML archive path to its Markdown sibling path (download-as-markdown).
+
+    ``pages/<name>.html`` → ``pages/<name>.md`` (same hash/filename
+    mapping, per D4). Returns ``None`` for paths without an ``.html``
+    suffix — those have no defined markdown sibling.
+    """
+    if html_zip_path.endswith(".html"):
+        return html_zip_path[: -len(".html")] + ".md"
+    return None
 
 
 # ---------------------------------------------------------------------------

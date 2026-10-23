@@ -179,6 +179,13 @@ export class HttpError extends Error {
 
 export interface SessionOptions {
   singleFile?: boolean;
+  /**
+   * Ask the server to also convert the merged HTML to Markdown
+   * (content.md + per-linked-page pages/<hash>.md). Extension never
+   * converts anything itself — D5/D7 (download-as-markdown). Ignored by
+   * the cloud push branch in v1.
+   */
+  downloadContentAsMarkdown?: boolean;
   retentionDays?: number;
   pagepocketUserId?: string;
 }
@@ -425,6 +432,8 @@ export class ServerClient {
     if (options) {
       body.options = {
         singleFile: options.singleFile ?? false,
+        // Sent on every session creation (spec: default false when unset).
+        downloadContentAsMarkdown: options.downloadContentAsMarkdown ?? false,
         retentionDays: options.retentionDays,
         pagepocketUserId: options.pagepocketUserId,
       };

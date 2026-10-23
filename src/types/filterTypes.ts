@@ -7,6 +7,7 @@ export interface FilterOptions {
   downloadLinks: boolean;
   downloadAssets: boolean;
   downloadContentAsText: boolean;
+  downloadContentAsMarkdown?: boolean; // Default: false (server-side conversion)
   downloadDocuments: boolean;
   singleFile: boolean;
 
@@ -29,6 +30,7 @@ export const DEFAULT_FILTER_OPTIONS: FilterOptions = {
   downloadLinks: false,
   downloadAssets: true,
   downloadContentAsText: false,
+  downloadContentAsMarkdown: false,
   downloadDocuments: true,
   singleFile: false,
   alwaysAskWhereToSave: true,

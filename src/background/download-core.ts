@@ -400,6 +400,8 @@ export async function downloadResources(
     } else {
       serverSessionId = await createSessionWithCloudRetry(tabUrl, {
         singleFile: downloadOptions?.singleFile ?? false,
+        downloadContentAsMarkdown:
+          downloadOptions?.downloadContentAsMarkdown ?? false,
         retentionDays: 1,
         pagepocketUserId: pagepocketUserId ?? undefined,
       });

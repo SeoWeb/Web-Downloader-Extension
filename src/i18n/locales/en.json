@@ -34,6 +34,7 @@
       "downloadAssets": "Download assets (css, js)",
       "downloadDocuments": "Download documents (pdf, doc, etc.)",
       "downloadContentAsText": "Download content as text",
+      "downloadContentAsMarkdown": "Download content as Markdown",
       "singleFile": "Download in single HTML file",
       "singleFileDescription": "Best for simple archiving",
       "fullWebsite": "Download full website",

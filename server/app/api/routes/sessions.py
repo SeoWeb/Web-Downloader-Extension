@@ -83,6 +83,10 @@ class SessionOptions(BaseModel):
     """Options for session creation."""
 
     singleFile: bool = Field(False, description="Produce single-file HTML output")
+    downloadContentAsMarkdown: bool = Field(
+        False,
+        description="Produce Markdown export (content.md / pages/*.md) in the ZIP",
+    )
     retentionDays: int = Field(
         settings.default_retention_days,
         ge=settings.min_retention_days,
@@ -294,6 +298,7 @@ async def create_session(
         options={
             "singleFile": opts.singleFile,
             "retentionDays": retention_days,
+            "downloadContentAsMarkdown": opts.downloadContentAsMarkdown,
         },
         expires_at=now + timedelta(days=retention_days),
         pagepocket_user_id=bound_user_id,

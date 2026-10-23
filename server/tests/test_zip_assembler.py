@@ -19,9 +19,11 @@ import zipfile
 
 import pytest
 
+from app.services.markdown_converter import convert_html_to_markdown
 from app.services.zip_assembler import (
     ZipAssemblerService,
     generate_safe_filename,
+    markdown_zip_path_for,
     sanitize_zip_path,
 )
 
@@ -298,10 +300,17 @@ class TestZipAssembly:
     def _create_zip_directly(
         assembler, storage_root, session_id, main_html,
         resources=None, linked_page_htmls=None, content_text=None,
+        content_md=None, options=None, linked_page_urls=None,
+        linked_page_sources=None,
     ):
         """Create a ZIP using the assembler's internal _assemble_zip method.
 
         Bypasses the DB by providing mock objects.
+
+        ``linked_page_sources`` maps page_hash → (pre_rewrite_html,
+        original_url): the markdown for each entry is produced through the
+        real ``_convert_linked_page_markdown`` path before the ZIP runs,
+        mirroring the production flow in ``assemble_session`` (Phase 1b).
         """
         import types
 
@@ -312,6 +321,7 @@ class TestZipAssembly:
             status="assembling",
             assembly_phase="assembling_zip",
             assembly_progress_pct=0,
+            options=options if options is not None else {},
         )
 
         # Create a mock DB that does nothing for flush
@@ -339,14 +349,28 @@ class TestZipAssembly:
             import asyncio
             loop = asyncio.new_event_loop()
             try:
+                # Phase-1b equivalent: convert the pre-rewrite page HTML to
+                # stamped markdown before assembling the ZIP.
+                page_md_list = {}
+                for ph, (pre_html, page_url) in (linked_page_sources or {}).items():
+                    page_md = loop.run_until_complete(
+                        assembler._convert_linked_page_markdown(
+                            pre_html, page_url, session_id,
+                        )
+                    )
+                    if page_md is not None:
+                        page_md_list[ph] = page_md
+
                 zip_path = loop.run_until_complete(
                     assembler._assemble_zip(
                         session_id, MockDB(), mock_session,
                         main_html, linked_page_htmls or {},
-                        {},  # linked_page_urls
+                        linked_page_urls or {},  # linked_page_urls
                         {},  # page_hash_to_filename
                         {},  # filename_map
                         content_text,
+                        content_md=content_md,
+                        page_md_list=page_md_list,
                     )
                 )
             finally:
@@ -479,7 +503,7 @@ class TestSingleFileAssembly:
     @staticmethod
     def _create_single_file_directly(
         assembler, storage_root, session_id, main_html,
-        content_text=None,
+        content_text=None, options=None,
     ):
         """Create a single-file HTML using the assembler's _assemble_single_file method."""
         import types
@@ -490,6 +514,7 @@ class TestSingleFileAssembly:
             status="assembling",
             assembly_phase="assembling_zip",
             assembly_progress_pct=0,
+            options=options if options is not None else {},
         )
 
         class MockDB:
@@ -519,6 +544,344 @@ class TestSingleFileAssembly:
             return html_path
         finally:
             assembler._update_progress = original
+
+
+# ---------------------------------------------------------------------------
+# Markdown export (download-as-markdown 2.6)
+# ---------------------------------------------------------------------------
+
+
+class TestMarkdownExport:
+    """Task 2.6: Markdown export option drives content.md / pages/*.md output.
+
+    Mirrors the option-gating and failure-isolation requirements of the
+    server-markdown-export spec: md present/absent by option, original
+    absolute URLs, per-page source stamps, coexistence with content.txt,
+    single-file unaffected, converter failure never breaks assembly.
+    """
+
+    def test_content_md_present_when_option_on(self, assembler, storage_root):
+        """ZIP includes content.md in the root when the option produced markdown."""
+        session_id = "test-md-on"
+        _setup_session(storage_root, session_id)
+
+        main_html = "<!DOCTYPE html><html><body><p>With markdown</p></body></html>"
+        content_md = "# With markdown\n\nSome body text."
+
+        zip_path = TestZipAssembly._create_zip_directly(
+            assembler, storage_root, session_id, main_html,
+            content_md=content_md,
+            options={"downloadContentAsMarkdown": True},
+        )
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            names = zf.namelist()
+            assert "content.md" in names
+            assert zf.read("content.md").decode("utf-8") == content_md
+
+    def test_no_markdown_when_option_off(self, assembler, storage_root):
+        """No content.md and no pages/*.md when the option is off."""
+        session_id = "test-md-off"
+        _setup_session(storage_root, session_id)
+
+        main_html = "<!DOCTYPE html><html><body><p>No markdown</p></body></html>"
+        linked_page_htmls = {
+            "abc123": "<html><body><p>Linked</p></body></html>",
+        }
+        linked_page_urls = {"abc123": "https://example.com/pricing"}
+
+        zip_path = TestZipAssembly._create_zip_directly(
+            assembler, storage_root, session_id, main_html,
+            linked_page_htmls=linked_page_htmls,
+            linked_page_urls=linked_page_urls,
+            content_md=None,
+            options={},  # downloadContentAsMarkdown off (default)
+        )
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            names = zf.namelist()
+            assert "content.md" not in names
+            assert "pages/abc123.html" in names  # html still present
+            assert "pages/abc123.md" not in names
+            assert not any(n.endswith(".md") for n in names)
+
+    def test_content_md_links_use_original_absolute_urls(self, assembler, storage_root):
+        """content.md links carry original absolute URLs, not archive paths.
+
+        Mirrors assemble_session's timing: the markdown is converted from
+        the merged (pre-URL-rewrite) HTML with the session's original URL
+        as base (design D2).
+        """
+        session_id = "test-md-original-urls"
+        _setup_session(storage_root, session_id)
+
+        main_html = (
+            "<!DOCTYPE html><html><body>"
+            '<p>See <a href="/about">About</a> and '
+            '<img src="img/pic.png" alt="Pic">.</p>'
+            "</body></html>"
+        )
+        content_md = convert_html_to_markdown(main_html, "https://example.com/docs")
+
+        zip_path = TestZipAssembly._create_zip_directly(
+            assembler, storage_root, session_id, main_html,
+            content_md=content_md,
+            options={"downloadContentAsMarkdown": True},
+        )
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            md = zf.read("content.md").decode("utf-8")
+
+        assert "](https://example.com/about)" in md
+        # urljoin resolves "img/pic.png" against the base document URL by
+        # replacing its last path segment: /docs + img/pic.png → /img/pic.png.
+        assert "![Pic](https://example.com/img/pic.png)" in md
+        # No rewritten archive-relative path may appear in the markdown.
+        assert "./about" not in md
+        assert "images/" not in md
+
+    def test_pages_md_for_each_html_with_source_stamp(self, assembler, storage_root):
+        """Each pages/<hash>.html gets a pages/<hash>.md beginning with the stamp.
+
+        The per-page markdown is converted from the PRE-rewrite page HTML
+        (design D2), so links/images carry original absolute URLs and no
+        archive-relative path appears — mirroring the content.md assertion.
+        """
+        session_id = "test-md-pages-stamp"
+        _setup_session(storage_root, session_id)
+
+        main_html = "<!DOCTYPE html><html><body><p>Main</p></body></html>"
+        # What Phase 2 delivers to the ZIP loop (archive-relative refs).
+        linked_page_htmls = {
+            "abc123": (
+                "<html><head><title>Pricing</title></head>"
+                '<body><p>Linked page content</p>'
+                '<a href="../about">About</a>'
+                '<img src="../images/pic.png" alt="Pic"></body></html>'
+            ),
+            "def456": (
+                "<html><body><p>Page without a title</p></body></html>"
+            ),
+        }
+        linked_page_urls = {
+            "abc123": "https://example.com/pricing",
+            "def456": "https://example.com/terms",
+        }
+        # Pre-rewrite sources (what Phase 2b / markdown conversion read):
+        # original relative URLs still in place.
+        linked_page_sources = {
+            "abc123": (
+                '<html><head><title>Pricing</title></head>'
+                '<body><p>Linked page content</p>'
+                '<a href="/about">About</a>'
+                '<img src="img/pic.png" alt="Pic"></body></html>',
+                "https://example.com/pricing",
+            ),
+            "def456": (
+                "<html><body><p>Page without a title</p></body></html>",
+                "https://example.com/terms",
+            ),
+        }
+
+        zip_path = TestZipAssembly._create_zip_directly(
+            assembler, storage_root, session_id, main_html,
+            linked_page_htmls=linked_page_htmls,
+            linked_page_urls=linked_page_urls,
+            linked_page_sources=linked_page_sources,
+            options={"downloadContentAsMarkdown": True},
+        )
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            names = zf.namelist()
+            assert "pages/abc123.html" in names
+            assert "pages/abc123.md" in names
+            assert "pages/def456.html" in names
+            assert "pages/def456.md" in names
+
+            md = zf.read("pages/abc123.md").decode("utf-8")
+            assert md.startswith("<!-- source: https://example.com/pricing -->")
+            assert "# Pricing" in md
+            assert "Linked page content" in md
+            # Original absolute URLs (design D2), not archive-relative paths.
+            assert "](https://example.com/about)" in md
+            assert "![Pic](https://example.com/img/pic.png)" in md
+            assert "../" not in md
+            assert "./about" not in md
+            assert "images/" not in md
+
+            md2 = zf.read("pages/def456.md").decode("utf-8")
+            assert md2.startswith("<!-- source: https://example.com/terms -->")
+            # No title available → no H1 between the stamp and the body.
+            assert "# " not in md2
+            assert "Page without a title" in md2
+
+    def test_content_md_and_content_txt_together(self, assembler, storage_root):
+        """Both text options on → content.md and content.txt coexist."""
+        session_id = "test-md-and-txt"
+        _setup_session(storage_root, session_id, include_content=True)
+
+        main_html = "<!DOCTYPE html><html><body><p>Both</p></body></html>"
+        content_text = "This is the extracted text content."
+        content_md = "# Both\n\nMarkdown body."
+
+        zip_path = TestZipAssembly._create_zip_directly(
+            assembler, storage_root, session_id, main_html,
+            content_text=content_text,
+            content_md=content_md,
+            options={
+                "downloadContentAsText": True,
+                "downloadContentAsMarkdown": True,
+            },
+        )
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            names = zf.namelist()
+            assert "content.md" in names
+            assert "content.txt" in names
+            assert zf.read("content.md").decode("utf-8") == content_md
+            assert zf.read("content.txt").decode("utf-8") == content_text
+
+    def test_single_file_session_with_option_has_no_markdown(self, assembler, storage_root):
+        """Single-file session with the option on → no markdown anywhere (D7)."""
+        session_id = "test-md-single-file"
+        _setup_session(storage_root, session_id)
+
+        main_html = (
+            '<!DOCTYPE html><html><body><p>Single file</p>'
+            '<a href="/about">About</a></body></html>'
+        )
+
+        html_path = TestSingleFileAssembly._create_single_file_directly(
+            assembler, storage_root, session_id, main_html,
+            options={
+                "singleFile": True,
+                "downloadContentAsMarkdown": True,
+            },
+        )
+
+        assert html_path is not None
+        assert html_path.endswith(".html")
+        # No markdown files anywhere in the session directory.
+        session_dir = os.path.join(storage_root, session_id)
+        md_entries = [
+            name for name in os.listdir(session_dir) if name.endswith(".md")
+        ]
+        assert md_entries == []
+        # The single-file output itself embeds no markdown block.
+        with open(html_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        assert "<!-- source:" not in content
+        assert "](https://example.com/about)" not in content
+
+    def test_converter_failure_omits_md_but_assembly_succeeds(self, assembler, storage_root):
+        """Converter raising → assembly succeeds; only the affected md is omitted (D6).
+
+        Conversion layer: a raising converter makes
+        ``_convert_linked_page_markdown`` return ``None`` (no exception
+        escapes), so the page gets no ``page_md_list`` entry. ZIP layer: that
+        page's ``.md`` is omitted while its ``.html``, ``content.md`` (main
+        page converted fine), and ``content.txt`` are intact.
+        """
+        import app.services.zip_assembler as za_module
+
+        session_id = "test-md-converter-failure"
+        _setup_session(storage_root, session_id, include_content=True)
+
+        # --- Conversion layer: raising converter → None, no exception ---
+        def _boom(html, base_url):
+            raise RuntimeError("converter exploded")
+
+        original = za_module.convert_html_to_markdown
+        za_module.convert_html_to_markdown = _boom
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                result = loop.run_until_complete(
+                    assembler._convert_linked_page_markdown(
+                        "<html><body><p>Linked</p></body></html>",
+                        "https://example.com/pricing",
+                        session_id,
+                    )
+                )
+            finally:
+                loop.close()
+        finally:
+            za_module.convert_html_to_markdown = original
+        assert result is None
+
+        # --- ZIP layer: page without a page_md_list entry → only .md omitted ---
+        main_html = "<!DOCTYPE html><html><body><p>Main</p></body></html>"
+        linked_page_htmls = {
+            "abc123": "<html><body><p>Linked</p></body></html>",
+        }
+        linked_page_urls = {"abc123": "https://example.com/pricing"}
+
+        zip_path = TestZipAssembly._create_zip_directly(
+            assembler, storage_root, session_id, main_html,
+            linked_page_htmls=linked_page_htmls,
+            linked_page_urls=linked_page_urls,
+            # No linked_page_sources entry for abc123: the conversion-layer
+            # part above showed a raising converter yields no page_md_list
+            # entry, which is exactly what this ZIP run simulates.
+            content_text="Text content.",
+            content_md="# Main\n\nBody.",
+            options={"downloadContentAsMarkdown": True},
+        )
+
+        assert zip_path is not None
+        assert zipfile.is_zipfile(zip_path)
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            names = zf.namelist()
+            # Rest of the archive intact.
+            assert "index.html" in names
+            assert "content.txt" in names
+            assert "pages/abc123.html" in names
+            # Main page converted → its content.md is present.
+            assert "content.md" in names
+            assert zf.read("content.md").decode("utf-8") == "# Main\n\nBody."
+            # Only the failing page's .md is omitted.
+            assert "pages/abc123.md" not in names
+
+    def test_pages_md_written_even_when_page_converts_empty(self, assembler, storage_root):
+        """A linked page whose markdown conversion is empty still gets its .md.
+
+        Keeps the one-.md-per-.html mapping intact: the file contains just
+        the source stamp (plus title when available), never a silent omit.
+        """
+        session_id = "test-md-empty-page"
+        _setup_session(storage_root, session_id)
+
+        main_html = "<!DOCTYPE html><html><body><p>Main</p></body></html>"
+        linked_page_htmls = {
+            "empty1": "<html><body></body></html>",
+        }
+        linked_page_sources = {
+            "empty1": (
+                "<html><head><style>.a { color: red; }</style></head>"
+                "<body><script>var x = 1;</script></body></html>",
+                "https://example.com/empty",
+            ),
+        }
+
+        zip_path = TestZipAssembly._create_zip_directly(
+            assembler, storage_root, session_id, main_html,
+            linked_page_htmls=linked_page_htmls,
+            linked_page_sources=linked_page_sources,
+            options={"downloadContentAsMarkdown": True},
+        )
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            names = zf.namelist()
+            assert "pages/empty1.html" in names
+            assert "pages/empty1.md" in names
+            md = zf.read("pages/empty1.md").decode("utf-8")
+            assert md == "<!-- source: https://example.com/empty -->"
+
+    def test_markdown_zip_path_for_maps_html_to_md(self):
+        """markdown_zip_path_for maps .html archive paths to .md siblings."""
+        assert markdown_zip_path_for("pages/abc123.html") == "pages/abc123.md"
+        assert markdown_zip_path_for("pages/name-a1b2c3d4.html") == "pages/name-a1b2c3d4.md"
+        assert markdown_zip_path_for("pages/noext") is None
 
 
 # ---------------------------------------------------------------------------

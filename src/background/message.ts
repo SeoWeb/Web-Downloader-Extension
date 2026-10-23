@@ -38,7 +38,13 @@ export function deleteServerSessionState(tabId: number): void {
  */
 async function createServerSession(
   url: string,
-  options: { singleFile?: boolean; retentionDays?: number } | undefined,
+  options:
+    | {
+        singleFile?: boolean;
+        downloadContentAsMarkdown?: boolean;
+        retentionDays?: number;
+      }
+    | undefined,
   tabId: number,
   setActive: boolean = true,
 ): Promise<{ success: boolean; sessionId?: string; error?: string }> {
@@ -171,6 +177,8 @@ export async function messageWorker(
             data.tabUrl,
             {
               singleFile: data.downloadOptions?.singleFile ?? false,
+              downloadContentAsMarkdown:
+                data.downloadOptions?.downloadContentAsMarkdown ?? false,
               retentionDays: 1,
             },
             data.tabId,

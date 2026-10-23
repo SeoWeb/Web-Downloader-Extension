@@ -35,6 +35,7 @@ export default function Filter({
     downloadLinks: boolean;
     downloadAssets: boolean;
     downloadContentAsText: boolean;
+    downloadContentAsMarkdown: boolean;
     downloadDocuments: boolean;
     singleFile: boolean;
   }) => void;
@@ -51,6 +52,7 @@ export default function Filter({
     setDownloadLinks,
     setDownloadAssets,
     setDownloadContentAsText,
+    setDownloadContentAsMarkdown,
     setDownloadDocuments,
     setSingleFile,
     setDownloadLinksFullScraping,
@@ -76,6 +78,7 @@ export default function Filter({
       !options.downloadLinks &&
       !options.downloadAssets &&
       !options.downloadContentAsText &&
+      !options.downloadContentAsMarkdown &&
       !options.downloadDocuments
     ) {
       setDownloadContentAsText(true);
@@ -99,6 +102,7 @@ export default function Filter({
       setDownloadLinks(false);
       setDownloadAssets(false);
       setDownloadContentAsText(false);
+      setDownloadContentAsMarkdown(false);
       setDownloadDocuments(false);
     }
     setSingleFile(isChecked);
@@ -284,6 +288,14 @@ export default function Filter({
                   checked={options.downloadContentAsText}
                   onChange={(c: any) => setDownloadContentAsText(!!c)}
                   label={t("filter.downloadContentAsText")}
+                  icon={<FileText className="w-4 h-4" />}
+                />
+
+                <OptionItem
+                  id="downloadContentAsMarkdown"
+                  checked={options.downloadContentAsMarkdown ?? false}
+                  onChange={(c: any) => setDownloadContentAsMarkdown(!!c)}
+                  label={t("filter.downloadContentAsMarkdown")}
                   icon={<FileText className="w-4 h-4" />}
                 />
 

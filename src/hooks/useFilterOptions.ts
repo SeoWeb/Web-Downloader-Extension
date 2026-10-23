@@ -56,6 +56,8 @@ export function useFilterOptions() {
       setFilterOption("downloadAssets", value),
     setDownloadContentAsText: (value: boolean) =>
       setFilterOption("downloadContentAsText", value),
+    setDownloadContentAsMarkdown: (value: boolean) =>
+      setFilterOption("downloadContentAsMarkdown", value),
     setDownloadDocuments: (value: boolean) =>
       setFilterOption("downloadDocuments", value),
     setSingleFile: (value: boolean) => setFilterOption("singleFile", value),
@@ -96,6 +98,7 @@ export function useDownloadOptions() {
     downloadLinks: options.downloadLinks,
     downloadAssets: options.downloadAssets,
     downloadContentAsText: options.downloadContentAsText,
+    downloadContentAsMarkdown: options.downloadContentAsMarkdown ?? false,
     downloadDocuments: options.downloadDocuments,
     singleFile: options.singleFile,
 

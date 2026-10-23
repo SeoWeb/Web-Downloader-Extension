@@ -12,6 +12,7 @@ cryptography>=42.0.0,<44.0.0
 # HTML parsing
 lxml>=4.9.3,<6.0.0
 beautifulsoup4>=4.12.2,<5.0.0
+markdownify>=0.13,<1.0
 
 # Settings
 pydantic-settings>=2.1.0,<3.0.0

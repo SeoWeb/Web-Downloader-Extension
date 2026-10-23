@@ -75,7 +75,8 @@
       "cloudOr": "or",
       "cloudContinueWithGoogle": "Continue with Google",
       "cloudGoogleCancelled": "Google sign-in was cancelled.",
-      "cloudGoogleFailed": "Google sign-in failed. Please try again."
+      "cloudGoogleFailed": "Google sign-in failed. Please try again.",
+      "downloadContentAsMarkdown": "Download content as Markdown"
     },
     "actions": {
       "title": "Actions :",
