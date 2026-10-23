@@ -53,10 +53,11 @@ Health endpoints (both **GET only** — the monolith returns 405 for HEAD):
 
 `server/.env` (0600) — new interpolated keys (5.12):
 
-| Variable                        | Required?        | Notes                                                         |
-| ------------------------------- | ---------------- | ------------------------------------------------------------- |
-| `MYSQL_ROOT_PASSWORD`           | REQUIRED by 5.12 | legacy default `root_password` remains only as a dev fallback |
-| `MYSQL_USER` / `MYSQL_PASSWORD` | REQUIRED by 5.12 | feed `MYSQL_CONNECTION_STRING` + the db container             |
+| Variable                        | Required?        | Notes                                                                                                                        |
+| ------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `MYSQL_ROOT_PASSWORD`           | REQUIRED by 5.12 | legacy default `root_password` remains only as a dev fallback                                                                |
+| `MYSQL_USER` / `MYSQL_PASSWORD` | REQUIRED by 5.12 | feed `MYSQL_CONNECTION_STRING` + the db container                                                                            |
+| `TRUST_PROXY`                   | REQUIRED in prod | `true` — without it `download_url` is built from uvicorn's http scheme behind the proxy → the extension rejects the download |
 
 The monolith's MySQL credential is no longer only a committed literal:
 `server/docker-compose.yml` interpolates `${MYSQL_*}` from `server/.env`.
