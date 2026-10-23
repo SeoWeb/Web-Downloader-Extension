@@ -25,7 +25,7 @@
 - [x] 3.3 Create `src/background/google-auth.ts`: PKCE (S256) verifier/challenge + `state` generation, pending-flow state in `chrome.storage.session` with short TTL, `chrome.identity.launchWebAuthFlow` with scope `openid email profile` and redirect `https://<extension-id>.chromiumapp.org/`, redirect validation (state match, exact redirect origin)
 - [x] 3.4 Add `googleLogin({code, code_verifier, redirect_uri})` to `src/background/pagepocket-client.ts` calling `POST /api/v1/auth/google` and storing returned tokens through the shared storage layer (respecting keep-signed-in)
 - [x] 3.5 Add "Continue with Google" button + divider to `src/components/PagePocketAuth.tsx` (shown only when `VITE_GOOGLE_CLIENT_ID` is set); handle popup-closed and access-denied as form messages; add `VITE_GOOGLE_CLIENT_ID` to `.env`/`.env.example`
-- [ ] 3.6 Manual verification: new Google user creation, linking with an existing password account, returning Google user, password-login rejection for Google-only account, button hidden when client ID unset
+- [x] 3.6 Manual verification: new Google user creation, linking with an existing password account, returning Google user, password-login rejection for Google-only account, button hidden when client ID unset (operator-verified against production 2026-10-22)
 
 ## 4. Release prep
 
@@ -39,6 +39,7 @@
 - [x] 5.1 Frontend auth proxy: add `google` to `ALLOWED_PATHS` in `pagepocket/frontend/src/app/api/v1/auth/[...path]/route.ts` so `POST /api/v1/auth/google` forwards through app.pagepocket.app (was 404 "Unknown auth endpoint" — root cause of first user test failure). Commit `410242c`, deployed + E2E-verified through the public URL.
 - [x] 5.2 auth-service: log Google token-endpoint `error`/`error_description` on exchange failure (was status-only, made diagnosis blind). Commit `0d3b498`, deployed.
 - [ ] 5.3 Add `VITE_GOOGLE_CLIENT_ID` as a CI build secret so Web Store artifacts include the Google button (operator's local builds unaffected; button hidden in store builds until then).
+- [x] 5.4 Fix keep-signed-in logout-on-restart: startup restore raced (two concurrent `initializeFromStorage` calls; restore refresh bypassed the mutex → duplicate refresh with the same token → server reuse-detection revoked all tokens → `clearAuth` wiped storage), and `refreshToken()` dropped the rotated token when `authState` was null (SW context), poisoning storage with a revoked token. Commit `85b03fd`: mutex-serialized restore, single-flight init, hydration-before-persist. Task 1.7 retest pending with rebuilt extension.
 
 ## 6. Follow-up — Google sign-in in the web app + Google-first UI order
 
@@ -48,5 +49,5 @@
 - [x] 6.4 Extension UI: move the Google button + divider above the email/password fields (both tabs)
 - [x] 6.5 Env plumbing: `GOOGLE_CLIENT_ID` (+ `GOOGLE_OAUTH_REDIRECT_URI`) in frontend `env.ts` (optional) + `.env.example` + local `.env.local` + host `.env.production.local`
 - [x] 6.6 Tests: start/callback route handlers (cookie, state mismatch, exchange success/failure), existing suites stay green (frontend + extension)
-- [ ] 6.7 Operator: add `https://app.pagepocket.app/api/auth/google/callback` as authorized redirect URI on the existing Google Cloud Console OAuth client
-- [ ] 6.8 Deploy frontend + verify through public URL (start → 302 to accounts.google.com with expected params; callback without cookie → `/login?error=google`); manual web Google sign-in verification
+- [x] 6.7 Operator: add `https://app.pagepocket.app/api/auth/google/callback` as authorized redirect URI on the existing Google Cloud Console OAuth client (done — web Google sign-in confirmed working)
+- [x] 6.8 Deploy frontend + verify through public URL (start → 302 to accounts.google.com with expected params; callback without cookie → `/login?error=google`); manual web Google sign-in verification (deployed runs 39812582896/39812582829 and earlier; operator-verified sign-in on web + extension 2026-10-22)
