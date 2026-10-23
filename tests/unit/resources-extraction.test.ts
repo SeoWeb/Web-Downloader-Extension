@@ -8,6 +8,8 @@
  *   are never returned as fetchable resources (incl. CSS url(#fragment))
  * - srcset parsing respects percent-encoded commas (%2C)
  * - CSS url() extraction keeps quoted URLs containing parentheses intact
+ * - plain-text extraction (content.txt): script/style/noscript/template/svg
+ *   bodies are stripped and block-level content is newline-separated
  */
 
 import { describe, it, expect } from "vitest";
@@ -204,5 +206,117 @@ describe("getResources — CSS url() extraction", () => {
     const html = `<style>@import url("theme.css");</style>`;
     const result = getResources(html);
     expect(result.images).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Plain-text extraction (content.txt)
+// ---------------------------------------------------------------------------
+
+describe("getResources — plain text extraction (content.txt)", () => {
+  it("does not leak inline <script>/<style>/<noscript>/<template> bodies into text", () => {
+    const html = `
+      <html><head>
+        <style>.banner { color: red; }</style>
+        <script>console.log("head bootstrap");</script>
+      </head><body>
+        <script>(function () { window.__THEME_BOOTSTRAP__ = "dark"; })();</script>
+        <noscript>Enable JavaScript to run this app.</noscript>
+        <template><div>inert template markup</div></template>
+        <h1>Welcome</h1>
+      </body></html>
+    `;
+    const { text } = getResources(html);
+    expect(text).not.toContain("__THEME_BOOTSTRAP__");
+    expect(text).not.toContain("console.log");
+    expect(text).not.toContain("color: red");
+    expect(text).not.toContain("Enable JavaScript");
+    expect(text).not.toContain("inert template markup");
+    expect(text).toContain("Welcome");
+  });
+
+  it("separates block-level elements with newlines instead of gluing", () => {
+    const html =
+      "<body><h1>PagePocket</h1>" +
+      "<nav><a>Features</a><a>Pricing</a></nav>" +
+      "<p>Use cases</p></body>";
+    const { text } = getResources(html);
+    expect(text).toMatch(/PagePocket\nFeatures/);
+    // Nav anchors are separated too (the "FeaturesPricing" glue bug).
+    expect(text).toMatch(/Features\n+Pricing/);
+    expect(text).not.toContain("FeaturesPricing");
+    expect(text).toMatch(/Pricing\n+Use cases/);
+  });
+
+  it("keeps inline formatting on one line", () => {
+    const html = `<body><p>a <b>b</b> c</p><p>see <a href="/docs">docs</a> now</p></body>`;
+    const { text } = getResources(html);
+    expect(text).toContain("a b c");
+    expect(text).toContain("see docs now");
+  });
+
+  it("turns <br> into a line break without gluing adjacent words", () => {
+    const html = `<body><p>a<br>b</p></body>`;
+    const { text } = getResources(html);
+    expect(text).toBe("a\nb");
+  });
+
+  it("extracts list items and table cells on separate lines", () => {
+    const html =
+      "<body><ul><li>One</li><li>Two</li></ul>" +
+      "<table><tr><td>A</td><td>B</td></tr></table></body>";
+    const { text } = getResources(html);
+    expect(text).toMatch(/One\n+Two/);
+    expect(text).toMatch(/A\n+B/);
+  });
+
+  it("normalizes whitespace: collapses blank-line runs, intra-line runs, trims", () => {
+    const html = `<body>   <p>alpha</p>\n\n\n\n<p>beta   gamma</p>   </body>`;
+    const { text } = getResources(html);
+    expect(text).toBe("alpha\n\nbeta gamma");
+  });
+
+  it("stripping non-content elements does not change asset/favicon/link extraction", () => {
+    const html = `
+      <html><head>
+        <link rel="icon" href="/favicon.ico">
+        <link rel="stylesheet" href="/style.css">
+        <style>@import url("/imported.css"); .hero { background: url("/hero-bg.png"); }</style>
+        <script>(function themeBootstrap() { document.documentElement.dataset.theme = "dark"; })();</script>
+        <script src="/app.js"></script>
+      </head><body>
+        <img src="/logo.png" srcset="/logo-2x.png 2x">
+        <a href="https://example.com/page">home</a>
+        <a href="/docs/report.pdf">report</a>
+        <a href="#anchor">jump</a>
+        <p>Readable text</p>
+      </body></html>
+    `;
+    const result = getResources(html);
+    // Regression guard: resource discovery is untouched by the text-only DOM
+    // stripping (extraction of assets runs before any mutation).
+    expect(result.js).toEqual(["/app.js"]);
+    expect(result.css).toEqual(["/style.css", "/imported.css"]);
+    expect(result.images).toEqual([
+      "/logo.png",
+      "/logo-2x.png",
+      "/hero-bg.png",
+      "/favicon.ico",
+    ]);
+    expect(result.links).toEqual([
+      "https://example.com/page",
+      "/docs/report.pdf",
+    ]);
+    expect(result.documents).toEqual(["/docs/report.pdf"]);
+    // ...while the text is still cleaned of the inline IIFE.
+    expect(result.text).not.toContain("themeBootstrap");
+    expect(result.text).toContain("Readable text");
+  });
+
+  it("keeps the empty-body case as empty text", () => {
+    expect(getResources("<html><head></head><body></body></html>").text).toBe(
+      "",
+    );
+    expect(getResources("").text).toBe("");
   });
 });

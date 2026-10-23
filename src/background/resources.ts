@@ -96,6 +96,63 @@ function extractFaviconHrefs($: cheerio.CheerioAPI): string[] {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Plain-text extraction (content.txt)
+// ---------------------------------------------------------------------------
+
+// Elements whose entire content is non-visible: script/style bodies are DOM
+// text nodes and would otherwise leak inline JS/CSS into the extracted text
+// (e.g. a theme-bootstrap IIFE), noscript/template content is inert, and
+// inline SVGs contribute icon metadata text. Stripped for text extraction
+// only — every asset/favicon/link extraction has already run on the
+// pristine tree by the time this is applied.
+const NON_CONTENT_SELECTOR = "script, style, noscript, template, svg";
+
+// Block-level elements terminate a line: a newline text node is appended to
+// each so adjacent blocks don't glue ("PagePocketFeaturesPricingUse cases").
+// Void elements (br, hr) cannot hold appended children and are replaced
+// instead.
+const BLOCK_SELECTOR =
+  "p, div, h1, h2, h3, h4, h5, h6, li, tr, section, article, header, " +
+  "footer, nav, main, aside, blockquote, pre, td, th, figure, figcaption";
+
+// Nav-like containers whose bare inline children (menu links) would still
+// glue ("FeaturesPricing") — their anchors terminate a line like blocks.
+const NAV_LIKE_ANCHOR_SELECTOR = "nav a, menu a, header a, footer a, aside a";
+
+// Remaining inline elements get a single-space separator so inline boundaries
+// never glue either; the normalization below collapses doubles, so
+// <p>a <b>b</b> c</p> stays on one line ("a b c").
+const INLINE_SELECTOR =
+  "a, span, b, strong, i, em, small, sub, sup, u, s, code, kbd, samp, " +
+  "mark, abbr, cite, q, time, label, button";
+
+/** Collapse per-line whitespace runs and runs of blank lines; trim the edges. */
+function normalizePlainText(raw: string): string {
+  return raw
+    .split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Extract readable plain text for content.txt: newline-separated block-level
+ * content with no script/style/noscript leakage and no glued element
+ * boundaries. Mutates the document (safe: called after all asset extraction).
+ */
+function extractPlainText($: cheerio.CheerioAPI): string {
+  $(NON_CONTENT_SELECTOR).remove();
+
+  $(BLOCK_SELECTOR).append("\n");
+  $("br, hr").replaceWith("\n");
+  $(NAV_LIKE_ANCHOR_SELECTOR).append("\n");
+  $(INLINE_SELECTOR).append(" ");
+
+  return normalizePlainText($("body").text());
+}
+
 export function getResources(html: string): {
   css: string[];
   js: string[];
@@ -308,7 +365,7 @@ export function getResources(html: string): {
     ?.map((el) => $(el).attr("href") || "")
     ?.filter((el) => !!el?.length);
 
-  const text = $("body").text();
+  const text = extractPlainText($);
 
   // Non-downloadable references (data:, blob:, chrome-extension:,
   // moz-extension:, fragment-only, javascript:, ...) are filtered from
