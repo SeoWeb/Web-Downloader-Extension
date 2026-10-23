@@ -11,7 +11,10 @@
  * keep-signed-in-OFF logins.
  */
 
-import { PagePocketClient } from "../../src/background/pagepocket-client";
+import {
+  PagePocketAuthError,
+  PagePocketClient,
+} from "../../src/background/pagepocket-client";
 import {
   PAGEPOCKET_AUTH_PERSISTED_KEY,
   PAGEPOCKET_AUTH_STORAGE_KEY,
@@ -505,5 +508,204 @@ describe("PagePocketClient keep-signed-in persistence", () => {
     const state = await client.restorePersistedSession();
 
     expect(state).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// keep-signed-in logout-on-restart — refresh race + rotation persistence
+//
+// (a) Two mounted components both fired initializeFromStorage →
+//     restorePersistedSession, and the direct refreshToken() call bypassed
+//     the mutex: two concurrent refreshes with the SAME refresh token trip
+//     backend reuse detection, which revokes the whole token family → the
+//     second refresh fails → clearAuth() → logged out on every restart.
+// (b) In the MV3 service-worker context authState is null after a restart,
+//     so refreshToken() dropped the rotated token ("if (this.authState)"
+//     persist gate) while storage kept the now-revoked one.
+// ---------------------------------------------------------------------------
+
+describe("PagePocketClient refresh race + rotation persistence", () => {
+  let fetchSpy: vi.SpiedFunction<typeof globalThis.fetch>;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, "fetch");
+    vi.clearAllMocks();
+    Object.keys(sessionStore).forEach((k) => delete sessionStore[k]);
+    const store = globalThis.chrome?.storage?.local?._store as
+      | Record<string, unknown>
+      | undefined;
+    if (store) {
+      Object.keys(store).forEach((k) => delete store[k]);
+    }
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  it("serializes concurrent restorePersistedSession calls — never the same refresh token twice", async () => {
+    localStore()[PERSISTED_KEY] = {
+      refreshToken: "persisted-refresh",
+      user: { id: "user-1", email: "user@example.com" },
+    };
+
+    const refreshTokens: string[] = [];
+    let refreshCallCount = 0;
+    let releaseFirst: ((res: Response) => void) | undefined;
+    const firstRefresh = new Promise<Response>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    fetchSpy.mockImplementation(
+      async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === "string" ? url.toString() : String(url);
+        if (urlStr.includes("/auth/refresh")) {
+          refreshCallCount++;
+          refreshTokens.push(JSON.parse(init?.body as string).refresh_token);
+          if (refreshCallCount === 1) {
+            // Hold the first refresh in flight so the second caller must
+            // contend with the mutex while it is pending.
+            return firstRefresh;
+          }
+          return mockResponse(200, {
+            access_token: `access-${refreshCallCount}`,
+            refresh_token: `rotated-${refreshCallCount}`,
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+          });
+        }
+        return mockResponse(404, {});
+      },
+    );
+
+    const client = new PagePocketClient();
+    const both = Promise.all([
+      client.restorePersistedSession(),
+      client.restorePersistedSession(),
+    ]);
+
+    // Wait until the first refresh is on the wire, then release it with a
+    // rotated token pair.
+    await vi.waitFor(() =>
+      expect(refreshTokens).toEqual(["persisted-refresh"]),
+    );
+    releaseFirst!(
+      mockResponse(200, {
+        access_token: "access-1",
+        refresh_token: "rotated-1",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      }),
+    );
+
+    const [a, b] = await both;
+
+    // Exactly ONE refresh hit the wire while both callers were pending —
+    // the mutex promise is shared, so the second caller joined the first
+    // instead of re-sending the same (now spent) token.
+    expect(refreshTokens).toEqual(["persisted-refresh"]);
+    expect(a).not.toBeNull();
+    expect(b).not.toBeNull();
+    expect(a!.accessToken).toBe("access-1");
+    expect(b!.accessToken).toBe("access-1");
+    expect(localStore()[PERSISTED_KEY]).toMatchObject({
+      refreshToken: "rotated-1",
+    });
+
+    // A LATER restore runs its own refresh carrying the ROTATED token —
+    // reusing "persisted-refresh" would trip reuse detection again.
+    const c = await client.restorePersistedSession();
+    expect(refreshTokens).toEqual(["persisted-refresh", "rotated-1"]);
+    expect(c!.accessToken).toBe("access-2");
+    expect(localStore()[PERSISTED_KEY]).toMatchObject({
+      refreshToken: "rotated-2",
+    });
+  });
+
+  it("refreshToken with authState null hydrates from the persisted slice and persists the rotation", async () => {
+    // MV3 restart: fresh client instance, nothing in memory, only the
+    // keep-signed-in slice on disk.
+    localStore()[PERSISTED_KEY] = {
+      refreshToken: "persisted-refresh",
+      user: { id: "user-1", email: "user@example.com" },
+    };
+
+    fetchSpy.mockImplementation(
+      async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === "string" ? url.toString() : String(url);
+        if (urlStr.includes("/auth/refresh")) {
+          expect(JSON.parse(init?.body as string).refresh_token).toBe(
+            "persisted-refresh",
+          );
+          return mockResponse(200, {
+            access_token: "access-9",
+            refresh_token: "rotated-9",
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+          });
+        }
+        return mockResponse(404, {});
+      },
+    );
+
+    const client = new PagePocketClient();
+    const access = await client.refreshToken();
+
+    expect(access).toBe("access-9");
+    // The rotated pair replaces the old copy in BOTH areas — dropping it
+    // here kept the revoked token on disk and wiped the session on the
+    // next restart.
+    expect(sessionStore[AUTH_KEY]).toMatchObject({
+      accessToken: "access-9",
+      refreshToken: "rotated-9",
+    });
+    expect(localStore()[PERSISTED_KEY]).toMatchObject({
+      refreshToken: "rotated-9",
+    });
+    // The access token still never touches disk
+    expect(JSON.stringify(localStore())).not.toContain("access-9");
+  });
+
+  it("refreshToken with authState null hydrates from session storage without writing to disk", async () => {
+    // Session-only auth (keep-signed-in off): expired copy in session
+    // storage, nothing on disk.
+    sessionStore[AUTH_KEY] = {
+      accessToken: "expired-access",
+      refreshToken: "session-refresh",
+      expiresAt: Math.floor(Date.now() / 1000) - 60,
+      user: { id: "user-1", email: "user@example.com" },
+    };
+
+    fetchSpy.mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === "string" ? url.toString() : String(url);
+      if (urlStr.includes("/auth/refresh")) {
+        return mockResponse(200, {
+          access_token: "access-8",
+          refresh_token: "rotated-8",
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+        });
+      }
+      return mockResponse(404, {});
+    });
+
+    const client = new PagePocketClient();
+    await client.refreshToken();
+
+    expect(sessionStore[AUTH_KEY]).toMatchObject({
+      accessToken: "access-8",
+      refreshToken: "rotated-8",
+    });
+    // No keep-signed-in slice existed → no disk write may appear
+    expect(localStore()[PERSISTED_KEY]).toBeUndefined();
+  });
+
+  it("refreshToken with authState null and nothing in storage throws instead of fabricating state", async () => {
+    fetchSpy.mockImplementation(async () => {
+      throw new Error("must not be called");
+    });
+
+    const client = new PagePocketClient();
+    await expect(client.refreshToken()).rejects.toBeInstanceOf(
+      PagePocketAuthError,
+    );
+    expect(sessionStore[AUTH_KEY]).toBeUndefined();
+    expect(localStore()[PERSISTED_KEY]).toBeUndefined();
   });
 });

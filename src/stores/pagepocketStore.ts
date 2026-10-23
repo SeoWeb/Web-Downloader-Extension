@@ -43,6 +43,9 @@ interface PagePocketState {
   initializeFromStorage: () => Promise<void>;
 }
 
+// Single-flight guard for initializeFromStorage (see the store action).
+let initPromise: Promise<void> | null = null;
+
 export const usePagePocketStore = create<PagePocketState>()(
   subscribeWithSelector((set) => ({
     cloudStorageEnabled: false,
@@ -168,77 +171,90 @@ export const usePagePocketStore = create<PagePocketState>()(
       set({ isAuthenticated: false, authUser: null });
     },
 
-    initializeFromStorage: async () => {
-      try {
-        // D11 / task 7.2: read from chrome.storage.session (auth state and
-        // the cloud toggle are session-only — migrated from storage.local).
-        const result = await chrome.storage.session.get([
-          PAGEPOCKET_CLOUD_ENABLED_KEY,
-          PAGEPOCKET_AUTH_STORAGE_KEY,
-        ]);
+    initializeFromStorage: () => {
+      // Single-flight: SidePanel and PagePocketAnnouncement each mount
+      // usePagePocket(), and every mount called this action. Two concurrent
+      // runs both reached restorePersistedSession(), which (before the
+      // refresh mutex covered that path) refreshed with the SAME refresh
+      // token twice → backend reuse detection revoked the token family →
+      // clearAuth() → logged out after every restart. Share one in-flight
+      // promise instead; cleared in finally so a later mount re-initializes.
+      if (initPromise) return initPromise;
+      initPromise = (async () => {
+        try {
+          // D11 / task 7.2: read from chrome.storage.session (auth state and
+          // the cloud toggle are session-only — migrated from storage.local).
+          const result = await chrome.storage.session.get([
+            PAGEPOCKET_CLOUD_ENABLED_KEY,
+            PAGEPOCKET_AUTH_STORAGE_KEY,
+          ]);
 
-        const enabled =
-          (result[PAGEPOCKET_CLOUD_ENABLED_KEY] as boolean) ?? false;
-        const auth = result[PAGEPOCKET_AUTH_STORAGE_KEY] as {
-          user?: PagePocketUser;
-          expiresAt?: number;
-        } | null;
+          const enabled =
+            (result[PAGEPOCKET_CLOUD_ENABLED_KEY] as boolean) ?? false;
+          const auth = result[PAGEPOCKET_AUTH_STORAGE_KEY] as {
+            user?: PagePocketUser;
+            expiresAt?: number;
+          } | null;
 
-        let authenticated = false;
-        let user: PagePocketUser | null = null;
+          let authenticated = false;
+          let user: PagePocketUser | null = null;
 
-        if (auth?.user) {
-          // Check if access token is still valid (with small buffer)
-          const tokenValid =
-            auth.expiresAt && Date.now() < auth.expiresAt * 1000 - 60_000;
-          if (tokenValid) {
-            authenticated = true;
-            user = auth.user;
-          } else {
-            // Try refreshing the token
-            try {
-              await pagepocketClient.refreshToken();
+          if (auth?.user) {
+            // Check if access token is still valid (with small buffer)
+            const tokenValid =
+              auth.expiresAt && Date.now() < auth.expiresAt * 1000 - 60_000;
+            if (tokenValid) {
               authenticated = true;
-              // Re-read updated auth from session storage after refresh
-              const updated = await chrome.storage.session.get(
-                PAGEPOCKET_AUTH_STORAGE_KEY,
-              );
-              const updatedAuth = updated[PAGEPOCKET_AUTH_STORAGE_KEY] as {
-                user?: PagePocketUser;
-              } | null;
-              user = updatedAuth?.user ?? auth.user;
-            } catch {
-              // Refresh failed — stay unauthenticated
+              user = auth.user;
+            } else {
+              // Try refreshing the token
+              try {
+                await pagepocketClient.refreshToken();
+                authenticated = true;
+                // Re-read updated auth from session storage after refresh
+                const updated = await chrome.storage.session.get(
+                  PAGEPOCKET_AUTH_STORAGE_KEY,
+                );
+                const updatedAuth = updated[PAGEPOCKET_AUTH_STORAGE_KEY] as {
+                  user?: PagePocketUser;
+                } | null;
+                user = updatedAuth?.user ?? auth.user;
+              } catch {
+                // Refresh failed — stay unauthenticated
+              }
+            }
+          } else {
+            // easier-auth D1 (task 1.4): session store empty — a keep-signed-in
+            // session may be persisted on disk. Restore the refresh token +
+            // user from chrome.storage.local and mint an access token via the
+            // normal proactive refresh flow. On failure the client already
+            // cleared both storage areas (D3); drop any stale binding too.
+            const restored = await pagepocketClient.restorePersistedSession();
+            if (restored) {
+              authenticated = true;
+              user = restored.user;
+              // D8: bring the mirrored cloud binding back into session
+              // storage alongside the restored refresh token.
+              await restoreCloudBindingFromLocal();
+            } else {
+              await clearCloudBinding();
             }
           }
-        } else {
-          // easier-auth D1 (task 1.4): session store empty — a keep-signed-in
-          // session may be persisted on disk. Restore the refresh token +
-          // user from chrome.storage.local and mint an access token via the
-          // normal proactive refresh flow. On failure the client already
-          // cleared both storage areas (D3); drop any stale binding too.
-          const restored = await pagepocketClient.restorePersistedSession();
-          if (restored) {
-            authenticated = true;
-            user = restored.user;
-            // D8: bring the mirrored cloud binding back into session
-            // storage alongside the restored refresh token.
-            await restoreCloudBindingFromLocal();
-          } else {
-            await clearCloudBinding();
-          }
-        }
 
-        set({
-          cloudStorageEnabled: enabled,
-          isAuthenticated: authenticated,
-          authUser: user,
-        });
-      } catch (err) {
-        if (err instanceof PagePocketAuthError) {
-          set({ isAuthenticated: false, authUser: null });
+          set({
+            cloudStorageEnabled: enabled,
+            isAuthenticated: authenticated,
+            authUser: user,
+          });
+        } catch (err) {
+          if (err instanceof PagePocketAuthError) {
+            set({ isAuthenticated: false, authUser: null });
+          }
+        } finally {
+          initPromise = null;
         }
-      }
+      })();
+      return initPromise;
     },
   })),
 );

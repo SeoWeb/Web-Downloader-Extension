@@ -362,7 +362,7 @@ export function DownloadStatus({
                 {t("status.complete")}
               </h3>
               <p className="text-sm text-slate-500">
-                {t("status.assemblingServer")}
+                {t("status.archiveReadySubtitle")}
               </p>
             </div>
           </div>

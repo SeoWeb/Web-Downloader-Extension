@@ -15,7 +15,8 @@
     "test": "tsc --noEmit && vitest run",
     "test:watch": "vitest",
     "test:e2e": "node tests/e2e/extension-installation.test.cjs",
-    "test:e2e:headless": "HEADLESS=true node tests/e2e/extension-installation.test.cjs"
+    "test:e2e:headless": "HEADLESS=true node tests/e2e/extension-installation.test.cjs",
+    "i18n:sync": "node scripts/sync-locales.mjs"
   },
   "author": "Siim Liimand",
   "license": "MIT",

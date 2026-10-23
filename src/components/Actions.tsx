@@ -54,8 +54,42 @@ export default function Actions({ messages }: { messages: Message[] }) {
   const hasMessage = (key: string) =>
     messages.some((m) => (typeof m === "string" ? m : m.key) === key);
 
+  // "Done!" only for the actually-finished state — assembling maps to the
+  // same step index (steps.length - 1) but must show the assembly headline.
+  const isComplete = hasMessage("status.complete");
+
+  // Subtitle = last message. Defensive against raw i18n keys: when a key
+  // has no translation, i18next echoes the key itself ("status.foo.bar") —
+  // never render that; skip the subtitle instead. Assembly progress carries
+  // a raw server phase id ("merging_html"): translate it through the
+  // status.assemblyPhase* keys before interpolation (the background has no
+  // reliable translator at emission time, so the UI does it here and in
+  // DownloadStatus).
+  let subtitle: string | null = null;
+  const lastMessage =
+    messages.length > 0 ? messages[messages.length - 1] : null;
+  if (typeof lastMessage === "string") {
+    subtitle = lastMessage;
+  } else if (lastMessage && typeof lastMessage.key === "string") {
+    const options = { ...(lastMessage.options ?? {}) };
+    if (
+      lastMessage.key === "status.assemblyProgress" &&
+      typeof options.phase === "string"
+    ) {
+      const raw = options.phase as string;
+      options.phase = t(
+        `status.assemblyPhase${raw.charAt(0).toUpperCase()}${raw.slice(1)}`,
+        raw,
+      );
+    }
+    const translated = t(lastMessage.key, options) as string;
+    if (translated !== lastMessage.key) {
+      subtitle = translated;
+    }
+  }
+
   let currentStepIndex = -1;
-  if (hasMessage("status.complete")) currentStepIndex = steps.length - 1;
+  if (isComplete) currentStepIndex = steps.length - 1;
   else if (
     hasMessage("status.assemblingServer") ||
     hasMessage("status.assemblyProgress") ||
@@ -79,23 +113,17 @@ export default function Actions({ messages }: { messages: Message[] }) {
         {/* Dynamic Status Text */}
         <div className="text-center pb-2">
           <div className="text-2xl font-bold text-slate-800">
-            {currentStepIndex === 3
+            {isComplete
               ? t("status.done")
-              : currentStepIndex === 2
-                ? t("status.packing")
-                : currentStepIndex === 1
-                  ? t("status.downloading")
-                  : t("status.ready")}
+              : currentStepIndex === 3
+                ? t("status.assemblingServer")
+                : currentStepIndex === 2
+                  ? t("status.packing")
+                  : currentStepIndex === 1
+                    ? t("status.downloading")
+                    : t("status.ready")}
           </div>
-          <div className="text-slate-500 text-sm mt-1">
-            {messages.length > 0 &&
-              (typeof messages[messages.length - 1] === "string"
-                ? (messages[messages.length - 1] as string)
-                : (t(
-                    (messages[messages.length - 1] as any).key,
-                    (messages[messages.length - 1] as any).options,
-                  ) as string))}
-          </div>
+          <div className="text-slate-500 text-sm mt-1">{subtitle}</div>
         </div>
 
         {/* Stepper */}

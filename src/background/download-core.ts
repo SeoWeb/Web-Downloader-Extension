@@ -334,13 +334,15 @@ export async function downloadResources(
   tabId?: number,
 ) {
   if (!tabUrl) {
-    sendMessage({ key: "error.noUrl" });
+    // en.json keeps these under `app.*` (not `error.*`) — emit the keys the
+    // UI can actually resolve through t().
+    sendMessage({ key: "app.noUrl" });
     return;
   }
 
   // Prevent concurrent downloads per-tab
   if (tabId && isTabDownloadInProgress(tabId)) {
-    sendMessage({ key: "error.downloadInProgress" });
+    sendMessage({ key: "app.downloadInProgress" });
     return;
   }
 
@@ -354,7 +356,7 @@ export async function downloadResources(
     initialMemoryStats.totalMemoryLimit - initialMemoryStats.totalMemoryUsed;
   const availableMemoryMB = availableMemoryBytes / (1024 * 1024);
   if (availableMemoryMB < 100) {
-    sendMessage({ key: "error.memoryPressure" });
+    sendMessage({ key: "app.memoryPressure" });
     return;
   }
   if (availableMemoryMB < 256) {
@@ -983,7 +985,15 @@ async function executeDownloadServerMode(
         // send the message and return false (don't fall back automatically).
         return false;
       },
-      // Assembly status callback — forward to UI for progress display
+      // Assembly status callback — forward to UI for progress display.
+      // (2f) The raw phase id travels in options.phase ON PURPOSE: the UI
+      // translates it. server-mode-state.ts keys its assembling state
+      // machine off this message key, and the service worker's i18n backend
+      // loads locales asynchronously — right after an MV3 restart t() can
+      // still return the key, and a pre-translated phase would also break
+      // DownloadStatus's status.assemblyPhase* key lookup for non-English
+      // locales. DownloadStatus and Actions render the translated label via
+      // the status.assemblyPhase* keys (see en.json).
       (status, phase, progressPct, elapsedSeconds) => {
         sendMessage({
           key: "status.assemblyProgress",

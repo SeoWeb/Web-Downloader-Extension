@@ -215,6 +215,31 @@ export class PagePocketClient {
   }
 
   async refreshToken(token?: string): Promise<string> {
+    // MV3 restart: in the service-worker context authState is null even
+    // though a valid session/keep-signed-in copy lives in storage. Hydrate
+    // it so (1) the refresh token is actually found and (2) the rotation
+    // below is persisted — dropping the rotated refresh token kept the
+    // now-revoked pre-rotation token on disk, and the next restart's
+    // refresh tripped reuse detection → wiped session (keep-signed-in
+    // logout-on-restart, part b). Only hydrate when a refresh token is
+    // actually found — never fabricate state.
+    if (!this.authState) {
+      const stored = await this.loadAuthFromStorage();
+      if (stored?.refreshToken) {
+        this.authState = stored;
+      } else {
+        const persisted = await this.loadPersistedAuthLocal();
+        if (persisted?.refreshToken) {
+          this.authState = {
+            accessToken: "",
+            refreshToken: persisted.refreshToken,
+            expiresAt: 0,
+            user: persisted.user,
+          };
+        }
+      }
+    }
+
     const refreshToken = token ?? this.authState?.refreshToken;
     if (!refreshToken) {
       throw new PagePocketAuthError("No refresh token available");
@@ -750,7 +775,16 @@ export class PagePocketClient {
     };
 
     try {
-      await this.refreshToken();
+      // Serialize through the refresh mutex (never refreshToken directly):
+      // two mounted components can both call initializeFromStorage →
+      // restorePersistedSession. Two concurrent refreshes with the SAME
+      // refresh token trip the backend's reuse detection, which revokes the
+      // whole token family → the second refresh fails → clearAuth() wipes
+      // the session → logged out on every restart. The mutex makes the
+      // second caller join the in-flight refresh (or, if it lands after the
+      // first completed, re-read the already-rotated
+      // this.authState.refreshToken at execution time).
+      await this.refreshWithMutex();
     } catch {
       return null;
     }
