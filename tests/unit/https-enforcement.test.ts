@@ -15,6 +15,7 @@ import {
   ConfigurationError,
   assertSecureBaseUrl,
   isLoopbackHost,
+  upgradeInsecureServerUrl,
 } from "../../src/background/server-client";
 
 describe("isLoopbackHost", () => {
@@ -49,7 +50,9 @@ describe("assertSecureBaseUrl", () => {
   });
 
   it("explains the problem and the allowed loopback exception", () => {
-    expect(() => assertSecureBaseUrl("http://example.com", "Server URL")).toThrow(
+    expect(() =>
+      assertSecureBaseUrl("http://example.com", "Server URL"),
+    ).toThrow(
       /plain HTTP is not allowed.*example\.com.*localhost \/ 127\.0\.0\.1 \/ \[::1\]/s,
     );
   });
@@ -69,12 +72,12 @@ describe("assertSecureBaseUrl", () => {
   // -----------------------------------------------------------------------
   // HTTPS → allowed
   // -----------------------------------------------------------------------
-  it.each([
-    "https://server.pagepocket.app",
-    "https://example.com",
-  ])("allows HTTPS URL %s", (rawUrl) => {
-    expect(() => assertSecureBaseUrl(rawUrl, "Server URL")).not.toThrow();
-  });
+  it.each(["https://server.pagepocket.app", "https://example.com"])(
+    "allows HTTPS URL %s",
+    (rawUrl) => {
+      expect(() => assertSecureBaseUrl(rawUrl, "Server URL")).not.toThrow();
+    },
+  );
 
   // -----------------------------------------------------------------------
   // Edge cases
@@ -93,6 +96,79 @@ describe("assertSecureBaseUrl", () => {
     expect(() =>
       assertSecureBaseUrl("http://localhost.evil.com", "Server URL"),
     ).toThrow(ConfigurationError);
+  });
+});
+
+describe("upgradeInsecureServerUrl", () => {
+  const SERVER_URL = "https://server.pagepocket.app";
+
+  // -----------------------------------------------------------------------
+  // Same-host http → https (the TLS-terminating-proxy self-heal)
+  // -----------------------------------------------------------------------
+  it("upgrades a same-host http URL to https", () => {
+    expect(
+      upgradeInsecureServerUrl(
+        "http://server.pagepocket.app/api/v1/sessions/x/download",
+        SERVER_URL,
+      ),
+    ).toBe("https://server.pagepocket.app/api/v1/sessions/x/download");
+  });
+
+  it("preserves path, query, and port when upgrading", () => {
+    expect(
+      upgradeInsecureServerUrl(
+        "http://server.pagepocket.app:8443/dl?id=1",
+        SERVER_URL,
+      ),
+    ).toBe("https://server.pagepocket.app:8443/dl?id=1");
+  });
+
+  // -----------------------------------------------------------------------
+  // Different-host http stays http — the validator must still reject it
+  // -----------------------------------------------------------------------
+  it("leaves http on a different host unchanged and still rejected", () => {
+    const raw = "http://evil.example.com/api/v1/sessions/x/download";
+    expect(upgradeInsecureServerUrl(raw, SERVER_URL)).toBe(raw);
+    expect(() => assertSecureBaseUrl(raw, "Download URL")).toThrow(
+      ConfigurationError,
+    );
+  });
+
+  // -----------------------------------------------------------------------
+  // HTTPS passthrough
+  // -----------------------------------------------------------------------
+  it.each([
+    "https://server.pagepocket.app/api/v1/sessions/x/download",
+    "https://example.com/dl",
+  ])("passes an https URL through unchanged: %s", (rawUrl) => {
+    expect(upgradeInsecureServerUrl(rawUrl, SERVER_URL)).toBe(rawUrl);
+  });
+
+  // -----------------------------------------------------------------------
+  // Loopback http untouched
+  // -----------------------------------------------------------------------
+  it("leaves loopback http untouched when the server URL is another host", () => {
+    const raw = "http://localhost:8000/api/v1/sessions/x/download";
+    expect(upgradeInsecureServerUrl(raw, SERVER_URL)).toBe(raw);
+  });
+
+  it("leaves same-host http untouched when the server URL itself is plain http (dev)", () => {
+    // A plain-http serverUrl is loopback dev only — never upgrade a dev
+    // download URL to https against a server that has no TLS.
+    const raw = "http://localhost:8000/api/v1/sessions/x/download";
+    expect(upgradeInsecureServerUrl(raw, "http://localhost:8000")).toBe(raw);
+  });
+
+  // -----------------------------------------------------------------------
+  // Invalid input passes through (the validator reports it)
+  // -----------------------------------------------------------------------
+  it("returns an unparseable URL unchanged", () => {
+    expect(upgradeInsecureServerUrl("not a url", SERVER_URL)).toBe("not a url");
+  });
+
+  it("returns the raw URL unchanged when the server URL is unconfigured", () => {
+    const raw = "http://server.pagepocket.app/dl";
+    expect(upgradeInsecureServerUrl(raw, "")).toBe(raw);
   });
 });
 

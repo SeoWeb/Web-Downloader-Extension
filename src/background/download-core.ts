@@ -46,6 +46,7 @@ import {
   AuthenticationError,
   AssemblyTimeoutError,
   HttpError,
+  upgradeInsecureServerUrl,
   type SessionOptions,
 } from "./server-client";
 import { UploadQueue } from "./upload-queue";
@@ -185,7 +186,12 @@ async function lookupFallbackUrl(
 ): Promise<string | undefined> {
   try {
     const status = await serverClient.getSessionStatus(sessionId);
-    return status?.download_url ?? undefined;
+    // Self-heal a same-host http:// scheme (TLS-terminating proxy
+    // misconfig — see upgradeInsecureServerUrl) before the URL reaches the
+    // panel's local-fallback action.
+    return status?.download_url
+      ? upgradeInsecureServerUrl(status.download_url, serverClient.baseUrl)
+      : undefined;
   } catch {
     return undefined;
   }
@@ -1254,13 +1260,20 @@ export async function resumeServerDownload(
     // If already ready, just download
     if (status.status === "ready" && status.download_url) {
       scrapeCompleteSent = true; // session already past SCRAPING
+      // Self-heal a same-host http:// scheme (TLS-terminating proxy
+      // misconfig — see upgradeInsecureServerUrl) before the URL reaches
+      // the UI retry buttons.
+      const downloadUrl = upgradeInsecureServerUrl(
+        status.download_url,
+        serverClient.baseUrl,
+      );
       sendMessage({
         key: "status.serverDownloadReady",
-        options: { downloadUrl: status.download_url },
+        options: { downloadUrl },
       });
       sendMessage({
         key: "status.complete",
-        options: { downloadUrl: status.download_url, failedCount: 0 },
+        options: { downloadUrl, failedCount: 0 },
       });
       return;
     }

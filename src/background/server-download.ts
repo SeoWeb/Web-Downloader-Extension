@@ -18,6 +18,7 @@ import {
   AuthenticationError,
   AssemblyTimeoutError,
   assertSecureBaseUrl,
+  upgradeInsecureServerUrl,
   SessionStatusResponse,
   serverClient as defaultServerClient,
 } from "./server-client";
@@ -207,9 +208,11 @@ export class ServerDownloadHandler {
    * server downloads use a direct HTTP URL that Chrome can download natively.
    * No side panel interaction is needed.
    *
-   * The download URL is validated: plain `http://` with a non-loopback host
-   * throws a ConfigurationError (fail fast per D11 / task 7.4); loopback
-   * hosts stay allowed for development.
+   * The download URL is first self-healed (a same-host `http://` scheme from
+   * a TLS-terminating-proxy misconfig is upgraded to https — see
+   * `upgradeInsecureServerUrl`), then validated: plain `http://` with a
+   * non-loopback host still throws a ConfigurationError (fail fast per D11 /
+   * task 7.4); loopback hosts stay allowed for development.
    *
    * @param downloadUrl The server download URL (from session status)
    * @param filename The desired filename for the download
@@ -222,16 +225,23 @@ export class ServerDownloadHandler {
     tabId?: number,
     saveAs: boolean = true,
   ): Promise<number> {
-    // Validate the download URL scheme — plain HTTP on a non-loopback host
-    // is refused (D11 / task 7.4), loopback stays allowed for development.
-    assertSecureBaseUrl(downloadUrl, "Download URL");
+    // Self-heal a same-host http:// scheme BEFORE the strict scheme check
+    // (server behind a TLS-terminating proxy reports uvicorn's http scheme —
+    // see upgradeInsecureServerUrl), then validate: plain HTTP on a
+    // non-loopback host is still refused (D11 / task 7.4), loopback stays
+    // allowed for development.
+    const secureUrl = upgradeInsecureServerUrl(
+      downloadUrl,
+      this.serverClient.baseUrl,
+    );
+    assertSecureBaseUrl(secureUrl, "Download URL");
 
     // Use chrome.downloads.download with the server URL directly.
     // No blob URL or panel delegation needed — the URL is a regular HTTP(S) URL.
     const chromeDownloadId = await new Promise<number>((resolve, reject) => {
       chrome.downloads.download(
         {
-          url: downloadUrl,
+          url: secureUrl,
           filename,
           saveAs,
         },
@@ -312,8 +322,13 @@ export class ServerDownloadHandler {
       };
     }
 
-    // Extract download URL from status
-    const downloadUrl = status.download_url;
+    // Extract download URL from status, self-healing a same-host http://
+    // scheme (TLS-terminating proxy misconfig — see upgradeInsecureServerUrl)
+    // so every downstream consumer — triggerServerDownload and the UI retry
+    // buttons fed from ServerDownloadResult — gets the fixed URL.
+    const downloadUrl = status.download_url
+      ? upgradeInsecureServerUrl(status.download_url, this.serverClient.baseUrl)
+      : null;
     if (!downloadUrl) {
       throw new ServerUnavailableError(
         "Assembly completed but no download URL returned by server",

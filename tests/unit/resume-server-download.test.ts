@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../../src/background/server-client", () => ({
   serverClient: {
+    baseUrl: "https://server.example.com",
     getSessionStatus: vi.fn(),
     scrapeComplete: vi.fn().mockResolvedValue(undefined),
     finalizeSession: vi.fn().mockResolvedValue(undefined),
@@ -26,14 +27,25 @@ vi.mock("../../src/background/server-client", () => ({
   // pagepocket-client (loaded transitively via download-core → cloud-binding)
   // imports this at module load
   assertSecureBaseUrl: vi.fn(),
+  // Identity passthrough — the ready-status test feeds an https URL
+  upgradeInsecureServerUrl: vi.fn((url: string) => url),
   ServerUnavailableError: class extends Error {
-    constructor(msg: string) { super(msg); this.name = "ServerUnavailableError"; }
+    constructor(msg: string) {
+      super(msg);
+      this.name = "ServerUnavailableError";
+    }
   },
   AuthenticationError: class extends Error {
-    constructor(msg: string) { super(msg); this.name = "AuthenticationError"; }
+    constructor(msg: string) {
+      super(msg);
+      this.name = "AuthenticationError";
+    }
   },
   AssemblyTimeoutError: class extends Error {
-    constructor(msg: string) { super(msg); this.name = "AssemblyTimeoutError"; }
+    constructor(msg: string) {
+      super(msg);
+      this.name = "AssemblyTimeoutError";
+    }
   },
 }));
 
@@ -58,7 +70,10 @@ vi.mock("../../src/background/server-download", () => ({
     downloadWithFallback: vi.fn().mockResolvedValue(null),
   }),
   AssemblyFailedError: class extends Error {
-    constructor(msg: string) { super(msg); this.name = "AssemblyFailedError"; }
+    constructor(msg: string) {
+      super(msg);
+      this.name = "AssemblyFailedError";
+    }
   },
 }));
 
@@ -121,7 +136,14 @@ vi.mock("../../src/background/upload-queue", () => {
     UploadQueue: class {
       getResourceUrls = vi.fn().mockReturnValue([]);
       getResourceCount = vi.fn().mockReturnValue(0);
-      getProgress = vi.fn().mockReturnValue({ completedCount: 0, totalCount: 0, bytesUploaded: 0, totalBytes: 0 });
+      getProgress = vi
+        .fn()
+        .mockReturnValue({
+          completedCount: 0,
+          totalCount: 0,
+          bytesUploaded: 0,
+          totalBytes: 0,
+        });
       waitForAll = vi.fn().mockResolvedValue(undefined);
       enqueue = vi.fn();
       cancel = vi.fn();
@@ -253,12 +275,18 @@ beforeEach(() => {
 describe("resumeServerDownload", () => {
   it("should throw when no server session ID in checkpoint", async () => {
     await expect(
-      resumeServerDownload(createCheckpoint({ serverSessionId: undefined }), sendMessage),
+      resumeServerDownload(
+        createCheckpoint({ serverSessionId: undefined }),
+        sendMessage,
+      ),
     ).rejects.toThrow("No server session ID in checkpoint");
   });
 
   it("should download immediately when session is ready", async () => {
-    mockSessionStatus({ status: "ready", download_url: "https://server.example.com/file.zip" });
+    mockSessionStatus({
+      status: "ready",
+      download_url: "https://server.example.com/file.zip",
+    });
 
     await resumeServerDownload(createCheckpoint(), sendMessage);
 
@@ -300,7 +328,10 @@ describe("resumeServerDownload", () => {
 
       await resumeServerDownload(createCheckpoint(), sendMessage);
 
-      expect(sc("scrapeComplete")).toHaveBeenCalledWith("sess-resume-test", 4711);
+      expect(sc("scrapeComplete")).toHaveBeenCalledWith(
+        "sess-resume-test",
+        4711,
+      );
     });
 
     it("should call finalizeSession", async () => {
@@ -383,8 +414,16 @@ describe("resumeServerDownload", () => {
 
   describe("with checkpoint URLs", () => {
     const resourceUrls = [
-      { url: "https://example.com/img.png", path: "images/img.png", contentType: "image/png" },
-      { url: "https://example.com/style.css", path: "styles/style.css", contentType: "text/css" },
+      {
+        url: "https://example.com/img.png",
+        path: "images/img.png",
+        contentType: "image/png",
+      },
+      {
+        url: "https://example.com/style.css",
+        path: "styles/style.css",
+        contentType: "text/css",
+      },
     ];
 
     it("should send scrapeComplete with resource URL count", async () => {

@@ -102,6 +102,53 @@ export function assertSecureBaseUrl(rawUrl: string, label: string): void {
 }
 
 /**
+ * Self-heal a server-returned URL that came back with a plain `http://`
+ * scheme on the SAME host as the configured server.
+ *
+ * This repairs a server misconfigured behind a TLS-terminating proxy: the
+ * monolith builds absolute URLs (e.g. `download_url`) from uvicorn's own
+ * request scheme — `http://` — while nginx serves the public `https://`
+ * origin. The strict guard would then reject a URL that is safe to fix.
+ *
+ * This deliberately does NOT weaken the guard: `serverUrl` was validated
+ * HTTPS at client construction (`assertSecureBaseUrl`), so the host is
+ * already trusted — we upgrade the scheme instead of accepting cleartext.
+ * The upgrade only applies when `serverUrl` is itself `https://`: a
+ * plain-http (loopback dev) server URL keeps plain-http download URLs so
+ * local development is unaffected.
+ *
+ * Returned unchanged when:
+ * - `rawUrl` doesn't parse — the caller's `assertSecureBaseUrl` then throws
+ *   a clearer error than we could;
+ * - it is already `https://` (passthrough);
+ * - it is http on a loopback host (allowed for development);
+ * - it is http on a DIFFERENT host — left as http so the validator still
+ *   throws (never widen trust beyond the configured server host).
+ */
+export function upgradeInsecureServerUrl(
+  rawUrl: string,
+  serverUrl: string,
+): string {
+  let url: URL;
+  let server: URL;
+  try {
+    url = new URL(rawUrl);
+    server = new URL(serverUrl);
+  } catch {
+    return rawUrl;
+  }
+
+  if (
+    url.protocol === "http:" &&
+    server.protocol === "https:" &&
+    url.hostname === server.hostname
+  ) {
+    url.protocol = "https:";
+  }
+  return url.toString();
+}
+
+/**
  * HTTP error with status code, thrown by ServerClient for 4xx responses.
  * Includes `retryAfter` (seconds) for 429 Rate Limit responses and the
  * machine-readable `detail.error` code (e.g. "cloud_not_linked") when the
@@ -354,6 +401,15 @@ export class ServerClient {
   /** Check whether the server URL is configured. */
   get isConfigured(): boolean {
     return this.serverUrl.length > 0;
+  }
+
+  /**
+   * The configured server base URL (empty string when unconfigured).
+   * Validated HTTPS at construction for non-loopback hosts — callers use it
+   * as the trust anchor for `upgradeInsecureServerUrl`.
+   */
+  get baseUrl(): string {
+    return this.serverUrl;
   }
 
   private assertConfigured(): void {

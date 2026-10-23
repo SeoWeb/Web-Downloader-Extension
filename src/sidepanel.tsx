@@ -18,6 +18,11 @@ import { useScrapingDownloader } from "./sidepanel/hooks/useScrapingDownloader";
 
 import { sendMessageToBackground } from "./client/message";
 import {
+  assertSecureBaseUrl,
+  serverClient,
+  upgradeInsecureServerUrl,
+} from "./background/server-client";
+import {
   ServerModeState,
   initialServerModeState,
   applyServerModeMessage,
@@ -568,8 +573,19 @@ export default function SidePanel() {
                 const { loadFilterOptions } =
                   await import("./common/storage/filterStorage");
                 const opts = await loadFilterOptions();
+                // Self-heal a same-host http:// scheme (TLS-terminating
+                // proxy misconfig — see upgradeInsecureServerUrl), then
+                // enforce transport security: this path bypasses the
+                // background's triggerServerDownload validation (D11 /
+                // task 7.4), and an unvalidated plain-http URL would
+                // silently hit Chrome's mixed-content download block.
+                const downloadUrl = upgradeInsecureServerUrl(
+                  session.download_url,
+                  serverClient.baseUrl,
+                );
+                assertSecureBaseUrl(downloadUrl, "Download URL");
                 chrome.downloads.download({
-                  url: session.download_url,
+                  url: downloadUrl,
                   saveAs: opts.alwaysAskWhereToSave ?? true,
                 });
                 return;
