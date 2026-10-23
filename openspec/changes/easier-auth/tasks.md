@@ -6,7 +6,7 @@
 - [x] 1.4 Extend startup restore in `src/stores/pagepocketStore.ts` (`initializeFromStorage`) to load the refresh token/user from `chrome.storage.local` when the session store is empty and run the existing proactive refresh
 - [x] 1.5 Update logout and refresh-failure paths to clear both `chrome.storage.session` and `chrome.storage.local` auth keys (client + `src/background/cloud-binding.ts`)
 - [x] 1.6 Update refresh rotation to replace the persisted copy in both storage areas when keep-signed-in is active
-- [ ] 1.7 Manual verification pass: restart browser with opt-in (stays logged in, access token never on disk), restart with opt-out (login form shown, local empty), logout (both areas wiped)
+- [x] 1.7 Manual verification pass: restart browser with opt-in (stays logged in, access token never on disk), restart with opt-out (login form shown, local empty), logout (both areas wiped) — operator-verified 2026-10-23 with rebuilt extension (post-`85b03fd`)
 
 ## 2. Phase 2 — Backend: Google sign-in
 
