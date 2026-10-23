@@ -28,6 +28,6 @@
 
 - [x] 4.1 Extension: vitest + typecheck + lint green; `npm run build` succeeds; secret-scan staged diff
 - [x] 4.2 Server: monolith pytest green (CI `server` job)
-- [ ] 4.3 Commit + push `main:pagepocket`; confirm CI green; confirm deploy workflow skipped both frontend and backend (extension + server changes deploy nothing automatically)
+- [x] 4.3 Commit + push `main:pagepocket`; confirm CI green; confirm deploy workflow skipped both frontend and backend (extension + server changes deploy nothing automatically)
 - [ ] 4.4 Manual monolith deploy on host (operator-approved window): `git fetch` + `git reset --hard origin/pagepocket`, `docker compose -f docker-compose.yml build app`, `up -d`, verify health `200`, unauthenticated `cloud/link` → 401
 - [ ] 4.5 E2E verification (operator, rebuilt extension): content-only download → `content.md` with clean markdown + original URLs; linked-pages download → one `pages/<hash>.md` per page with source stamps; both-text-options run → `content.md` + `content.txt` coexist; single-file run unchanged; tick tasks + archive
