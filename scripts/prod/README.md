@@ -734,6 +734,30 @@ drift:`DB*USER*_`were never in`.env`, and old containers predated the
   path redirects to the relative target from the signed cookie (`/app`),
   so the real flow is unaffected.
 
+### Deploy record — 2026-10-24 (text-native-downloads monolith rebuild, `05688e7`)
+
+- Feature `text-native-downloads` (openspec change, commit `05688e7`):
+  text-only output modes (markdown/content → no HTML in artifact), raw
+  single-file delivery (`.md`/`.txt` instead of zip), multi-format cloud
+  pages (`index.md`/`index.txt` via additive gRPC `ContentDocument`),
+  viewer format switcher + markdown render/raw toggle, share-validate
+  `content_formats` enrichment. pagepocket backend+frontend already live
+  via CI (deploy run `40091595138`); monolith is manual-by-design.
+- Host: checkout reset `05688e7` → `8d2a6eb` (code-identical tick commit)
+  BEFORE build (§13/§14 stale-checkout rule); `server/.env` intact;
+  `pagepocket-monolith` network present; pagepocket stack running(9).
+- §3 step 3b: `docker compose -f docker-compose.yml build app` →
+  `run --rm app alembic upgrade head` (no-op — change has NO migrations,
+  storage/proto-only) → `up -d` (server-app-1 + server-db-1 healthy).
+- §7 confinement re-verified after recreate: archive :50052 OK,
+  auth :50051 OK; search/library/share getaddrinfo all FAIL (blocked).
+- Probes: `/api/v1/health` → `{"status":"ok","mysql":"ok"}`;
+  `TRUST_PROXY=true`; unauth `POST /api/v1/cloud/link` → 401; new code in
+  container (`grep -c content_documents archive_client.py` → 4).
+- External surface: :8000 and :33060 refuse connections.
+- Note: extension side needs the operator's local `npm run build` +
+  reload to exercise the new flags/saver end-to-end (task 7.4).
+
 ## 15. Extension ID & Google OAuth redirect URI (easier-auth)
 
 The extension ID is pinned by the `key` field in `public/manifest.json`
