@@ -395,6 +395,25 @@ describe("messageWorker — server-mode message actions", () => {
       expect(result).toEqual({ success: true });
     });
 
+    it("clears the tab's active session after a successful delete", async () => {
+      mock("deleteSession").mockResolvedValue(undefined);
+      const { setActiveServerSession, getActiveServerSessionId } =
+        await import("../../src/background/message");
+      setActiveServerSession(424244, "sess-clear-del");
+
+      const result = await messageWorker(
+        messageActions.SERVER_DELETE_SESSION,
+        { sessionId: "sess-clear-del", tabId: 424244 },
+        addMessage,
+      );
+
+      expect(mock("deleteSession")).toHaveBeenCalledWith("sess-clear-del", {
+        deleteCloud: false,
+      });
+      expect(result).toEqual({ success: true });
+      expect(getActiveServerSessionId(424244)).toBeNull();
+    });
+
     it("returns error when no session is available", async () => {
       const result = await messageWorker(
         messageActions.SERVER_DELETE_SESSION,

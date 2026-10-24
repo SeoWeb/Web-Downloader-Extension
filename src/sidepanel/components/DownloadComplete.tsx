@@ -34,6 +34,11 @@ interface DownloadCompleteProps {
   serverDownloadUrl?: string | null;
   /** (15.4) Whether the download is a single-file HTML (affects filename display). */
   isSingleFile?: boolean;
+  /**
+   * Server session ID from the completion payload — lets the delete flow
+   * target the session after the background cleared its active pointer.
+   */
+  serverSessionId?: string | null;
   /** Cloud upload state — when present, show "Saved to PagePocket" instead of local download UI. */
   cloudUploadState?: CloudUploadState | null;
   /** (5.3 + 5.5) Aggregated per-category report + partial marker. */
@@ -52,6 +57,7 @@ export function DownloadComplete({
   reset,
   serverDownloadUrl,
   isSingleFile,
+  serverSessionId,
   cloudUploadState,
   downloadReport,
   failedUploads,
@@ -404,7 +410,7 @@ export function DownloadComplete({
               onDelete={async ({ deleteCloud }) => {
                 const result = await sendMessage("background", {
                   action: messageActions.SERVER_DELETE_SESSION,
-                  data: { tabId, deleteCloud },
+                  data: { tabId, sessionId: serverSessionId, deleteCloud },
                 });
                 if (result && result.success === false) {
                   throw new Error(result.error || "Delete failed");

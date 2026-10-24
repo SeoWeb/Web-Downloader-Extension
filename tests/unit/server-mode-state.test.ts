@@ -322,6 +322,54 @@ describe("applyServerModeMessage", () => {
     );
   });
 
+  // (delete-after-completion) serverSessionId travels in the completion
+  // payloads so the panel's delete flow can target the session after the
+  // background clears its active-session pointer.
+  it("should record serverSessionId from status.complete", () => {
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.complete",
+      {
+        failedCount: 0,
+        serverSessionId: "sess-abc",
+      },
+    );
+    expect(next.phase).toBe("ready");
+    expect(next.serverSessionId).toBe("sess-abc");
+  });
+
+  it("should record serverSessionId from status.serverDownloadReady without changing phase", () => {
+    const assembling = applyServerModeMessage(
+      initialServerModeState,
+      "status.assemblingServer",
+    );
+    const next = applyServerModeMessage(
+      assembling,
+      "status.serverDownloadReady",
+      {
+        downloadUrl: "https://server.example.com/api/v1/sessions/abc/download",
+        serverSessionId: "sess-abc",
+      },
+    );
+    expect(next.phase).toBe("assembling");
+    expect(next.serverSessionId).toBe("sess-abc");
+  });
+
+  it("should keep the previous serverSessionId when status.complete omits it", () => {
+    const withSession = applyServerModeMessage(
+      initialServerModeState,
+      "status.serverDownloadReady",
+      {
+        downloadUrl: "https://server.example.com/api/v1/sessions/abc/download",
+        serverSessionId: "sess-abc",
+      },
+    );
+    const next = applyServerModeMessage(withSession, "status.complete", {
+      failedCount: 0,
+    });
+    expect(next.serverSessionId).toBe("sess-abc");
+  });
+
   // -----------------------------------------------------------------------
   // 15.5 — Server error display
   // -----------------------------------------------------------------------

@@ -683,6 +683,7 @@ export default function SidePanel() {
         reset={reset}
         serverDownloadUrl={serverModeState.serverDownloadUrl}
         isSingleFile={serverModeState.isSingleFile}
+        serverSessionId={serverModeState.serverSessionId}
         cloudUploadState={cloudUploadState}
         downloadReport={downloadReport}
         failedUploads={serverModeState.failedUploads}

@@ -136,14 +136,12 @@ vi.mock("../../src/background/upload-queue", () => {
     UploadQueue: class {
       getResourceUrls = vi.fn().mockReturnValue([]);
       getResourceCount = vi.fn().mockReturnValue(0);
-      getProgress = vi
-        .fn()
-        .mockReturnValue({
-          completedCount: 0,
-          totalCount: 0,
-          bytesUploaded: 0,
-          totalBytes: 0,
-        });
+      getProgress = vi.fn().mockReturnValue({
+        completedCount: 0,
+        totalCount: 0,
+        bytesUploaded: 0,
+        totalBytes: 0,
+      });
       waitForAll = vi.fn().mockResolvedValue(undefined);
       enqueue = vi.fn();
       cancel = vi.fn();
@@ -294,6 +292,14 @@ describe("resumeServerDownload", () => {
     expect(sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({ key: "status.complete" }),
     );
+    // (delete-after-completion) The completion payload carries the server
+    // session ID so the panel's delete flow works after completion.
+    const completeMsg = sendMessage.mock.calls
+      .map((c) => c[0])
+      .find((m: any) => m?.key === "status.complete");
+    expect(completeMsg.options).toMatchObject({
+      serverSessionId: "sess-resume-test",
+    });
   });
 
   it("should poll for assembly when session is assembling", async () => {

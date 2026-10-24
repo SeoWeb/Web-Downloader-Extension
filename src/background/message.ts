@@ -502,6 +502,10 @@ export async function messageWorker(
         await serverClient.deleteSession(dsSessionId, {
           deleteCloud: data.deleteCloud === true,
         });
+        // Hygiene: the session no longer exists server-side, so clear the
+        // tab's active-session pointer (no-op when completion already
+        // cleared it or an explicit session ID was used).
+        setActiveServerSession(data.tabId, null);
         return { success: true };
       } catch (error) {
         return {

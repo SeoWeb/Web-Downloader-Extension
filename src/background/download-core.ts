@@ -1020,9 +1020,11 @@ async function executeDownloadServerMode(
         key: "status.pagepocketUploadComplete",
         options: { pageId: downloadResult.cloudPageId },
       });
+      // The session ID rides along so the panel's delete flow can target
+      // the session after the finally block clears the active pointer.
       sendMessage({
         key: "status.complete",
-        options: { failedCount: failedUploadCount },
+        options: { serverSessionId: sessionId, failedCount: failedUploadCount },
       });
     } else if (downloadResult?.cloudError) {
       // Cloud push failed — show specific error
@@ -1045,6 +1047,9 @@ async function executeDownloadServerMode(
               isSingleFile: downloadOptions.singleFile,
             }
           : {}),
+        // The session ID rides along so the panel's delete flow can target
+        // the session after the finally block clears the active pointer.
+        serverSessionId: sessionId,
         failedCount: failedUploadCount,
       };
 
@@ -1054,6 +1059,7 @@ async function executeDownloadServerMode(
           options: {
             downloadUrl: downloadResult.downloadUrl,
             isSingleFile: downloadOptions.singleFile,
+            serverSessionId: sessionId,
           },
         });
       }
@@ -1198,7 +1204,7 @@ async function finalizeAndPollAssembly(
     });
     sendMessage({
       key: "status.complete",
-      options: { failedCount },
+      options: { serverSessionId: sessionId, failedCount },
     });
   } else if (downloadResult?.cloudError) {
     sendMessage({
@@ -1208,11 +1214,18 @@ async function finalizeAndPollAssembly(
   } else if (downloadResult?.downloadUrl) {
     sendMessage({
       key: "status.serverDownloadReady",
-      options: { downloadUrl: downloadResult.downloadUrl },
+      options: {
+        downloadUrl: downloadResult.downloadUrl,
+        serverSessionId: sessionId,
+      },
     });
     sendMessage({
       key: "status.complete",
-      options: { downloadUrl: downloadResult.downloadUrl, failedCount },
+      options: {
+        downloadUrl: downloadResult.downloadUrl,
+        serverSessionId: sessionId,
+        failedCount,
+      },
     });
   }
 }
@@ -1271,11 +1284,11 @@ export async function resumeServerDownload(
       );
       sendMessage({
         key: "status.serverDownloadReady",
-        options: { downloadUrl },
+        options: { downloadUrl, serverSessionId },
       });
       sendMessage({
         key: "status.complete",
-        options: { downloadUrl, failedCount: 0 },
+        options: { downloadUrl, serverSessionId, failedCount: 0 },
       });
       return;
     }
@@ -1311,7 +1324,7 @@ export async function resumeServerDownload(
         });
         sendMessage({
           key: "status.complete",
-          options: { failedCount: 0 },
+          options: { serverSessionId, failedCount: 0 },
         });
       } else if (downloadResult?.cloudError) {
         sendMessage({
@@ -1321,7 +1334,11 @@ export async function resumeServerDownload(
       } else if (downloadResult?.downloadUrl) {
         sendMessage({
           key: "status.complete",
-          options: { downloadUrl: downloadResult.downloadUrl, failedCount: 0 },
+          options: {
+            downloadUrl: downloadResult.downloadUrl,
+            serverSessionId,
+            failedCount: 0,
+          },
         });
       }
       return;

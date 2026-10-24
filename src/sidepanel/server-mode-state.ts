@@ -43,6 +43,12 @@ export interface ServerModeState {
    * the `status.complete` payload's `failedCount` option.
    */
   failedUploads: number;
+  /**
+   * Server session ID carried in the completion payloads so the panel's
+   * delete flow can still target the session after the background has
+   * cleared its in-memory active-session pointer on completion.
+   */
+  serverSessionId: string | null;
   /** Server error details. */
   serverError: { error: string; canFallback: boolean; reason: string } | null;
 }
@@ -57,6 +63,7 @@ export const initialServerModeState: ServerModeState = {
   serverDownloadUrl: null,
   isSingleFile: false,
   failedUploads: 0,
+  serverSessionId: null,
   serverError: null,
 };
 
@@ -156,6 +163,7 @@ export function applyServerModeMessage(
           typeof options?.failedCount === "number"
             ? options.failedCount
             : prev.failedUploads,
+        serverSessionId: options?.serverSessionId ?? prev.serverSessionId,
       };
 
     // (15.3) Explicit download-ready signal with URL
@@ -164,6 +172,7 @@ export function applyServerModeMessage(
         ...prev,
         serverDownloadUrl: options?.downloadUrl ?? prev.serverDownloadUrl,
         isSingleFile: options?.isSingleFile ?? prev.isSingleFile,
+        serverSessionId: options?.serverSessionId ?? prev.serverSessionId,
       };
 
     // (15.7) Scraping phase
