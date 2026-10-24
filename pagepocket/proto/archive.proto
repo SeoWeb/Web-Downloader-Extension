@@ -20,6 +20,12 @@ service ArchiveService {
   // zip64 ZIP to disk, and streams it back chunk-by-chunk; the gateway pipes
   // the stream straight into the HTTP response (never fully buffered).
   rpc ExportPage(ExportPageRequest) returns (stream ExportPageChunk);
+  // Additive (storage-usage-display 1.1/D1): read-only storage-usage snapshot
+  // for the sidebar meter. Strictly a display read: the service never locks
+  // the quota row (no FOR UPDATE) and never applies the monthly rollover
+  // here — that remains an ingest-time concern. The gateway proxies it with
+  // the JWT's user_id and plan.
+  rpc GetStorageUsage(GetStorageUsageRequest) returns (GetStorageUsageResponse);
 }
 
 message Asset {
@@ -147,4 +153,31 @@ message ExportPageChunk {
   // 512 KB per chunk (shared service-side constant, well under gRPC's 4 MB
   // default message cap — spec "Page ZIP Export / Streaming bounds").
   bytes data = 1;
+}
+
+message GetStorageUsageRequest {
+  // Mandatory: the quota row's owner (storage-usage-display 1.2/D2). The
+  // gateway always fills this from the verified JWT (`request.state.user_id`).
+  string user_id = 1;
+  // Authoritative plan from the JWT (D3) — the service maps it through
+  // PLAN_LIMITS and echoes the limits back; the quota row itself carries no
+  // plan. Defaults to "free" limits when unset/unknown (same fallback as
+  // reserve_quota).
+  string plan = 2;
+}
+
+message GetStorageUsageResponse {
+  // Counter values straight from user_quotas (D2: the transactionally
+  // maintained counters are trusted; no SUM(pages.size_bytes) reconciliation).
+  int64 total_bytes = 1;
+  int32 pages_this_month = 2;
+  // Naive-UTC ISO-8601, same convention as PageResponse.archived_at. Empty
+  // when the user has no quota row yet (proto3 scalars have no presence —
+  // the gateway maps "" to null).
+  string quota_reset_at = 3;
+  // PLAN_LIMITS for the requested plan (D3): free 500 MB / 50 pages,
+  // pro 10 GB, team 50 GB.
+  int64 storage_limit_bytes = 4;
+  int32 page_limit_monthly = 5;
+  string plan = 6;
 }

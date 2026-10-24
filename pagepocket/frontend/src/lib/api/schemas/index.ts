@@ -55,7 +55,10 @@ export const SearchResultSchema = z.object({
   title: z.string(),
   url: z.string(),
   snippet: z.string(),
-  highlights: z.array(z.object({ start: z.number(), end: z.number() })).optional().default([]),
+  highlights: z
+    .array(z.object({ start: z.number(), end: z.number() }))
+    .optional()
+    .default([]),
   archived_at: z.string(),
 });
 
@@ -91,14 +94,26 @@ export const StatusResponseSchema = z.object({
   version: z.string(),
 });
 
+export const StorageUsageSchema = z.object({
+  used_bytes: z.number(),
+  storage_limit_bytes: z.number(),
+  plan: z.string(),
+  pages_this_month: z.number(),
+  page_limit_monthly: z.number(),
+  quota_reset_at: z.string().nullable(),
+});
+
 export type User = z.infer<typeof UserSchema>;
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 export type PageResponse = z.infer<typeof PageResponseSchema>;
 export type ListPagesResponse = z.infer<typeof ListPagesResponseSchema>;
 export type CollectionResponse = z.infer<typeof CollectionResponseSchema>;
-export type ListCollectionsResponse = z.infer<typeof ListCollectionsResponseSchema>;
+export type ListCollectionsResponse = z.infer<
+  typeof ListCollectionsResponseSchema
+>;
 export type SearchResult = z.infer<typeof SearchResultSchema>;
 export type SearchResponse = z.infer<typeof SearchResponseSchema>;
 export type ShareLinkResponse = z.infer<typeof ShareLinkResponseSchema>;
 export type ValidateShareResponse = z.infer<typeof ValidateShareResponseSchema>;
 export type StatusResponse = z.infer<typeof StatusResponseSchema>;
+export type StorageUsage = z.infer<typeof StorageUsageSchema>;

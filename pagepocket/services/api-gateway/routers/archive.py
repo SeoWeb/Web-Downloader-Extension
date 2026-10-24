@@ -186,6 +186,35 @@ async def delete_page(request: Request, page_id: str):
     return {"success": resp.success}
 
 
+@router.get("/storage")
+async def get_storage_usage(request: Request):
+    """Storage-meter snapshot (storage-usage-display 2.1/D1): a read-only
+    proxy of ArchiveService.GetStorageUsage carrying the JWT identity and
+    plan (D3 — request.state.user_id / request.state.plan, set by the auth
+    middleware). The gateway has no DB: usage never leaves archive-service.
+    quota_reset_at maps "" (no quota row yet) to null for the web contract.
+    """
+    try:
+        resp = await run_in_threadpool(
+            archive_stub().GetStorageUsage,
+            archive_pb2.GetStorageUsageRequest(
+                user_id=request.state.user_id,
+                plan=request.state.plan,
+            ),
+            timeout=30,
+        )
+    except grpc.RpcError as e:
+        handle_grpc_error(e)
+    return {
+        "used_bytes": resp.total_bytes,
+        "storage_limit_bytes": resp.storage_limit_bytes,
+        "plan": resp.plan,
+        "pages_this_month": resp.pages_this_month,
+        "page_limit_monthly": resp.page_limit_monthly,
+        "quota_reset_at": resp.quota_reset_at or None,
+    }
+
+
 @router.post("/pages/ingest")
 async def ingest_page(
     request: Request,

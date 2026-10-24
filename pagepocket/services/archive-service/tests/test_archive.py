@@ -2202,5 +2202,110 @@ class TestStaleCacheEntryTolerance(unittest.TestCase):
         self.assertFalse(hasattr(resp, "r2_key"))
 
 
+# ---------------------------------------------------------------------------
+# Storage-usage read path (storage-usage-display 1.3/D2/D4) — real SQLite DB
+# ---------------------------------------------------------------------------
+
+class TestGetStorageUsage(unittest.TestCase):
+    """GetStorageUsage: a plain display read of user_quotas.
+
+    D4: unlike reserve/confirm (quota.py) this path takes NO row lock and
+    performs NO rollover mutation — the tests below hold over a row whose
+    monthly window has already expired to prove the read leaves it alone.
+    D2: a missing row is zeros with the plan's limits, never an insert.
+    """
+
+    def setUp(self):
+        from sqlalchemy import create_engine as ce
+        self.engine = ce("sqlite://")
+        Base.metadata.create_all(self.engine)
+        self.engine_patcher = patch("servicer.get_engine", return_value=self.engine)
+        self.engine_patcher.start()
+        self.r2_patcher = patch("servicer.R2Client")
+        self.r2_patcher.start()
+
+    def tearDown(self):
+        self.r2_patcher.stop()
+        self.engine_patcher.stop()
+
+    def _usage(self, user_id, plan):
+        from servicer import ArchiveServicer
+        return ArchiveServicer().GetStorageUsage(
+            archive_pb2.GetStorageUsageRequest(user_id=user_id, plan=plan),
+            _FakeContext(),
+        )
+
+    def _quota_row(self, user_id):
+        """(pages_this_month, total_bytes, quota_reset_at) read inside the
+        session — instances are expired on commit, so nothing may be
+        accessed after the session closes."""
+        from models import UserQuota
+        from sqlalchemy import select
+        with db_session(self.engine) as session:
+            q = session.execute(
+                select(UserQuota).where(UserQuota.user_id == user_id)
+            ).scalar_one()
+            return q.pages_this_month, q.total_bytes, q.quota_reset_at
+
+    def test_row_present_returns_counters_and_plan_limits(self):
+        from models import PLAN_LIMITS, UserQuota
+        reset_at = datetime.now(UTC).replace(tzinfo=None) + timedelta(days=17)
+        with db_session(self.engine) as session:
+            session.add(UserQuota(
+                user_id="u1", pages_this_month=7, total_bytes=123456,
+                quota_reset_at=reset_at,
+            ))
+
+        resp = self._usage("u1", "pro")
+
+        self.assertEqual(resp.total_bytes, 123456)
+        self.assertEqual(resp.pages_this_month, 7)
+        self.assertEqual(resp.storage_limit_bytes, PLAN_LIMITS["pro"]["max_bytes"])
+        self.assertEqual(resp.page_limit_monthly, PLAN_LIMITS["pro"]["pages_per_month"])
+        self.assertEqual(resp.plan, "pro")
+        # ISO-8601 echo of the row's reset date (same convention as archived_at)
+        self.assertEqual(resp.quota_reset_at, reset_at.isoformat())
+
+    def test_missing_row_yields_zeros_with_plan_limits(self):
+        from models import PLAN_LIMITS
+
+        resp = self._usage("fresh-user", "free")
+
+        self.assertEqual(resp.total_bytes, 0)
+        self.assertEqual(resp.pages_this_month, 0)
+        self.assertEqual(resp.quota_reset_at, "")  # gateway maps "" → null
+        self.assertEqual(resp.storage_limit_bytes, PLAN_LIMITS["free"]["max_bytes"])
+        self.assertEqual(resp.page_limit_monthly, PLAN_LIMITS["free"]["pages_per_month"])
+        self.assertEqual(resp.plan, "free")
+
+    def test_repeated_reads_leave_row_unchanged(self):
+        """Read-only assertion (D4): two consecutive calls leave every column
+        of user_quotas untouched — even an EXPIRED reset window is not rolled
+        over and counters are never zeroed on read."""
+        from models import UserQuota
+        expired = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
+        with db_session(self.engine) as session:
+            session.add(UserQuota(
+                user_id="u2", pages_this_month=42, total_bytes=999999,
+                quota_reset_at=expired,
+            ))
+
+        first = self._usage("u2", "free")
+        second = self._usage("u2", "free")
+
+        # Both calls report the row's live (stale, un-rolled-over) values.
+        self.assertEqual(
+            (first.total_bytes, first.pages_this_month, first.quota_reset_at),
+            (999999, 42, expired.isoformat()),
+        )
+        self.assertEqual(
+            (second.total_bytes, second.pages_this_month, second.quota_reset_at),
+            (999999, 42, expired.isoformat()),
+        )
+
+        # And the row itself is byte-for-byte what was seeded.
+        self.assertEqual(self._quota_row("u2"), (42, 999999, expired))
+
+
 if __name__ == "__main__":
     unittest.main()

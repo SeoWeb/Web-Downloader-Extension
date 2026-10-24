@@ -156,6 +156,11 @@ export function Dashboard({ initialData, collectionId }: DashboardProps) {
       toast.error("Failed to delete page");
     },
     onSettled: () => {
+      // Storage usage drops with the deleted page (storage-usage-display,
+      // design D7) — refetch the meter in the same cycle that restores the list.
+      queryClient.invalidateQueries({
+        queryKey: qk("archive", "storageUsage"),
+      });
       queryClient.invalidateQueries({ queryKey: qk("archive", "listPages") });
     },
   });

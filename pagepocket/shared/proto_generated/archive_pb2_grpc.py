@@ -80,6 +80,11 @@ class ArchiveServiceStub(object):
                 request_serializer=archive__pb2.ExportPageRequest.SerializeToString,
                 response_deserializer=archive__pb2.ExportPageChunk.FromString,
                 _registered_method=True)
+        self.GetStorageUsage = channel.unary_unary(
+                '/archive.ArchiveService/GetStorageUsage',
+                request_serializer=archive__pb2.GetStorageUsageRequest.SerializeToString,
+                response_deserializer=archive__pb2.GetStorageUsageResponse.FromString,
+                _registered_method=True)
 
 
 class ArchiveServiceServicer(object):
@@ -145,6 +150,17 @@ class ArchiveServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetStorageUsage(self, request, context):
+        """Additive (storage-usage-display 1.1/D1): read-only storage-usage snapshot
+        for the sidebar meter. Strictly a display read: the service never locks
+        the quota row (no FOR UPDATE) and never applies the monthly rollover
+        here — that remains an ingest-time concern. The gateway proxies it with
+        the JWT's user_id and plan.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ArchiveServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -192,6 +208,11 @@ def add_ArchiveServiceServicer_to_server(servicer, server):
                     servicer.ExportPage,
                     request_deserializer=archive__pb2.ExportPageRequest.FromString,
                     response_serializer=archive__pb2.ExportPageChunk.SerializeToString,
+            ),
+            'GetStorageUsage': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetStorageUsage,
+                    request_deserializer=archive__pb2.GetStorageUsageRequest.FromString,
+                    response_serializer=archive__pb2.GetStorageUsageResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -437,6 +458,33 @@ class ArchiveService(object):
             '/archive.ArchiveService/ExportPage',
             archive__pb2.ExportPageRequest.SerializeToString,
             archive__pb2.ExportPageChunk.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetStorageUsage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/archive.ArchiveService/GetStorageUsage',
+            archive__pb2.GetStorageUsageRequest.SerializeToString,
+            archive__pb2.GetStorageUsageResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -18,6 +18,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { CollectionTree } from "@/components/app/collection-tree";
+import { StorageMeter } from "@/components/app/storage-meter";
 import { toast } from "sonner";
 import { useQK } from "@/components/providers/query-provider";
 
@@ -68,9 +69,9 @@ export function AppSidebar() {
 
   return (
     <>
-      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-sidebar">
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <Link href="/app" className="font-semibold text-lg">
+      <aside className="border-border bg-sidebar hidden w-64 flex-col border-r md:flex">
+        <div className="border-border flex items-center justify-between border-b p-4">
+          <Link href="/app" className="text-lg font-semibold">
             PagePocket
           </Link>
           <Button
@@ -85,7 +86,7 @@ export function AppSidebar() {
         <nav className="flex-1 overflow-auto p-2">
           <Link
             href="/app"
-            className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors ${
+            className={`hover:bg-accent flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
               isAllPagesActive ? "bg-accent font-medium" : ""
             }`}
           >
@@ -93,7 +94,7 @@ export function AppSidebar() {
             All Pages
           </Link>
           <div className="mt-4">
-            <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <h3 className="text-muted-foreground px-3 text-xs font-semibold tracking-wider uppercase">
               Collections
             </h3>
             <div className="mt-1 space-y-0.5">
@@ -105,6 +106,7 @@ export function AppSidebar() {
             </div>
           </div>
         </nav>
+        <StorageMeter />
       </aside>
 
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
@@ -125,12 +127,12 @@ export function AppSidebar() {
               autoFocus
             />
             <div className="flex items-center gap-2">
-              <label className="text-sm text-muted-foreground">Colour</label>
+              <label className="text-muted-foreground text-sm">Colour</label>
               <input
                 type="color"
                 value={newColor}
                 onChange={(e) => setNewColor(e.target.value)}
-                className="h-8 w-8 cursor-pointer rounded border border-border"
+                className="border-border h-8 w-8 cursor-pointer rounded border"
               />
             </div>
           </div>

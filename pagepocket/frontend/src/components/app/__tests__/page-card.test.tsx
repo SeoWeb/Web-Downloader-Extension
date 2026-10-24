@@ -47,3 +47,16 @@ describe("PageCard action menu", () => {
     expect(onDownload).toHaveBeenCalledWith("test-page-id");
   });
 });
+
+describe("PageCard size badge (storage-usage-display)", () => {
+  it("shows the human-readable size when the page carries size_bytes", () => {
+    render(<PageCard page={{ ...page, size_bytes: 2516582 }} />);
+    expect(screen.getByText("2.4 MB")).toBeInTheDocument();
+  });
+
+  it("renders no size badge when size_bytes is missing", () => {
+    render(<PageCard page={page} />);
+    expect(screen.queryByText("2.4 MB")).not.toBeInTheDocument();
+    expect(screen.getByText(/Archived/)).toBeInTheDocument();
+  });
+});

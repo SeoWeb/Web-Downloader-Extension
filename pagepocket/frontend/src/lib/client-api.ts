@@ -21,6 +21,7 @@ import {
   SearchResponseSchema,
   ShareLinkResponseSchema,
   SuccessResponseSchema,
+  StorageUsageSchema,
 } from "./api/schemas";
 
 type ClientFetchOptions<T> = {
@@ -123,6 +124,12 @@ export const clientApi = {
       schema: PageResponseSchema,
     }),
 
+  getStorageUsage: () =>
+    clientFetch({
+      route: "/archive/storage",
+      schema: StorageUsageSchema,
+    }),
+
   // Library
   listCollections: () =>
     clientFetch({
@@ -142,10 +149,7 @@ export const clientApi = {
       schema: CollectionResponseSchema,
     }),
 
-  updateCollection: (
-    id: string,
-    data: { name?: string; color?: string },
-  ) =>
+  updateCollection: (id: string, data: { name?: string; color?: string }) =>
     clientFetch({
       route: `/library/collections/${id}`,
       method: "PATCH",

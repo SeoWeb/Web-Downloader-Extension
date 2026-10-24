@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { PageResponse } from "@/lib/api/schemas";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -59,11 +60,12 @@ function renderDashboard({
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
+  const utils = render(
     <QueryClientProvider client={queryClient}>
       <Dashboard initialData={initial} />
     </QueryClientProvider>,
   );
+  return { ...utils, queryClient };
 }
 
 beforeEach(() => {
@@ -142,5 +144,30 @@ describe("Dashboard without SSR initialData (SSR fetch fallback)", () => {
     renderDashboard();
 
     expect(await screen.findByText("No saved pages yet")).toBeInTheDocument();
+  });
+});
+
+// Delete must refresh the storage meter in the same settle cycle as the
+// list (storage-usage-display, design D7).
+describe("Dashboard delete invalidates storage usage", () => {
+  it("invalidates the storageUsage query alongside the list after delete", async () => {
+    vi.mocked(clientApi.deletePage).mockResolvedValue(page as PageResponse);
+    const { queryClient } = renderDashboard({ initialData });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await userEvent.click(screen.getByRole("button", { name: "Page actions" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" }),
+    );
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["archive", "storageUsage"],
+      });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["archive", "listPages"],
+      });
+    });
   });
 });

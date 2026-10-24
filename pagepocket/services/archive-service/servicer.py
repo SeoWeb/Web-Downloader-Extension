@@ -40,7 +40,7 @@ from cache_config import (
 )
 from db import db_session, get_engine
 from grpc_pool import get_stub
-from models import Page, UserQuota
+from models import PLAN_LIMITS, Page, UserQuota
 from page_processor import sanitise_and_rewrite
 from quota import confirm_quota, refund_quota, reserve_quota
 from r2_client import R2Client
@@ -877,6 +877,43 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                     "— collection counts may drift",
                     page_id, user_id, exc,
                 )
+
+    def GetStorageUsage(self, request, context):
+        """Read-only storage-usage snapshot for the meter (storage-usage-display).
+
+        D4: deliberately NOT the ``FOR UPDATE`` path quota.py uses for
+        reserve/confirm — this is a display read, so there is no row lock and
+        no monthly-rollover mutation (rollover stays an ingest-time concern).
+        D2: the transactionally maintained ``user_quotas`` counters are
+        trusted as-is; a missing row (fresh user) simply yields zeros, never
+        an insert.
+        """
+        limits = PLAN_LIMITS.get(request.plan, PLAN_LIMITS["free"])
+
+        with db_session(self.engine) as session:
+            quota = session.execute(
+                select(UserQuota).where(UserQuota.user_id == request.user_id)
+            ).scalar_one_or_none()
+
+            if quota is None:
+                return archive_pb2.GetStorageUsageResponse(
+                    total_bytes=0,
+                    pages_this_month=0,
+                    quota_reset_at="",
+                    storage_limit_bytes=limits["max_bytes"],
+                    page_limit_monthly=limits["pages_per_month"],
+                    plan=request.plan,
+                )
+
+            # Read the values before the session's commit expires instances.
+            return archive_pb2.GetStorageUsageResponse(
+                total_bytes=quota.total_bytes,
+                pages_this_month=quota.pages_this_month,
+                quota_reset_at=quota.quota_reset_at.isoformat(),
+                storage_limit_bytes=limits["max_bytes"],
+                page_limit_monthly=limits["pages_per_month"],
+                plan=request.plan,
+            )
 
     # ------------------------------------------------------------------
     # Maintenance RPCs (internal only — not proxied by the gateway)

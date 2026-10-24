@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
+import { formatBytes } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,6 +26,7 @@ type PageCardProps = {
     url: string;
     archived_at: string;
     collection_id?: string | null | undefined;
+    size_bytes?: number | undefined;
   };
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
@@ -122,12 +124,19 @@ export function PageCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <p className="text-muted-foreground mt-2 text-xs">
-        Archived{" "}
-        {formatDistanceToNow(new Date(page.archived_at + "Z"), {
-          addSuffix: true,
-        })}
-      </p>
+      <div className="text-muted-foreground mt-2 flex items-center gap-2 text-xs">
+        <span>
+          Archived{" "}
+          {formatDistanceToNow(new Date(page.archived_at + "Z"), {
+            addSuffix: true,
+          })}
+        </span>
+        {page.size_bytes !== undefined && (
+          <span className="bg-muted rounded px-1.5 py-0.5 text-[10px] tabular-nums">
+            {formatBytes(page.size_bytes)}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
