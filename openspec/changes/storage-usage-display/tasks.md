@@ -26,5 +26,5 @@
 
 - [x] 5.1 Frontend: vitest for `formatBytes`, meter render (mocked query, threshold colors, plan badges), card size badge; full suite + typecheck + build green
 - [x] 5.2 Backend: archive-service + api-gateway test suites green
-- [ ] 5.3 Commit + push `main:pagepocket`; CI green; `deploy-backend` AND `deploy-frontend` jobs succeed (gateway + archive-service land together)
+- [x] 5.3 Commit + push `main:pagepocket`; CI green; `deploy-backend` AND `deploy-frontend` jobs succeed (gateway + archive-service land together)
 - [ ] 5.4 User verification at pagepocket.app: meter shows real usage (pro account → 10 GB limit), sizes on cards, delete drops the meter
