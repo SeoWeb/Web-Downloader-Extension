@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useFilterStore } from "../stores/filterStore";
+import { normalizeTextOnlyOptions } from "../types/filterTypes";
 
 /**
  * Hook for accessing and managing filter options
@@ -92,23 +93,29 @@ export function useDownloadOptions() {
     }
   }, [isInitialized, initializeFromStorage]);
 
+  // text-native-downloads D7: in text-only mode (HTML off + a text format
+  // on) the images/assets/documents/single-file toggles are disabled in
+  // the UI and must not affect the outgoing options — their stored values
+  // are neutralized here while the store keeps the user's preferences.
+  const outgoing = normalizeTextOnlyOptions(options);
+
   return {
-    downloadHTML: options.downloadHTML,
-    downloadImages: options.downloadImages,
-    downloadLinks: options.downloadLinks,
-    downloadAssets: options.downloadAssets,
-    downloadContentAsText: options.downloadContentAsText,
-    downloadContentAsMarkdown: options.downloadContentAsMarkdown ?? false,
-    downloadDocuments: options.downloadDocuments,
-    singleFile: options.singleFile,
+    downloadHTML: outgoing.downloadHTML,
+    downloadImages: outgoing.downloadImages,
+    downloadLinks: outgoing.downloadLinks,
+    downloadAssets: outgoing.downloadAssets,
+    downloadContentAsText: outgoing.downloadContentAsText,
+    downloadContentAsMarkdown: outgoing.downloadContentAsMarkdown ?? false,
+    downloadDocuments: outgoing.downloadDocuments,
+    singleFile: outgoing.singleFile,
 
     // Full scraping options
-    downloadLinksFullScraping: options.downloadLinksFullScraping,
-    linkedPagesMaxCount: options.linkedPagesMaxCount,
-    linkedPagesDelay: options.linkedPagesDelay,
-    linkedPagesIncludeExternal: options.linkedPagesIncludeExternal,
-    linkedPagesTimeout: options.linkedPagesTimeout,
-    alwaysAskWhereToSave: options.alwaysAskWhereToSave,
+    downloadLinksFullScraping: outgoing.downloadLinksFullScraping,
+    linkedPagesMaxCount: outgoing.linkedPagesMaxCount,
+    linkedPagesDelay: outgoing.linkedPagesDelay,
+    linkedPagesIncludeExternal: outgoing.linkedPagesIncludeExternal,
+    linkedPagesTimeout: outgoing.linkedPagesTimeout,
+    alwaysAskWhereToSave: outgoing.alwaysAskWhereToSave,
   };
 }
 

@@ -163,9 +163,12 @@ class TestShareRouterOwnership(unittest.TestCase):
         self.share_stub.ValidateToken.return_value = share_pb2.ValidateShareResponse(
             valid=True, page_id="p1", owner_user_id="owner-u1",
         )
+        self.archive_stub.GetPage.return_value = archive_pb2.PageResponse(
+            id="p1", content_formats=[],
+        )
 
         resp = _run(share_routes.validate_share_link("tok"))
-        self.assertEqual(resp, {"page_id": "p1"})
+        self.assertEqual(resp, {"page_id": "p1", "content_formats": []})
         self.assertNotIn("url", resp)
         self.assertNotIn("signed_url", resp)
         self.archive_stub.GetPageContent.assert_not_called()
@@ -188,6 +191,49 @@ class TestShareRouterOwnership(unittest.TestCase):
             _run(share_routes.validate_share_link("bad"))
         self.assertEqual(cm.exception.status_code, 404)
         self.archive_stub.GetPageContent.assert_not_called()
+        # No archive round trip at all for an invalid token (text-native-
+        # downloads share parity: formats are only resolved for valid links).
+        self.archive_stub.GetPage.assert_not_called()
+
+    # -- Public validate route carries the stored formats (text-native-
+    #    downloads, share-viewer parity) --
+
+    def test_validate_share_link_carries_archive_content_formats(self):
+        """A valid link merges the archive page-read's formats into the
+        response, authorized by the OWNER identity (public route: no caller
+        JWT) — the same client + deadline pattern as get-page."""
+        self.share_stub.ValidateToken.return_value = share_pb2.ValidateShareResponse(
+            valid=True, page_id="p1", owner_user_id="owner-u1",
+        )
+        self.archive_stub.GetPage.return_value = archive_pb2.PageResponse(
+            id="p1", content_formats=["html", "markdown", "text"],
+        )
+
+        resp = _run(share_routes.validate_share_link("tok"))
+        self.assertEqual(resp, {
+            "page_id": "p1",
+            "content_formats": ["html", "markdown", "text"],
+        })
+        sent = self.archive_stub.GetPage.call_args.args[0]
+        self.assertEqual(sent.page_id, "p1")
+        self.assertEqual(sent.user_id, "owner-u1")
+        self.assertEqual(self.archive_stub.GetPage.call_args.kwargs.get("timeout"), 30)
+
+    def test_validate_share_link_archive_failure_degrades_to_empty_formats(self):
+        """Any archive failure (unavailable, deadline, not-found) must never
+        fail the validation — the response degrades to content_formats: []
+        (legacy HTML-only viewer) with the normal 200 shape."""
+        self.share_stub.ValidateToken.return_value = share_pb2.ValidateShareResponse(
+            valid=True, page_id="p1", owner_user_id="owner-u1",
+        )
+        for failure in (
+            _FakeRpcError(grpc.StatusCode.UNAVAILABLE, "archive down"),
+            _FakeRpcError(grpc.StatusCode.DEADLINE_EXCEEDED, "timeout"),
+            _FakeRpcError(grpc.StatusCode.NOT_FOUND, "gone"),
+        ):
+            self.archive_stub.GetPage.side_effect = failure
+            resp = _run(share_routes.validate_share_link("tok"))
+            self.assertEqual(resp, {"page_id": "p1", "content_formats": []}, failure)
 
     # -- Public file route uses the resolved owner (2.3) --
 
@@ -321,6 +367,9 @@ class TestGetPageRoute(unittest.TestCase):
             "preview_text": "preview",
             "size_bytes": 1234,
             "archived_at": "2026-01-01T00:00:00",
+            # text-native-downloads 2.1/D1: page detail carries the stored
+            # formats (empty for a stub/legacy-shaped response).
+            "content_formats": [],
         })
         # Caller identity, never empty; explicit deadline (D11).
         sent = self.stub.GetPage.call_args.args[0]

@@ -18,11 +18,15 @@ export default async function SharedPagePage({ params }: Props) {
     // Validity signal is the gateway's status contract: a 404 (invalid,
     // revoked, or expired token) throws out of serverFetch and renders the
     // not-found state. The presigned `url` field is gone from the response
-    // (design D4) — no URL-bearing payload is read here anymore.
-    await share.validatePublic(token);
+    // (design D4) — no URL-bearing payload is read here anymore. The
+    // tolerant `content_formats` drives the share viewer's format switcher
+    // (viewer parity, text-native-downloads D6); an older backend omits it
+    // and the viewer degrades to the bare HTML iframe.
+    const validated = await share.validatePublic(token);
+    return (
+      <PublicViewerShell token={token} formats={validated.content_formats} />
+    );
   } catch {
     notFound();
   }
-
-  return <PublicViewerShell token={token} />;
 }

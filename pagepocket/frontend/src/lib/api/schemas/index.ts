@@ -24,6 +24,13 @@ export const PageResponseSchema = z.object({
   size_bytes: z.number().optional(),
   collection_id: z.string().nullable().optional(),
   thumbnail_key: z.string().nullable().optional(),
+  /**
+   * Stored content formats (text-native-downloads D1): `html` | `markdown` |
+   * `text`, html first when present. Tolerant by contract — an older backend
+   * omits the field entirely and unknown values are ignored by the viewer,
+   * so a pre-change response still parses and renders as before.
+   */
+  content_formats: z.array(z.string()).default([]),
 });
 
 export const ListPagesResponseSchema = z.object({
@@ -87,6 +94,12 @@ export const ValidateShareResponseSchema = z.object({
   valid: z.boolean().optional(),
   page_id: z.string().optional(),
   expires_at: z.string().nullable().optional(),
+  /**
+   * Same tolerant contract as PageResponseSchema.content_formats — the share
+   * viewer derives its format switcher from it (viewer parity, D6) and falls
+   * back to the bare HTML iframe when the field is absent.
+   */
+  content_formats: z.array(z.string()).default([]),
 });
 
 export const StatusResponseSchema = z.object({

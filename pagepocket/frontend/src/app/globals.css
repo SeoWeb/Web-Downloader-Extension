@@ -231,6 +231,90 @@ body {
   --spacing-section-lg: 7rem; /* 112px — heroes and feature bands */
 }
 
+/* ─── Archived-page markdown viewer (text-native-downloads D6) ──────────
+   Scoped typography for the format switcher's rendered-markdown tab.
+   Deliberately NOT @tailwindcss/typography — zero extra dependencies — and
+   every rule maps onto the existing design tokens, mirroring .prose-blog. */
+.markdown-viewer {
+  @apply text-foreground/90 text-sm leading-relaxed;
+}
+
+.markdown-viewer > * + * {
+  @apply mt-3;
+}
+
+.markdown-viewer h1 {
+  @apply text-foreground mt-6 mb-1 text-xl font-bold tracking-tight;
+}
+
+.markdown-viewer h2 {
+  @apply text-foreground mt-5 text-lg font-bold tracking-tight;
+}
+
+.markdown-viewer h3 {
+  @apply text-foreground mt-4 text-base font-semibold tracking-tight;
+}
+
+.markdown-viewer h4 {
+  @apply text-foreground mt-3 text-sm font-semibold;
+}
+
+.markdown-viewer a {
+  @apply text-primary decoration-primary/40 hover:decoration-primary font-medium underline underline-offset-4;
+}
+
+.markdown-viewer ul {
+  @apply list-disc space-y-1 pl-5;
+}
+
+.markdown-viewer ol {
+  @apply list-decimal space-y-1 pl-5;
+}
+
+.markdown-viewer li::marker {
+  @apply text-primary;
+}
+
+.markdown-viewer blockquote {
+  @apply border-primary/30 text-muted-foreground border-l-4 pl-3 italic;
+}
+
+.markdown-viewer strong {
+  @apply text-foreground font-semibold;
+}
+
+.markdown-viewer img {
+  @apply max-w-full rounded-md;
+}
+
+.markdown-viewer code {
+  @apply bg-muted rounded-md px-1.5 py-0.5 font-mono text-[0.85em];
+}
+
+.markdown-viewer pre {
+  @apply bg-muted overflow-x-auto rounded-lg p-3;
+}
+
+.markdown-viewer pre code {
+  @apply bg-transparent p-0;
+}
+
+.markdown-viewer table {
+  @apply w-full border-collapse text-sm;
+}
+
+.markdown-viewer th {
+  @apply border-border bg-muted/50 border px-2 py-1 text-left font-semibold;
+}
+
+.markdown-viewer td {
+  @apply border-border border px-2 py-1;
+}
+
+.markdown-viewer hr {
+  @apply border-border mt-4;
+}
+
 /* ─── Blog article prose (design D6) ────────────────────────────────────
    Scoped typography for MDX long-form bodies (`/blog/[slug]`, later
    `/docs/[slug]`). Deliberately NOT @tailwindcss/typography — zero extra

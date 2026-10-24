@@ -42,6 +42,8 @@ async function createServerSession(
     | {
         singleFile?: boolean;
         downloadContentAsMarkdown?: boolean;
+        downloadHtml?: boolean;
+        downloadContentAsText?: boolean;
         retentionDays?: number;
       }
     | undefined,
@@ -179,6 +181,11 @@ export async function messageWorker(
               singleFile: data.downloadOptions?.singleFile ?? false,
               downloadContentAsMarkdown:
                 data.downloadOptions?.downloadContentAsMarkdown ?? false,
+              // text-native-downloads 6.1: forward the full format
+              // selection alongside singleFile/markdown.
+              downloadHtml: data.downloadOptions?.downloadHTML ?? true,
+              downloadContentAsText:
+                data.downloadOptions?.downloadContentAsText ?? false,
               retentionDays: 1,
             },
             data.tabId,

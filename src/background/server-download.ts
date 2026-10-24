@@ -335,8 +335,16 @@ export class ServerDownloadHandler {
       );
     }
 
-    // Derive a safe filename from the URL
-    const filename = deriveFilename(tabUrl, isSingleFile);
+    // Derive a safe filename from the URL. Raw single-file artifacts
+    // (output_type "file", text-native-downloads D3) take their extension
+    // from the server-provided output_filename — falling back to a
+    // content-type map — instead of forcing .zip/.html. The html/zip
+    // branches keep byte-identical behavior to before.
+    const filename = deriveFilename(tabUrl, isSingleFile, {
+      type: status.output_type,
+      filename: status.output_filename,
+      contentType: status.output_content_type,
+    });
 
     // Trigger the download
     const chromeDownloadId = await this.triggerServerDownload(
@@ -468,14 +476,59 @@ export function getServerDownloadHandler(): ServerDownloadHandler {
 // ---------------------------------------------------------------------------
 
 /**
+ * Extension for a raw single-file output (`output_type: "file"`,
+ * text-native-downloads D3): derived from the server-provided
+ * `output_filename` when it carries one, else mapped from
+ * `output_content_type`. The server only ever sends "file" for raw
+ * `.md`/`.txt` artifacts — the remaining content types are covered for
+ * robustness, and `.bin` is the honest fallback for anything unexpected.
+ */
+function rawFileExtension(output: {
+  filename?: string | null;
+  contentType?: string | null;
+}): string {
+  const filename = output.filename ?? "";
+  const dot = filename.lastIndexOf(".");
+  if (dot >= 0 && dot < filename.length - 1) {
+    const ext = filename.slice(dot + 1).toLowerCase();
+    if (/^[a-z0-9]{1,8}$/.test(ext)) {
+      return `.${ext}`;
+    }
+  }
+
+  const contentType = (output.contentType ?? "").toLowerCase();
+  if (contentType.startsWith("text/markdown")) return ".md";
+  if (contentType.startsWith("text/plain")) return ".txt";
+  if (contentType.startsWith("text/html")) return ".html";
+  if (contentType.startsWith("application/zip")) return ".zip";
+  return ".bin";
+}
+
+/**
  * Derive a safe filename from the URL, matching the format used by the
  * server's _derive_filename() and the local download-core.ts logic.
  *
- * Format: hostname-path-timestamp.zip or hostname-path-timestamp.html
+ * Format: hostname-path-timestamp.zip / .html / or — for raw single-file
+ * outputs (`output_type: "file"`) — the extension of the server-provided
+ * output_filename (fallback: content-type map, see rawFileExtension).
  * Max length: 200 characters.
  */
-function deriveFilename(tabUrl: string, isSingleFile: boolean): string {
-  const extension = isSingleFile ? ".html" : ".zip";
+function deriveFilename(
+  tabUrl: string,
+  isSingleFile: boolean,
+  output?: {
+    type?: string | null;
+    filename?: string | null;
+    contentType?: string | null;
+  },
+): string {
+  let extension: string;
+  if (output?.type === "file") {
+    extension = rawFileExtension(output);
+  } else {
+    // html/zip: byte-identical to the previous behavior
+    extension = isSingleFile ? ".html" : ".zip";
+  }
 
   try {
     const u = new URL(tabUrl);

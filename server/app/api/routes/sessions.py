@@ -87,6 +87,18 @@ class SessionOptions(BaseModel):
         False,
         description="Produce Markdown export (content.md / pages/*.md) in the ZIP",
     )
+    # text-native-downloads 3.1: format-selection options. Absent keys keep
+    # the legacy behavior for old session payloads: HTML on, text flag off.
+    downloadHtml: bool = Field(
+        True,
+        description="Include index.html / HTML pages in the artifact "
+        "(false = text-only output; requires at least one text format)",
+    )
+    downloadContentAsText: bool = Field(
+        False,
+        description="Deliver the uploaded extracted text (content.txt) as a "
+        "first-class text format",
+    )
     retentionDays: int = Field(
         settings.default_retention_days,
         ge=settings.min_retention_days,
@@ -121,6 +133,10 @@ class SessionResponse(BaseModel):
     expires_at: datetime
     output_size: int | None = None
     output_type: str | None = None
+    # text-native-downloads: set when output_type is "file" (a raw single-file
+    # text artifact); None for "html" and "zip", whose behavior is unchanged.
+    output_filename: str | None = None
+    output_content_type: str | None = None
     api_version: str = "v1"
 
 
@@ -149,6 +165,10 @@ class SessionStatusResponse(BaseModel):
     assembly_elapsed_seconds: int | None = None
     download_url: str | None = None
     output_type: str | None = None
+    # text-native-downloads: set when output_type is "file"; see
+    # SessionResponse.
+    output_filename: str | None = None
+    output_content_type: str | None = None
     output_size: int | None = None
     error_message: str | None = None
     cloud_status: str | None = None
@@ -183,17 +203,35 @@ class FinalizeResponse(BaseModel):
 # --- Helper functions ---
 
 
+def _resolve_output_fields(
+    session: Session,
+) -> tuple[str | None, str | None, str | None]:
+    """Resolve (output_type, output_filename, output_content_type).
+
+    text-native-downloads 3.2: a raw single-file text artifact (content.md /
+    content.txt) is delivered as ``output_type="file"`` with the exact
+    filename and MIME the assembler recorded on the session options.
+    ``singleFile`` HTML stays ``"html"`` and ZIP bundles stay ``"zip"`` —
+    both unchanged, with null filename/content-type fields.
+    """
+    if session.status != SessionStatus.READY or not session.zip_path:
+        return None, None, None
+    options = session.options or {}
+    out_name = options.get("outputFilename")
+    out_content_type = options.get("outputContentType")
+    if out_name and out_content_type:
+        return "file", out_name, out_content_type
+    if options.get("singleFile"):
+        return "html", None, None
+    return "zip", None, None
+
+
 def _session_to_response(session: Session) -> SessionResponse:
     """Convert Session ORM object to response model."""
     output_size = None
-    output_type = None
-    if session.status == SessionStatus.READY and session.zip_path:
-        if session.options and session.options.get("singleFile"):
-            output_type = "html"
-        else:
-            output_type = "zip"
-        if os.path.exists(session.zip_path):
-            output_size = os.path.getsize(session.zip_path)
+    output_type, output_filename, output_content_type = _resolve_output_fields(session)
+    if output_type is not None and os.path.exists(session.zip_path):
+        output_size = os.path.getsize(session.zip_path)
 
     # Counter truth model (fix-archived-page-pipeline C): html_chunks and
     # resources_received are NOT updated per-upload (deadlock fix).
@@ -215,6 +253,8 @@ def _session_to_response(session: Session) -> SessionResponse:
         expires_at=session.expires_at,
         output_size=output_size,
         output_type=output_type,
+        output_filename=output_filename,
+        output_content_type=output_content_type,
     )
 
 
@@ -299,6 +339,8 @@ async def create_session(
             "singleFile": opts.singleFile,
             "retentionDays": retention_days,
             "downloadContentAsMarkdown": opts.downloadContentAsMarkdown,
+            "downloadHtml": opts.downloadHtml,
+            "downloadContentAsText": opts.downloadContentAsText,
         },
         expires_at=now + timedelta(days=retention_days),
         pagepocket_user_id=bound_user_id,
@@ -377,14 +419,9 @@ async def get_session_status(
 
     # Build download URL for ready sessions (absolute URL)
     download_url = None
-    output_type = None
+    output_type, output_filename, output_content_type = _resolve_output_fields(session)
     output_size = None
-    if session.status == SessionStatus.READY and session.zip_path:
-        # Determine output type from file extension
-        if session.options and session.options.get("singleFile"):
-            output_type = "html"
-        else:
-            output_type = "zip"
+    if output_type is not None:
         # Construct absolute download URL from the externally-visible base URL
         base_url = external_base_url(request)
         download_url = f"{base_url}/api/v1/sessions/{session.id}/download"
@@ -442,6 +479,8 @@ async def get_session_status(
         assembly_elapsed_seconds=elapsed_seconds,
         download_url=download_url,
         output_type=output_type,
+        output_filename=output_filename,
+        output_content_type=output_content_type,
         output_size=output_size,
         error_message=session.error_message,
         cloud_status=cloud_status_val,

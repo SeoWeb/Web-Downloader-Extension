@@ -22,6 +22,10 @@ export const SANDBOX_CSP = "sandbox allow-popups allow-forms";
 // not provide a content type (same table as serving.py).
 const CONTENT_TYPE_MAP: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
+  // Stored text documents (text-native-downloads D1) — the /f/ serving
+  // routes must emit their real types with the same sandbox header set.
+  ".md": "text/markdown; charset=utf-8",
+  ".txt": "text/plain; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "application/javascript",
   ".json": "application/json",

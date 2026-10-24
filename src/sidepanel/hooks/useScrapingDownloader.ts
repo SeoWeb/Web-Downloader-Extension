@@ -135,6 +135,12 @@ export function useScrapingDownloader({
               // download-core) carries the markdown option too.
               downloadContentAsMarkdown:
                 downloadOptions?.downloadContentAsMarkdown ?? false,
+              // text-native-downloads 6.1: the HTML/text flags ride the
+              // pre-created session as well — download-core reuses it
+              // instead of creating a new one.
+              downloadHtml: downloadOptions?.downloadHTML ?? true,
+              downloadContentAsText:
+                downloadOptions?.downloadContentAsText ?? false,
               retentionDays: 1,
             },
             setActive: true, // Store as active session in background
@@ -302,6 +308,8 @@ export function useScrapingDownloader({
     scrollAttempts,
     downloadOptions?.singleFile,
     downloadOptions?.downloadContentAsMarkdown,
+    downloadOptions?.downloadHTML,
+    downloadOptions?.downloadContentAsText,
   ]);
 
   useEffect(() => {

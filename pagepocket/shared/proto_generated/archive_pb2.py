@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 import common_pb2 as common__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rarchive.proto\x12\x07\x61rchive\x1a\x0c\x63ommon.proto\"=\n\x05\x41sset\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x14\n\x0c\x63ontent_type\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"\xa2\x01\n\x11IngestPageRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0b\n\x03url\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x14\n\x0chtml_content\x18\x04 \x01(\x0c\x12\x1e\n\x06\x61ssets\x18\x05 \x03(\x0b\x32\x0e.archive.Asset\x12\x18\n\x10\x65xtension_job_id\x18\x06 \x01(\t\x12\x10\n\x04plan\x18\x07 \x01(\tB\x02\x18\x01\"G\n\x12IngestPageResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07page_id\x18\x02 \x01(\t\x12\x0f\n\x07message\x18\x03 \x01(\t\"2\n\x0eGetPageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"\xae\x01\n\x0cPageResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x0b\n\x03url\x18\x03 \x01(\t\x12\r\n\x05title\x18\x04 \x01(\t\x12\x14\n\x0cpreview_text\x18\x05 \x01(\t\x12\x12\n\nsize_bytes\x18\x07 \x01(\x03\x12\x18\n\x10\x65xtension_job_id\x18\x08 \x01(\t\x12\x13\n\x0b\x61rchived_at\x18\t \x01(\tJ\x04\x08\x06\x10\x07R\x06r2_key\"l\n\x10ListPagesRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0c\n\x04page\x18\x02 \x01(\x05\x12\x11\n\tpage_size\x18\x03 \x01(\x05\x12\x0f\n\x07sort_by\x18\x04 \x01(\t\x12\x15\n\rcollection_id\x18\x05 \x01(\t\"H\n\x11ListPagesResponse\x12$\n\x05pages\x18\x01 \x03(\x0b\x32\x15.archive.PageResponse\x12\r\n\x05total\x18\x02 \x01(\x05\"5\n\x11\x44\x65letePageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"9\n\x15GetPageContentRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\";\n\x13PageContentResponse\x12\x12\n\nexpires_at\x18\x02 \x01(\x03J\x04\x08\x01\x10\x02R\nsigned_url\"L\n\x15GetArchiveFileRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x11\n\tfile_path\x18\x03 \x01(\t\"9\n\x13\x41rchiveFileResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x14\n\x0c\x63ontent_type\x18\x02 \x01(\t\",\n\x1bRetryPendingIndexingRequest\x12\r\n\x05limit\x18\x01 \x01(\x05\"B\n\x1cRetryPendingIndexingResponse\x12\x0f\n\x07retried\x18\x01 \x01(\x05\x12\x11\n\tsucceeded\x18\x02 \x01(\x05\"Q\n\x1bSweepOrphanR2ObjectsRequest\x12\x1c\n\x14grace_period_seconds\x18\x01 \x01(\x03\x12\x14\n\x0cmax_prefixes\x18\x02 \x01(\x05\"{\n\x1cSweepOrphanR2ObjectsResponse\x12\x18\n\x10scanned_prefixes\x18\x01 \x01(\x05\x12\x18\n\x10\x64\x65leted_prefixes\x18\x02 \x01(\x05\x12\x17\n\x0f\x64\x65leted_objects\x18\x03 \x01(\x05\x12\x0e\n\x06\x65rrors\x18\x04 \x03(\t\"5\n\x11\x45xportPageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"\x1f\n\x0f\x45xportPageChunk\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\"7\n\x16GetStorageUsageRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0c\n\x04plan\x18\x02 \x01(\t\"\xa7\x01\n\x17GetStorageUsageResponse\x12\x13\n\x0btotal_bytes\x18\x01 \x01(\x03\x12\x18\n\x10pages_this_month\x18\x02 \x01(\x05\x12\x16\n\x0equota_reset_at\x18\x03 \x01(\t\x12\x1b\n\x13storage_limit_bytes\x18\x04 \x01(\x03\x12\x1a\n\x12page_limit_monthly\x18\x05 \x01(\x05\x12\x0c\n\x04plan\x18\x06 \x01(\t2\x9e\x06\n\x0e\x41rchiveService\x12\x45\n\nIngestPage\x12\x1a.archive.IngestPageRequest\x1a\x1b.archive.IngestPageResponse\x12\x39\n\x07GetPage\x12\x17.archive.GetPageRequest\x1a\x15.archive.PageResponse\x12\x42\n\tListPages\x12\x19.archive.ListPagesRequest\x1a\x1a.archive.ListPagesResponse\x12@\n\nDeletePage\x12\x1a.archive.DeletePageRequest\x1a\x16.common.StatusResponse\x12N\n\x0eGetPageContent\x12\x1e.archive.GetPageContentRequest\x1a\x1c.archive.PageContentResponse\x12N\n\x0eGetArchiveFile\x12\x1e.archive.GetArchiveFileRequest\x1a\x1c.archive.ArchiveFileResponse\x12\x63\n\x14RetryPendingIndexing\x12$.archive.RetryPendingIndexingRequest\x1a%.archive.RetryPendingIndexingResponse\x12\x63\n\x14SweepOrphanR2Objects\x12$.archive.SweepOrphanR2ObjectsRequest\x1a%.archive.SweepOrphanR2ObjectsResponse\x12\x44\n\nExportPage\x12\x1a.archive.ExportPageRequest\x1a\x18.archive.ExportPageChunk0\x01\x12T\n\x0fGetStorageUsage\x12\x1f.archive.GetStorageUsageRequest\x1a .archive.GetStorageUsageResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rarchive.proto\x12\x07\x61rchive\x1a\x0c\x63ommon.proto\"=\n\x05\x41sset\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x14\n\x0c\x63ontent_type\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"7\n\x0f\x43ontentDocument\x12\x16\n\x0e\x63ontent_format\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\xd7\x01\n\x11IngestPageRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0b\n\x03url\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x14\n\x0chtml_content\x18\x04 \x01(\x0c\x12\x1e\n\x06\x61ssets\x18\x05 \x03(\x0b\x32\x0e.archive.Asset\x12\x18\n\x10\x65xtension_job_id\x18\x06 \x01(\t\x12\x10\n\x04plan\x18\x07 \x01(\tB\x02\x18\x01\x12\x33\n\x11\x63ontent_documents\x18\x08 \x03(\x0b\x32\x18.archive.ContentDocument\"`\n\x12IngestPageResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07page_id\x18\x02 \x01(\t\x12\x0f\n\x07message\x18\x03 \x01(\t\x12\x17\n\x0f\x63ontent_formats\x18\x04 \x03(\t\"2\n\x0eGetPageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"\xc7\x01\n\x0cPageResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x0b\n\x03url\x18\x03 \x01(\t\x12\r\n\x05title\x18\x04 \x01(\t\x12\x14\n\x0cpreview_text\x18\x05 \x01(\t\x12\x12\n\nsize_bytes\x18\x07 \x01(\x03\x12\x18\n\x10\x65xtension_job_id\x18\x08 \x01(\t\x12\x13\n\x0b\x61rchived_at\x18\t \x01(\t\x12\x17\n\x0f\x63ontent_formats\x18\n \x03(\tJ\x04\x08\x06\x10\x07R\x06r2_key\"l\n\x10ListPagesRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0c\n\x04page\x18\x02 \x01(\x05\x12\x11\n\tpage_size\x18\x03 \x01(\x05\x12\x0f\n\x07sort_by\x18\x04 \x01(\t\x12\x15\n\rcollection_id\x18\x05 \x01(\t\"H\n\x11ListPagesResponse\x12$\n\x05pages\x18\x01 \x03(\x0b\x32\x15.archive.PageResponse\x12\r\n\x05total\x18\x02 \x01(\x05\"5\n\x11\x44\x65letePageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"9\n\x15GetPageContentRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\";\n\x13PageContentResponse\x12\x12\n\nexpires_at\x18\x02 \x01(\x03J\x04\x08\x01\x10\x02R\nsigned_url\"L\n\x15GetArchiveFileRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x11\n\tfile_path\x18\x03 \x01(\t\"9\n\x13\x41rchiveFileResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x14\n\x0c\x63ontent_type\x18\x02 \x01(\t\",\n\x1bRetryPendingIndexingRequest\x12\r\n\x05limit\x18\x01 \x01(\x05\"B\n\x1cRetryPendingIndexingResponse\x12\x0f\n\x07retried\x18\x01 \x01(\x05\x12\x11\n\tsucceeded\x18\x02 \x01(\x05\"Q\n\x1bSweepOrphanR2ObjectsRequest\x12\x1c\n\x14grace_period_seconds\x18\x01 \x01(\x03\x12\x14\n\x0cmax_prefixes\x18\x02 \x01(\x05\"{\n\x1cSweepOrphanR2ObjectsResponse\x12\x18\n\x10scanned_prefixes\x18\x01 \x01(\x05\x12\x18\n\x10\x64\x65leted_prefixes\x18\x02 \x01(\x05\x12\x17\n\x0f\x64\x65leted_objects\x18\x03 \x01(\x05\x12\x0e\n\x06\x65rrors\x18\x04 \x03(\t\"5\n\x11\x45xportPageRequest\x12\x0f\n\x07page_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\"\x1f\n\x0f\x45xportPageChunk\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\"7\n\x16GetStorageUsageRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0c\n\x04plan\x18\x02 \x01(\t\"\xa7\x01\n\x17GetStorageUsageResponse\x12\x13\n\x0btotal_bytes\x18\x01 \x01(\x03\x12\x18\n\x10pages_this_month\x18\x02 \x01(\x05\x12\x16\n\x0equota_reset_at\x18\x03 \x01(\t\x12\x1b\n\x13storage_limit_bytes\x18\x04 \x01(\x03\x12\x1a\n\x12page_limit_monthly\x18\x05 \x01(\x05\x12\x0c\n\x04plan\x18\x06 \x01(\t2\x9e\x06\n\x0e\x41rchiveService\x12\x45\n\nIngestPage\x12\x1a.archive.IngestPageRequest\x1a\x1b.archive.IngestPageResponse\x12\x39\n\x07GetPage\x12\x17.archive.GetPageRequest\x1a\x15.archive.PageResponse\x12\x42\n\tListPages\x12\x19.archive.ListPagesRequest\x1a\x1a.archive.ListPagesResponse\x12@\n\nDeletePage\x12\x1a.archive.DeletePageRequest\x1a\x16.common.StatusResponse\x12N\n\x0eGetPageContent\x12\x1e.archive.GetPageContentRequest\x1a\x1c.archive.PageContentResponse\x12N\n\x0eGetArchiveFile\x12\x1e.archive.GetArchiveFileRequest\x1a\x1c.archive.ArchiveFileResponse\x12\x63\n\x14RetryPendingIndexing\x12$.archive.RetryPendingIndexingRequest\x1a%.archive.RetryPendingIndexingResponse\x12\x63\n\x14SweepOrphanR2Objects\x12$.archive.SweepOrphanR2ObjectsRequest\x1a%.archive.SweepOrphanR2ObjectsResponse\x12\x44\n\nExportPage\x12\x1a.archive.ExportPageRequest\x1a\x18.archive.ExportPageChunk0\x01\x12T\n\x0fGetStorageUsage\x12\x1f.archive.GetStorageUsageRequest\x1a .archive.GetStorageUsageResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -36,44 +36,46 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_INGESTPAGEREQUEST'].fields_by_name['plan']._serialized_options = b'\030\001'
   _globals['_ASSET']._serialized_start=40
   _globals['_ASSET']._serialized_end=101
-  _globals['_INGESTPAGEREQUEST']._serialized_start=104
-  _globals['_INGESTPAGEREQUEST']._serialized_end=266
-  _globals['_INGESTPAGERESPONSE']._serialized_start=268
-  _globals['_INGESTPAGERESPONSE']._serialized_end=339
-  _globals['_GETPAGEREQUEST']._serialized_start=341
-  _globals['_GETPAGEREQUEST']._serialized_end=391
-  _globals['_PAGERESPONSE']._serialized_start=394
-  _globals['_PAGERESPONSE']._serialized_end=568
-  _globals['_LISTPAGESREQUEST']._serialized_start=570
-  _globals['_LISTPAGESREQUEST']._serialized_end=678
-  _globals['_LISTPAGESRESPONSE']._serialized_start=680
-  _globals['_LISTPAGESRESPONSE']._serialized_end=752
-  _globals['_DELETEPAGEREQUEST']._serialized_start=754
-  _globals['_DELETEPAGEREQUEST']._serialized_end=807
-  _globals['_GETPAGECONTENTREQUEST']._serialized_start=809
-  _globals['_GETPAGECONTENTREQUEST']._serialized_end=866
-  _globals['_PAGECONTENTRESPONSE']._serialized_start=868
-  _globals['_PAGECONTENTRESPONSE']._serialized_end=927
-  _globals['_GETARCHIVEFILEREQUEST']._serialized_start=929
-  _globals['_GETARCHIVEFILEREQUEST']._serialized_end=1005
-  _globals['_ARCHIVEFILERESPONSE']._serialized_start=1007
-  _globals['_ARCHIVEFILERESPONSE']._serialized_end=1064
-  _globals['_RETRYPENDINGINDEXINGREQUEST']._serialized_start=1066
-  _globals['_RETRYPENDINGINDEXINGREQUEST']._serialized_end=1110
-  _globals['_RETRYPENDINGINDEXINGRESPONSE']._serialized_start=1112
-  _globals['_RETRYPENDINGINDEXINGRESPONSE']._serialized_end=1178
-  _globals['_SWEEPORPHANR2OBJECTSREQUEST']._serialized_start=1180
-  _globals['_SWEEPORPHANR2OBJECTSREQUEST']._serialized_end=1261
-  _globals['_SWEEPORPHANR2OBJECTSRESPONSE']._serialized_start=1263
-  _globals['_SWEEPORPHANR2OBJECTSRESPONSE']._serialized_end=1386
-  _globals['_EXPORTPAGEREQUEST']._serialized_start=1388
-  _globals['_EXPORTPAGEREQUEST']._serialized_end=1441
-  _globals['_EXPORTPAGECHUNK']._serialized_start=1443
-  _globals['_EXPORTPAGECHUNK']._serialized_end=1474
-  _globals['_GETSTORAGEUSAGEREQUEST']._serialized_start=1476
-  _globals['_GETSTORAGEUSAGEREQUEST']._serialized_end=1531
-  _globals['_GETSTORAGEUSAGERESPONSE']._serialized_start=1534
-  _globals['_GETSTORAGEUSAGERESPONSE']._serialized_end=1701
-  _globals['_ARCHIVESERVICE']._serialized_start=1704
-  _globals['_ARCHIVESERVICE']._serialized_end=2502
+  _globals['_CONTENTDOCUMENT']._serialized_start=103
+  _globals['_CONTENTDOCUMENT']._serialized_end=158
+  _globals['_INGESTPAGEREQUEST']._serialized_start=161
+  _globals['_INGESTPAGEREQUEST']._serialized_end=376
+  _globals['_INGESTPAGERESPONSE']._serialized_start=378
+  _globals['_INGESTPAGERESPONSE']._serialized_end=474
+  _globals['_GETPAGEREQUEST']._serialized_start=476
+  _globals['_GETPAGEREQUEST']._serialized_end=526
+  _globals['_PAGERESPONSE']._serialized_start=529
+  _globals['_PAGERESPONSE']._serialized_end=728
+  _globals['_LISTPAGESREQUEST']._serialized_start=730
+  _globals['_LISTPAGESREQUEST']._serialized_end=838
+  _globals['_LISTPAGESRESPONSE']._serialized_start=840
+  _globals['_LISTPAGESRESPONSE']._serialized_end=912
+  _globals['_DELETEPAGEREQUEST']._serialized_start=914
+  _globals['_DELETEPAGEREQUEST']._serialized_end=967
+  _globals['_GETPAGECONTENTREQUEST']._serialized_start=969
+  _globals['_GETPAGECONTENTREQUEST']._serialized_end=1026
+  _globals['_PAGECONTENTRESPONSE']._serialized_start=1028
+  _globals['_PAGECONTENTRESPONSE']._serialized_end=1087
+  _globals['_GETARCHIVEFILEREQUEST']._serialized_start=1089
+  _globals['_GETARCHIVEFILEREQUEST']._serialized_end=1165
+  _globals['_ARCHIVEFILERESPONSE']._serialized_start=1167
+  _globals['_ARCHIVEFILERESPONSE']._serialized_end=1224
+  _globals['_RETRYPENDINGINDEXINGREQUEST']._serialized_start=1226
+  _globals['_RETRYPENDINGINDEXINGREQUEST']._serialized_end=1270
+  _globals['_RETRYPENDINGINDEXINGRESPONSE']._serialized_start=1272
+  _globals['_RETRYPENDINGINDEXINGRESPONSE']._serialized_end=1338
+  _globals['_SWEEPORPHANR2OBJECTSREQUEST']._serialized_start=1340
+  _globals['_SWEEPORPHANR2OBJECTSREQUEST']._serialized_end=1421
+  _globals['_SWEEPORPHANR2OBJECTSRESPONSE']._serialized_start=1423
+  _globals['_SWEEPORPHANR2OBJECTSRESPONSE']._serialized_end=1546
+  _globals['_EXPORTPAGEREQUEST']._serialized_start=1548
+  _globals['_EXPORTPAGEREQUEST']._serialized_end=1601
+  _globals['_EXPORTPAGECHUNK']._serialized_start=1603
+  _globals['_EXPORTPAGECHUNK']._serialized_end=1634
+  _globals['_GETSTORAGEUSAGEREQUEST']._serialized_start=1636
+  _globals['_GETSTORAGEUSAGEREQUEST']._serialized_end=1691
+  _globals['_GETSTORAGEUSAGERESPONSE']._serialized_start=1694
+  _globals['_GETSTORAGEUSAGERESPONSE']._serialized_end=1861
+  _globals['_ARCHIVESERVICE']._serialized_start=1864
+  _globals['_ARCHIVESERVICE']._serialized_end=2662
 # @@protoc_insertion_point(module_scope)

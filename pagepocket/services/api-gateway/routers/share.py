@@ -105,6 +105,26 @@ async def revoke_share_link(request: Request, token: str):
         handle_grpc_error(e)
 
 
+async def _page_content_formats(page_id: str, owner_user_id: str) -> list[str]:
+    """Stored content formats for a shared page (text-native-downloads,
+    share-viewer parity): resolved via the same archive page-read the
+    authenticated get-page route uses — with the OWNER's identity, since
+    this route is public (no caller JWT). Strictly best-effort: any archive
+    failure degrades to [] and never fails the validation response."""
+    try:
+        page = await run_in_threadpool(
+            archive_stub().GetPage,
+            archive_pb2.GetPageRequest(
+                page_id=page_id,
+                user_id=owner_user_id,
+            ),
+            timeout=30,
+        )
+        return list(page.content_formats)
+    except grpc.RpcError:
+        return []
+
+
 @router.get("/public/{token}")
 async def validate_share_link(token: str):
     """Public endpoint - no auth required."""
@@ -120,7 +140,13 @@ async def validate_share_link(token: str):
         # D4: page reference metadata only — the presigned `url` field is
         # removed from the contract (no GetPageContent round trip, no R2
         # presigning); delivery is via the sandboxed public /f/* proxy routes.
-        return {"page_id": resp.page_id}
+        return {
+            "page_id": resp.page_id,
+            # Text-native downloads (share-viewer parity): the stored formats
+            # drive the public viewer's HTML/Markdown/Text switcher. An archive
+            # hiccup degrades to [] (legacy HTML-only iframe), never an error.
+            "content_formats": await _page_content_formats(resp.page_id, resp.owner_user_id),
+        }
     except HTTPException:
         raise
     except grpc.RpcError as e:

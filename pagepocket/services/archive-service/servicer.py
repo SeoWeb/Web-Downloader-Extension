@@ -75,6 +75,15 @@ _EXPORT_SPOOL_MAX_BYTES = 64 * 1024 * 1024
 _EXPORT_CHUNK_BYTES = 512 * 1024
 _EXPORT_ZIP_COMPRESS_LEVEL = 6  # DEFLATE level 6 (matches monolith zip_assembler)
 
+# Text-native downloads (D1/D4): supported content formats in canonical order
+# (html first), and each format's R2 object name + pinned content type.
+_CONTENT_FORMATS = ("html", "markdown", "text")
+_CONTENT_OBJECTS = {
+    "html": ("index.html", "text/html; charset=utf-8"),
+    "markdown": ("index.md", "text/markdown; charset=utf-8"),
+    "text": ("index.txt", "text/plain; charset=utf-8"),
+}
+
 
 def _classify_r2_error(exc: Exception) -> grpc.StatusCode:
     """Classify an R2/S3 exception into a gRPC status (2.13, design note f).
@@ -176,6 +185,50 @@ def _dict_to_page_response(d):
     # instead of raising on an unknown keyword.
     fields = archive_pb2.PageResponse.DESCRIPTOR.fields_by_name
     return archive_pb2.PageResponse(**{k: v for k, v in d.items() if k in fields})
+
+
+def _collect_content_documents(request, context):
+    """Normalize html_content + content_documents into ordered documents.
+
+    Text-native downloads (D1/D4): returns an ordered list of unique-format
+    ``(content_format, data)`` tuples — html_content first (primary document),
+    then content_documents entries in request order. Returns None (after
+    setting INVALID_ARGUMENT, the same error style as the extension_job_id
+    guard) when the request carries no content document at all or an unknown
+    content_format. Entries with an empty payload are skipped: they would
+    store an empty object and count nothing toward size_bytes.
+    """
+    documents: list[tuple[str, bytes]] = []
+    if request.html_content:
+        documents.append(("html", request.html_content))
+    for doc in request.content_documents:
+        if doc.content_format not in _CONTENT_FORMATS:
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details(
+                "content_format must be one of: " + ", ".join(_CONTENT_FORMATS)
+            )
+            return None
+        if not doc.data or any(fmt == doc.content_format for fmt, _ in documents):
+            continue  # empty payload / duplicate format — nothing new to store
+        documents.append((doc.content_format, doc.data))
+
+    if not documents:
+        # A page requires at least one content document (spec "Empty content
+        # rejected") — the same INVALID_ARGUMENT path as other invalid input.
+        context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+        context.set_details(
+            "Ingest requires html_content or at least one content_documents entry"
+        )
+        return None
+    return documents
+
+
+def _text_document_extract(data: bytes) -> tuple[str, str]:
+    """Preview + body text for pages without HTML (D4): the text document
+    itself. Search/preview quality mirrors the HTML extraction path (preview
+    is the first 500 characters of the body text)."""
+    body_text = data.decode("utf-8", errors="replace")
+    return body_text[:500], body_text
 
 
 class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
@@ -304,18 +357,32 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             )
             return archive_pb2.IngestPageResponse()
 
-        # Determine title
+        # Text-native downloads (D4): the request must carry at least one
+        # content document (html_content or content_documents). Checked before
+        # anything is reserved or uploaded, with the same INVALID_ARGUMENT
+        # error style as the extension_job_id guard above.
+        documents = _collect_content_documents(request, context)
+        if documents is None:
+            return archive_pb2.IngestPageResponse()
+
+        html_data = next((data for fmt, data in documents if fmt == "html"), None)
+
+        # Determine title (unchanged fallback chain: caller title → HTML
+        # <title> → url; text-only pages have no <title> to parse).
         title = request.title
-        if not title:
+        if not title and html_data is not None:
             from bs4 import BeautifulSoup
-            soup = BeautifulSoup(request.html_content, "lxml")
+            soup = BeautifulSoup(html_data, "lxml")
             t = soup.find("title")
             title = t.string.strip() if t and t.string else request.url
+        elif not title:
+            title = request.url
 
-        # Build asset map and calculate size
+        # Build asset map and calculate size. D9 (size/meter honesty): every
+        # stored content document and every asset counts toward size_bytes.
         page_id = str(uuid.uuid4())
         asset_map = {}
-        total_size = len(request.html_content)
+        total_size = sum(len(data) for _fmt, data in documents)
 
         for asset in request.assets:
             asset_map[asset.filename] = f"assets/{asset.filename}"
@@ -344,10 +411,23 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                 context.set_details(error)
                 return archive_pb2.IngestPageResponse()
 
-        # Sanitise and rewrite HTML
-        rewritten_html, preview_text, body_text = sanitise_and_rewrite(
-            request.html_content, asset_map
-        )
+        # Sanitise and rewrite the HTML document ONLY (D4): text documents
+        # are stored verbatim — never sanitized, never asset-rewritten.
+        if html_data is not None:
+            rewritten_html, preview_text, body_text = sanitise_and_rewrite(
+                html_data, asset_map
+            )
+        else:
+            rewritten_html = None
+            # Search/preview text derives from the text document itself (D4).
+            preview_text, body_text = _text_document_extract(documents[0][1])
+
+        # content_formats in canonical order html → markdown → text (D1/D4):
+        # recorded in meta.json and echoed on the ingest response.
+        content_formats = [
+            fmt for fmt in _CONTENT_FORMATS
+            if any(doc_fmt == fmt for doc_fmt, _ in documents)
+        ]
 
         # Upload to R2 (parallel for throughput) — lock-free: the quota row
         # lock was released with the reserve transaction (2.14).
@@ -376,15 +456,27 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             if upload_errors:
                 raise RuntimeError(f"R2 upload failures: {'; '.join(upload_errors)}")
 
-            r2_key = f"{prefix}/index.html"
-            self.r2.upload(r2_key, rewritten_html, "text/html; charset=utf-8")
+            # One R2 object per content document (D1/D4): index.html beside
+            # index.md / index.txt, each with its pinned content type. HTML is
+            # stored sanitized/rewritten; text documents verbatim.
+            for fmt, data in documents:
+                object_name, content_type = _CONTENT_OBJECTS[fmt]
+                if fmt == "html":
+                    data = rewritten_html
+                self.r2.upload(f"{prefix}/{object_name}", data, content_type)
 
-            # Upload meta.json
+            # Primary document (D4): index.html when present, else the first
+            # text document — the page row's r2_key.
+            r2_key = f"{prefix}/{_CONTENT_OBJECTS[documents[0][0]][0]}"
+
+            # Upload meta.json — gains content_formats (D1): html first when
+            # present, then markdown, then text.
             meta = json.dumps({
                 "title": title,
                 "url": request.url,
                 "archived_at": datetime.now(UTC).isoformat(),
                 "size_bytes": total_size,
+                "content_formats": content_formats,
             })
             self.r2.upload(f"{prefix}/meta.json", meta.encode(), "application/json")
         except Exception:
@@ -466,7 +558,41 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
 
         cache_invalidate_pattern(pattern_pages(user_id))
 
-        return archive_pb2.IngestPageResponse(success=True, page_id=page_id)
+        return archive_pb2.IngestPageResponse(
+            success=True, page_id=page_id, content_formats=content_formats,
+        )
+
+    def _resolve_content_formats(
+        self, user_id: str, page_id: str, r2_key: str,
+    ) -> list[str]:
+        """Stored formats for one page (text-native-downloads D1/D4).
+
+        Reads meta.json (canonical order html → markdown → text, unknown
+        entries dropped). Falls back to the page's primary object name when
+        meta.json is missing/unreadable/pre-format — every page stored before
+        text-native downloads is an HTML page, and a text-only page's r2_key
+        points at its text object. Best-effort: a storage failure must never
+        fail the page read.
+        """
+        try:
+            response = self.r2.client.get_object(
+                Bucket=self.r2.bucket, Key=f"{user_id}/{page_id}/meta.json"
+            )
+            meta = json.loads(response["Body"].read().decode("utf-8"))
+            stored = meta.get("content_formats") or []
+            formats = [fmt for fmt in _CONTENT_FORMATS if fmt in stored]
+            if formats:
+                return formats
+        except Exception as exc:
+            logger.warning(
+                "Could not read content_formats from meta.json for page %s: %s",
+                page_id, exc,
+            )
+        primary = (r2_key or "").rsplit("/", 1)[-1]
+        for fmt, (object_name, _content_type) in _CONTENT_OBJECTS.items():
+            if primary == object_name:
+                return [fmt]
+        return ["html"]
 
     def GetPage(self, request, context):
         ck = key_page(request.page_id)
@@ -485,6 +611,11 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                 return archive_pb2.PageResponse()
 
             data = _page_to_dict(page)
+            # Text-native downloads (D4): the page read reports the stored
+            # formats (from meta.json); list responses leave the field empty.
+            data["content_formats"] = self._resolve_content_formats(
+                page.user_id, page.id, page.r2_key
+            )
             cache_set(ck, data, TTL_MEDIUM)
             return _dict_to_page_response(data)
 
@@ -932,6 +1063,45 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             )
             return None
 
+    def _load_retry_body_text(self, user_id: str, page_id: str) -> str | None:
+        """Body text for a pending re-index (2.6/D7 + text-native D4).
+
+        HTML pages: extracted from the authoritative index.html. Text-only
+        pages (no index.html): the text document verbatim — so a text-only
+        page whose ingest-time indexing failed can still be re-indexed instead
+        of pending forever. None when no content object can be read.
+        """
+        html = self._load_page_html(user_id, page_id)
+        if html is not None:
+            try:
+                return sanitise_and_rewrite(html, {})[2]
+            except Exception as exc:
+                logger.warning(
+                    "RetryPendingIndexing: body re-extraction failed for page %s: %s "
+                    "— left pending", page_id, exc,
+                )
+                return None
+
+        # Text-only page: index.md, then index.txt.
+        for object_name in ("index.md", "index.txt"):
+            try:
+                response = self.r2.client.get_object(
+                    Bucket=self.r2.bucket, Key=f"{user_id}/{page_id}/{object_name}"
+                )
+                return response["Body"].read().decode("utf-8", errors="replace")
+            except Exception as exc:
+                logger.debug(
+                    "RetryPendingIndexing: no %s in R2 for page %s: %s",
+                    object_name, page_id, exc,
+                )
+                continue
+        logger.warning(
+            "RetryPendingIndexing: no content object in R2 for page %s "
+            "— page purged or storage unavailable; left pending",
+            page_id,
+        )
+        return None
+
     def RetryPendingIndexing(self, request, context):
         """Re-deliver pages whose search indexing previously failed (3.8).
 
@@ -957,24 +1127,11 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
 
             for page in pending:
                 retried += 1
-                # Re-read the authoritative HTML from R2 (2.6/D7): the
+                # Re-read the authoritative content from R2 (2.6/D7): the
                 # 500-char preview_text is not the page — re-indexing it
                 # would permanently bake a truncated entry into the index.
-                html = self._load_page_html(page.user_id, page.id)
-                if html is None:
-                    logger.warning(
-                        "RetryPendingIndexing: index.html missing in R2 for page %s "
-                        "— page purged or storage unavailable; left pending",
-                        page.id,
-                    )
-                    continue
-                try:
-                    _rewritten, _preview, body_text = sanitise_and_rewrite(html, {})
-                except Exception as exc:
-                    logger.warning(
-                        "RetryPendingIndexing: body re-extraction failed for page %s: %s "
-                        "— left pending", page.id, exc,
-                    )
+                body_text = self._load_retry_body_text(page.user_id, page.id)
+                if body_text is None:
                     continue
                 ok = self._index_page_with_retry(
                     stub,

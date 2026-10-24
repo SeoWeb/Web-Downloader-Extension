@@ -34,22 +34,39 @@ message Asset {
   bytes data = 3;
 }
 
+// Additive (text-native-downloads 1.1/D1): one stored content document.
+// content_format is one of "html" | "markdown" | "text"; data holds the raw
+// document bytes. Stored beside index.html as index.md / index.txt.
+message ContentDocument {
+  string content_format = 1;
+  bytes data = 2;
+}
+
 message IngestPageRequest {
   string user_id = 1;
   string url = 2;
   string title = 3;
+  // Optional since text-native-downloads (D1): empty when the page is
+  // text-only and content_documents carries the page's text document(s).
   bytes html_content = 4;
   repeated Asset assets = 5;
   string extension_job_id = 6;
   // Deprecated: the service resolves the plan from the user's quota row;
   // this field is ignored (kept for wire compatibility with older senders).
   string plan = 7 [deprecated = true]; // historically "free", "pro", or "team"
+  // Additive (text-native-downloads 1.1/D1): additional content documents
+  // stored beside index.html. Every request must carry at least one content
+  // document overall (html_content or entries here).
+  repeated ContentDocument content_documents = 8;
 }
 
 message IngestPageResponse {
   bool success = 1;
   string page_id = 2;
   string message = 3;
+  // Additive (text-native-downloads 1.1/D1): formats stored for the page,
+  // canonical order html → markdown → text.
+  repeated string content_formats = 4;
 }
 
 message GetPageRequest {
@@ -70,6 +87,10 @@ message PageResponse {
   int64 size_bytes = 7;
   string extension_job_id = 8;
   string archived_at = 9;
+  // Additive (text-native-downloads 1.1/D1): stored content formats (from
+  // the page's meta.json), canonical order html → markdown → text. Populated
+  // by the page-read path (GetPage); list responses leave it empty.
+  repeated string content_formats = 10;
 }
 
 message ListPagesRequest {

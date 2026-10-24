@@ -146,6 +146,8 @@ async def get_page(request: Request, page_id: str):
         "preview_text": resp.preview_text,
         "size_bytes": resp.size_bytes,
         "archived_at": resp.archived_at,
+        # Text-native downloads (D1): stored formats for the viewer switcher.
+        "content_formats": list(resp.content_formats),
     }
 
 
@@ -221,6 +223,11 @@ async def ingest_page(
     url: str = Form(...),
     title: str = Form(""),
     html_content: UploadFile = File(...),
+    # Optional text-native parts (text-native-downloads 2.1/D1/D5): mapped
+    # into the RPC's content_documents. Absence preserves today's behavior
+    # exactly; an empty part carries no document.
+    markdown_content: UploadFile | None = None,
+    text_content: UploadFile | None = None,
     extension_job_id: str = Form(""),
     # Accepted for backward compat with older extension versions, but IGNORED:
     # the plan always comes from the JWT claim (request.state.plan below).
@@ -262,6 +269,23 @@ async def ingest_page(
     try:
         html_bytes = await read_bounded(html_content, max_bytes)
         running_bytes = len(html_bytes)
+        # Text-native parts share the cumulative cap (D2) and are forwarded
+        # plain (no gzip), matching html_content handling (pagepocket-ingest-rest).
+        content_documents = []
+        for part, content_format in (
+            (markdown_content, "markdown"),
+            (text_content, "text"),
+        ):
+            if part is None:
+                continue
+            data = await read_bounded(part, max_bytes - running_bytes)
+            running_bytes += len(data)
+            if not data:
+                continue  # an empty part carries no document
+            content_documents.append(archive_pb2.ContentDocument(
+                content_format=content_format,
+                data=data,
+            ))
         asset_protos = []
         for asset_file in assets:
             data = await read_bounded(asset_file, max_bytes - running_bytes)
@@ -287,6 +311,7 @@ async def ingest_page(
             title=title,
             html_content=html_bytes,
             assets=asset_protos,
+            content_documents=content_documents,
             extension_job_id=extension_job_id,
             plan=request.state.plan,
         ), timeout=120)  # ingest/push-class call: larger budget (D11)
@@ -296,6 +321,8 @@ async def ingest_page(
         "success": resp.success,
         "page_id": resp.page_id,
         "message": resp.message,
+        # Text-native downloads (D1): formats stored for the page.
+        "content_formats": list(resp.content_formats),
         "api_version": "v1",
     }
 

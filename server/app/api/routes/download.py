@@ -81,17 +81,29 @@ async def download_session(
     file_size = os.path.getsize(session.zip_path)
     is_single_file = session.options and session.options.get("singleFile")
 
+    # text-native-downloads 3.2: a raw single-file text artifact carries its
+    # exact filename + MIME on the session options (written by the assembler
+    # at readiness). Served like single-file HTML: no range support needed.
+    output_filename = (session.options or {}).get("outputFilename")
+    output_content_type = (session.options or {}).get("outputContentType")
+
     # Determine content type and filename
-    if is_single_file:
+    if output_filename and output_content_type:
+        content_type = output_content_type
+        filename = output_filename
+        supports_range = False
+    elif is_single_file:
         content_type = "text/html; charset=utf-8"
         filename = _derive_filename(session.url, ".html")
+        supports_range = False
     else:
         content_type = "application/zip"
         filename = _derive_filename(session.url, ".zip")
+        supports_range = True
 
     # Range request support for ZIP files only
     range_header = request.headers.get("range")
-    if range_header and not is_single_file:
+    if range_header and supports_range:
         return _serve_range(
             session.zip_path, file_size, range_header, content_type, filename
         )
@@ -111,7 +123,7 @@ async def download_session(
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
             "Content-Length": str(file_size),
-            "Accept-Ranges": "bytes" if not is_single_file else "none",
+            "Accept-Ranges": "bytes" if supports_range else "none",
         },
     )
 

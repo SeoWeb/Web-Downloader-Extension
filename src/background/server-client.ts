@@ -186,6 +186,17 @@ export interface SessionOptions {
    * the cloud push branch in v1.
    */
   downloadContentAsMarkdown?: boolean;
+  /**
+   * Whether the assembled output should include the HTML page
+   * (text-native-downloads D1). Unchecking HTML with a text format on
+   * makes the download text-only — the assembler then omits index.html.
+   */
+  downloadHtml?: boolean;
+  /**
+   * Whether the uploaded page text (content.txt) is part of the output
+   * (text-native-downloads D1).
+   */
+  downloadContentAsText?: boolean;
   retentionDays?: number;
   pagepocketUserId?: string;
 }
@@ -273,6 +284,18 @@ export interface SessionStatusResponse {
   assembly_elapsed_seconds?: number | null;
   download_url: string | null;
   output_type: string | null;
+  /**
+   * Server-provided filename for `output_type: "file"` — raw single-file
+   * artifacts such as content.md / content.txt (text-native-downloads D3).
+   * Absent/null on older servers and on html/zip outputs — consumers must
+   * treat it as optional.
+   */
+  output_filename?: string | null;
+  /**
+   * MIME type accompanying `output_filename` (e.g. "text/markdown").
+   * Optional for the same reason as output_filename.
+   */
+  output_content_type?: string | null;
   output_size: number | null;
   error_message: string | null;
   cloud_status?: string | null;
@@ -434,6 +457,12 @@ export class ServerClient {
         singleFile: options.singleFile ?? false,
         // Sent on every session creation (spec: default false when unset).
         downloadContentAsMarkdown: options.downloadContentAsMarkdown ?? false,
+        // text-native-downloads D1: the full format selection rides every
+        // session creation — both flags are always sent explicitly, never
+        // omitted. downloadHtml defaults to true: including the HTML page
+        // is today's behavior for callers that don't pass the flag yet.
+        downloadHtml: options.downloadHtml ?? true,
+        downloadContentAsText: options.downloadContentAsText ?? false,
         retentionDays: options.retentionDays,
         pagepocketUserId: options.pagepocketUserId,
       };

@@ -23,8 +23,15 @@ import {
   useDownloadOptions,
   useStorageStatus,
 } from "../hooks/useFilterOptions";
+import { isTextOnlyDownload } from "../types/filterTypes";
 import { IS_PAGEPOCKET_AVAILABLE } from "../common/pagepocket-mode";
 import { PagePocketToggle } from "./PagePocketToggle";
+
+/**
+ * Hardcoded English on purpose (text-native-downloads D7): a short visible
+ * hint on the toggles that do not apply to text-only downloads.
+ */
+const TEXT_ONLY_HINT = "Not applicable to text-only downloads";
 
 export default function Filter({
   download,
@@ -64,6 +71,12 @@ export default function Filter({
 
   const downloadOptions = useDownloadOptions();
   const { isLoadingFromStorage } = useStorageStatus();
+
+  // text-native-downloads D7: HTML off + a text format on = text-only
+  // download. The images/assets/documents/single-file toggles are
+  // inapplicable then — disabled (not hidden) with a hint; their stored
+  // values are neutralized in the outgoing options (useDownloadOptions).
+  const isTextOnly = isTextOnlyDownload(options);
 
   const handleDownload = async () => {
     download(downloadOptions);
@@ -221,6 +234,7 @@ export default function Filter({
                     id="singleFile"
                     checked={options.singleFile}
                     onCheckedChange={handleSingleFileChange}
+                    disabled={isTextOnly}
                   />
                   <label htmlFor="singleFile" className="flex-1 cursor-pointer">
                     <div className="font-medium text-slate-900">
@@ -229,6 +243,11 @@ export default function Filter({
                     <div className="text-xs text-slate-500">
                       {t("filter.singleFileDescription")}
                     </div>
+                    {isTextOnly && (
+                      <div className="text-xs text-slate-400 mt-1">
+                        {TEXT_ONLY_HINT}
+                      </div>
+                    )}
                   </label>
                   <File className="w-5 h-5 text-slate-400" />
                 </div>
@@ -265,6 +284,8 @@ export default function Filter({
                   onChange={(c: any) => setDownloadImages(!!c)}
                   label={t("filter.downloadImages")}
                   icon={<ImageIcon className="w-4 h-4" />}
+                  disabled={isTextOnly}
+                  hint={TEXT_ONLY_HINT}
                 />
 
                 <OptionItem
@@ -273,6 +294,8 @@ export default function Filter({
                   onChange={(c: any) => setDownloadAssets(!!c)}
                   label={t("filter.downloadAssets")}
                   icon={<FileCode className="w-4 h-4" />}
+                  disabled={isTextOnly}
+                  hint={TEXT_ONLY_HINT}
                 />
 
                 <OptionItem
@@ -281,6 +304,8 @@ export default function Filter({
                   onChange={(c: any) => setDownloadDocuments(!!c)}
                   label={t("filter.downloadDocuments")}
                   icon={<File className="w-4 h-4" />}
+                  disabled={isTextOnly}
+                  hint={TEXT_ONLY_HINT}
                 />
 
                 <OptionItem
@@ -419,21 +444,43 @@ export default function Filter({
   );
 }
 
-function OptionItem({ id, checked, onChange, label, icon }: any) {
+function OptionItem({
+  id,
+  checked,
+  onChange,
+  label,
+  icon,
+  disabled,
+  hint,
+}: any) {
   return (
-    <div className="flex items-center gap-3 group">
-      <Checkbox id={id} checked={checked} onCheckedChange={onChange} />
-      <label
-        htmlFor={id}
-        className="flex-1 flex items-center gap-2 cursor-pointer select-none"
-      >
-        <span className="text-slate-400 group-hover:text-brand transition-colors">
-          {icon}
-        </span>
-        <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
-          {label}
-        </span>
-      </label>
+    <div>
+      <div className="flex items-center gap-3 group">
+        <Checkbox
+          id={id}
+          checked={checked}
+          onCheckedChange={onChange}
+          disabled={disabled}
+        />
+        <label
+          htmlFor={id}
+          className={cn(
+            "flex-1 flex items-center gap-2 select-none",
+            disabled ? "cursor-not-allowed" : "cursor-pointer",
+          )}
+        >
+          <span className="text-slate-400 group-hover:text-brand transition-colors">
+            {icon}
+          </span>
+          <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+            {label}
+          </span>
+        </label>
+      </div>
+      {/* text-native-downloads D7: visible hint on disabled toggles */}
+      {disabled && hint ? (
+        <div className="text-xs text-slate-400 mt-1 ml-7">{hint}</div>
+      ) : null}
     </div>
   );
 }

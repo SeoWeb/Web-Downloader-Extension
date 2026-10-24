@@ -402,6 +402,11 @@ export async function downloadResources(
         singleFile: downloadOptions?.singleFile ?? false,
         downloadContentAsMarkdown:
           downloadOptions?.downloadContentAsMarkdown ?? false,
+        // text-native-downloads 6.1: forward the full format selection so
+        // the assembler can honor "HTML off" (text-only output) and
+        // content.txt as a standalone format.
+        downloadHtml: downloadOptions?.downloadHTML ?? true,
+        downloadContentAsText: downloadOptions?.downloadContentAsText ?? false,
         retentionDays: 1,
         pagepocketUserId: pagepocketUserId ?? undefined,
       });

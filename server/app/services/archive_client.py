@@ -270,6 +270,8 @@ def push_to_archive(
     html_content: bytes,
     assets: list[tuple[str, str, bytes]],
     plan: str = "free",
+    markdown_content: Optional[bytes] = None,
+    text_content: Optional[bytes] = None,
 ) -> CloudPushResult:
     """Push a finalized page to the archive service.
 
@@ -278,10 +280,15 @@ def push_to_archive(
         session_id: Extension server session UUID (used as extension_job_id)
         url: Original page URL
         title: Page title
-        html_content: Merged HTML bytes
+        html_content: Merged HTML bytes (empty for a text-only push —
+            text-native-downloads D1: html_content becomes optional)
         assets: List of (filename, content_type, data) tuples
         plan: User's plan from the binding (3.2) — NEVER omitted; defaults
             to "free" so a missing binding plan cannot escalate quota.
+        markdown_content: Main-page markdown document (text-native-downloads
+            4.1), pushed as a "markdown" ContentDocument when set.
+        text_content: Uploaded extracted text (text-native-downloads 4.1),
+            pushed as a "text" ContentDocument when set.
 
     Returns:
         CloudPushResult with page_id on success or error details on failure.
@@ -297,8 +304,14 @@ def push_to_archive(
     # anything. The IngestPage contract is one unary message (no batched /
     # append RPC exists), so an oversize session can never succeed — fail
     # immediately with a precise quota-style error instead of burning the
-    # 3 × 600 s retry budget on deterministic channel rejections.
-    total_bytes = len(html_content) + sum(len(data) for _fn, _ct, data in assets)
+    # 3 × 600 s retry budget on deterministic channel rejections. Text
+    # documents count toward the payload (text-native-downloads 4.1).
+    total_bytes = (
+        len(html_content)
+        + sum(len(data) for _fn, _ct, data in assets)
+        + (len(markdown_content) if markdown_content else 0)
+        + (len(text_content) if text_content else 0)
+    )
     if total_bytes > CLOUD_PUSH_MAX_PAYLOAD_BYTES:
         logger.error(
             "Cloud push rejected pre-flight: session=%s payload=%s limit=%s assets=%d",
@@ -330,7 +343,7 @@ def push_to_archive(
     # Identity + plan always travel with the request (3.2 / D4): user_id and
     # plan are resolved server-side from the client binding — never omitted,
     # never taken from extension-supplied data.
-    request = archive_pb2.IngestPageRequest(
+    request_kwargs: dict = dict(
         user_id=user_id,
         url=url,
         title=title,
@@ -339,6 +352,36 @@ def push_to_archive(
         extension_job_id=session_id,
         plan=plan or "free",
     )
+
+    # text-native-downloads 4.1 (D1/D5): text documents travel as additive
+    # ContentDocument entries; formats follow the pinned enum. Against a
+    # backend whose generated stubs predate ContentDocument the text parts
+    # are dropped with a warning (D8: text parts dropped, HTML page still
+    # stored — graceful degradation in both directions).
+    if markdown_content or text_content:
+        if hasattr(archive_pb2, "ContentDocument"):
+            content_documents = []
+            if markdown_content:
+                content_documents.append(
+                    archive_pb2.ContentDocument(
+                        content_format="markdown", data=markdown_content,
+                    )
+                )
+            if text_content:
+                content_documents.append(
+                    archive_pb2.ContentDocument(
+                        content_format="text", data=text_content,
+                    )
+                )
+            request_kwargs["content_documents"] = content_documents
+        else:
+            logger.warning(
+                "Cloud push: installed archive proto lacks ContentDocument — "
+                "pushing without text documents (legacy backend): session=%s",
+                session_id,
+            )
+
+    request = archive_pb2.IngestPageRequest(**request_kwargs)
 
     # 6.2 single-flight: serialize pushes per session so a concurrent retry
     # waits instead of stacking a second full-payload RPC. Convergence for

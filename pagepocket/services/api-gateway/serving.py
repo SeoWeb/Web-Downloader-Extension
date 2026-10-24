@@ -8,7 +8,7 @@ an identical, sandboxing header set:
   WITHOUT ``allow-same-origin``, so archived documents get no origin privilege
   on pagepocket.app.
 - ``X-Content-Type-Options: nosniff`` — prevents MIME confusion.
-- A pinned ``Content-Type`` (the stored type; HTML pinned to utf-8).
+- A pinned ``Content-Type`` (the stored type; textual types pinned to utf-8).
 - ``Referrer-Policy: no-referrer`` on HTML responses.
 """
 
@@ -18,6 +18,8 @@ SANDBOX_CSP = "sandbox allow-popups allow-forms"
 # duplicated in routers/archive.py and routers/share.py).
 CONTENT_TYPE_MAP: dict[str, str] = {
     ".html": "text/html; charset=utf-8",
+    ".md": "text/markdown; charset=utf-8",
+    ".txt": "text/plain; charset=utf-8",
     ".css": "text/css; charset=utf-8",
     ".js": "application/javascript",
     ".json": "application/json",
@@ -47,10 +49,13 @@ def content_type_for_path(file_path: str) -> str:
 
 
 def pin_content_type(content_type: str) -> str:
-    """Normalize a stored/served content type; HTML is pinned to utf-8."""
+    """Normalize a stored/served content type; textual types pin utf-8."""
     pinned = (content_type or "").strip() or DEFAULT_CONTENT_TYPE
-    if pinned.split(";", 1)[0].strip().lower() == "text/html" and "charset=" not in pinned.lower():
-        pinned = "text/html; charset=utf-8"
+    media_type = pinned.split(";", 1)[0].strip().lower()
+    if media_type in ("text/html", "text/markdown", "text/plain") and (
+        "charset=" not in pinned.lower()
+    ):
+        pinned = f"{media_type}; charset=utf-8"
     return pinned
 
 

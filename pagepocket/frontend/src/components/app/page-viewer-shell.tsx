@@ -13,7 +13,17 @@ import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ShareDialog } from "@/components/app/share-dialog";
+import {
+  IFRAME_SANDBOX,
+  PageFormatViewer,
+} from "@/components/app/page-format-viewer";
 import { useHotkeys } from "@/hooks/use-hotkeys";
+import {
+  CONTENT_FILE_NAMES,
+  isLegacyHtmlOnly,
+  knownContentFormats,
+  type ContentFormat,
+} from "@/lib/content-formats";
 import type { PageResponse } from "@/lib/api/schemas";
 
 type PageViewerShellProps = {
@@ -24,9 +34,10 @@ type PageViewerShellProps = {
 // Nested sandbox intersection (defense in depth, archived-html-serving):
 // the serving route (/api/pp/archive/*/f/*, backed by the gateway's
 // /api/v1/archive/pages/{page_id}/f/*) already responds with
-// `Content-Security-Policy: sandbox allow-popups allow-forms`; this iframe
-// attribute is the second, independent layer. The browser enforces the
-// STRICTER of the two, so neither layer can relax the other:
+// `Content-Security-Policy: sandbox allow-popups allow-forms`; the iframe
+// attribute (IFRAME_SANDBOX, defined once in page-format-viewer.tsx) is the
+// second, independent layer. The browser enforces the STRICTER of the two, so
+// neither layer can relax the other:
 // - NO `allow-same-origin` here (and none in the CSP): the archived document
 //   is a unique opaque origin — even a script that somehow executes gets no
 //   access to pagepocket.app cookies, storage, or DOM. This holds for
@@ -36,13 +47,20 @@ type PageViewerShellProps = {
 // - `allow-popups` / `allow-forms` still work: window.open links and form
 //   controls inside the archived page keep functioning as captured.
 // - Scripts never run: `allow-scripts` is granted by neither layer.
-const IFRAME_SANDBOX = "allow-popups allow-forms";
 
 export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
   const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const iframeSrc = `/api/pp/archive/pages/${pageId}/f/index.html`;
+  // Format switcher (text-native-downloads D6): derive tabs from the page's
+  // known content formats; html-only and unknown/absent fields render the
+  // bare legacy iframe, byte-identical to the pre-switcher viewer.
+  const knownFormats = knownContentFormats(pageMeta?.content_formats);
+  const fileUrls: Record<ContentFormat, string> = {
+    html: `/api/pp/archive/pages/${pageId}/f/${CONTENT_FILE_NAMES.html}`,
+    markdown: `/api/pp/archive/pages/${pageId}/f/${CONTENT_FILE_NAMES.markdown}`,
+    text: `/api/pp/archive/pages/${pageId}/f/${CONTENT_FILE_NAMES.text}`,
+  };
 
   function handleBack() {
     const referrer = document.referrer;
@@ -185,12 +203,16 @@ export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
             </Button>
           </div>
         </div>
-        <iframe
-          src={iframeSrc}
-          sandbox={IFRAME_SANDBOX}
-          className="w-full flex-1 border-0"
-          title="Saved page content"
-        />
+        {isLegacyHtmlOnly(knownFormats) ? (
+          <iframe
+            src={fileUrls.html}
+            sandbox={IFRAME_SANDBOX}
+            className="w-full flex-1 border-0"
+            title="Saved page content"
+          />
+        ) : (
+          <PageFormatViewer formats={knownFormats} fileUrls={fileUrls} />
+        )}
       </div>
 
       <ShareDialog

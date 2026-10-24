@@ -20,6 +20,7 @@ const initialData = {
       title: "Example Page",
       archived_at: "2026-01-01T00:00:00",
       collection_id: null,
+      content_formats: ["html"],
     },
   ],
   total: 1,

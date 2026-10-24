@@ -47,6 +47,14 @@ ZIP_COMPRESSION_LEVEL = 6          # DEFLATE level per spec
 MAX_FILENAME_LENGTH = 200          # Max chars for ZIP filename
 CONTENT_TXT_MAX_SIZE = 1 * 1024 * 1024  # 1 MB cap for single-file content embedding
 
+# text-native-downloads D1: MIME types for raw single-file text delivery
+# (output_type "file"). `.html` is absent on purpose — singleFile HTML keeps
+# its legacy "html" output type and needs no filename/content-type fields.
+OUTPUT_CONTENT_TYPES = {
+    ".md": "text/markdown; charset=utf-8",
+    ".txt": "text/plain; charset=utf-8",
+}
+
 # Cloud push read envelope (6.2): asset files are read from disk in
 # bounded-parallel batches — at most CLOUD_ASSET_READ_CONCURRENCY files in
 # flight, and batches whose combined size stays under
@@ -114,6 +122,13 @@ class ZipAssemblerService:
                 tab_url = session.url
                 filename_map = session.filename_map or {}
                 is_single_file = bool(session.options and session.options.get("singleFile"))
+                # text-native-downloads 3.1: format-selection options. Absent
+                # keys keep the legacy behavior for old session payloads:
+                # HTML on, both text flags off (backward-compatible defaults).
+                options = session.options or {}
+                download_html = bool(options.get("downloadHtml", True))
+                markdown_on = bool(options.get("downloadContentAsMarkdown"))
+                text_on = bool(options.get("downloadContentAsText"))
 
                 # ---- Phase 1: Merging HTML ----
                 await self._update_progress(db, session, "merging_html", 0)
@@ -243,15 +258,14 @@ class ZipAssemblerService:
                 # the session's original URL, each linked page against its
                 # stored page URL. Failure isolation (D6): a conversion error
                 # only omits that markdown output — assembly never fails because
-                # of markdown. The results are consumed exclusively by the
-                # multi-file ZIP branch; single-file and cloud branches
-                # intentionally skip markdown in v1 (D7).
+                # of markdown. Consumers: the multi-file ZIP branch, the
+                # text-only branch, and the cloud push (text-native-downloads
+                # 4.1 — same shared converter, still pre-URL-rewrite).
+                # Single-file HTML intentionally skips markdown (D7): a
+                # single-file HTML artifact never embeds it.
                 content_md: Optional[str] = None
                 page_md_list: dict[str, str] = {}
-                if bool(
-                    session.options
-                    and session.options.get("downloadContentAsMarkdown")
-                ):
+                if markdown_on:
                     try:
                         content_md = await asyncio.to_thread(
                             convert_html_to_markdown, main_html, tab_url,
@@ -367,16 +381,25 @@ class ZipAssemblerService:
                     await self._update_progress(db, session, "inlining_css", 100)
 
                 # ---- Cloud-only assembly branch ----
-                # v1 (download-as-markdown D7): the cloud push branch ignores the
-                # downloadContentAsMarkdown option — no markdown is converted into
-                # the pushed payload or embedded in single-file cloud output.
+                # text-native-downloads 4.1 (D5): the cloud push mirrors the
+                # local format selection — markdown enabled → the Phase-1b
+                # document (same shared converter, still pre-URL-rewrite) is
+                # pushed as a markdown document; content-as-text enabled → the
+                # uploaded content.txt is pushed as a text document;
+                # downloadHtml=false → text-only push (empty html_content, no
+                # HTML assets).
                 if session.pagepocket_user_id:
                     await self._update_progress(db, session, "assembling_zip", 0)
                     # 3.2 — plan comes from the server-side binding stamped on
                     # the session (fallback "free", never omitted).
                     push_plan = getattr(session, "pagepocket_plan", None) or "free"
 
-                    if is_single_file:
+                    markdown_push = content_md
+                    text_push = (
+                        self._read_content_txt(session_id) if text_on else None
+                    )
+
+                    if is_single_file and download_html:
                         # Single-file cloud: produce inlined HTML, push without assets
                         content_text = self._read_content_txt(session_id)
                         html_path = await self._assemble_single_file(
@@ -408,6 +431,14 @@ class ZipAssemblerService:
                                 html_content=html_bytes,
                                 assets=[],
                                 plan=push_plan,
+                                markdown_content=(
+                                    markdown_push.encode("utf-8")
+                                    if markdown_push else None
+                                ),
+                                text_content=(
+                                    text_push.encode("utf-8")
+                                    if text_push else None
+                                ),
                             )
                             if result.page_id:
                                 session.cloud_status = "success"
@@ -440,12 +471,19 @@ class ZipAssemblerService:
                             session_id, session.cloud_status,
                         )
                     else:
-                        # Multi-file cloud: push processed HTML + assets
+                        # Multi-file cloud: push processed HTML + assets.
+                        # Text-only cloud (downloadHtml=false) — and singleFile
+                        # sessions with HTML deselected (singleFile is an HTML
+                        # feature, text rules win) — push only the text
+                        # documents from here.
                         await self._assemble_cloud_push(
                             session_id, db, session,
                             main_html, linked_page_htmls, page_hash_to_filename,
                             plan=push_plan,
                             archive_paths=archive_path_by_resource_id,
+                            download_html=download_html,
+                            markdown_content=markdown_push,
+                            text_content=text_push,
                         )
                     return
 
@@ -455,7 +493,18 @@ class ZipAssemblerService:
                 # Read content.txt if present
                 content_text = self._read_content_txt(session_id)
 
-                if is_single_file:
+                if not download_html:
+                    # text-native-downloads 3.2: text-only assembly — no
+                    # index.html and no HTML-only extras. singleFile is an
+                    # HTML feature and is ignored here (text rules win).
+                    output_path = await self._assemble_text_only(
+                        session_id, db, session,
+                        content_md=content_md,
+                        content_text=content_text,
+                        page_md_list=page_md_list,
+                        page_hash_to_filename=page_hash_to_filename,
+                    )
+                elif is_single_file:
                     # v1 (download-as-markdown D7): single-file output does not
                     # embed markdown — the option is forced off under singleFile
                     # by the extension's validation and is intentionally ignored
@@ -675,6 +724,107 @@ class ZipAssemblerService:
             return None
 
     # ------------------------------------------------------------------
+    # Text-only assembly (text-native-downloads 3.2)
+    # ------------------------------------------------------------------
+
+    async def _assemble_text_only(
+        self,
+        session_id: str,
+        db,
+        session,
+        *,
+        content_md: Optional[str],
+        content_text: Optional[str],
+        page_md_list: dict[str, str],
+        page_hash_to_filename: dict[str, str],
+    ) -> Optional[str]:
+        """Assemble a text-only artifact — no index.html, no HTML-only extras.
+
+        ``downloadHtml=false`` (text-native-downloads): the artifact contains
+        one file per produced text document — ``content.md`` (markdown
+        option), ``content.txt`` (uploaded extracted text), and a
+        ``pages/<name>.md`` sibling per linked page whose markdown conversion
+        succeeded. Images/styles/scripts are HTML-rendering extras and are
+        excluded, as are the linked pages' HTML documents.
+
+        Output shape (design D3): exactly one document → raw file on disk
+        (plus ``outputFilename`` / ``outputContentType`` recorded on the
+        session options so result/status payloads report
+        ``output_type="file"``); more than one → ZIP as usual. A text-only
+        session that produced no text document at all (markdown conversion
+        failed per D6 and nothing was uploaded) fails with a clear error —
+        delivering an empty artifact would be silently wrong.
+        """
+        files: list[tuple[str, str]] = []
+        if content_md is not None:
+            files.append(("content.md", content_md))
+        if content_text is not None:
+            files.append(("content.txt", content_text))
+        for page_hash, page_md in page_md_list.items():
+            page_filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
+            md_path = markdown_zip_path_for(f"pages/{page_filename}")
+            if md_path:
+                files.append((md_path, page_md))
+
+        if not files:
+            await self._mark_failed(
+                db, session,
+                "Text-only download produced no text content",
+            )
+            return None
+
+        session_dir = os.path.join(self.storage_root, session_id)
+
+        # Single document → raw file delivery (design D3). A linked-page
+        # ``pages/<name>.md`` is delivered flattened (basename) — the session
+        # directory holds exactly one file, so no collision is possible.
+        if len(files) == 1:
+            archive_name, text = files[0]
+            flat_name = os.path.basename(archive_name)
+            out_path = os.path.join(session_dir, flat_name)
+            try:
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(text)
+            except OSError as exc:
+                await self._mark_failed(
+                    db, session, f"Text-only assembly error: {exc}"
+                )
+                return None
+            session.options = {
+                **(session.options or {}),
+                "outputFilename": flat_name,
+                "outputContentType": output_content_type_for(flat_name),
+            }
+            await self._update_progress(db, session, "assembling_zip", 100)
+            return out_path
+
+        # Multiple documents → ZIP (same compression envelope as the HTML zip)
+        zip_filename = generate_safe_filename(session.url, ".zip")
+        zip_path = os.path.join(session_dir, zip_filename)
+        try:
+            with zipfile.ZipFile(
+                zip_path, "w",
+                compression=zipfile.ZIP_DEFLATED,
+                compresslevel=ZIP_COMPRESSION_LEVEL,
+            ) as zf:
+                for archive_name, text in files:
+                    safe_name = sanitize_zip_path(archive_name)
+                    if safe_name:
+                        zf.writestr(safe_name, text)
+        except Exception as exc:
+            if os.path.exists(zip_path):
+                try:
+                    os.remove(zip_path)
+                except OSError:
+                    pass
+            await self._mark_failed(
+                db, session, f"Text-only ZIP assembly error: {exc}"
+            )
+            return None
+        await self._update_progress(db, session, "assembling_zip", 100)
+        return zip_path
+
+    # ------------------------------------------------------------------
     # Single-file HTML assembly (6.5)
     # ------------------------------------------------------------------
 
@@ -744,6 +894,9 @@ class ZipAssemblerService:
         page_hash_to_filename: dict[str, str],
         plan: Optional[str] = None,
         archive_paths: Optional[dict[str, str]] = None,
+        download_html: bool = True,
+        markdown_content: Optional[str] = None,
+        text_content: Optional[str] = None,
     ) -> None:
         """Push processed HTML + assets to PagePocket cloud (no local file).
 
@@ -755,6 +908,13 @@ class ZipAssemblerService:
         always forwarded — never omitted, never client-supplied. When the
         caller does not pass one, it is resolved from the binding stamped on
         the session, falling back to "free".
+
+        text-native-downloads 4.1 (D5): ``markdown_content`` (the Phase-1b
+        document, pre-URL-rewrite) and ``text_content`` (the uploaded
+        content.txt) are pushed as text documents when the matching format
+        is selected. ``download_html=False`` means a text-only push: empty
+        ``html_content`` and no HTML assets (assets and linked-page HTML
+        documents exist solely to render HTML).
 
         6.2 hardening: the push payload is accounted BEFORE assets are read
         from disk (stat-only manifest + in-RAM HTML sizes), so an oversize
@@ -772,18 +932,52 @@ class ZipAssemblerService:
         )
 
         push_plan = plan or getattr(session, "pagepocket_plan", None) or "free"
-        html_bytes = main_html.encode("utf-8")
+
+        # text-native-downloads 4.1: HTML off ⇒ text-only push (empty
+        # html_content, no assets). The page title comes from the HTML when
+        # present, else from the markdown's first H1.
+        html_bytes = main_html.encode("utf-8") if download_html else b""
         title = self._extract_title(html_bytes)
+        if not title:
+            title = self._extract_title_from_markdown(markdown_content)
+
+        markdown_bytes = markdown_content.encode("utf-8") if markdown_content else None
+        text_bytes = text_content.encode("utf-8") if text_content else None
+
+        # Text-only push with neither document would be a zero-document
+        # ingest — the archive service rejects those deterministically, so
+        # fail here with a precise error instead of burning the retry budget.
+        if not download_html and not markdown_bytes and not text_bytes:
+            logger.error(
+                "Cloud push rejected (no documents): session=%s "
+                "(HTML off and no text document available)",
+                session_id,
+            )
+            session.cloud_status = "failed"
+            session.cloud_error = "text-only push produced no text content"
+            session.status = "ready"
+            session.assembly_phase = None
+            session.assembly_progress_pct = None
+            session.zip_path = None
+            await db.flush()
+            return
 
         linked_assets: list[tuple[str, str, bytes]] = []
-        for page_hash, page_html in linked_page_htmls.items():
-            filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
-            linked_assets.append((f"pages/{filename}", "text/html", page_html.encode("utf-8")))
+        if download_html:
+            for page_hash, page_html in linked_page_htmls.items():
+                filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
+                linked_assets.append((f"pages/{filename}", "text/html", page_html.encode("utf-8")))
         limit = archive_client_mod.CLOUD_PUSH_MAX_PAYLOAD_BYTES
 
-        # Pre-flight layer 1: HTML + linked pages (both already in RAM) are
-        # checked before any disk reads or asset building.
-        known_bytes = len(html_bytes) + sum(len(data) for _n, _ct, data in linked_assets)
+        # Pre-flight layer 1: HTML + linked pages + text documents (all
+        # already in RAM) are checked before any disk reads or asset
+        # building.
+        known_bytes = (
+            len(html_bytes)
+            + sum(len(data) for _n, _ct, data in linked_assets)
+            + (len(markdown_bytes) if markdown_bytes else 0)
+            + (len(text_bytes) if text_bytes else 0)
+        )
         if known_bytes > limit:
             error = archive_client_mod.cloud_size_error(known_bytes, limit)
             logger.error(
@@ -803,23 +997,27 @@ class ZipAssemblerService:
         # Pre-flight layer 2: _build_cloud_assets stats the resource files
         # (no reads) and raises CloudPayloadTooLargeError if the assets
         # alone exceed the cap — before a single byte is read from disk.
-        try:
-            assets = await self._build_cloud_assets(session_id, db, archive_paths)
-        except CloudPayloadTooLargeError as exc:
-            logger.error(
-                "Cloud push pre-flight rejected (assets): session=%s %s",
-                session_id, exc,
-            )
-            session.cloud_status = "failed"
-            session.cloud_error = str(exc)
-            session.status = "ready"
-            session.assembly_phase = None
-            session.assembly_progress_pct = None
-            session.zip_path = None
-            await db.flush()
-            return
+        # Skipped entirely for a text-only push: no assets are pushed.
+        if download_html:
+            try:
+                assets = await self._build_cloud_assets(session_id, db, archive_paths)
+            except CloudPayloadTooLargeError as exc:
+                logger.error(
+                    "Cloud push pre-flight rejected (assets): session=%s %s",
+                    session_id, exc,
+                )
+                session.cloud_status = "failed"
+                session.cloud_error = str(exc)
+                session.status = "ready"
+                session.assembly_phase = None
+                session.assembly_progress_pct = None
+                session.zip_path = None
+                await db.flush()
+                return
 
-        assets.extend(linked_assets)
+            assets.extend(linked_assets)
+        else:
+            assets = []
 
         session.cloud_status = "pending"
         session.cloud_error = None
@@ -840,6 +1038,8 @@ class ZipAssemblerService:
                 html_content=html_bytes,
                 assets=assets,
                 plan=push_plan,
+                markdown_content=markdown_bytes,
+                text_content=text_bytes,
             )
             if result.page_id:
                 session.cloud_status = "success"
@@ -1064,6 +1264,18 @@ class ZipAssemblerService:
             except Exception:
                 pass
         return ""
+
+    @staticmethod
+    def _extract_title_from_markdown(markdown_text: Optional[str]) -> str:
+        """Extract a page title from a markdown document (text-native-downloads 4.1).
+
+        Text-only cloud pushes have no HTML to extract ``<title>`` from; the
+        first ATX H1 line stands in. Returns "" when there is none.
+        """
+        if not markdown_text:
+            return ""
+        m = re.search(r"^#\s+(.+?)\s*$", markdown_text, re.MULTILINE)
+        return m.group(1).strip()[:500] if m else ""
 
     @staticmethod
     async def _cloud_resource_manifest(
@@ -1486,6 +1698,17 @@ def markdown_zip_path_for(html_zip_path: str) -> Optional[str]:
     if html_zip_path.endswith(".html"):
         return html_zip_path[: -len(".html")] + ".md"
     return None
+
+
+def output_content_type_for(filename: str) -> str:
+    """MIME type for a raw single-file artifact (text-native-downloads D1).
+
+    ``.md`` → ``text/markdown; charset=utf-8``, ``.txt`` →
+    ``text/plain; charset=utf-8``; unknown extensions fall back to
+    ``application/octet-stream``.
+    """
+    ext = os.path.splitext(filename)[1].lower()
+    return OUTPUT_CONTENT_TYPES.get(ext, "application/octet-stream")
 
 
 # ---------------------------------------------------------------------------
