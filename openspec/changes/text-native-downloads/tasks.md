@@ -37,6 +37,6 @@
 ## 7. Verify & ship
 
 - [x] 7.1 All suites green: pagepocket backend (`make test`), frontend (vitest+build), monolith (`server/` pytest), extension (vitest+tsc)
-- [ ] 7.2 Commit + push `main:pagepocket`; CI green; `deploy-backend` + `deploy-frontend` succeed
+- [x] 7.2 Commit + push `main:pagepocket`; CI green; `deploy-backend` + `deploy-frontend` succeed
 - [ ] 7.3 Monolith rebuild on user's explicit order (runbook §3)
 - [ ] 7.4 User verification: text-only local download is a raw `.md`/`.txt`; cloud text page + switcher at pagepocket.app; html+md toggle page; old pages unchanged; dashboard cards/thumbnails fall back gracefully for text pages
