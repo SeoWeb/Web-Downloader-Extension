@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { Code, Eye, FileText, Globe, RefreshCw, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -217,15 +218,27 @@ function FormatPane({
 /**
  * Content area for pages with at least one non-HTML format (D6):
  * - exactly one known format → rendered directly, no switcher chrome;
- * - several → the HTML | Markdown | Text segmented control, HTML default
- *   when present. Legacy pages (html-only / unknown) never reach this
- *   component — callers render the bare iframe for them.
+ * - several → the HTML | Markdown | Text segmented control, defaulting to
+ *   HTML when present else the first known format, overridden by a valid
+ *   ?format URL param. Switches are written back to the URL (router.replace,
+ *   no history entry) so back/forward restores the tab the user was on.
+ * Legacy pages (html-only / unknown) never reach this component — callers
+ * render the bare iframe for them.
  */
 export function PageFormatViewer({
   formats,
   fileUrls,
   iframeTitle = "Saved page content",
 }: PageFormatViewerProps) {
+  // The active tab is URL state (?format=<value>), mirroring the dashboard's
+  // ?sort_by pattern: the viewer segment remounts on back/forward, so the
+  // active format must be derivable from the URL alone or every return to
+  // the page resets the switcher to HTML. Hooks run unconditionally (single
+  // -format pages return early below, never reading or writing the param).
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   if (formats.length === 1) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
@@ -238,12 +251,30 @@ export function PageFormatViewer({
     );
   }
 
-  // Default tab: HTML when present, else the first known format.
-  const defaultFormat = formats.includes("html") ? "html" : formats[0]!;
+  // Initial tab: the ?format param when it names a known format present for
+  // this page; invalid/unknown values (or its absence) fall back to HTML
+  // when present, else the first known format.
+  const requested = searchParams.get("format");
+  const defaultFormat =
+    requested && formats.includes(requested as ContentFormat)
+      ? (requested as ContentFormat)
+      : formats.includes("html")
+        ? "html"
+        : formats[0]!;
+
+  // Mirror a tab switch into the URL with replace (no history entry, no
+  // scroll): back leaves the page entirely, forward re-mounts it already on
+  // the format the user was reading. Other params, if any, are preserved.
+  function handleFormatChange(value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("format", value);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
 
   return (
     <Tabs
       defaultValue={defaultFormat}
+      onValueChange={handleFormatChange}
       className="min-h-0 flex-1 gap-0"
       aria-label="Saved formats"
     >

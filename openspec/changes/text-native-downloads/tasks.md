@@ -27,6 +27,7 @@
 - [x] 5.2 `page-viewer-shell.tsx`: format switcher (>1 format; HTML default), markdown tab (react-markdown, raw-HTML escaped — pinned test) + raw toggle, text tab, legacy single-format pages unchanged
 - [x] 5.3 `public-viewer-shell.tsx`: same switcher/defaults
 - [x] 5.4 Tests: switcher render per format set; script-tag markdown inert; raw toggle content; legacy page no switcher; share parity
+- [x] 5.5 Active format survives back/forward: `?format=` URL param (validated against known formats) is the initial tab; switching tabs updates it via `router.replace(..., { scroll: false })`; invalid param → HTML default; share viewer parity
 
 ## 6. Extension
 

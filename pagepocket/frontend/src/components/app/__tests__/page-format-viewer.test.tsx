@@ -4,12 +4,24 @@ import userEvent from "@testing-library/user-event";
 import type { PageResponse } from "@/lib/api/schemas";
 import { PageResponseSchema } from "@/lib/api/schemas";
 
+// Shared, observable next/navigation stubs: tests set `nav.params` before
+// render (the ?format URL state) and assert `nav.replace` calls (the
+// tab-switch write-back). Same mock shape dashboard.test.tsx uses, hoisted
+// so the factory and the tests share one instance.
+const nav = vi.hoisted(() => ({
+  replace: vi.fn(),
+  params: new URLSearchParams(),
+  pathname: "/app/pages/test-page-id",
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
-    replace: vi.fn(),
+    replace: nav.replace,
     back: vi.fn(),
   }),
+  usePathname: () => nav.pathname,
+  useSearchParams: () => nav.params,
 }));
 
 // Mock share dialog to avoid pulling in React Query provider
@@ -79,6 +91,10 @@ beforeEach(() => {
   fetchMock.mockReset();
   fetchMock.mockImplementation(serveStoredFiles);
   vi.stubGlobal("fetch", fetchMock);
+  // Fresh URL state per test: no ?format param, default pathname.
+  nav.replace.mockClear();
+  nav.params = new URLSearchParams();
+  nav.pathname = "/app/pages/test-page-id";
 });
 
 afterEach(() => {
@@ -270,6 +286,103 @@ describe("PageViewerShell format switcher", () => {
   });
 });
 
+describe("URL-backed active format (?format param)", () => {
+  it("opens on the ?format tab when it names a present format (back/forward restore)", async () => {
+    nav.params = new URLSearchParams("format=markdown");
+
+    render(
+      <PageViewerShell
+        pageId="test-page-id"
+        pageMeta={makePageMeta(["html", "markdown"])}
+      />,
+    );
+
+    // Markdown is active straight from the URL — not the HTML default.
+    expect(screen.getByRole("tab", { name: "Markdown" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: "HTML" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+    // The restored tab lazily fetches its document, same as a click.
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Saved Document" }),
+    ).toBeInTheDocument();
+    // Reading state is derived from the URL — mounting never writes it.
+    expect(nav.replace).not.toHaveBeenCalled();
+  });
+
+  it("writes a tab switch back to the URL with replace and no scroll", async () => {
+    render(
+      <PageViewerShell
+        pageId="test-page-id"
+        pageMeta={makePageMeta(["html", "markdown", "text"])}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("tab", { name: "Text" }));
+
+    // replace (not push): switching tabs must not create a history entry,
+    // and { scroll: false } must not jump the viewport.
+    expect(nav.replace).toHaveBeenCalledTimes(1);
+    expect(nav.replace).toHaveBeenCalledWith(
+      "/app/pages/test-page-id?format=text",
+      { scroll: false },
+    );
+  });
+
+  it("ignores an unknown ?format value and keeps the HTML default without writing the URL", () => {
+    nav.params = new URLSearchParams("format=evil");
+
+    render(
+      <PageViewerShell
+        pageId="test-page-id"
+        pageMeta={makePageMeta(["html", "markdown"])}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "HTML" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(nav.replace).not.toHaveBeenCalled();
+  });
+
+  it("ignores ?format naming a format this page does not have", () => {
+    nav.params = new URLSearchParams("format=text");
+
+    render(
+      <PageViewerShell
+        pageId="test-page-id"
+        pageMeta={makePageMeta(["html", "markdown"])}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "HTML" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(nav.replace).not.toHaveBeenCalled();
+  });
+
+  it("with no param, HTML stays the default and the URL is untouched on mount", () => {
+    render(
+      <PageViewerShell
+        pageId="test-page-id"
+        pageMeta={makePageMeta(["html", "markdown", "text"])}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "HTML" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(nav.replace).not.toHaveBeenCalled();
+  });
+});
+
 describe("PublicViewerShell share parity", () => {
   it("offers the same switcher with the same defaults and share-route URLs", async () => {
     render(
@@ -316,5 +429,28 @@ describe("PublicViewerShell share parity", () => {
     const iframe = screen.getByTitle("Shared page content");
     expect(iframe).toHaveAttribute("src", "/api/sc/tok/index.html");
     expect(iframe).toHaveAttribute("sandbox", "allow-popups allow-forms");
+  });
+
+  it("honors the same ?format param on the share route (viewer parity)", async () => {
+    nav.params = new URLSearchParams("format=markdown");
+    nav.pathname = "/s/tok";
+
+    render(<PublicViewerShell token="tok" formats={["markdown", "html"]} />);
+
+    expect(screen.getByRole("tab", { name: "Markdown" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Saved Document" }),
+    ).toBeInTheDocument();
+    expect(nav.replace).not.toHaveBeenCalled();
+
+    // Switching writes the share route's URL with the same replace contract.
+    await userEvent.click(screen.getByRole("tab", { name: "HTML" }));
+    expect(nav.replace).toHaveBeenCalledTimes(1);
+    expect(nav.replace).toHaveBeenCalledWith("/s/tok?format=html", {
+      scroll: false,
+    });
   });
 });
