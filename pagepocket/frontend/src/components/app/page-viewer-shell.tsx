@@ -18,7 +18,6 @@ import {
   PageFormatViewer,
 } from "@/components/app/page-format-viewer";
 import { useHotkeys } from "@/hooks/use-hotkeys";
-import { useNavTrail } from "@/hooks/use-nav-trail";
 import {
   CONTENT_FILE_NAMES,
   isLegacyHtmlOnly,
@@ -63,16 +62,8 @@ export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
     text: `/api/pp/archive/pages/${pageId}/f/${CONTENT_FILE_NAMES.text}`,
   };
 
-  // Back (pagepocket-frontend-viewer-back-trail): resolves the destination
-  // from the sessionStorage navigation trail (useNavTrail) — deterministic
-  // page → wherever it was opened from (library/collection/search), or /app
-  // for deep links and reloads. `document.referrer` was unusable here: SPA
-  // navigations never update it (stale/empty), and after a reload it equals
-  // the current URL, turning back into a no-op push.
-  const goBack = useNavTrail();
-
   function handleBack() {
-    router.push(goBack("/app"));
+    router.push("/app");
   }
 
   async function handleDelete() {

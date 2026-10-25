@@ -28,7 +28,7 @@
 - [x] 5.3 `public-viewer-shell.tsx`: same switcher/defaults
 - [x] 5.4 Tests: switcher render per format set; script-tag markdown inert; raw toggle content; legacy page no switcher; share parity
 - [x] 5.5 Active format survives back/forward: `?format=` URL param (validated against known formats) is the initial tab; switching tabs updates it via `router.replace(..., { scroll: false })`; invalid param → HTML default; share viewer parity
-- [x] 5.6 Viewer back button deterministic: in-app navigation trail in sessionStorage replaces `document.referrer` (self-reload no-op, deep-link, collections all covered); Escape unchanged
+- [x] 5.6 Viewer back button deterministic: unconditional `router.push("/app")` (product decision — label says "Back to library"); referrer/trail machinery removed
 
 ## 6. Extension
 
