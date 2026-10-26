@@ -70,15 +70,6 @@ import { ensureCloudBinding, getCloudBinding } from "./cloud-binding";
 
 const EMPTY_MAP: Map<string, string> = new Map();
 
-/** Fetch timeout for non-full linked-page collection (task 3.7). Mirrors the
- * RequestQueue's default `requestTimeout` so linked-page fetches obey the
- * same bound as every other asset fetch. */
-const LINKED_PAGE_FETCH_TIMEOUT_MS = 30_000;
-
-/** Size cap for non-full linked-page HTML (task 3.7). Larger responses are
- * skipped rather than uploaded as "linked" HTML. */
-const LINKED_PAGE_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
-
 /**
  * Resolve the PagePocket credential for cloud-mode session creation
  * (task 6.5 / design D4 — harden-backend-security-and-ops).
@@ -195,140 +186,6 @@ async function lookupFallbackUrl(
   } catch {
     return undefined;
   }
-}
-
-export interface LinkedPageFetchResult {
-  /** Links fetched and uploaded as "linked" HTML chunks. */
-  uploadedCount: number;
-  /** Links skipped: non-HTML, oversized, aborted, or failed. */
-  skippedCount: number;
-}
-
-/**
- * Read a response body as UTF-8 text, capped at `maxBytes`.
- * Returns null when the body exceeds the cap (the stream is cancelled).
- */
-async function readBoundedText(
-  resp: Response,
-  maxBytes: number,
-): Promise<string | null> {
-  if (!resp.body) {
-    const text = await resp.text();
-    if (new TextEncoder().encode(text).length > maxBytes) return null;
-    return text;
-  }
-
-  const reader = resp.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    total += value.byteLength;
-    if (total > maxBytes) {
-      reader.cancel().catch(() => {});
-      return null;
-    }
-  }
-
-  const combined = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    combined.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new TextDecoder("utf-8").decode(combined);
-}
-
-/**
- * Fetch linked pages and upload each as a "linked" HTML chunk — bounded
- * (task 3.7). Unlike the previous bare `fetch()` + `text()` loop, this:
- *  - verifies `Content-Type` and uploads ONLY `text/html` responses
- *    (PDF/ZIP/media links count as skipped instead of becoming corrupt
- *    "HTML" documents),
- *  - enforces a size cap (default 5 MB) via Content-Length and a capped
- *    stream read,
- *  - bounds each fetch with the download's abort signal plus a per-request
- *    timeout (mirrors the RequestQueue's 30s requestTimeout).
- */
-export async function fetchAndUploadLinkedPages(options: {
-  links: string[];
-  baseUrl: string;
-  sessionId: string;
-  signal?: AbortSignal;
-  uploadChunk: (
-    html: string,
-    index: number,
-    pageUrl: string,
-  ) => Promise<unknown>;
-  maxBytes?: number;
-  timeoutMs?: number;
-}): Promise<LinkedPageFetchResult> {
-  const maxBytes = options.maxBytes ?? LINKED_PAGE_MAX_BYTES;
-  const timeoutMs = options.timeoutMs ?? LINKED_PAGE_FETCH_TIMEOUT_MS;
-  let uploadedCount = 0;
-  let skippedCount = 0;
-
-  for (let i = 0; i < options.links.length; i++) {
-    if (options.signal?.aborted) {
-      // Download cancelled — everything left counts as skipped
-      skippedCount += options.links.length - i;
-      break;
-    }
-
-    let linkUrl: string;
-    try {
-      linkUrl = new URL(options.links[i], options.baseUrl).href;
-    } catch {
-      skippedCount++;
-      continue;
-    }
-
-    try {
-      // Composite abort: user stop + per-request timeout
-      const timeoutSignal = AbortSignal.timeout(timeoutMs);
-      const signal =
-        options.signal && typeof AbortSignal.any === "function"
-          ? AbortSignal.any([options.signal, timeoutSignal])
-          : (options.signal ?? timeoutSignal);
-
-      const resp = await fetch(linkUrl, { signal });
-      const contentType = (
-        resp.headers.get("content-type") ?? ""
-      ).toLowerCase();
-
-      if (!resp.ok || !contentType.includes("text/html")) {
-        skippedCount++;
-        continue;
-      }
-
-      // Cheap Content-Length check before reading the body
-      const contentLength = parseInt(
-        resp.headers.get("content-length") ?? "",
-        10,
-      );
-      if (Number.isFinite(contentLength) && contentLength > maxBytes) {
-        skippedCount++;
-        continue;
-      }
-
-      const html = await readBoundedText(resp, maxBytes);
-      if (html === null) {
-        // Body exceeded the cap mid-stream
-        skippedCount++;
-        continue;
-      }
-
-      await options.uploadChunk(html, i, linkUrl);
-      uploadedCount++;
-    } catch {
-      // Skip failed linked pages (network error, timeout, or abort)
-      skippedCount++;
-    }
-  }
-
-  return { uploadedCount, skippedCount };
 }
 
 export async function downloadResources(
@@ -748,130 +605,94 @@ async function executeDownloadServerMode(
     }
 
     // (12.5 + 12.10 + 12.11) Process linked pages with server-mode support.
-    if (downloadOptions.downloadLinks) {
-      if (downloadOptions.downloadLinksFullScraping && tabId) {
-        sendMessage({ key: "status.scrapingLinkedPages" });
+    // The legacy simple-fetch mode ("downloadLinks" without full scraping)
+    // was removed — crawling linked pages ALWAYS runs the in-tab
+    // LinkedPageScraper now. (The legacy `downloadLinks` storage key stays
+    // reserved but is ignored here.)
+    if (downloadOptions.downloadLinksFullScraping && tabId) {
+      sendMessage({ key: "status.scrapingLinkedPages" });
 
-        const assetRegistry = new AssetRegistry();
+      const assetRegistry = new AssetRegistry();
 
-        // Register main page assets for deduplication.
-        // (D5 / tasks 3.1 + 4.1) Paths are built with the same
-        // buildArchivePath(url, category) the handlers/upload paths use, so
-        // registry keys equal uploaded paths.
-        for (const cssUrl of data.css) {
-          const fullUrl = new URL(cssUrl, tabUrl).href;
-          assetRegistry.register(
-            fullUrl,
-            buildArchivePath(fullUrl, "styles"),
-            0,
-          );
-        }
-        for (const jsUrl of data.js) {
-          const fullUrl = new URL(jsUrl, tabUrl).href;
-          assetRegistry.register(
-            fullUrl,
-            buildArchivePath(fullUrl, "scripts"),
-            0,
-          );
-        }
-        for (const imgUrl of data.images) {
-          const fullUrl = new URL(imgUrl, tabUrl).href;
-          assetRegistry.register(
-            fullUrl,
-            buildArchivePath(fullUrl, "images"),
-            0,
-          );
-        }
-        for (const docUrl of data.documents) {
-          const fullUrl = new URL(docUrl, tabUrl).href;
-          assetRegistry.register(
-            fullUrl,
-            buildArchivePath(fullUrl, "documents"),
-            0,
-          );
-        }
-
-        // Create linked page scraper with server-mode flag
-        const linkedPageScraper = new LinkedPageScraper(assetRegistry, {
-          maxPages: downloadOptions.linkedPagesMaxCount,
-          delayBetweenPages: downloadOptions.linkedPagesDelay,
-          includeExternal: downloadOptions.linkedPagesIncludeExternal,
-          pageTimeout: downloadOptions.linkedPagesTimeout,
-          serverSessionId: sessionId,
-        });
-
-        // Guard text extraction with downloadContentAsText check
-        linkedPageScraper.setExtractText(
-          !!downloadOptions.downloadContentAsText,
+      // Register main page assets for deduplication.
+      // (D5 / tasks 3.1 + 4.1) Paths are built with the same
+      // buildArchivePath(url, category) the handlers/upload paths use, so
+      // registry keys equal uploaded paths.
+      for (const cssUrl of data.css) {
+        const fullUrl = new URL(cssUrl, tabUrl).href;
+        assetRegistry.register(fullUrl, buildArchivePath(fullUrl, "styles"), 0);
+      }
+      for (const jsUrl of data.js) {
+        const fullUrl = new URL(jsUrl, tabUrl).href;
+        assetRegistry.register(
+          fullUrl,
+          buildArchivePath(fullUrl, "scripts"),
+          0,
         );
+      }
+      for (const imgUrl of data.images) {
+        const fullUrl = new URL(imgUrl, tabUrl).href;
+        assetRegistry.register(fullUrl, buildArchivePath(fullUrl, "images"), 0);
+      }
+      for (const docUrl of data.documents) {
+        const fullUrl = new URL(docUrl, tabUrl).href;
+        assetRegistry.register(
+          fullUrl,
+          buildArchivePath(fullUrl, "documents"),
+          0,
+        );
+      }
 
-        // Queue all discovered links
-        setCurrentScraper(tabId, linkedPageScraper);
-        for (const link of data.links) {
-          try {
-            const fullUrl = new URL(link, tabUrl).href;
-            await linkedPageScraper.addToQueue({
-              url: fullUrl,
-              depth: 1,
-              parentUrl: tabUrl,
-              status: "queued",
-            });
-          } catch {
-            // Ignore invalid links
-          }
-        }
+      // Create linked page scraper with server-mode flag
+      const linkedPageScraper = new LinkedPageScraper(assetRegistry, {
+        maxPages: downloadOptions.linkedPagesMaxCount,
+        delayBetweenPages: downloadOptions.linkedPagesDelay,
+        includeExternal: downloadOptions.linkedPagesIncludeExternal,
+        pageTimeout: downloadOptions.linkedPagesTimeout,
+        serverSessionId: sessionId,
+      });
 
-        // Process the queue — in server mode this uploads HTML chunks
-        // with pageType: "linked" and pageUrl, and uploads incremental
-        // filename maps after each linked page (tasks 12.10, 12.11).
-        // The per-download context carries the shared image filename map
-        // (replaces the module-global map — task 4.1).
+      // Guard text extraction with downloadContentAsText check
+      linkedPageScraper.setExtractText(!!downloadOptions.downloadContentAsText);
+
+      // Queue all discovered links
+      setCurrentScraper(tabId, linkedPageScraper);
+      for (const link of data.links) {
         try {
-          const linkedPageText = await linkedPageScraper.processQueue(
-            tabId,
-            storage,
-            sendMessage,
-            context,
-          );
-          // Upload linked page text content to the server.
-          // ORDERING: This must happen BEFORE the main page text upload below
-          // (line ~818) because the server's uploadContent endpoint appends to
-          // content.txt in file order — the linked page text delimiter format
-          // assumes it follows the main page's content.
-          if (linkedPageText && downloadOptions.downloadContentAsText) {
-            await serverClient.uploadContent(sessionId, linkedPageText);
-          }
-        } finally {
-          setCurrentScraper(tabId, null);
+          const fullUrl = new URL(link, tabUrl).href;
+          await linkedPageScraper.addToQueue({
+            url: fullUrl,
+            depth: 1,
+            parentUrl: tabUrl,
+            status: "queued",
+          });
+        } catch {
+          // Ignore invalid links
         }
-      } else {
-        // Non-full-scraping: fetch linked pages and upload to server,
-        // bounded by content-type, size cap, and timeout (task 3.7).
-        sendMessage({
-          key: "status.downloadingLinks",
-          options: { count: data.links.length },
-        });
-        const { uploadedCount, skippedCount } = await fetchAndUploadLinkedPages(
-          {
-            links: data.links,
-            baseUrl: tabUrl,
-            sessionId,
-            signal: context.abortController.signal,
-            uploadChunk: (html, index, pageUrl) =>
-              serverClient.uploadHtmlChunk(
-                sessionId,
-                html,
-                index,
-                "linked",
-                pageUrl,
-              ),
-          },
+      }
+
+      // Process the queue — in server mode this uploads HTML chunks
+      // with pageType: "linked" and pageUrl, and uploads incremental
+      // filename maps after each linked page (tasks 12.10, 12.11).
+      // The per-download context carries the shared image filename map
+      // (replaces the module-global map — task 4.1).
+      try {
+        const linkedPageText = await linkedPageScraper.processQueue(
+          tabId,
+          storage,
+          sendMessage,
+          context,
         );
-        console.log(
-          `[ServerMode] Linked pages: ${uploadedCount} uploaded as HTML, ` +
-            `${skippedCount} skipped (non-HTML, oversized, or failed)`,
-        );
-        sendMessage({ key: "status.linksDownloaded" });
+        // Upload linked page text content to the server.
+        // ORDERING: This must happen BEFORE the main page text upload below
+        // (line ~818) because the server's uploadContent endpoint appends to
+        // content.txt in file order — the linked page text delimiter format
+        // assumes it follows the main page's content.
+        if (linkedPageText && downloadOptions.downloadContentAsText) {
+          await serverClient.uploadContent(sessionId, linkedPageText);
+        }
+      } finally {
+        setCurrentScraper(tabId, null);
       }
     }
 

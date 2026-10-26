@@ -19,6 +19,7 @@ import zipfile
 
 import pytest
 
+from app.services.html_converter import HtmlConverterService, generate_page_filename
 from app.services.markdown_converter import convert_html_to_markdown
 from app.services.zip_assembler import (
     ZipAssemblerService,
@@ -253,6 +254,50 @@ class TestZipAssembly:
             content = zf.read("pages/abc123.html").decode("utf-8")
             assert "Linked Page" in content
 
+    def test_zip_rewrites_external_anchor_to_downloaded_page(self, assembler, storage_root):
+        """Main page anchor to an external URL that WAS downloaded points at the local copy.
+
+        Mirrors assemble_session(): a linked chunk uploaded with
+        pageUrl="https://external.com/article" produces page_filename_map
+        (via generate_page_filename, regardless of origin) used to rewrite
+        the main HTML, and page_hash_to_filename places the page at its
+        readable pages/ path inside the ZIP.
+        """
+        session_id = "test-session-external-anchor"
+        _setup_session(storage_root, session_id, include_pages=True)
+
+        external_url = "https://external.com/article"
+        main_html = (
+            "<!DOCTYPE html><html><body>"
+            '<a href="https://external.com/article">External Article</a>'
+            "</body></html>"
+        )
+        linked_page_htmls = {
+            "abc123": "<!DOCTYPE html><html><body><p>Linked Page</p></body></html>",
+        }
+
+        # Phase 1/2 equivalent: page_filename_map from the linked page's
+        # pageUrl, then main HTML conversion with that map.
+        page_filename_map = {external_url: generate_page_filename(external_url)}
+        converted_main = HtmlConverterService().convert_html(
+            main_html, "https://example.com/page",
+            page_filename_map=page_filename_map,
+        )
+
+        zip_path = self._create_zip_directly(
+            assembler, storage_root, session_id, converted_main,
+            linked_page_htmls=linked_page_htmls,
+            page_hash_to_filename={"abc123": page_filename_map[external_url]},
+        )
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            names = zf.namelist()
+            assert "pages/article.html" in names
+            index_html = zf.read("index.html").decode("utf-8")
+            assert 'href="./pages/article.html"' in index_html, (
+                f"Expected anchor rewritten to ./pages/article.html, got: {index_html}"
+            )
+
     def test_zip_uses_deflate_compression(self, assembler, storage_root):
         """ZIP uses DEFLATE compression."""
         session_id = "test-session-compression"
@@ -301,7 +346,7 @@ class TestZipAssembly:
         assembler, storage_root, session_id, main_html,
         resources=None, linked_page_htmls=None, content_text=None,
         content_md=None, options=None, linked_page_urls=None,
-        linked_page_sources=None,
+        linked_page_sources=None, page_hash_to_filename=None,
     ):
         """Create a ZIP using the assembler's internal _assemble_zip method.
 
@@ -366,7 +411,7 @@ class TestZipAssembly:
                         session_id, MockDB(), mock_session,
                         main_html, linked_page_htmls or {},
                         linked_page_urls or {},  # linked_page_urls
-                        {},  # page_hash_to_filename
+                        page_hash_to_filename or {},  # page_hash_to_filename
                         {},  # filename_map
                         content_text,
                         content_md=content_md,

@@ -245,12 +245,37 @@ def test_link_clean_url_conversion():
     )
 
 
-def test_external_link_unchanged():
-    """External link href is left unchanged (5.7)."""
+def test_external_link_not_downloaded_unchanged():
+    """External link whose URL was NOT downloaded stays absolute (5.7)."""
     html = '<html><body><a href="https://other.com/page">External</a></body></html>'
     result = convert_html(html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP)
     assert _has_attr(result, "a", "href", "https://other.com/page"), (
         f"Expected external link unchanged, got: {_get_attr(result, 'a', 'href')}"
+    )
+
+
+def test_external_link_downloaded_rewritten_from_main():
+    """External anchor pointing at a downloaded page → ./pages/<name>.html."""
+    html = '<html><body><a href="https://external.com/article">Article</a></body></html>'
+    result = convert_html(
+        html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP,
+        page_filename_map={"https://external.com/article": "article.html"},
+    )
+    assert _has_attr(result, "a", "href", "./pages/article.html"), (
+        f"Expected ./pages/article.html, got: {_get_attr(result, 'a', 'href')}"
+    )
+
+
+def test_external_link_downloaded_rewritten_from_linked_page():
+    """External anchor pointing at a downloaded page → ../pages/<name>.html from a linked page."""
+    html = '<html><body><a href="https://external.com/article">Article</a></body></html>'
+    result = convert_html(
+        html, TAB_URL, filename_map=SAMPLE_FILENAME_MAP,
+        is_linked_page=True,
+        page_filename_map={"https://external.com/article": "article.html"},
+    )
+    assert _has_attr(result, "a", "href", "../pages/article.html"), (
+        f"Expected ../pages/article.html, got: {_get_attr(result, 'a', 'href')}"
     )
 
 

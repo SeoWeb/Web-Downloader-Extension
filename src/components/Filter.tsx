@@ -11,7 +11,6 @@ import {
   FileText,
   Layout,
   File,
-  AlertTriangle,
   ChevronDown,
   ChevronUp,
   Globe,
@@ -56,7 +55,6 @@ export default function Filter({
     isLoading,
     setDownloadHTML,
     setDownloadImages,
-    setDownloadLinks,
     setDownloadAssets,
     setDownloadContentAsText,
     setDownloadContentAsMarkdown,
@@ -102,8 +100,10 @@ export default function Filter({
       setDownloadImages(true);
       setDownloadAssets(true);
     } else {
+      // Keep crawling (fullScraping) available: a text-only download may
+      // still legitimately crawl linked pages. Only assets are forced off
+      // (there is no HTML to attach them to).
       setDownloadAssets(false);
-      setDownloadLinks(false);
     }
   };
 
@@ -115,11 +115,12 @@ export default function Filter({
       // assembly, which has no text sources and fails.
       setDownloadHTML(true);
       setDownloadImages(false);
-      setDownloadLinks(false);
       setDownloadAssets(false);
       setDownloadContentAsText(false);
       setDownloadContentAsMarkdown(false);
       setDownloadDocuments(false);
+      // One file means no crawling of linked pages.
+      setDownloadLinksFullScraping(false);
     }
     setSingleFile(isChecked);
   };
@@ -131,15 +132,10 @@ export default function Filter({
       setDownloadHTML(true);
       setDownloadImages(true);
       setDownloadAssets(true);
-      setDownloadLinks(true);
       setDownloadLinksFullScraping(true);
     } else {
-      setDownloadLinks(false);
+      setDownloadLinksFullScraping(false);
     }
-  };
-
-  const handleDownloadLinksChange = (checked: CheckedState) => {
-    setDownloadLinks(!!checked);
   };
 
   if (isLoading || isLoadingFromStorage) {
@@ -209,7 +205,8 @@ export default function Filter({
                     id="fullWebsite"
                     checked={
                       !!(
-                        options.downloadLinks &&
+                        options.downloadHTML &&
+                        options.downloadAssets &&
                         options.downloadLinksFullScraping
                       )
                     }
@@ -327,117 +324,78 @@ export default function Filter({
                   icon={<FileText className="w-4 h-4" />}
                 />
 
-                <div className="pt-2">
-                  <OptionItem
-                    id="downloadLinks"
-                    checked={options.downloadLinks}
-                    onChange={handleDownloadLinksChange}
-                    label={t("filter.downloadLinks")}
-                    icon={<LinkIcon className="w-4 h-4" />}
-                  />
+                {/* Full Scraping — first-level crawl toggle. Replaces the old
+                    "Download links" checkbox: crawling now always runs the
+                    linked-page scraper (no simple-fetch mode). */}
+                <OptionItem
+                  id="downloadLinksFullScraping"
+                  checked={options.downloadLinksFullScraping || false}
+                  onChange={(c: any) => setDownloadLinksFullScraping(!!c)}
+                  label={t("filter.fullScraping")}
+                  info={t("filter.fullScrapingInfo")}
+                  icon={<LinkIcon className="w-4 h-4" />}
+                />
 
-                  {options.downloadLinks && (
-                    <div className="mt-2 ml-7 space-y-3">
-                      {/* Full Scraping Toggle */}
-                      <div className="p-3 bg-blue-50 rounded border border-blue-100">
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            id="downloadLinksFullScraping"
-                            checked={options.downloadLinksFullScraping || false}
-                            onCheckedChange={(c: any) =>
-                              setDownloadLinksFullScraping(!!c)
-                            }
-                          />
-                          <div className="flex-1">
-                            <label
-                              htmlFor="downloadLinksFullScraping"
-                              className="cursor-pointer"
-                            >
-                              <div className="text-sm font-medium text-blue-900">
-                                {t("filter.fullScraping")}
-                              </div>
-                              <div className="text-xs text-blue-600 mt-1">
-                                {t("filter.fullScrapingInfo")}
-                              </div>
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* Advanced Options */}
-                        {options.downloadLinksFullScraping && (
-                          <div className="mt-3 pt-3 border-t border-blue-200 space-y-3">
-                            {/* Max Pages */}
-                            <div>
-                              <label className="text-xs font-medium text-blue-900 block mb-1">
-                                {t("filter.maxPages")}:{" "}
-                                {options.linkedPagesMaxCount || 500}
-                              </label>
-                              <input
-                                type="range"
-                                min="10"
-                                max="500"
-                                step="10"
-                                value={options.linkedPagesMaxCount || 200}
-                                onChange={(e) =>
-                                  setLinkedPagesMaxCount(
-                                    parseInt(e.target.value),
-                                  )
-                                }
-                                className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
-                              />
-                            </div>
-
-                            {/* Delay Between Pages */}
-                            <div>
-                              <label className="text-xs font-medium text-blue-900 block mb-1">
-                                {t("filter.pageDelay")}:{" "}
-                                {options.linkedPagesDelay || 500}ms
-                              </label>
-                              <input
-                                type="range"
-                                min="0"
-                                max="2000"
-                                step="100"
-                                value={options.linkedPagesDelay || 500}
-                                onChange={(e) =>
-                                  setLinkedPagesDelay(parseInt(e.target.value))
-                                }
-                                className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
-                              />
-                            </div>
-
-                            {/* Include External Links */}
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                id="linkedPagesIncludeExternal"
-                                checked={
-                                  options.linkedPagesIncludeExternal || false
-                                }
-                                onCheckedChange={(c: any) =>
-                                  setLinkedPagesIncludeExternal(!!c)
-                                }
-                              />
-                              <label
-                                htmlFor="linkedPagesIncludeExternal"
-                                className="text-xs text-blue-900 cursor-pointer"
-                              >
-                                {t("filter.includeExternal")}
-                              </label>
-                            </div>
-                          </div>
-                        )}
+                {options.downloadLinksFullScraping && (
+                  <div className="mt-2 space-y-3">
+                    <div className="p-3 bg-blue-50 rounded border border-blue-100 space-y-3">
+                      {/* Max Pages */}
+                      <div>
+                        <label className="text-xs font-medium text-blue-900 block mb-1">
+                          {t("filter.maxPages")}:{" "}
+                          {options.linkedPagesMaxCount || 500}
+                        </label>
+                        <input
+                          type="range"
+                          min="10"
+                          max="500"
+                          step="10"
+                          value={options.linkedPagesMaxCount || 200}
+                          onChange={(e) =>
+                            setLinkedPagesMaxCount(parseInt(e.target.value))
+                          }
+                          className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                        />
                       </div>
 
-                      {/* Warning for simple mode */}
-                      {!options.downloadLinksFullScraping && (
-                        <div className="p-3 bg-red-50 text-red-600 text-xs rounded border border-red-100 flex items-start gap-2">
-                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                          <span>{t("filter.linksWarning")}</span>
-                        </div>
-                      )}
+                      {/* Delay Between Pages */}
+                      <div>
+                        <label className="text-xs font-medium text-blue-900 block mb-1">
+                          {t("filter.pageDelay")}:{" "}
+                          {options.linkedPagesDelay || 500}ms
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="2000"
+                          step="100"
+                          value={options.linkedPagesDelay || 500}
+                          onChange={(e) =>
+                            setLinkedPagesDelay(parseInt(e.target.value))
+                          }
+                          className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Include External Links */}
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="linkedPagesIncludeExternal"
+                          checked={options.linkedPagesIncludeExternal || false}
+                          onCheckedChange={(c: any) =>
+                            setLinkedPagesIncludeExternal(!!c)
+                          }
+                        />
+                        <label
+                          htmlFor="linkedPagesIncludeExternal"
+                          className="text-xs text-blue-900 cursor-pointer"
+                        >
+                          {t("filter.includeExternal")}
+                        </label>
+                      </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -452,6 +410,7 @@ function OptionItem({
   checked,
   onChange,
   label,
+  info,
   icon,
   disabled,
   hint,
@@ -483,6 +442,10 @@ function OptionItem({
       {/* text-native-downloads D7: visible hint on disabled toggles */}
       {disabled && hint ? (
         <div className="text-xs text-slate-400 mt-1 ml-7">{hint}</div>
+      ) : null}
+      {/* Optional one-line description (e.g. the fullScraping info text) */}
+      {info ? (
+        <div className="text-xs text-slate-500 mt-1 ml-7">{info}</div>
       ) : null}
     </div>
   );

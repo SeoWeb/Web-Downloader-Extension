@@ -860,7 +860,8 @@ def _convert_links(
 
     - Document links → ./documents/<filename>
     - Same-origin HTML links → ./pages/<filename>.html
-    - External links → unchanged
+    - External links → ./pages/<filename>.html when the page was downloaded
+      (present in page_filename_map), otherwise unchanged
     - Anchor links (#) → unchanged
 
     Args:
@@ -884,12 +885,17 @@ def _convert_links(
         if not href_clean or href.startswith("#"):
             continue
 
-        # Skip external links (different origin)
+        # External links (different origin): rewrite to the local copy when
+        # the target page was downloaded as a linked page, otherwise leave
+        # the absolute URL unchanged.
         if href.startswith(("http://", "https://")):
             try:
                 link_origin = _get_origin(href)
                 if link_origin != tab_origin:
-                    continue  # External link — don't modify
+                    resolved_url = _resolve_url(href, tab_url)
+                    if page_filename_map and resolved_url in page_filename_map:
+                        link["href"] = path + "pages/" + page_filename_map[resolved_url]
+                    continue  # Not downloaded (or rewritten above) — don't touch
             except Exception:
                 continue
 

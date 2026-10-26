@@ -72,6 +72,7 @@ describe("filterStore — singleFile implies downloadHTML", () => {
       downloadContentAsText: true,
       downloadContentAsMarkdown: true,
       downloadDocuments: true,
+      downloadLinksFullScraping: true,
       singleFile: true,
     });
 
@@ -80,10 +81,25 @@ describe("filterStore — singleFile implies downloadHTML", () => {
     expect(options.downloadHTML).toBe(true); // the fix — HTML stays on
     expect(options.downloadImages).toBe(false);
     expect(options.downloadLinks).toBe(false);
+    expect(options.downloadLinksFullScraping).toBe(false); // one file, no crawling
     expect(options.downloadAssets).toBe(false);
     expect(options.downloadContentAsText).toBe(false);
     expect(options.downloadContentAsMarkdown).toBe(false);
     expect(options.downloadDocuments).toBe(false);
+  });
+
+  it("keeps crawling allowed in text-only mode (HTML off + a text format on)", () => {
+    useFilterStore.getState().setAllOptions({
+      ...allOff(),
+      downloadContentAsText: true,
+      downloadLinksFullScraping: true,
+    });
+
+    const { options } = useFilterStore.getState();
+    expect(options.downloadHTML).toBe(false);
+    expect(options.downloadContentAsText).toBe(true);
+    // The HTML-off branch must NOT clear the crawl flag
+    expect(options.downloadLinksFullScraping).toBe(true);
   });
 
   it("repairs legacy stored state of singleFile=true with downloadHTML=false", () => {

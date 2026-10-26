@@ -51,6 +51,7 @@ function validateFilterOptions(options: FilterOptions): FilterOptions {
       downloadHTML: true,
       downloadImages: false,
       downloadLinks: false,
+      downloadLinksFullScraping: false,
       downloadAssets: false,
       downloadContentAsText: false,
       downloadContentAsMarkdown: false,
@@ -80,7 +81,9 @@ function validateFilterOptions(options: FilterOptions): FilterOptions {
     validated.downloadAssets = true;
   }
 
-  // If HTML is disabled, disable links and assets
+  // If HTML is disabled, disable links and assets. Crawling
+  // (downloadLinksFullScraping) stays allowed here — a text-only download
+  // may still legitimately crawl linked pages.
   if (!validated.downloadHTML) {
     validated.downloadLinks = false;
     validated.downloadAssets = false;

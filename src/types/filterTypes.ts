@@ -4,6 +4,11 @@
 export interface FilterOptions {
   downloadHTML: boolean;
   downloadImages: boolean;
+  /**
+   * Legacy: the old "Download links" simple-fetch mode, no longer set by
+   * the UI. The key is kept (defaulting to false) so stored preferences
+   * still pass storage validation instead of being discarded.
+   */
   downloadLinks: boolean;
   downloadAssets: boolean;
   downloadContentAsText: boolean;
