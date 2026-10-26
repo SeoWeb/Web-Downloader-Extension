@@ -37,6 +37,7 @@ import {
   processImages,
   type HandlerOptions,
 } from "./download-processors";
+import { sumResourceFailures, type ResourceFailureTally } from "./urlUtils";
 import { AssetRegistry, buildArchivePath } from "./asset-registry";
 import { LinkedPageScraper } from "./linked-page-scraper";
 import { ServerStorageAdapter } from "./storage/server-storage-adapter";
@@ -474,6 +475,11 @@ async function executeDownloadServerMode(
   // Track total resources for scrape-complete signal
   let totalResourceCount = 0;
   let scrapeCompleteSent = false;
+  // Per-category failed-fetch tally, filled by the file handlers via
+  // HandlerOptions.failureTally and reported as `resourcesFailed` on
+  // scrape-complete. Declared here so the catch path's best-effort
+  // scrapeComplete can also report what failed before the error.
+  const resourceFailureTally: ResourceFailureTally = {};
 
   try {
     // (12.3) Upload main page HTML as chunk to the server.
@@ -500,7 +506,10 @@ async function executeDownloadServerMode(
     // others (the finally block's uploadQueue.cancel() only runs after all
     // three settle). The main page's URL is the document URL for relative
     // URL resolution (D2 / task 1.5).
-    const mainPageOptions: HandlerOptions = { documentUrl: tabUrl };
+    const mainPageOptions: HandlerOptions = {
+      documentUrl: tabUrl,
+      failureTally: resourceFailureTally,
+    };
     const imagesPromise = downloadOptions.downloadImages
       ? processImages(
           data.images,
@@ -719,6 +728,11 @@ async function executeDownloadServerMode(
     // provide accurate progress in the UI.
     totalResourceCount = uploadQueue.getResourceCount();
 
+    // Aggregate handler-reported failed fetches (CSS/images/js/documents).
+    // resources_discovered only counts successful enqueues, so without this
+    // a session with missing assets (e.g. a CSS 404) would look clean.
+    const resourcesFailed = sumResourceFailures(resourceFailureTally);
+
     // Persist discovered resource URLs in checkpoint for resume support.
     const queueProgress = uploadQueue.getProgress();
     if (queueProgress.totalCount > 0) {
@@ -730,7 +744,11 @@ async function executeDownloadServerMode(
     }
 
     sendMessage({ key: "status.sendingScrapeComplete" });
-    await serverClient.scrapeComplete(sessionId, totalResourceCount);
+    await serverClient.scrapeComplete(
+      sessionId,
+      totalResourceCount,
+      resourcesFailed,
+    );
     scrapeCompleteSent = true;
     sendMessage({ key: "status.scrapeComplete" });
     updateCheckpointPhase("uploading", sessionId);
@@ -899,7 +917,11 @@ async function executeDownloadServerMode(
     if (!scrapeCompleteSent) {
       try {
         const count = uploadQueue.getResourceCount();
-        await serverClient.scrapeComplete(sessionId, count);
+        await serverClient.scrapeComplete(
+          sessionId,
+          count,
+          sumResourceFailures(resourceFailureTally),
+        );
         console.log(
           "[ServerMode] Best-effort scrapeComplete sent with",
           count,

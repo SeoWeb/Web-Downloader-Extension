@@ -206,6 +206,14 @@ export async function addCssFiles(
     });
   }
 
+  // Feed the shared failure tally (reported as `resourcesFailed` on
+  // scrape-complete). Only top-level failures count here; nested @import
+  // failures are tracked separately in `importsFailed`.
+  if (options?.failureTally) {
+    options.failureTally.css =
+      (options.failureTally.css ?? 0) + state.failCount;
+  }
+
   return filenameMap;
 }
 

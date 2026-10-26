@@ -298,6 +298,7 @@ describe("download-core linked-pages gate", () => {
     expect(serverClient.scrapeComplete).toHaveBeenCalledWith(
       "session-gate-1",
       0,
+      0,
     );
 
     // No raw linked-page fetch — the simple-fetch branch is gone
@@ -328,6 +329,7 @@ describe("download-core linked-pages gate", () => {
     expect(keys).toContain("status.complete");
     expect(serverClient.scrapeComplete).toHaveBeenCalledWith(
       "session-gate-1",
+      0,
       0,
     );
 

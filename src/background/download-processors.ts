@@ -6,6 +6,7 @@ import {
   addImageFiles,
 } from "./fileHandlers";
 import { DownloadContext } from "./download-state";
+import type { ResourceFailureTally } from "./urlUtils";
 
 /**
  * Options forwarded to the file handlers (D2 / tasks 1.5 + 3.1).
@@ -18,6 +19,12 @@ import { DownloadContext } from "./download-state";
  */
 export interface HandlerOptions {
   documentUrl?: string;
+  /**
+   * Shared accumulator for failed resource fetches. When provided, it is
+   * forwarded to every handler so their failCounts land under their own
+   * category key; download-core sums it for the scrape-complete signal.
+   */
+  failureTally?: ResourceFailureTally;
 }
 
 /**
@@ -74,7 +81,7 @@ export async function processAssets(
       tabUrl,
       sendMessage,
       context?.downloadId,
-      { documentUrl },
+      { documentUrl, failureTally: options?.failureTally },
     );
     sendMessage({ key: "status.cssDownloaded" });
   }
@@ -90,7 +97,7 @@ export async function processAssets(
       tabUrl,
       sendMessage,
       context?.downloadId,
-      { documentUrl },
+      { documentUrl, failureTally: options?.failureTally },
     );
     sendMessage({ key: "status.jsDownloaded" });
   }
@@ -126,7 +133,7 @@ export async function processDocuments(
     tabUrl,
     sendMessage,
     context?.downloadId,
-    { documentUrl },
+    { documentUrl, failureTally: options?.failureTally },
   );
   sendMessage({ key: "status.documentsDownloaded" });
   return mergeFilenameMaps(docMap);
@@ -154,7 +161,7 @@ export async function processImages(
     tabUrl,
     sendMessage,
     context?.downloadId,
-    { documentUrl },
+    { documentUrl, failureTally: options?.failureTally },
   );
   sendMessage({ key: "status.imagesDownloaded" });
   return filenameMap;

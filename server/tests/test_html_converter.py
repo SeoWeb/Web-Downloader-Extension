@@ -1750,6 +1750,147 @@ def test_write_single_file_to_disk_strips_srcset():
 
 
 # ---------------------------------------------------------------------------
+# Doctype serialization + tilde-normalized resolution (production fixes)
+# ---------------------------------------------------------------------------
+
+
+def test_write_single_file_to_disk_prepends_doctype_when_missing():
+    """No-doctype input still yields an output starting with <!DOCTYPE html>.
+
+    Regression guard for the Doctype serialization bug: Doctype is a str
+    subclass whose value is just the name ("html"), so the old hand-rolled
+    f"<!{child}>\\n" emitted the corrupt "<!html>" (confirmed against prod
+    output). Input without a doctype previously produced no declaration at
+    all (quirks mode); the output must now start with a proper one.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        out_path = os.path.join(tmp, "out.html")
+
+        html = '<html class="x"><head><title>t</title></head><body><p>x</p></body></html>'
+        write_single_file_to_disk(html, TAB_URL, tmp, sid, out_path)
+
+        with open(out_path, encoding="utf-8") as f:
+            content = f.read()
+        assert content.startswith("<!DOCTYPE html>"), (
+            f"output must start with a proper doctype, got: {content[:60]!r}"
+        )
+
+
+def test_write_single_file_to_disk_does_not_double_doctype():
+    """A doctype already present in the input is rendered once, correctly.
+
+    The parsed Doctype child (value "html") must serialize via output_ready
+    as "<!DOCTYPE html>" — not the corrupt "<!html>" — and the implicit
+    declaration must not be prepended on top of it.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        out_path = os.path.join(tmp, "out.html")
+
+        html = (
+            '<!DOCTYPE html><html class="x">'
+            "<head><title>t</title></head><body><p>x</p></body></html>"
+        )
+        write_single_file_to_disk(html, TAB_URL, tmp, sid, out_path)
+
+        with open(out_path, encoding="utf-8") as f:
+            content = f.read()
+        assert content.startswith("<!DOCTYPE html>"), (
+            f"output must start with a proper doctype, got: {content[:60]!r}"
+        )
+        assert content.count("<!DOCTYPE html>") == 1, (
+            f"doctype must appear exactly once, got {content.count('<!DOCTYPE html>')} "
+            f"in: {content[:120]!r}"
+        )
+        assert "<!html>" not in content, "corrupt '<!html>' serialization must be gone"
+
+
+def test_single_file_tilde_sanitized_font_url_inlined_via_storage_map():
+    """url(...arwfsn~5.woff2) resolves to the archived ...arwfsn-5.woff2 row.
+
+    Production shape (session 3d3bc9db…): the extension's Windows/legacy
+    sanitizer rewrites `~` to `-` in archive paths, so a CSS url() ref
+    `../media/6306c77e7c8268e4-s.0rhz0arwfsn~5.woff2` refers to a resource
+    whose local_path is `images/_next/static/media/…-5.woff2`, stored on
+    disk under a UUID name. These fonts are absent from filename_map — only
+    the tilde-normalized basename match against local_path_to_storage keys
+    can find them.
+    """
+    import uuid as uuid_mod
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        # Production layout: UUID file name, no extension on disk.
+        uuid_name = str(uuid_mod.uuid4())
+        with open(os.path.join(resources_dir, uuid_name), "wb") as f:
+            f.write(b"wOF2fakefontdata")
+
+        # Archived local_path carries `-` (sanitized); the page ref carries `~`.
+        mapping = {
+            "images/_next/static/media/6306c77e7c8268e4-s.0rhz0arwfsn-5.woff2":
+                os.path.join(resources_dir, uuid_name),
+        }
+
+        html = (
+            "<html><head><style>"
+            "@font-face{font-family:Geist;font-style:normal;font-weight:100 900;"
+            'src:url(../media/6306c77e7c8268e4-s.0rhz0arwfsn~5.woff2) format("woff2");}'
+            "</style></head><body></body></html>"
+        )
+        result = convert_html_to_single_file(
+            html, TAB_URL, tmp, sid, local_path_to_storage=mapping
+        )
+
+        assert "url(../media/6306c77e7c8268e4-s.0rhz0arwfsn~5.woff2)" not in result, (
+            "tilde-sanitized font url() ref should have been inlined"
+        )
+        assert "data:font/woff2;base64," in result, (
+            f"expected font/woff2 data URI, got head: {result[:400]}"
+        )
+
+
+def test_single_file_tilde_sanitized_font_url_inlined_via_filename_map():
+    """Same tilde mismatch recovered through the filename-map basename fallback."""
+    import uuid as uuid_mod
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        uuid_name = str(uuid_mod.uuid4())
+        with open(os.path.join(resources_dir, uuid_name), "wb") as f:
+            f.write(b"wOF2fakefontdata")
+
+        local_path = "images/_next/static/media/6306c77e7c8268e4-s.0rhz0arwfsn-5.woff2"
+        filename_map = {
+            "https://app.pagepocket.app/_next/static/media/"
+            "6306c77e7c8268e4-s.0rhz0arwfsn~5.woff2": local_path,
+        }
+        mapping = {local_path: os.path.join(resources_dir, uuid_name)}
+
+        html = (
+            "<html><head><style>"
+            "@font-face{font-family:Geist;"
+            'src:url(../media/6306c77e7c8268e4-s.0rhz0arwfsn~5.woff2) format("woff2");}'
+            "</style></head><body></body></html>"
+        )
+        result = convert_html_to_single_file(
+            html, TAB_URL, tmp, sid,
+            filename_map=filename_map, local_path_to_storage=mapping,
+        )
+
+        assert "url(../media/6306c77e7c8268e4-s.0rhz0arwfsn~5.woff2)" not in result, (
+            "tilde-sanitized font url() ref should have been inlined"
+        )
+        assert "data:font/woff2;base64," in result, (
+            f"expected font/woff2 data URI, got head: {result[:400]}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 

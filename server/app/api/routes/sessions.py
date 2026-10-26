@@ -183,6 +183,11 @@ class ScrapeCompleteRequest(BaseModel):
     resourceCount: int | None = Field(
         None, description="Total resources discovered for UI progress"
     )
+    resourcesFailed: int = Field(
+        0,
+        description="Number of resource fetches that failed during capture "
+        "(optional; 0 when omitted or all fetches succeeded)",
+    )
 
 
 class ContentUploadRequest(BaseModel):
@@ -629,6 +634,23 @@ async def scrape_complete(
     if body and body.resourceCount is not None:
         session.resources_discovered = body.resourceCount
 
+    # Capture-time failure visibility: warn when the extension reports
+    # failed resource fetches, and stash the count in the options JSON (no
+    # dedicated column — no migration for v1) so finalize can repeat it.
+    failed_fetches = body.resourcesFailed if body else 0
+    if failed_fetches > 0:
+        logger.warning(
+            "%d resource fetch(es) failed during capture: session_id=%s",
+            failed_fetches,
+            session_id,
+        )
+        # Merge like zip_assembler does; reassign the whole dict because
+        # plain JSON columns don't track in-place mutation.
+        session.options = {
+            **(session.options or {}),
+            "resourcesFailed": failed_fetches,
+        }
+
     await db.flush()
     # Commit immediately so that a subsequent finalize request can see
     # the "uploading" status.  Without this, the get_db() dependency commits
@@ -865,6 +887,18 @@ async def finalize_session(
             discovered,
             resource_count,
             discovered - resource_count,
+        )
+
+    # Repeat the capture-time failure visibility: the resourcesFailed count
+    # reported at scrape-complete (stashed in the options JSON) is logged
+    # again here so the finalize record carries it. Purely informational —
+    # it never affects the 202 outcome or the deficit logic above.
+    failed_fetches = int((session.options or {}).get("resourcesFailed") or 0)
+    if failed_fetches > 0:
+        logger.warning(
+            "%d resource fetch(es) failed during capture: session_id=%s",
+            failed_fetches,
+            session_id,
         )
 
     # Trigger the assembly pipeline as a background task

@@ -528,15 +528,23 @@ export class ServerClient {
   async scrapeComplete(
     sessionId: string,
     resourceCount: number,
+    resourcesFailed?: number,
   ): Promise<ScrapeCompleteResponse> {
     this.assertConfigured();
     return this.withRetry(async () => {
+      const body: Record<string, unknown> = { resourceCount };
+      // Optional: report handler-observed failed fetches so sessions with
+      // missing assets are visible server-side. Only sent when > 0,
+      // mirroring how uploadHtmlChunk omits pageUrl when absent.
+      if (resourcesFailed && resourcesFailed > 0) {
+        body.resourcesFailed = resourcesFailed;
+      }
       const res = await this.authenticatedFetch(
         `/api/v1/sessions/${sessionId}/scrape-complete`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resourceCount }),
+          body: JSON.stringify(body),
         },
       );
 

@@ -213,7 +213,11 @@ describe("messageWorker — server-mode message actions", () => {
         addMessage,
       );
 
-      expect(mock("scrapeComplete")).toHaveBeenCalledWith("sess-sc", 42);
+      expect(mock("scrapeComplete")).toHaveBeenCalledWith(
+        "sess-sc",
+        42,
+        undefined,
+      );
       expect(result).toEqual({
         success: true,
         result: { status: "uploading" },
@@ -229,7 +233,11 @@ describe("messageWorker — server-mode message actions", () => {
         addMessage,
       );
 
-      expect(mock("scrapeComplete")).toHaveBeenCalledWith("sess-sc2", 0);
+      expect(mock("scrapeComplete")).toHaveBeenCalledWith(
+        "sess-sc2",
+        0,
+        undefined,
+      );
     });
   });
 

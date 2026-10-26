@@ -180,5 +180,11 @@ export async function addJsFiles(
     });
   }
 
+  // Feed the shared failure tally (reported as `resourcesFailed` on
+  // scrape-complete).
+  if (options?.failureTally) {
+    options.failureTally.js = (options.failureTally.js ?? 0) + failCount;
+  }
+
   return filenameMap;
 }

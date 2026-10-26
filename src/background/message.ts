@@ -393,6 +393,7 @@ export async function messageWorker(
         const result = await serverClient.scrapeComplete(
           scSessionId,
           data.resourceCount ?? 0,
+          data.resourcesFailed,
         );
         return { success: true, result };
       } catch (error) {

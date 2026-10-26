@@ -197,5 +197,12 @@ export async function addImageFiles(
     });
   }
 
+  // Feed the shared failure tally (reported as `resourcesFailed` on
+  // scrape-complete).
+  if (options?.failureTally) {
+    options.failureTally.images =
+      (options.failureTally.images ?? 0) + failCount;
+  }
+
   return filenameMap;
 }

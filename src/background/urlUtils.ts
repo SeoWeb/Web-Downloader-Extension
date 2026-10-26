@@ -341,9 +341,12 @@ export function fixFilename(filename: string) {
     const extension = newFilename.slice(lastDotIndex + 1);
     const name = newFilename.slice(0, lastDotIndex);
 
+    // `~` is intentionally preserved: it is a legal URL/filename character and
+    // Turbopack asset names contain it (e.g. "s.0rhz0arwfsn~5.woff2");
+    // sanitizing it breaks server-side matching against CSS url() references.
     const cleanName =
       name
-        .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-")
+        .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]]/g, "-")
         .replace(/-+/g, "-")
         .replace(/^-+|-+$/g, "")
         .slice(0, 100) || "file";
@@ -356,9 +359,10 @@ export function fixFilename(filename: string) {
 
   // No valid extension - sanitize the whole name and add .bin default
   // (will be corrected to proper extension by Content-Type when available)
+  // `~` is preserved (legal URL char; see Turbopack note in fixFilename above).
   const cleanName =
     newFilename
-      .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-")
+      .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]]/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 100) || "file";
@@ -582,9 +586,10 @@ export function generateImageFilename(
   // Extract a short hash from the query string for uniqueness
   const queryHash = getQueryHash(urlSrc);
 
+  // `~` is preserved (legal URL char; Turbopack asset names contain it).
   const sanitized =
     fullPath
-      .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~]/g, "-")
+      .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]]/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 120) || "image";
@@ -625,10 +630,15 @@ export interface BuildArchivePathOptions {
   defaultExtension?: string;
 }
 
-/** Sanitize a single archive path segment (directory or file base name). */
+/**
+ * Sanitize a single archive path segment (directory or file base name).
+ * `~` is preserved: it is a legal URL/filename character and Turbopack asset
+ * names contain it; sanitizing it breaks server-side matching against CSS
+ * url() references.
+ */
 function sanitizeArchiveSegment(segment: string): string {
   return segment
-    .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]~\s]/g, "-")
+    .replace(/[\/\\:*?"<>|&$@!%#^+={}\[\]\s]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 100);
@@ -928,6 +938,30 @@ export function extractCssImports(cssContent: string): string[] {
 // ---------------------------------------------------------------------------
 
 /**
+ * Per-category count of failed resource fetches. Handlers accumulate into a
+ * shared tally when one is threaded in via {@link FileHandlerOptions};
+ * download-core sums it and reports the total as `resourcesFailed` on the
+ * scrape-complete signal so sessions with missing assets are visible
+ * server-side (successful-enqueue counts alone look clean).
+ */
+export interface ResourceFailureTally {
+  css?: number;
+  js?: number;
+  images?: number;
+  documents?: number;
+}
+
+/** Sum a {@link ResourceFailureTally} into a single `resourcesFailed` total. */
+export function sumResourceFailures(tally: ResourceFailureTally): number {
+  return (
+    (tally.css ?? 0) +
+    (tally.js ?? 0) +
+    (tally.images ?? 0) +
+    (tally.documents ?? 0)
+  );
+}
+
+/**
  * Shared optional options threaded into the file handlers.
  * Passed as the trailing (optional) argument of each handler so existing
  * positional call sites keep working unchanged.
@@ -940,6 +974,12 @@ export interface FileHandlerOptions {
    * legacy origin-based resolution.
    */
   documentUrl?: string;
+  /**
+   * Shared accumulator for failed resource fetches (optional). Each handler
+   * adds its failCount under its own category key; the caller sums the tally
+   * and reports it as `resourcesFailed` on scrape-complete.
+   */
+  failureTally?: ResourceFailureTally;
 }
 
 /** Failure categories reported by file handlers ("cors" extends the queue set). */

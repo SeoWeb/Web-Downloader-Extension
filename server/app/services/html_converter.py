@@ -1229,10 +1229,20 @@ def write_single_file_to_disk(
     # for image-heavy pages.
     from bs4 import NavigableString, Doctype, ProcessingInstruction
 
+    children = list(soup.children)
     with open(output_path, "w", encoding="utf-8") as f:
-        for child in soup.children:
+        if not any(isinstance(child, Doctype) for child in children):
+            # Merged chunk HTML often arrives without a doctype (outerHTML
+            # never includes one); emit the declaration so the self-contained
+            # file doesn't render in quirks mode. Exactly one is guaranteed:
+            # a parsed Doctype child is serialized below.
+            f.write("<!DOCTYPE html>\n")
+        for child in children:
             if isinstance(child, Doctype):
-                f.write(f"<!{child}>\n")
+                # Doctype is a str subclass whose value is just the name
+                # (e.g. "html") — interpolating it yields the corrupt
+                # "<!html>"; output_ready renders the full declaration.
+                f.write(child.output_ready(None))
             elif isinstance(child, (NavigableString, ProcessingInstruction)):
                 f.write(str(child))
             elif hasattr(child, "decode"):
@@ -1394,6 +1404,18 @@ def _inline_style_bg_images(
     return CSS_URL_PATTERN.sub(_replace, style)
 
 
+def _tilde_norm(name: str) -> str:
+    """Normalize ``~`` to ``-`` before basename comparisons.
+
+    The Windows/legacy sanitizer on the client rewrites ``~`` to ``-`` in
+    archive paths, so a page reference like
+    ``...0rhz0arwfsn~5.woff2`` may be archived as
+    ``...0rhz0arwfsn-5.woff2``. Normalize both sides so the basename
+    fallbacks still match.
+    """
+    return name.replace("~", "-")
+
+
 def _resolve_local_path(
     url: str, storage_root: str, session_id: str, filename_map: Optional[dict[str, str]] = None,
     local_path_to_storage: Optional[dict[str, str]] = None,
@@ -1422,6 +1444,11 @@ def _resolve_local_path(
          the stored local_path (e.g. the converter's unmapped-href
          fallback ``./styles/foo.css`` vs the archived
          ``styles/_next/static/chunks/foo.css``)
+
+     Basename comparisons in 3 and 4 normalize ``~`` to ``-`` on both
+     sides (see _tilde_norm) — the client's Windows/legacy sanitizer
+     rewrites ``~`` in archive paths. Exact-match lookups run first and
+     stay verbatim.
     """
 
     def _resolve_logical(logical: str) -> Optional[str]:
@@ -1464,7 +1491,7 @@ def _resolve_local_path(
             for local_name in filename_map.values()
             if local_name and (
                 clean == local_name
-                or os.path.basename(local_name) == clean_base
+                or _tilde_norm(os.path.basename(local_name)) == _tilde_norm(clean_base)
             )
         )
         for local_name in candidates:
@@ -1478,7 +1505,7 @@ def _resolve_local_path(
     # deterministic resolution when several keys share a basename.
     if local_path_to_storage:
         for key in sorted(local_path_to_storage):
-            if os.path.basename(key) == clean_base:
+            if _tilde_norm(os.path.basename(key)) == _tilde_norm(clean_base):
                 disk_path = local_path_to_storage[key]
                 if disk_path and os.path.isfile(disk_path):
                     return disk_path

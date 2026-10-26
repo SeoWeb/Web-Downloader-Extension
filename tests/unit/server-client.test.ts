@@ -345,6 +345,60 @@ describe("ServerClient", () => {
       const res = await client.scrapeComplete("sess-1", 42);
       expect(res.status).toBe("uploading");
     });
+
+    // resourcesFailed: failed resource fetches reported end-to-end so
+    // sessions with missing assets are visible server-side.
+    it("includes resourcesFailed in the body when provided (> 0)", async () => {
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/scrape-complete")) {
+            const body = JSON.parse((init as RequestInit).body as string);
+            expect(body.resourceCount).toBe(10);
+            expect(body.resourcesFailed).toBe(3);
+            return mockResponse(200, {
+              id: "sess-1",
+              status: "uploading",
+              message: "Transitioned to uploading",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      const res = await client.scrapeComplete("sess-1", 10, 3);
+      expect(res.status).toBe("uploading");
+    });
+
+    it("omits resourcesFailed when not provided", async () => {
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/scrape-complete")) {
+            const body = JSON.parse((init as RequestInit).body as string);
+            expect(body.resourcesFailed).toBeUndefined();
+            return mockResponse(200, {
+              id: "sess-1",
+              status: "uploading",
+              message: "Transitioned to uploading",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      await client.scrapeComplete("sess-1", 10);
+    });
   });
 
   // -----------------------------------------------------------------------
