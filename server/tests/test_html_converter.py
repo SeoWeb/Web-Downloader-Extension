@@ -22,6 +22,7 @@ from app.services.html_converter import (
     write_single_file_to_disk,
     _convert_css_file_impl as convert_css_file,
     _lookup_content_type,
+    _read_resource_as_data_uri,
     _resolve_local_path,
     fix_filename,
     generate_image_filename,
@@ -1514,6 +1515,212 @@ def test_single_file_missing_script_yields_empty_inline_script():
         assert not script.has_attr("src"), f"src should be removed, got: {script.get('src')}"
         assert not (script.string or "").strip(), (
             f"Expected empty inline script, got: {script.string}"
+        )
+
+
+def test_single_file_uuid_storage_webp_infers_mime_from_local_path():
+    """Data-URI MIME falls back to the logical local_path extension.
+
+    Production stores resources on disk under UUID names without an
+    extension (resources/<uuid>), and rows may carry a generic
+    content_type (application/octet-stream). Inlining such a resource must
+    still yield data:image/webp — inferred from the local_path's extension
+    — not data:application/octet-stream.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        # Production layout: UUID file name, no extension on disk.
+        uuid_name = "3f2a9c1e-1234-4abc-9def-0a1b2c3d4e5f"
+        file_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(file_dir, exist_ok=True)
+        # Real WebP magic bytes (RIFF....WEBP).
+        with open(os.path.join(file_dir, uuid_name), "wb") as f:
+            f.write(b"RIFF\x24\x00\x00\x00WEBPVP8 fakebytes")
+
+        data_uri = _read_resource_as_data_uri(
+            "./images/photo.webp",
+            tmp,
+            sid,
+            local_path_to_storage={
+                "images/photo.webp": os.path.join(file_dir, uuid_name),
+            },
+        )
+        assert data_uri is not None, "resource should resolve to a data URI"
+        assert data_uri.startswith("data:image/webp;base64,"), (
+            f"expected image/webp data URI, got: {data_uri[:60]}"
+        )
+
+
+def test_single_file_uuid_storage_woff2_infers_mime_from_local_path():
+    """Same UUID-storage defense for fonts referenced from CSS url()."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        uuid_name = "7c1e55aa-9876-4fed-ba09-998877665544"
+        file_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(file_dir, exist_ok=True)
+        with open(os.path.join(file_dir, uuid_name), "wb") as f:
+            f.write(b"wOF2\xfakefontbytes")
+
+        data_uri = _read_resource_as_data_uri(
+            "./images/fonts/main.woff2",
+            tmp,
+            sid,
+            local_path_to_storage={
+                "images/fonts/main.woff2": os.path.join(file_dir, uuid_name),
+            },
+        )
+        assert data_uri is not None, "resource should resolve to a data URI"
+        assert data_uri.startswith("data:font/woff2;base64,"), (
+            f"expected font/woff2 data URI, got: {data_uri[:60]}"
+        )
+
+
+def test_single_file_human_readable_layout_still_resolves_mime():
+    """Human-readable test layouts (extension on disk) keep working."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        _make_resource_file(tmp, sid, "images/photo.webp", b"RIFFWEBPfake")
+
+        data_uri = _read_resource_as_data_uri("./images/photo.webp", tmp, sid)
+        assert data_uri is not None
+        assert data_uri.startswith("data:image/webp;base64,"), (
+            f"expected image/webp data URI, got: {data_uri[:60]}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Single-file resolution fallbacks (production session bb03b08d diagnosis)
+# ---------------------------------------------------------------------------
+
+
+def test_single_file_stylesheet_data_precedence_fallback_naming_inlined():
+    """<link data-precedence="next"> with a ./styles/<name>.css href is inlined.
+
+    Production mismatch shape (session bb03b08d-64b3-4b67-8c6e-43baee65caaf,
+    app.pagepocket.app): the converter's unmapped-href fallback rewrites a
+    stylesheet href to ``./styles/<basename>.css`` while the resource is
+    archived under its full local_path
+    (``styles/_next/static/chunks/<basename>.css``) stored on disk as a UUID
+    file. Resolution must recover the file via a basename match against the
+    local_path_to_storage keys.
+    """
+    import uuid as uuid_mod
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        # Production layout: UUID file name, no extension on disk.
+        uuid_name = str(uuid_mod.uuid4())
+        with open(os.path.join(resources_dir, uuid_name), "w") as f:
+            f.write("body { color: red; }")
+
+        mapping = {
+            "styles/_next/static/chunks/18df4r8e1wq9x.css": os.path.join(
+                resources_dir, uuid_name
+            ),
+        }
+
+        html = (
+            "<html><head>"
+            '<link data-precedence="next" href="./styles/18df4r8e1wq9x.css" '
+            'rel="stylesheet"/>'
+            "</head><body><p>x</p></body></html>"
+        )
+        result = convert_html_to_single_file(
+            html, TAB_URL, tmp, sid, local_path_to_storage=mapping
+        )
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        link = soup.find("link", rel="stylesheet")
+        assert link is None, (
+            "stylesheet link should be inlined despite data-precedence attr "
+            f"and fallback naming; remaining: {link}"
+        )
+        style = soup.find("style")
+        assert style is not None, "inlined <style> missing from output"
+        assert "color: red" in (style.string or ""), (
+            f"CSS content missing, got: {style.string}"
+        )
+
+
+def test_single_file_style_block_font_face_urls_inlined():
+    """url(../media/*.woff2) inside an inline <style> becomes a data URI.
+
+    Production shape (session bb03b08d…): the captured page carries an
+    inline @font-face block whose src refs are
+    ``../media/<hash>-s.<subset>.woff2``; the uploaded font rows have
+    local_path ``images/_next/static/media/<name>`` with UUID storage paths,
+    and the filename_map maps the original ``/_next/static/media/<name>`` to
+    that local_path. The map reverse lookup must resolve the value through
+    local_path_to_storage (map values are local_paths, not disk paths).
+    """
+    import uuid as uuid_mod
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        font_name = "fef07dbb0973bf53-s.12tyk43_3sh9u.woff2"
+        local_path = "images/_next/static/media/" + font_name
+        uuid_name = str(uuid_mod.uuid4())
+        with open(os.path.join(resources_dir, uuid_name), "wb") as f:
+            f.write(b"wOF2fakefontdata")
+
+        filename_map = {
+            "/_next/static/media/" + font_name: local_path,
+            "https://app.pagepocket.app/_next/static/media/" + font_name: local_path,
+        }
+        mapping = {local_path: os.path.join(resources_dir, uuid_name)}
+
+        html = (
+            "<html><head><style>"
+            "@font-face{font-family:Geist;font-style:normal;font-weight:100 900;"
+            'src:url(../media/' + font_name + ') format("woff2");}'
+            "</style></head><body></body></html>"
+        )
+        result = convert_html_to_single_file(
+            html, TAB_URL, tmp, sid,
+            filename_map=filename_map, local_path_to_storage=mapping,
+        )
+
+        assert "url(../media/" + font_name + ")" not in result, (
+            "font url() ref should have been inlined"
+        )
+        assert "data:font/woff2;base64," in result, (
+            f"expected font/woff2 data URI, got head: {result[:400]}"
+        )
+
+
+def test_single_file_style_block_unresolvable_urls_left_as_is():
+    """Unresolvable url() refs inside <style> and unresolvable links stay unchanged."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        os.makedirs(os.path.join(tmp, sid, "resources"), exist_ok=True)
+
+        html = (
+            "<html><head>"
+            '<link data-precedence="next" href="./styles/never-uploaded.css" '
+            'rel="stylesheet"/>'
+            "<style>@font-face{font-family:X;src:url(../media/unknown.woff2)}"
+            ".hero{background:url('./bg/missing.png')}</style>"
+            "</head><body></body></html>"
+        )
+        result = convert_html_to_single_file(html, TAB_URL, tmp, sid)
+
+        assert "url(../media/unknown.woff2)" in result, (
+            "unresolvable font url() must be left as-is"
+        )
+        assert "url('./bg/missing.png')" in result, (
+            "unresolvable quoted background url() must be left as-is"
+        )
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        link = soup.find("link", rel="stylesheet")
+        assert link is not None, "unresolvable stylesheet link must remain a link"
+        assert link.get("href") == "./styles/never-uploaded.css", (
+            f"href changed: {link.get('href')}"
         )
 
 

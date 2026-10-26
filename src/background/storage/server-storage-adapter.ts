@@ -14,6 +14,7 @@
 
 import { ServerClient } from "../server-client";
 import { UploadQueue } from "../upload-queue";
+import { resolveUploadContentType } from "../urlUtils";
 
 /**
  * Adapter that can write to either JSZip (legacy) or IndexedDB (new)
@@ -95,7 +96,11 @@ export class ServerStorageAdapter implements IStorageAdapter {
       );
     }
 
-    const contentType = mimeType || "application/octet-stream";
+    // Content-type fallback: when the handler could not detect a MIME type
+    // (empty or application/octet-stream — e.g. response had no Content-Type
+    // header), infer it from the path's file extension. Specific types pass
+    // through untouched.
+    const contentType = resolveUploadContentType(path, mimeType);
 
     // Dedup: skip if this path was already enqueued. This prevents
     // re-uploading the same resource when multiple URLs map to the

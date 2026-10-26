@@ -397,6 +397,78 @@ export function getExtensionFromMimeType(mimeType: string): string | null {
 }
 
 /**
+ * File extensions → MIME types for upload content-type fallback.
+ * Covers the resource types this pipeline fetches (images, fonts,
+ * css/js, media, documents). Consulted when a fetch yields no usable
+ * Content-Type (empty, application/octet-stream, ...).
+ */
+const EXTENSION_TO_MIME: Record<string, string> = {
+  // Images
+  webp: "image/webp",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  svg: "image/svg+xml",
+  avif: "image/avif",
+  ico: "image/x-icon",
+  bmp: "image/bmp",
+  // Fonts
+  woff2: "font/woff2",
+  woff: "font/woff",
+  ttf: "font/ttf",
+  otf: "font/otf",
+  eot: "application/vnd.ms-fontobject",
+  // Text / code
+  css: "text/css",
+  js: "application/javascript",
+  mjs: "application/javascript",
+  json: "application/json",
+  txt: "text/plain",
+  html: "text/html",
+  pdf: "application/pdf",
+  // Media
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mp3: "audio/mpeg",
+};
+
+/** MIME types too generic to trust — trigger extension-based inference. */
+const GENERIC_MIME_TYPES = new Set([
+  "",
+  "application/octet-stream",
+  "application/binary",
+]);
+
+/**
+ * Resolve the content type to store for an uploaded resource.
+ *
+ * Returns `provided` untouched when it is a specific MIME type; otherwise
+ * (empty, application/octet-stream, ...) infers from the path/URL's file
+ * extension via EXTENSION_TO_MIME, falling back to application/octet-stream.
+ *
+ * Central fallback for ALL uploads (ServerStorageAdapter.addFile), where
+ * handlers pass undefined when a response had no Content-Type header —
+ * e.g. the CSS handler's url() fetches (fonts, background images) and
+ * cached responses.
+ */
+export function resolveUploadContentType(
+  path: string,
+  provided?: string,
+): string {
+  if (
+    provided &&
+    !GENERIC_MIME_TYPES.has(provided.split(";")[0].trim().toLowerCase())
+  ) {
+    return provided;
+  }
+  // Strip query/fragment, then take the last dot segment.
+  const name = (path || "").split(/[?#]/)[0];
+  const ext = name.includes(".") ? name.split(".").pop()!.toLowerCase() : "";
+  return EXTENSION_TO_MIME[ext] ?? "application/octet-stream";
+}
+
+/**
  * DJB2-style short hash rendered as 8 hex chars. Shared by the query-hash
  * helpers so URLs that differ only by query string get unique filenames.
  */

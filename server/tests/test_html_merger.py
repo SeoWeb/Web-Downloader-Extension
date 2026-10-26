@@ -836,6 +836,100 @@ def test_restart_reconstructed_from_first_chunk_emits_once():
     print("  PASS: test_restart_reconstructed_from_first_chunk_emits_once")
 
 
+# ---------------------------------------------------------------------------
+# Doctype normalization (extension uploads documentElement.outerHTML — no doctype)
+# ---------------------------------------------------------------------------
+
+def test_doctype_prepended_when_missing():
+    """Skeleton HTML without a doctype gets <!DOCTYPE html> prepended.
+
+    The extension captures pages via documentElement.outerHTML, which starts
+    at <html> — without the fix the merged output renders in quirks mode.
+    """
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    job = service.get_or_create_job("test-session-doctype-missing", "main", page_type="main")
+
+    skeleton_html = "<html>\n<head><title>No Doctype</title></head>\n<body><p>Hi</p></body>\n</html>"
+    service.initialize_skeleton(job, skeleton_html)
+
+    with open(job.skeleton_path, "r") as f:
+        stored = f.read()
+    assert stored.startswith("<!DOCTYPE html>"), (
+        f"skeleton should start with the HTML5 doctype, got: {stored[:60]!r}"
+    )
+    assert stored.lower().count("<!doctype") == 1, (
+        "doctype must not be duplicated"
+    )
+    assert "<html>" in stored, "original <html> tag must be preserved"
+
+    print("  PASS: test_doctype_prepended_when_missing")
+
+
+def test_doctype_not_duplicated_when_present():
+    """Skeleton that already has a doctype is returned unchanged."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    job = service.get_or_create_job("test-session-doctype-present", "main", page_type="main")
+
+    skeleton_html = """<!DOCTYPE html>
+<html>
+<head><title>With Doctype</title></head>
+<body><p>Hi</p></body>
+</html>"""
+    service.initialize_skeleton(job, skeleton_html)
+
+    with open(job.skeleton_path, "r") as f:
+        stored = f.read()
+    lower = stored.lower()
+    assert lower.startswith("<!doctype"), "existing doctype must be kept first"
+    assert lower.count("<!doctype") == 1, (
+        f"doctype must not be duplicated, got {lower.count('<!doctype')}"
+    )
+
+    print("  PASS: test_doctype_not_duplicated_when_present")
+
+
+def test_doctype_preserved_through_dom_merge():
+    """_dom_merge re-serializes via lxml (which drops the doctype) — it must be re-attached."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-doctype-merge"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    # No doctype — mirrors the extension's outerHTML capture.
+    skeleton_html = (
+        "<html>\n<head><title>Doctype Merge</title></head>\n"
+        "<body><div id=\"__next\"><p>Main content</p></div></body>\n</html>"
+    )
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    chunk_html = (
+        "<html>\n<head><title>Doctype Merge</title></head>\n"
+        "<body><div id=\"__next\"><p>Main content</p><p>Extra screen</p></div></body>\n</html>"
+    )
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    chunk_hash = service.compute_content_hash(chunk_html)
+    service.register_chunk(job, chunk_hash, scroll_index=1, storage_path=chunk_path, size=len(chunk_html))
+
+    # Use the stored skeleton (with doctype) exactly as _merge_job would.
+    with open(job.skeleton_path, "r") as f:
+        stored_skeleton = f.read()
+    result_html = service._dom_merge(job, stored_skeleton)
+    lower = result_html.lower()
+    assert lower.startswith("<!doctype"), (
+        f"merged output should start with the doctype, got: {result_html[:60]!r}"
+    )
+    assert lower.count("<!doctype") == 1, "doctype must not be duplicated"
+    assert "Extra screen" in result_html, "chunk content should be merged"
+
+    print("  PASS: test_doctype_preserved_through_dom_merge")
+
+
 def main():
     print("HTML Merge Service Verification (task 4.9)")
     print("=" * 50)
@@ -860,6 +954,9 @@ def main():
         test_restart_no_first_scroll_duplication,
         test_restart_skeleton_with_differing_first_chunk_still_merged,
         test_restart_reconstructed_from_first_chunk_emits_once,
+        test_doctype_prepended_when_missing,
+        test_doctype_not_duplicated_when_present,
+        test_doctype_preserved_through_dom_merge,
     ]
 
     passed = 0

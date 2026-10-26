@@ -158,6 +158,7 @@ class HtmlMergerService:
         </body>.  The first chunk's body content *is* the initial content
         placed before the insertion point.
         """
+        first_chunk_html = self._ensure_doctype(first_chunk_html)
         skeleton = self._ensure_insertion_point(first_chunk_html)
         skeleton_dir = os.path.join(
             self.storage_root, job.session_id, "skeletons"
@@ -448,8 +449,10 @@ class HtmlMergerService:
                     for c in chunk_children
                 )
                 if all_in_skeleton:
-                    result = etree.tostring(skeleton_tree, encoding="unicode")
-                    return result
+                    # etree.tostring drops the skeleton's doctype — re-attach.
+                    return self._ensure_doctype(
+                        etree.tostring(skeleton_tree, encoding="unicode")
+                    )
 
         # Append chunk children to skeleton body with incremental element tracking
         skeleton_element_count = len(list(skeleton_body.iter()))
@@ -466,8 +469,8 @@ class HtmlMergerService:
                 break
             skeleton_body.append(child)
 
-        result = etree.tostring(skeleton_tree, encoding="unicode")
-        return result
+        # etree.tostring drops the skeleton's doctype — re-attach.
+        return self._ensure_doctype(etree.tostring(skeleton_tree, encoding="unicode"))
 
     def _insert_chunks_before_body_end(
         self, skeleton_html: str, chunk_bodies: list[str]
@@ -973,6 +976,23 @@ class HtmlMergerService:
     # ------------------------------------------------------------------
     # Helper methods
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _ensure_doctype(html: str) -> str:
+        """Prepend the HTML5 doctype when a document-shaped HTML lacks one.
+
+        The extension captures pages via
+        ``document.documentElement.outerHTML``, which has no doctype —
+        without one the merged output renders in quirks mode.  Idempotent:
+        input that already carries a doctype (or is a bare fragment, where
+        prepending could corrupt body content) is returned unchanged.
+        """
+        stripped = html.lstrip()
+        if stripped[:9].lower().startswith("<!doctype"):
+            return html
+        if stripped[:5].lower().startswith("<html"):
+            return f"<!DOCTYPE html>\n{html}"
+        return html
 
     def _ensure_insertion_point(self, skeleton: str) -> str:
         """Ensure the skeleton HTML has the </body> insertion point.

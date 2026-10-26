@@ -1296,7 +1296,7 @@ def _build_single_file_soup(
     # Inline stylesheets: <link rel="stylesheet"> → <style>
     for link in soup.find_all("link", rel="stylesheet"):
         href = link.get("href", "")
-        css_content = _read_text_resource(href, storage_root, session_id, local_path_to_storage)
+        css_content = _read_text_resource(href, storage_root, session_id, filename_map, local_path_to_storage)
         if css_content is not None:
             # Rewrite url() references in the CSS content to base64
             css_content = _inline_css_urls(css_content, storage_root, session_id, filename_map, local_path_to_storage)
@@ -1309,7 +1309,7 @@ def _build_single_file_soup(
     # type="module" (defer/async are no-ops on inline scripts — harmless).
     for script in soup.find_all("script", src=True):
         src = script.get("src", "")
-        js_content = _read_text_resource(src, storage_root, session_id, local_path_to_storage)
+        js_content = _read_text_resource(src, storage_root, session_id, filename_map, local_path_to_storage)
         new_script = soup.new_tag("script")
         for attr_name, attr_value in script.attrs.items():
             if attr_name != "src":
@@ -1327,9 +1327,15 @@ def _build_single_file_soup(
                 if data_uri:
                     obj["data"] = data_uri
 
-    # Inline background-image URLs in <style> tags
+    # Inline ALL url() references inside <style> tags — @font-face src,
+    # background-image, border-image, anything — as base64 data URIs.
+    # (Unresolvable refs are left untouched by _inline_css_urls.)
     for style_tag in soup.find_all("style"):
-        css = style_tag.string or ""
+        css = style_tag.string
+        if css is None:
+            # .string is None when the tag holds multiple nodes
+            css = style_tag.get_text()
+        css = css or ""
         css = _inline_css_urls(css, storage_root, session_id, filename_map, local_path_to_storage)
         style_tag.string = css
 
@@ -1402,13 +1408,40 @@ def _resolve_local_path(
     ``styles/main.css``) to actual disk paths (e.g.,
     ``resources/abc-123``). Without it, only human-readable paths work
     (used in tests).
+
+    Resolution order (each fallback only runs when the previous missed):
+
+      1. exact key in ``local_path_to_storage``
+      2. direct path under ``<storage_root>/<session_id>/resources/``
+      3. filename-map reverse lookup (exact or basename match on the map
+         value), with the matched local_path resolved through
+         ``local_path_to_storage`` first so UUID-stored resources are
+         found — the map's values are local_paths, not disk paths
+      4. basename match against ``local_path_to_storage`` keys — recovers
+         references whose directory prefix was rewritten differently from
+         the stored local_path (e.g. the converter's unmapped-href
+         fallback ``./styles/foo.css`` vs the archived
+         ``styles/_next/static/chunks/foo.css``)
     """
+
+    def _resolve_logical(logical: str) -> Optional[str]:
+        """Resolve a local_path (map key/value) to a disk path."""
+        if local_path_to_storage:
+            disk_path = local_path_to_storage.get(logical)
+            if disk_path and os.path.isfile(disk_path):
+                return disk_path
+        full_path = os.path.join(storage_root, session_id, "resources", logical)
+        if os.path.isfile(full_path):
+            return full_path
+        return None
+
     # Strip leading ./ and ../
     clean = url
     while clean.startswith("./"):
         clean = clean[2:]
     while clean.startswith("../"):
         clean = clean[3:]
+    clean_base = os.path.basename(clean)
 
     # Primary lookup: explicit local_path → storage_path map
     # Handles UUID-based storage where files are stored as resources/<uuid>
@@ -1418,18 +1451,37 @@ def _resolve_local_path(
             return disk_path
 
     # Fallback: direct path (works for tests with human-readable filenames)
-    full_path = os.path.join(storage_root, session_id, "resources", clean)
-    if os.path.isfile(full_path):
-        return full_path
+    direct = _resolve_logical(clean)
+    if direct:
+        return direct
 
-    # Fallback: filename map reverse lookup
+    # Fallback: filename map reverse lookup. Map values are local_paths
+    # (e.g. "images/photo.jpg") — resolve them through
+    # local_path_to_storage so UUID-stored resources are found.
     if filename_map:
-        for orig_url, local_name in filename_map.items():
-            # local_name could be like "images/photo.jpg"
-            if clean == local_name or clean.endswith("/" + local_name.split("/")[-1]):
-                full_path = os.path.join(storage_root, session_id, "resources", local_name)
-                if os.path.isfile(full_path):
-                    return full_path
+        candidates = sorted(
+            local_name
+            for local_name in filename_map.values()
+            if local_name and (
+                clean == local_name
+                or os.path.basename(local_name) == clean_base
+            )
+        )
+        for local_name in candidates:
+            resolved = _resolve_logical(local_name)
+            if resolved:
+                return resolved
+
+    # Last resort: basename match against the storage map keys. Recover
+    # references whose directory prefix differs from the stored local_path
+    # (converter fallback naming vs archived path shape). Sorted for
+    # deterministic resolution when several keys share a basename.
+    if local_path_to_storage:
+        for key in sorted(local_path_to_storage):
+            if os.path.basename(key) == clean_base:
+                disk_path = local_path_to_storage[key]
+                if disk_path and os.path.isfile(disk_path):
+                    return disk_path
 
     return None
 
@@ -1450,9 +1502,15 @@ def _read_resource_as_data_uri(
         with open(path, "rb") as f:
             data = f.read()
 
-        # Determine MIME type from extension
-        ext = path.rsplit(".", 1)[-1].lower() if "." in path else "bin"
-        mime = _extension_to_mime(ext)
+        # Determine MIME type. On disk, uploaded resources are stored under
+        # UUID names without an extension (resources.py: storage_path =
+        # resources/<uuid>), so the storage path yields "bin" →
+        # application/octet-stream. Prefer the extension of the logical
+        # reference (`url`, i.e. the resource's local_path, e.g.
+        # "images/photo.webp") and only fall back to the storage path's
+        # extension (human-readable test layouts) — this also heals sessions
+        # whose rows were stored with a missing/generic content_type.
+        mime = _specific_ext_mime(url) or _specific_ext_mime(path) or "application/octet-stream"
         b64 = base64.b64encode(data).decode("ascii")
         return f"data:{mime};base64,{b64}"
     except OSError as exc:
@@ -1460,14 +1518,30 @@ def _read_resource_as_data_uri(
         return None
 
 
+def _specific_ext_mime(candidate: str) -> Optional[str]:
+    """MIME from a path/reference's file extension, or None when unknown.
+
+    Strips query/fragment, maps the extension via _extension_to_mime, and
+    returns None for extension-less names and for the generic
+    application/octet-stream fallback so callers can try another candidate.
+    """
+    name = candidate.split("?")[0].split("#")[0]
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    if not ext:
+        return None
+    mime = _extension_to_mime(ext)
+    return None if mime == "application/octet-stream" else mime
+
+
 def _read_text_resource(
     url: str,
     storage_root: str,
     session_id: str,
+    filename_map: Optional[dict[str, str]] = None,
     local_path_to_storage: Optional[dict[str, str]] = None,
 ) -> Optional[str]:
     """Read a text resource file from disk."""
-    path = _resolve_local_path(url, storage_root, session_id, local_path_to_storage=local_path_to_storage)
+    path = _resolve_local_path(url, storage_root, session_id, filename_map, local_path_to_storage)
     if not path:
         return None
 
@@ -1494,6 +1568,9 @@ def _extension_to_mime(ext: str) -> str:
         "ttf": "font/ttf", "otf": "font/otf", "eot": "application/vnd.ms-fontobject",
         "html": "text/html",
         "json": "application/json",
+        "txt": "text/plain",
+        "pdf": "application/pdf",
+        "mp4": "video/mp4", "webm": "video/webm", "mp3": "audio/mpeg",
     }
     return mapping.get(ext, "application/octet-stream")
 
@@ -1626,7 +1703,7 @@ def inline_css_into_html(
             continue
 
         # Read the CSS file from disk
-        css_content = _read_text_resource(href, storage_root, session_id, local_path_to_storage)
+        css_content = _read_text_resource(href, storage_root, session_id, filename_map, local_path_to_storage)
         if css_content is None:
             logger.warning("CSS file not found for inlining, keeping <link>: %s", href)
             continue
