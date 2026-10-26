@@ -112,10 +112,12 @@ export default function Filter({
     if (isChecked) {
       // Single-file output is one self-contained HTML file, so HTML must
       // stay on — unchecking it would send the server into text-only
-      // assembly, which has no text sources and fails.
+      // assembly, which has no text sources and fails. Images and assets
+      // must be collected too: the server inlines them as base64 data URIs,
+      // and without the uploads the single file has broken references.
       setDownloadHTML(true);
-      setDownloadImages(false);
-      setDownloadAssets(false);
+      setDownloadImages(true);
+      setDownloadAssets(true);
       setDownloadContentAsText(false);
       setDownloadContentAsMarkdown(false);
       setDownloadDocuments(false);

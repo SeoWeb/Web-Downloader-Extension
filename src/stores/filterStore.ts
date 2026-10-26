@@ -40,19 +40,21 @@ interface FilterState {
 function validateFilterOptions(options: FilterOptions): FilterOptions {
   const validated = { ...options };
 
-  // If singleFile is selected, disable all other granular options — but
-  // keep HTML on: singleFile produces one self-contained HTML file, so it
-  // is an HTML download. Forcing HTML off here would route the session
-  // into text-only assembly, which has no text sources and fails.
+  // If singleFile is selected, keep HTML, images, and assets on: the
+  // single-file output is one self-contained HTML file, so it is an HTML
+  // download whose images and styles/assets MUST be scraped and uploaded —
+  // the server inlines them as base64 data URIs. Without them the output
+  // has broken references. Crawling and the other granular formats stay
+  // off: single-file mode downloads the current page only, as HTML.
   if (validated.singleFile) {
     return {
       ...DEFAULT_FILTER_OPTIONS,
       singleFile: true,
       downloadHTML: true,
-      downloadImages: false,
+      downloadImages: true,
       downloadLinks: false,
       downloadLinksFullScraping: false,
-      downloadAssets: false,
+      downloadAssets: true,
       downloadContentAsText: false,
       downloadContentAsMarkdown: false,
       downloadDocuments: false,

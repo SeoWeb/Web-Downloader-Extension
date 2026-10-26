@@ -1278,6 +1278,21 @@ def _build_single_file_soup(
                 if data_uri:
                     img[attr] = data_uri
 
+    # Strip srcset in single-file output: browsers prefer srcset candidates
+    # over src, but those candidate files do not exist in a self-contained
+    # file. Stripping the whole attribute (its value can hold multiple URLs
+    # with descriptors) guarantees the inlined src is used. A <picture>
+    # falls back to its inlined <img>; a standalone <source> without a
+    # parent <picture> is useless anyway.
+    for img in soup.find_all("img"):
+        for attr in ("srcset", "data-srcset"):
+            if img.has_attr(attr):
+                del img[attr]
+    for source in soup.find_all("source"):
+        for attr in ("srcset", "sizes"):
+            if source.has_attr(attr):
+                del source[attr]
+
     # Inline stylesheets: <link rel="stylesheet"> → <style>
     for link in soup.find_all("link", rel="stylesheet"):
         href = link.get("href", "")
@@ -1289,11 +1304,16 @@ def _build_single_file_soup(
             style_tag.string = css_content
             link.replace_with(style_tag)
 
-    # Inline scripts: <script src> → <script> with content
+    # Inline scripts: <script src> → <script> with content.
+    # Copy all attributes except src so inline scripts keep e.g.
+    # type="module" (defer/async are no-ops on inline scripts — harmless).
     for script in soup.find_all("script", src=True):
         src = script.get("src", "")
         js_content = _read_text_resource(src, storage_root, session_id, local_path_to_storage)
         new_script = soup.new_tag("script")
+        for attr_name, attr_value in script.attrs.items():
+            if attr_name != "src":
+                new_script[attr_name] = attr_value
         new_script.string = js_content or ""
         script.replace_with(new_script)
 

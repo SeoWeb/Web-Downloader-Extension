@@ -18,6 +18,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from app.services.html_converter import (
     convert_html,
     convert_html_for_linked_page,
+    convert_html_to_single_file,
+    write_single_file_to_disk,
     _convert_css_file_impl as convert_css_file,
     _lookup_content_type,
     _resolve_local_path,
@@ -1391,6 +1393,156 @@ def test_inline_css_with_uuid_storage_and_url_adjustment():
 
 
 # ---------------------------------------------------------------------------
+# Single-file inlining: srcset stripping + script attribute preservation
+# ---------------------------------------------------------------------------
+
+
+def _make_resource_file(storage_root, session_id, relative_path, content):
+    """Helper: write a resource file (text or bytes) to the test storage tree."""
+    import os
+    file_dir = os.path.join(storage_root, session_id, "resources", os.path.dirname(relative_path))
+    os.makedirs(file_dir, exist_ok=True)
+    file_path = os.path.join(storage_root, session_id, "resources", relative_path)
+    if isinstance(content, bytes):
+        with open(file_path, "wb") as f:
+            f.write(content)
+    else:
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+    return file_path
+
+
+def test_single_file_img_srcset_stripped_when_src_inlined():
+    """img src inlined as data URI → srcset/data-srcset stripped (single-file).
+
+    Browsers prefer srcset candidates over src; in a self-contained file the
+    candidate files don't exist, so the whole attribute must be removed to
+    guarantee the inlined src is used.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        _make_resource_file(tmp, sid, "images/photo.jpg", b"fakejpegdata")
+
+        html = (
+            '<html><body><img src="./images/photo.jpg" '
+            'srcset="./images/photo.jpg 2x, ./images/missing.jpg 3x" '
+            'data-srcset="./images/photo.jpg 1x"></body></html>'
+        )
+        result = convert_html_to_single_file(html, TAB_URL, tmp, sid)
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        img = soup.find("img")
+        assert img is not None, "img tag missing from output"
+        assert (img.get("src") or "").startswith("data:image/"), (
+            f"src should be a data URI, got: {img.get('src')}"
+        )
+        assert not img.has_attr("srcset"), f"srcset should be stripped, got: {img.get('srcset')}"
+        assert not img.has_attr("data-srcset"), (
+            f"data-srcset should be stripped, got: {img.get('data-srcset')}"
+        )
+
+
+def test_single_file_picture_source_srcset_stripped():
+    """<picture><source srcset> stripped; <picture> falls back to inlined <img>."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        _make_resource_file(tmp, sid, "images/photo.jpg", b"fakejpegdata")
+
+        html = (
+            '<html><body><picture>'
+            '<source srcset="./images/hero.webp 1x, ./images/hero2.webp 2x" '
+            'type="image/webp" sizes="100vw">'
+            '<img src="./images/photo.jpg">'
+            '</picture></body></html>'
+        )
+        result = convert_html_to_single_file(html, TAB_URL, tmp, sid)
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        source = soup.find("source")
+        assert source is not None, "source tag missing from output"
+        assert not source.has_attr("srcset"), f"source srcset should be stripped, got: {source.get('srcset')}"
+        assert not source.has_attr("sizes"), f"source sizes should be stripped, got: {source.get('sizes')}"
+        img = soup.find("img")
+        assert img is not None
+        assert (img.get("src") or "").startswith("data:image/"), (
+            f"img src should be a data URI, got: {img.get('src')}"
+        )
+
+
+def test_single_file_module_script_attributes_preserved():
+    """Inline script keeps type="module" and other attributes; src removed."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        _make_resource_file(tmp, sid, "scripts/app.js", "export const x = 1;\n")
+
+        html = (
+            '<html><head>'
+            '<script type="module" crossorigin="anonymous" src="./scripts/app.js"></script>'
+            '</head><body></body></html>'
+        )
+        result = convert_html_to_single_file(html, TAB_URL, tmp, sid)
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        script = soup.find("script")
+        assert script is not None, "script tag missing from output"
+        assert script.get("type") == "module", (
+            f"type=module should be preserved, got: {script.get('type')}"
+        )
+        assert script.get("crossorigin") == "anonymous", (
+            f"crossorigin should be preserved, got: {script.get('crossorigin')}"
+        )
+        assert not script.has_attr("src"), f"src should be removed, got: {script.get('src')}"
+        assert "export const x = 1;" in (script.string or ""), (
+            f"JS content missing, got: {script.string}"
+        )
+
+
+def test_single_file_missing_script_yields_empty_inline_script():
+    """Script with unavailable content still yields an empty inline script without src."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        html = '<html><body><script src="./scripts/missing.js"></script></body></html>'
+        result = convert_html_to_single_file(html, TAB_URL, tmp, sid)
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        script = soup.find("script")
+        assert script is not None, "script tag missing from output"
+        assert not script.has_attr("src"), f"src should be removed, got: {script.get('src')}"
+        assert not (script.string or "").strip(), (
+            f"Expected empty inline script, got: {script.string}"
+        )
+
+
+def test_write_single_file_to_disk_strips_srcset():
+    """write_single_file_to_disk output also strips srcset and inlines src."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        _make_resource_file(tmp, sid, "images/photo.jpg", b"fakejpegdata")
+        out_path = os.path.join(tmp, "out.html")
+
+        html = (
+            '<html><body><img src="./images/photo.jpg" '
+            'srcset="./images/photo.jpg 2x"></body></html>'
+        )
+        write_single_file_to_disk(html, TAB_URL, tmp, sid, out_path)
+
+        with open(out_path, encoding="utf-8") as f:
+            content = f.read()
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, "lxml")
+        img = soup.find("img")
+        assert img is not None, "img tag missing from output"
+        assert (img.get("src") or "").startswith("data:image/"), (
+            f"src should be a data URI, got: {img.get('src')}"
+        )
+        assert not img.has_attr("srcset"), f"srcset should be stripped, got: {img.get('srcset')}"
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -1503,6 +1655,12 @@ def run_all():
         test_resolve_local_path_uuid_map_takes_priority,
         test_inline_css_with_uuid_storage,
         test_inline_css_with_uuid_storage_and_url_adjustment,
+        # Single-file inlining (srcset stripping + script attribute preservation)
+        test_single_file_img_srcset_stripped_when_src_inlined,
+        test_single_file_picture_source_srcset_stripped,
+        test_single_file_module_script_attributes_preserved,
+        test_single_file_missing_script_yields_empty_inline_script,
+        test_write_single_file_to_disk_strips_srcset,
     ]
 
     passed = 0
