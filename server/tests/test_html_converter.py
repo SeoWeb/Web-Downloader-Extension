@@ -1818,6 +1818,163 @@ def test_write_single_file_to_disk_does_not_double_doctype():
         assert "<!html>" not in content, "corrupt '<!html>' serialization must be gone"
 
 
+# ---------------------------------------------------------------------------
+# Script/style early-close neutralization (script-bomb inlining)
+# ---------------------------------------------------------------------------
+
+# Real production shape (session 1793030669): the react-dom chunk contains
+# the JS string literal "<script></script>" (createElement case"script"
+# branch). bs4 writes <script> content RAW, so the literal </script> closed
+# the inline tag early → truncated chunk (SyntaxError, app never boots) and
+# the rest of the bundle leaked as a bare text node at the top of the page.
+_BOMB_JS = (
+    'case"script":(a=o.createElement("div")).innerHTML="<script></script>",'
+    'a=a.removeChild(a.firstChild);'
+    'var f=x&&y,g=a&&a.nodeType===1;'
+)
+
+
+def test_single_file_script_close_tag_bomb_neutralized():
+    """JS bundle containing "</script>" inlines without closing the tag early.
+
+    The literal must be escaped to the JS-safe "<\\/script" form (identical
+    semantics inside string literals), raw && must NOT be entity-substituted
+    (bs4 writes <script> content raw), and the document must still contain
+    exactly one real </script> close per script element.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        _make_resource_file(tmp, sid, "scripts/app.js", _BOMB_JS)
+
+        html = (
+            "<html><head><title>t</title></head><body>"
+            '<script src="./scripts/app.js"></script>'
+            "<script>var ok = a && b;</script>"
+            "</body></html>"
+        )
+        result = convert_html_to_single_file(html, TAB_URL, tmp, sid)
+
+        # The bomb is escaped: <\/script present, no raw "</script>" inside
+        # the inlined string literal.
+        assert '<script><\\/script>' in result, (
+            "expected escaped <\\/script in inlined JS, got: "
+            f"{[l for l in result.splitlines() if 'case\"script\"' in l]!r}"
+        )
+        assert 'innerHTML="<script></script>"' not in result, (
+            "raw </script> must not survive inlining"
+        )
+        # Raw && preserved — formatter must not substitute entities in script.
+        assert "a && b" in result and "x&&y" in result, f"raw && lost: {result[:400]!r}"
+        assert "&amp;" not in result, "script content must not be entity-substituted"
+        # No truncation: the bundle tail is inside the script, and the
+        # document closes exactly the scripts it opened (2).
+        assert "removeChild(a.firstChild)" in result, "bundle tail lost (truncated?)"
+        assert result.count("</script>") == 2, (
+            f"expected exactly 2 </script> closes, got {result.count('</script>')}"
+        )
+        # Round-trip: the output re-parses with intact script elements.
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        scripts = soup.find_all("script")
+        assert len(scripts) == 2, f"expected 2 script elements, got {len(scripts)}"
+        assert '<script><\\/script>' in (scripts[0].string or ""), (
+            f"escaped form missing after re-parse: {(scripts[0].string or '')[:200]!r}"
+        )
+
+
+def test_single_file_script_without_bomb_byte_identical():
+    """A script with no close-tag bomb is passed through unchanged."""
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        plain_js = 'var a = 1 && 2 < 3;\nconsole.log("<div>amp & stuff");\n'
+        _make_resource_file(tmp, sid, "scripts/plain.js", plain_js)
+
+        html = (
+            '<html><body><script src="./scripts/plain.js"></script></body></html>'
+        )
+        result = convert_html_to_single_file(html, TAB_URL, tmp, sid)
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        script = soup.find("script")
+        assert script is not None, "script tag missing from output"
+        assert script.string == plain_js, (
+            f"content must be byte-identical, got: {script.string!r}"
+        )
+
+
+def test_single_file_style_close_tag_bomb_neutralized():
+    """CSS containing content: "</style>" cannot close the <style> tag early.
+
+    Same early-close class of bug as the script bomb, on the stylesheet
+    link-inlining path (and on the separate inline_css_into_html path).
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        bomb_css = '.icon::after { content: "</style>"; color: red; }\n'
+        _make_resource_file(tmp, sid, "styles/style.css", bomb_css)
+
+        html = (
+            '<html><head><link rel="stylesheet" href="./styles/style.css">'
+            "</head><body><p>x</p></body></html>"
+        )
+        result = convert_html_to_single_file(html, TAB_URL, tmp, sid)
+
+        assert 'content: "<\\/style>"' in result, (
+            f"expected escaped <\\/style in inlined CSS, got: {result[:400]!r}"
+        )
+        # Exactly one close for the one style tag — no early close + leak.
+        assert result.count("</style>") == 1, (
+            f"expected exactly 1 </style> close, got {result.count('</style>')}"
+        )
+        assert "color: red" in result, "CSS after the bomb was truncated"
+
+        # Same guarantee on the link→style inlining path.
+        result2 = inline_css_into_html(html, tmp, sid, path="./")
+        assert 'content: "<\\/style>"' in result2, (
+            f"inline_css_into_html: expected escaped <\\/style, got: {result2[:400]!r}"
+        )
+        assert result2.count("</style>") == 1, (
+            f"inline_css_into_html: expected 1 </style>, got {result2.count('</style>')}"
+        )
+
+
+def test_write_single_file_to_disk_script_bomb_no_leak():
+    """Full disk pipeline: bomb bundle stays inside its <script> element.
+
+    The file must start with a doctype, contain no raw </script inside the
+    inlined JS, and close exactly as many scripts as it opens.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        _make_resource_file(tmp, sid, "scripts/app.js", _BOMB_JS)
+
+        html = (
+            "<html><head><title>t</title></head><body>"
+            '<script src="./scripts/app.js"></script>'
+            "</body></html>"
+        )
+        out_path = os.path.join(tmp, "out.html")
+        write_single_file_to_disk(html, TAB_URL, tmp, sid, out_path)
+
+        with open(out_path, encoding="utf-8") as f:
+            content = f.read()
+
+        assert content.startswith("<!DOCTYPE html>"), (
+            f"output must start with doctype, got: {content[:60]!r}"
+        )
+        assert 'innerHTML="<script><\\/script>"' in content, (
+            f"escaped bomb missing from file: {content[:400]!r}"
+        )
+        assert content.count("</script>") == 1, (
+            f"expected exactly 1 </script> close, got {content.count('</script>')}"
+        )
+        # The whole bundle is inside the script: its tail precedes the close.
+        assert content.index("removeChild(a.firstChild)") < content.index("</script>"), (
+            "bundle tail leaked past the script close tag"
+        )
+
+
 def test_single_file_tilde_sanitized_font_url_inlined_via_storage_map():
     """url(...arwfsn~5.woff2) resolves to the archived ...arwfsn-5.woff2 row.
 
@@ -2241,6 +2398,11 @@ def run_all():
         test_single_file_module_script_attributes_preserved,
         test_single_file_missing_script_yields_empty_inline_script,
         test_write_single_file_to_disk_strips_srcset,
+        # Script/style early-close neutralization (script-bomb inlining)
+        test_single_file_script_close_tag_bomb_neutralized,
+        test_single_file_script_without_bomb_byte_identical,
+        test_single_file_style_close_tag_bomb_neutralized,
+        test_write_single_file_to_disk_script_bomb_no_leak,
     ]
 
     passed = 0

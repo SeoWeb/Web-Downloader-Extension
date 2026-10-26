@@ -7,6 +7,7 @@ client-side merge-html.ts + HtmlAssembler.ts for representative inputs.
 
 import hashlib
 import os
+import re
 import sys
 import tempfile
 
@@ -930,6 +931,235 @@ def test_doctype_preserved_through_dom_merge():
     print("  PASS: test_doctype_preserved_through_dom_merge")
 
 
+# ---------------------------------------------------------------------------
+# Raw-text serialization (browsers do NOT decode entities inside
+# <script>/<style> — lxml's HTML serializer must not escape them there)
+# ---------------------------------------------------------------------------
+
+def _script_regions(html_str):
+    """Return the text inside every <script> element of an HTML string."""
+    return re.findall(
+        r"<script[^>]*>(.*?)</script>", html_str, re.DOTALL | re.IGNORECASE
+    )
+
+
+def _style_regions(html_str):
+    """Return the text inside every <style> element of an HTML string."""
+    return re.findall(
+        r"<style[^>]*>(.*?)</style>", html_str, re.DOTALL | re.IGNORECASE
+    )
+
+
+def test_dom_merge_preserves_raw_script_text():
+    """Inline <script> containing &&, < and '<\\/script>' must survive the DOM
+    merge RAW.
+
+    Production evidence: etree.tostring(method='html') HTML-escapes &<> inside
+    script text (&& -> &amp;&amp;); browsers treat script content as raw text
+    and do not decode entities, so escaped output silently corrupts the JS.
+    Ordinary body text with & must still be escaped (&amp;) as before.
+    """
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-raw-script"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    skeleton_html = (
+        "<!DOCTYPE html><html><head><title>Raw Script</title>"
+        "<script>if (a && b < c) { init(); }</script></head>"
+        "<body><p>Skeleton body</p></body></html>"
+    )
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    chunk_html = (
+        "<html><head><title>Raw Script</title></head>"
+        "<body><p>Tom & Jerry</p>"
+        "<script>var s = '<\\/script>'; if (x < 1 && y > 2) go();</script>"
+        "</body></html>"
+    )
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    chunk_hash = service.compute_content_hash(chunk_html)
+    service.register_chunk(job, chunk_hash, scroll_index=1, storage_path=chunk_path, size=len(chunk_html))
+
+    with open(job.skeleton_path, "r") as f:
+        stored_skeleton = f.read()
+    result_html = service._dom_merge(job, stored_skeleton)
+
+    scripts = "\n".join(_script_regions(result_html))
+    assert "if (a && b < c)" in scripts, "skeleton script must keep && and < raw"
+    assert "<\\/script>" in scripts, "escaped </script> inside JS string must stay raw"
+    assert "if (x < 1 && y > 2) go();" in scripts, "chunk script must stay raw"
+    assert "&amp;" not in scripts, "script text must not be HTML-escaped"
+    assert "&lt;" not in scripts, "script text must not be HTML-escaped"
+
+    # Body text is ordinary character data — escaping there is correct.
+    assert "Tom &amp; Jerry" in result_html, "body text & must still be escaped"
+
+    print("  PASS: test_dom_merge_preserves_raw_script_text")
+
+
+def test_dom_merge_preserves_raw_style_text():
+    """Inline <style> with 'a > b { ... }' must survive the DOM merge raw."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-raw-style"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    skeleton_html = (
+        "<!DOCTYPE html><html><head><title>Raw Style</title>"
+        "<style>div > p { content: \"x\" }</style></head>"
+        "<body><p>Skeleton body</p></body></html>"
+    )
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    chunk_html = (
+        "<html><head><title>Raw Style</title></head>"
+        "<body><p>Extra chunk content</p></body></html>"
+    )
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    chunk_hash = service.compute_content_hash(chunk_html)
+    service.register_chunk(job, chunk_hash, scroll_index=1, storage_path=chunk_path, size=len(chunk_html))
+
+    with open(job.skeleton_path, "r") as f:
+        stored_skeleton = f.read()
+    result_html = service._dom_merge(job, stored_skeleton)
+
+    styles = "\n".join(_style_regions(result_html))
+    assert "div > p" in styles, "CSS child combinator > must stay raw in <style>"
+    assert "&gt;" not in styles, "style text must not be HTML-escaped"
+    assert "Extra chunk content" in result_html, "chunk content should be merged"
+
+    print("  PASS: test_dom_merge_preserves_raw_style_text")
+
+
+def test_dom_merge_superset_path_preserves_raw_script_text():
+    """The superset early-return in _dom_merge must also serialize raw text."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-raw-script-superset"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    body_content = (
+        "<div id=\"__next\"><p>Main content</p></div>"
+        "<script>var f = function () { return a && b < 3; };</script>"
+    )
+    skeleton_html = f"<!DOCTYPE html>\n<html>\n<head><title>Superset Raw</title></head>\n<body>{body_content}</body>\n</html>"
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    chunk_html = f"<html><head><title>Superset Raw</title></head><body>{body_content}</body></html>"
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    chunk_hash = service.compute_content_hash(chunk_html)
+    service.register_chunk(job, chunk_hash, scroll_index=1, storage_path=chunk_path, size=len(chunk_html))
+
+    with open(job.skeleton_path, "r") as f:
+        stored_skeleton = f.read()
+    result_html = service._dom_merge(job, stored_skeleton)
+
+    # Superset detected → content exactly once, with raw script text.
+    assert result_html.count("Main content") == 1, "superset must not duplicate content"
+    scripts = "\n".join(_script_regions(result_html))
+    assert "return a && b < 3;" in scripts, "script must keep && and < raw"
+    assert "&amp;" not in scripts, "script text must not be HTML-escaped"
+
+    print("  PASS: test_dom_merge_superset_path_preserves_raw_script_text")
+
+
+def test_doctype_emitted_once_with_raw_text_script():
+    """Regression: raw-text stashing must not disturb doctype re-attachment."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-raw-doctype"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    # No doctype — mirrors the extension's outerHTML capture.
+    skeleton_html = (
+        "<html><head><title>Raw Doctype</title>"
+        "<script>var x = a && b;</script></head>"
+        "<body><p>Main content</p></body></html>"
+    )
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    chunk_html = (
+        "<html><head><title>Raw Doctype</title></head>"
+        "<body><p>Main content</p><p>Extra screen</p></body></html>"
+    )
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    chunk_hash = service.compute_content_hash(chunk_html)
+    service.register_chunk(job, chunk_hash, scroll_index=1, storage_path=chunk_path, size=len(chunk_html))
+
+    with open(job.skeleton_path, "r") as f:
+        stored_skeleton = f.read()
+    result_html = service._dom_merge(job, stored_skeleton)
+
+    lower = result_html.lower()
+    assert lower.startswith("<!doctype"), (
+        f"merged output should start with the doctype, got: {result_html[:60]!r}"
+    )
+    assert lower.count("<!doctype") == 1, "doctype must be emitted exactly once"
+    assert "Extra screen" in result_html, "chunk content should be merged"
+    scripts = "\n".join(_script_regions(result_html))
+    assert "var x = a && b;" in scripts, "script must keep && raw"
+
+    print("  PASS: test_doctype_emitted_once_with_raw_text_script")
+
+
+def test_no_stash_token_leakage():
+    """Placeholder tokens must never appear in merged output."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-no-token-leak"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    skeleton_html = (
+        "<!DOCTYPE html><html><head><title>Token Leak</title>"
+        "<script>var head = true && false;</script>"
+        "<style>body > main { color: red }</style></head>"
+        "<body><p>Main content</p><script>var tail = 1 < 2;</script></body></html>"
+    )
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    chunk_html = (
+        "<html><head><title>Token Leak</title></head>"
+        "<body><p>Main content</p>"
+        "<script>if (a && b < c) { go('<\\/div>'); }</script>"
+        "</body></html>"
+    )
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    chunk_hash = service.compute_content_hash(chunk_html)
+    service.register_chunk(job, chunk_hash, scroll_index=1, storage_path=chunk_path, size=len(chunk_html))
+
+    with open(job.skeleton_path, "r") as f:
+        stored_skeleton = f.read()
+    result_html = service._dom_merge(job, stored_skeleton)
+
+    assert "PPSCR" not in result_html, "stash token prefix leaked into output"
+    assert "XQZSTASH" not in result_html, "stash token suffix leaked into output"
+    scripts = "\n".join(_script_regions(result_html))
+    assert "a && b < c" in scripts, "scripts must still carry raw text"
+
+    print("  PASS: test_no_stash_token_leakage")
+
+
 def main():
     print("HTML Merge Service Verification (task 4.9)")
     print("=" * 50)
@@ -957,6 +1187,11 @@ def main():
         test_doctype_prepended_when_missing,
         test_doctype_not_duplicated_when_present,
         test_doctype_preserved_through_dom_merge,
+        test_dom_merge_preserves_raw_script_text,
+        test_dom_merge_preserves_raw_style_text,
+        test_dom_merge_superset_path_preserves_raw_script_text,
+        test_doctype_emitted_once_with_raw_text_script,
+        test_no_stash_token_leakage,
     ]
 
     passed = 0

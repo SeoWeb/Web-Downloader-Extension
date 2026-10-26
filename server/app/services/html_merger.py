@@ -43,6 +43,36 @@ COMPLEXITY_TABLE_ROW_THRESHOLD = 5_000
 
 
 # ---------------------------------------------------------------------------
+# Raw-text-preserving serialization
+# ---------------------------------------------------------------------------
+
+
+def _serialize_preserving_raw_text(tree) -> str:
+    """Serialize an lxml tree/element without escaping <script>/<style> text.
+
+    ``etree.tostring(method="html")`` HTML-escapes ``&``, ``<`` and ``>``
+    inside <script>/<style> text, corrupting inline JS/CSS: browsers treat
+    script/style content as raw text and do NOT decode entities there, so
+    a merged page would execute ``a &amp;&amp; b`` verbatim.  The raw text
+    is stashed under collision-improbable placeholder tokens (unique per
+    call via ``len(stash)``) for serialization and then restored both to
+    the output string and to the tree, so the helper is safe to call
+    repeatedly on the same elements.
+    """
+    stash = []
+    for el in tree.iter("script", "style"):
+        if el.text:
+            token = "PPSCR%dXQZSTASH" % len(stash)
+            stash.append((el, token, el.text))
+            el.text = token
+    out = etree.tostring(tree, encoding="unicode")
+    for el, token, raw in stash:
+        el.text = raw
+        out = out.replace(token, raw)
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
@@ -436,22 +466,22 @@ class HtmlMergerService:
         chunk_children = list(chunk_body)
 
         if skel_children and chunk_children:
-            first_skel = etree.tostring(skel_children[0], encoding="unicode")
-            first_chunk = etree.tostring(chunk_children[0], encoding="unicode")
+            first_skel = _serialize_preserving_raw_text(skel_children[0])
+            first_chunk = _serialize_preserving_raw_text(chunk_children[0])
             if self._compare_html_blocks(first_skel, first_chunk):
                 # First child matches — verify remaining chunk children are
                 # already in the skeleton before declaring superset.
                 skel_html = "".join(
-                    etree.tostring(c, encoding="unicode") for c in skel_children
+                    _serialize_preserving_raw_text(c) for c in skel_children
                 )
                 all_in_skeleton = all(
-                    etree.tostring(c, encoding="unicode") in skel_html
+                    _serialize_preserving_raw_text(c) in skel_html
                     for c in chunk_children
                 )
                 if all_in_skeleton:
                     # etree.tostring drops the skeleton's doctype — re-attach.
                     return self._ensure_doctype(
-                        etree.tostring(skeleton_tree, encoding="unicode")
+                        _serialize_preserving_raw_text(skeleton_tree)
                     )
 
         # Append chunk children to skeleton body with incremental element tracking
@@ -470,7 +500,9 @@ class HtmlMergerService:
             skeleton_body.append(child)
 
         # etree.tostring drops the skeleton's doctype — re-attach.
-        return self._ensure_doctype(etree.tostring(skeleton_tree, encoding="unicode"))
+        return self._ensure_doctype(
+            _serialize_preserving_raw_text(skeleton_tree)
+        )
 
     def _insert_chunks_before_body_end(
         self, skeleton_html: str, chunk_bodies: list[str]
@@ -1049,7 +1081,7 @@ class HtmlMergerService:
                 body = tree.find(".//body")
                 if body is not None:
                     body_inner = (body.text or "") + "".join(
-                        etree.tostring(c, encoding="unicode") for c in body
+                        _serialize_preserving_raw_text(c) for c in body
                     )
                     if body_inner:
                         return body_inner
@@ -1075,7 +1107,7 @@ class HtmlMergerService:
             head_el = tree.find(".//head") if tree is not None else None
             if head_el is not None:
                 head_content = (head_el.text or "") + "".join(
-                    etree.tostring(c, encoding="unicode") for c in head_el
+                    _serialize_preserving_raw_text(c) for c in head_el
                 )
             else:
                 head_content = ""

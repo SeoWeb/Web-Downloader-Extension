@@ -29,6 +29,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup, Tag
+from bs4.element import Script, Stylesheet
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,17 @@ FONT_FACE_SRC_PATTERN = re.compile(
     r"""@font-face\s*\{[^}]*src\s*:\s*[^;]*url\(\s*['"]?(.*?)['"]?\s*\)""",
     re.IGNORECASE,
 )
+
+# A literal "</script" inside inlined JS closes the <script> tag early and
+# leaks the rest of the bundle as document text (bs4 writes <script> content
+# RAW — the formatter skips entity substitution for cdata-containing tags, so
+# nothing else stops the literal). "<\/script" is the standard JS-safe escape:
+# inside string/template literals and regexes "\/" is just "/", so semantics
+# are identical. Case-insensitive because "</SCRIPT" closes the tag too.
+_SCRIPT_CLOSE_RE = re.compile(r"<(/script)", re.IGNORECASE)
+
+# Same early-close class of bug for <style> (e.g. CSS content: "</style>").
+_STYLE_CLOSE_RE = re.compile(r"<(/style)", re.IGNORECASE)
 
 
 # ---------------------------------------------------------------------------
@@ -610,7 +622,8 @@ def _convert_background_images(
     for style_tag in soup.find_all("style"):
         css = style_tag.string or ""
         updated = _convert_bg_image_urls(css, tab_url, path, filename_map, content_type_map, filename_ext_map)
-        style_tag.string = updated
+        # Neutralize literal </style so the tag cannot close early.
+        style_tag.string = Stylesheet(_STYLE_CLOSE_RE.sub(r"<\\\1", updated))
 
 
 def _convert_bg_image_urls(
@@ -1331,7 +1344,9 @@ def _build_single_file_soup(
         # Rewrite url() references in the CSS content to base64
         css_content = _inline_css_urls(css_content, storage_root, session_id, filename_map, local_path_to_storage)
         style_tag = soup.new_tag("style")
-        style_tag.string = css_content
+        # Neutralize literal </style so the inlined CSS cannot close the tag
+        # early; Stylesheet marks cdata-like content (serialized raw).
+        style_tag.string = Stylesheet(_STYLE_CLOSE_RE.sub(r"<\\\1", css_content))
         link.replace_with(style_tag)
 
     # Inline <link rel="preload" as="style"> stylesheets.
@@ -1367,7 +1382,9 @@ def _build_single_file_soup(
             # Same resolution + url() inlining as the stylesheet path.
             css_content = _inline_css_urls(css_content, storage_root, session_id, filename_map, local_path_to_storage)
             style_tag = soup.new_tag("style")
-            style_tag.string = css_content
+            # Neutralize literal </style so the inlined CSS cannot close the
+            # tag early; Stylesheet marks cdata-like content (serialized raw).
+            style_tag.string = Stylesheet(_STYLE_CLOSE_RE.sub(r"<\\\1", css_content))
             link.replace_with(style_tag)
         else:
             # Already inlined as a stylesheet — drop the redundant hint.
@@ -1383,7 +1400,14 @@ def _build_single_file_soup(
         for attr_name, attr_value in script.attrs.items():
             if attr_name != "src":
                 new_script[attr_name] = attr_value
-        new_script.string = js_content or ""
+        # Neutralize literal </script so the inlined JS cannot close the tag
+        # early (bs4 serializes <script> content RAW, so a literal close tag
+        # truncates the bundle and leaks the rest as document text).
+        # "<\/script" is the JS-safe escape with identical semantics inside
+        # string/template literals and regexes. Tag.string copies via
+        # string.__class__(string), so the Script class survives and keeps
+        # the content formatter-exempt.
+        new_script.string = Script(_SCRIPT_CLOSE_RE.sub(r"<\\\1", js_content or ""))
         script.replace_with(new_script)
 
     # Inline object elements with image types
@@ -1406,7 +1430,8 @@ def _build_single_file_soup(
             css = style_tag.get_text()
         css = css or ""
         css = _inline_css_urls(css, storage_root, session_id, filename_map, local_path_to_storage)
-        style_tag.string = css
+        # Neutralize literal </style so the tag cannot close early.
+        style_tag.string = Stylesheet(_STYLE_CLOSE_RE.sub(r"<\\\1", css))
 
     # Inline background-image URLs in inline styles
     for element in soup.find_all(attrs={"style": True}):
@@ -1824,7 +1849,9 @@ def inline_css_into_html(
             )
 
         style_tag = soup.new_tag("style")
-        style_tag.string = css_content
+        # Neutralize literal </style so the inlined CSS cannot close the tag
+        # early; Stylesheet marks cdata-like content (serialized raw).
+        style_tag.string = Stylesheet(_STYLE_CLOSE_RE.sub(r"<\\\1", css_content))
         link.replace_with(style_tag)
 
     return str(soup)
