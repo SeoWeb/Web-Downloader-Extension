@@ -21,6 +21,7 @@ The public entry points are:
 """
 
 import base64
+import hashlib
 import logging
 import os
 import re
@@ -1304,15 +1305,73 @@ def _build_single_file_soup(
                 del source[attr]
 
     # Inline stylesheets: <link rel="stylesheet"> → <style>
+    # Track digests of the raw inlined CSS so a <link rel="preload"
+    # as="style"> pointing at the same file (handled below) is not
+    # inlined a second time.
+    inlined_css_digests: set[str] = set()
     for link in soup.find_all("link", rel="stylesheet"):
         href = link.get("href", "")
         css_content = _read_text_resource(href, storage_root, session_id, filename_map, local_path_to_storage)
-        if css_content is not None:
-            # Rewrite url() references in the CSS content to base64
+        if css_content is None:
+            # An unresolvable stylesheet would stay behind as a dead
+            # relative link — worthless offline and misleading (it 404s
+            # if anything resolves it). Remove it instead. NOTE: this
+            # deviates from the "empty content is used for scripts and
+            # stylesheets" wording of the failed-fetch scenario in
+            # openspec/specs/server-html-converter/spec.md; the spec line
+            # predates this removal and has not been updated yet.
+            logger.warning(
+                "Single-file export (session %s): stylesheet link %r not found "
+                "in filename_map/storage — removing dead link",
+                session_id, href,
+            )
+            link.decompose()
+            continue
+        inlined_css_digests.add(hashlib.sha1(css_content.encode("utf-8")).hexdigest())
+        # Rewrite url() references in the CSS content to base64
+        css_content = _inline_css_urls(css_content, storage_root, session_id, filename_map, local_path_to_storage)
+        style_tag = soup.new_tag("style")
+        style_tag.string = css_content
+        link.replace_with(style_tag)
+
+    # Inline <link rel="preload" as="style"> stylesheets.
+    # WHY: a browser tab can render a STALE cached build whose
+    # <link rel="stylesheet"> points at an old CSS chunk that was never
+    # uploaded (404 on origin), while the CURRENT build's main CSS is
+    # only referenced as preload-as-style (its rel=stylesheet link was
+    # replaced when the new build shipped). Without this pass the
+    # uploaded main CSS would never ship and the export would have no
+    # app styles. Resolve and inline the preloaded CSS exactly like the
+    # stylesheet path above; on failure keep the (harmless) preload hint.
+    for link in soup.find_all("link"):
+        rel = link.get("rel") or []
+        # bs4 parses rel as a multi-valued attribute (a list), but be
+        # defensive about plain strings.
+        rel_values = [rel] if isinstance(rel, str) else list(rel)
+        if not any(isinstance(r, str) and "preload" in r.lower() for r in rel_values):
+            continue
+        as_attr = link.get("as")
+        if not isinstance(as_attr, str) or as_attr.lower() != "style":
+            continue
+        href = link.get("href", "")
+        css_content = _read_text_resource(href, storage_root, session_id, filename_map, local_path_to_storage)
+        if css_content is None:
+            logger.warning(
+                "Single-file export (session %s): preload-as-style link %r not found "
+                "in filename_map/storage — leaving link in place",
+                session_id, href,
+            )
+            continue
+        digest = hashlib.sha1(css_content.encode("utf-8")).hexdigest()
+        if digest not in inlined_css_digests:
+            # Same resolution + url() inlining as the stylesheet path.
             css_content = _inline_css_urls(css_content, storage_root, session_id, filename_map, local_path_to_storage)
             style_tag = soup.new_tag("style")
             style_tag.string = css_content
             link.replace_with(style_tag)
+        else:
+            # Already inlined as a stylesheet — drop the redundant hint.
+            link.decompose()
 
     # Inline scripts: <script src> → <script> with content.
     # Copy all attributes except src so inline scripts keep e.g.
@@ -1416,6 +1475,26 @@ def _tilde_norm(name: str) -> str:
     return name.replace("~", "-")
 
 
+def _basename_norm(name: str) -> str:
+    """Normalize a basename for the fuzzy fallback comparisons below.
+
+    Extends :func:`_tilde_norm` with trailing-hyphen/dot stripping on the
+    stem: the client sanitizer drops trailing ``-`` characters from URL
+    segments when building ``local_path`` (a URL like
+    ``…je483f-.woff2`` is archived as ``…je483f.woff2``), while CSS
+    ``url()`` references keep the raw URL basename. Normalizing both
+    sides lets ``…je483f-.woff2`` match ``…je483f.woff2``.
+
+    Exact-match lookups run first and stay verbatim; this only widens
+    the basename fallbacks (strategies 3 and 4 in ``_resolve_local_path``).
+    """
+    normalized = _tilde_norm(name)
+    stem, ext = os.path.splitext(normalized)
+    if ext:
+        return stem.rstrip("-.") + ext
+    return normalized
+
+
 def _resolve_local_path(
     url: str, storage_root: str, session_id: str, filename_map: Optional[dict[str, str]] = None,
     local_path_to_storage: Optional[dict[str, str]] = None,
@@ -1446,9 +1525,10 @@ def _resolve_local_path(
          ``styles/_next/static/chunks/foo.css``)
 
      Basename comparisons in 3 and 4 normalize ``~`` to ``-`` on both
-     sides (see _tilde_norm) — the client's Windows/legacy sanitizer
-     rewrites ``~`` in archive paths. Exact-match lookups run first and
-     stay verbatim.
+     sides (see _tilde_norm) and strip trailing ``-``/``.`` from the
+     stem (see _basename_norm) — the client's sanitizer rewrites ``~``
+     and drops trailing hyphens in archive paths. Exact-match lookups
+     run first and stay verbatim.
     """
 
     def _resolve_logical(logical: str) -> Optional[str]:
@@ -1491,7 +1571,7 @@ def _resolve_local_path(
             for local_name in filename_map.values()
             if local_name and (
                 clean == local_name
-                or _tilde_norm(os.path.basename(local_name)) == _tilde_norm(clean_base)
+                or _basename_norm(os.path.basename(local_name)) == _basename_norm(clean_base)
             )
         )
         for local_name in candidates:
@@ -1505,7 +1585,7 @@ def _resolve_local_path(
     # deterministic resolution when several keys share a basename.
     if local_path_to_storage:
         for key in sorted(local_path_to_storage):
-            if _tilde_norm(os.path.basename(key)) == _tilde_norm(clean_base):
+            if _basename_norm(os.path.basename(key)) == _basename_norm(clean_base):
                 disk_path = local_path_to_storage[key]
                 if disk_path and os.path.isfile(disk_path):
                     return disk_path

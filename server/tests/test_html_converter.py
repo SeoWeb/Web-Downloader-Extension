@@ -1693,8 +1693,10 @@ def test_single_file_style_block_font_face_urls_inlined():
         )
 
 
-def test_single_file_style_block_unresolvable_urls_left_as_is():
-    """Unresolvable url() refs inside <style> and unresolvable links stay unchanged."""
+def test_single_file_unresolvable_stylesheet_link_removed_and_warned(caplog):
+    """Unresolvable stylesheet link is removed + warned; url() refs stay."""
+    import logging
+
     with tempfile.TemporaryDirectory() as tmp:
         sid = "test-session-single"
         os.makedirs(os.path.join(tmp, sid, "resources"), exist_ok=True)
@@ -1707,7 +1709,8 @@ def test_single_file_style_block_unresolvable_urls_left_as_is():
             ".hero{background:url('./bg/missing.png')}</style>"
             "</head><body></body></html>"
         )
-        result = convert_html_to_single_file(html, TAB_URL, tmp, sid)
+        with caplog.at_level(logging.WARNING, logger="app.services.html_converter"):
+            result = convert_html_to_single_file(html, TAB_URL, tmp, sid)
 
         assert "url(../media/unknown.woff2)" in result, (
             "unresolvable font url() must be left as-is"
@@ -1718,9 +1721,18 @@ def test_single_file_style_block_unresolvable_urls_left_as_is():
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(result, "lxml")
         link = soup.find("link", rel="stylesheet")
-        assert link is not None, "unresolvable stylesheet link must remain a link"
-        assert link.get("href") == "./styles/never-uploaded.css", (
-            f"href changed: {link.get('href')}"
+        assert link is None, (
+            "unresolvable stylesheet link must be removed, not left as a dead ref"
+        )
+        assert "./styles/never-uploaded.css" not in result, (
+            "dead relative stylesheet href must not ship in the output"
+        )
+        warnings = [
+            r for r in caplog.records
+            if r.levelno == logging.WARNING and "never-uploaded.css" in r.getMessage()
+        ]
+        assert warnings, (
+            "a warning naming the unresolvable stylesheet href must be logged"
         )
 
 
@@ -1888,6 +1900,226 @@ def test_single_file_tilde_sanitized_font_url_inlined_via_filename_map():
         assert "data:font/woff2;base64," in result, (
             f"expected font/woff2 data URI, got head: {result[:400]}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Straggler-font trailing-hyphen resolution + preload-as-style inlining
+# (production session 1a01a96f diagnosis)
+# ---------------------------------------------------------------------------
+
+
+def test_single_file_straggler_trailing_hyphen_font_inlined():
+    """url(…je483f-.woff2) resolves to the archived …je483f.woff2 row.
+
+    Production shape (session 1a01a96f-3062-414c-aec6-8fe01e8c05a6,
+    app.pagepocket.app): the client sanitizer drops trailing '-' from URL
+    segments when building local_path, so the uploaded font's local_path is
+    ``images/_next/static/media/4fa387ec64143e14-s.0wkzw~je483f.woff2``
+    while the fonts-chunk CSS (inlined as <style>) still references the raw
+    URL basename ``../media/4fa387ec64143e14-s.0wkzw~je483f-.woff2`` with
+    the trailing hyphen. The font is absent from filename_map (it was
+    fetched as a CSS sub-resource), so only the trailing-hyphen-normalized
+    basename match against local_path_to_storage keys can find it.
+    """
+    import uuid as uuid_mod
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        # Production layout: UUID file name, no extension on disk.
+        uuid_name = str(uuid_mod.uuid4())
+        with open(os.path.join(resources_dir, uuid_name), "wb") as f:
+            f.write(b"wOF2fakefontdata")
+
+        # Archived local_path has NO trailing '-'; the CSS ref keeps it.
+        mapping = {
+            "images/_next/static/media/4fa387ec64143e14-s.0wkzw~je483f.woff2":
+                os.path.join(resources_dir, uuid_name),
+        }
+
+        html = (
+            "<html><head><style>"
+            "@font-face{font-family:Geist;font-style:normal;font-weight:100 900;"
+            'src:url(../media/4fa387ec64143e14-s.0wkzw~je483f-.woff2) format("woff2");}'
+            "</style></head><body></body></html>"
+        )
+        result = convert_html_to_single_file(
+            html, TAB_URL, tmp, sid, local_path_to_storage=mapping
+        )
+
+        assert "url(../media/4fa387ec64143e14-s.0wkzw~je483f-.woff2)" not in result, (
+            "trailing-hyphen font url() ref should have been inlined"
+        )
+        assert "data:font/woff2;base64," in result, (
+            f"expected font/woff2 data URI, got head: {result[:400]}"
+        )
+
+
+def test_resolve_local_path_trailing_hyphen_basename_match():
+    """_resolve_local_path matches a trailing-hyphen ref via storage map; no false hits."""
+    import uuid as uuid_mod
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+        uuid_name = str(uuid_mod.uuid4())
+        with open(os.path.join(resources_dir, uuid_name), "wb") as f:
+            f.write(b"wOF2fakefontdata")
+
+        mapping = {
+            "images/_next/static/media/4fa387ec64143e14-s.0wkzw~je483f.woff2":
+                os.path.join(resources_dir, uuid_name),
+        }
+        resolved = _resolve_local_path(
+            "../media/4fa387ec64143e14-s.0wkzw~je483f-.woff2",
+            tmp, sid, filename_map={}, local_path_to_storage=mapping,
+        )
+        assert resolved == os.path.join(resources_dir, uuid_name), (
+            f"trailing-hyphen ref must resolve via basename fallback, got: {resolved}"
+        )
+        unrelated = _resolve_local_path(
+            "../media/4fa387ec64143e14-s.0wkzw~je483fX-.woff2",
+            tmp, sid, filename_map={}, local_path_to_storage=mapping,
+        )
+        assert unrelated is None, (
+            f"an unrelated basename must not resolve, got: {unrelated}"
+        )
+
+
+def test_single_file_preload_as_style_inlines_main_css_when_stylesheet_dead(caplog):
+    """Stale-build shape: dead stylesheet link + preload-as-style main CSS.
+
+    Production shape (session 1a01a96f…): the tab rendered a stale cached
+    build whose rel=stylesheet href points at an old CSS chunk that was
+    never uploaded (404 on origin), while the CURRENT build's main CSS is
+    only referenced as <link rel=preload as=style> (and WAS uploaded).
+    The export must drop the dead stylesheet link (with a warning) and
+    inline the preloaded main CSS as <style> — otherwise the export ships
+    with no app styles.
+    """
+    import logging
+    import uuid as uuid_mod
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        # ~100KB main CSS, production scale.
+        main_css = "/*main-css-payload-18df4r8e1wq9x*/\n" + ".app-shell{color:#036}\n" * 5000
+        uuid_name = str(uuid_mod.uuid4())
+        with open(os.path.join(resources_dir, uuid_name), "w") as f:
+            f.write(main_css)
+
+        mapping = {
+            "styles/_next/static/chunks/18df4r8e1wq9x.css":
+                os.path.join(resources_dir, uuid_name),
+        }
+
+        html = (
+            "<html><head>"
+            '<link rel="stylesheet" href="./styles/0b4kbavwrqeye.css"/>'
+            '<link rel="preload" as="style" '
+            'href="./styles/_next/static/chunks/18df4r8e1wq9x.css"/>'
+            "</head><body><p>x</p></body></html>"
+        )
+        with caplog.at_level(logging.WARNING, logger="app.services.html_converter"):
+            result = convert_html_to_single_file(
+                html, TAB_URL, tmp, sid, local_path_to_storage=mapping
+            )
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        assert soup.find("link", rel="stylesheet") is None, (
+            "dead stylesheet link must be removed"
+        )
+        assert "./styles/0b4kbavwrqeye.css" not in result, (
+            "dead relative stylesheet href must not ship in the output"
+        )
+        dead_warnings = [
+            r for r in caplog.records
+            if r.levelno == logging.WARNING and "0b4kbavwrqeye.css" in r.getMessage()
+        ]
+        assert dead_warnings, "a warning naming the dead stylesheet must be logged"
+
+        assert soup.find("link", attrs={"rel": "preload"}) is None, (
+            "preload-as-style link must be gone once inlined"
+        )
+        styles = soup.find_all("style")
+        inlined = [s for s in styles if "main-css-payload-18df4r8e1wq9x" in (s.string or "")]
+        assert len(inlined) == 1, (
+            f"main CSS must be inlined exactly once as <style>, got {len(inlined)}"
+        )
+        assert "app-shell{color:#036}" in (inlined[0].string or ""), (
+            "full main CSS content must be embedded"
+        )
+
+
+def test_single_file_preload_as_style_deduped_when_also_stylesheet():
+    """Same CSS reachable as stylesheet AND preload-as-style inlines once."""
+    import uuid as uuid_mod
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        uuid_name = str(uuid_mod.uuid4())
+        with open(os.path.join(resources_dir, uuid_name), "w") as f:
+            f.write(".dup{color:#111}")
+
+        mapping = {
+            "styles/main.css": os.path.join(resources_dir, uuid_name),
+            "styles/_next/static/chunks/main.css": os.path.join(resources_dir, uuid_name),
+        }
+
+        html = (
+            "<html><head>"
+            '<link rel="stylesheet" href="./styles/main.css"/>'
+            '<link rel="preload" as="style" '
+            'href="./styles/_next/static/chunks/main.css"/>'
+            "</head><body><p>x</p></body></html>"
+        )
+        result = convert_html_to_single_file(
+            html, TAB_URL, tmp, sid, local_path_to_storage=mapping
+        )
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        assert soup.find("link", rel="stylesheet") is None, "stylesheet link must be replaced"
+        assert soup.find("link", attrs={"rel": "preload"}) is None, (
+            "duplicate preload-as-style link must be dropped"
+        )
+        styles = [s for s in soup.find_all("style") if ".dup{color:#111}" in (s.string or "")]
+        assert len(styles) == 1, (
+            f"same CSS must be inlined exactly once, got {len(styles)} style tags"
+        )
+
+
+def test_single_file_unresolvable_preload_as_style_keeps_link_and_warns(caplog):
+    """Preload-as-style with no backing file stays a link + logs a warning."""
+    import logging
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session-single"
+        os.makedirs(os.path.join(tmp, sid, "resources"), exist_ok=True)
+
+        html = (
+            "<html><head>"
+            '<link rel="preload" as="style" href="./styles/ghost.css"/>'
+            "</head><body></body></html>"
+        )
+        with caplog.at_level(logging.WARNING, logger="app.services.html_converter"):
+            result = convert_html_to_single_file(html, TAB_URL, tmp, sid)
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        link = soup.find("link", attrs={"rel": "preload"})
+        assert link is not None, "unresolvable preload-as-style link must be left in place"
+        assert link.get("href") == "./styles/ghost.css", f"href changed: {link.get('href')}"
+        warnings = [
+            r for r in caplog.records
+            if r.levelno == logging.WARNING and "ghost.css" in r.getMessage()
+        ]
+        assert warnings, "a warning naming the unresolvable preload must be logged"
 
 
 # ---------------------------------------------------------------------------
