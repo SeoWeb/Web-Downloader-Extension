@@ -13,6 +13,7 @@ import {
   FileText,
   Cloud,
   AlertTriangle,
+  X,
 } from "lucide-react";
 import { CloudUploadState } from "../../components/CloudUploadStatus";
 import { DownloadReport } from "../utils/downloadReport";
@@ -139,7 +140,18 @@ export function DownloadComplete({
 
   return (
     <div className="pt-8 animate-scale-in">
-      <div className="card p-8 bg-gradient-to-b from-green-50 to-white border-green-100 flex flex-col items-center text-center space-y-6">
+      <div className="card relative p-8 bg-gradient-to-b from-green-50 to-white border-green-100 flex flex-col items-center text-center space-y-6">
+        {/* Close (✕) — resets the panel to its just-opened state via the
+            same reset flow as "Download Another" (filters/history/session
+            data persist; only the completion view is dismissed). */}
+        <button
+          onClick={handleReset}
+          className="absolute top-3 right-3 z-10 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+          aria-label={t("actions.close")}
+        >
+          <X className="h-4 w-4" />
+        </button>
+
         <div className="relative">
           <div className="absolute inset-0 bg-green-200 rounded-full animate-ping opacity-30" />
           <CheckCircle className="w-20 h-20 text-green-500" />
