@@ -110,7 +110,10 @@ export default function Filter({
   const handleSingleFileChange = (checked: CheckedState) => {
     const isChecked = !!checked;
     if (isChecked) {
-      setDownloadHTML(false);
+      // Single-file output is one self-contained HTML file, so HTML must
+      // stay on — unchecking it would send the server into text-only
+      // assembly, which has no text sources and fails.
+      setDownloadHTML(true);
       setDownloadImages(false);
       setDownloadLinks(false);
       setDownloadAssets(false);

@@ -126,7 +126,14 @@ class ZipAssemblerService:
                 # keys keep the legacy behavior for old session payloads:
                 # HTML on, both text flags off (backward-compatible defaults).
                 options = session.options or {}
-                download_html = bool(options.get("downloadHtml", True))
+                # singleFile produces a single self-contained HTML file, so it
+                # implies HTML delivery: a singleFile session must never fall
+                # into text-only assembly, even if the client wrongly sent
+                # downloadHtml=false (as current extension builds do — see
+                # filterStore singleFile branch bug).
+                download_html = (
+                    bool(options.get("downloadHtml", True)) or is_single_file
+                )
                 markdown_on = bool(options.get("downloadContentAsMarkdown"))
                 text_on = bool(options.get("downloadContentAsText"))
 
@@ -472,10 +479,10 @@ class ZipAssemblerService:
                         )
                     else:
                         # Multi-file cloud: push processed HTML + assets.
-                        # Text-only cloud (downloadHtml=false) — and singleFile
-                        # sessions with HTML deselected (singleFile is an HTML
-                        # feature, text rules win) — push only the text
-                        # documents from here.
+                        # Text-only cloud (downloadHtml=false with singleFile
+                        # unset — singleFile implies HTML delivery, so it can
+                        # no longer land here) pushes only the text documents
+                        # from here.
                         await self._assemble_cloud_push(
                             session_id, db, session,
                             main_html, linked_page_htmls, page_hash_to_filename,
@@ -495,8 +502,9 @@ class ZipAssemblerService:
 
                 if not download_html:
                     # text-native-downloads 3.2: text-only assembly — no
-                    # index.html and no HTML-only extras. singleFile is an
-                    # HTML feature and is ignored here (text rules win).
+                    # index.html and no HTML-only extras. Applies only when
+                    # HTML is off and singleFile is not set (singleFile
+                    # implies HTML delivery, see the options coercion above).
                     output_path = await self._assemble_text_only(
                         session_id, db, session,
                         content_md=content_md,

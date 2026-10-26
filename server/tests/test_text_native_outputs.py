@@ -565,7 +565,8 @@ class TestTextOnlyAssembly:
 
 
 class TestOutputShapeRules:
-    """Multi-file → zip; singleFile HTML unchanged; text rules win (3.2/3.3)."""
+    """Multi-file → zip; singleFile HTML unchanged; text-only only when HTML
+    is off and singleFile unset (3.2/3.3)."""
 
     def test_html_md_bundle_zip_has_both(self, assembler, storage_root):
         """html+md (HTML on) → zip containing index.html AND content.md."""
@@ -720,10 +721,12 @@ class TestFullAssemblyFlow:
         session_dir = os.path.join(storage_root, session_id)
         assert not [n for n in os.listdir(session_dir) if n.endswith(".html")]
 
-    def test_text_only_local_single_file_ignores_single_file_flag(
+    def test_single_file_with_html_off_produces_single_file_html(
         self, assembler, storage_root,
     ):
-        """singleFile + HTML off → text rules win: raw .md, not single html."""
+        """singleFile + HTML off → singleFile implies HTML delivery: the
+        single-file HTML artifact is produced (md flag ignored per D7),
+        never text-only assembly."""
         session_id = "tn-flow-sf-text"
         _prepare_session_dir(storage_root, session_id)
         session = _make_session(session_id, options={
@@ -735,9 +738,40 @@ class TestFullAssemblyFlow:
         _run_assemble_session(assembler, session, MAIN_HTML)
 
         session_dir = os.path.join(storage_root, session_id)
-        assert os.listdir(session_dir) == ["content.md"]
-        assert session.zip_path.endswith("content.md")
-        assert session.options["outputFilename"] == "content.md"
+        assert session.status == "ready"
+        assert session.zip_path.endswith(".html")
+        assert os.path.exists(session.zip_path)
+        # Exactly one artifact: the single-file HTML (no content.md).
+        assert os.listdir(session_dir) == [os.path.basename(session.zip_path)]
+
+    def test_single_file_with_all_text_flags_off_does_not_fail(
+        self, assembler, storage_root,
+    ):
+        """Regression: singleFile + downloadHtml=false + both text flags off
+        (what current extension builds send) used to fall into text-only
+        assembly and fail with "Text-only download produced no text content".
+        singleFile implies HTML delivery, so the session must complete with
+        the single-file HTML artifact."""
+        session_id = "tn-flow-sf-coerce"
+        _prepare_session_dir(storage_root, session_id)
+        session = _make_session(session_id, options={
+            "singleFile": True,
+            "downloadHtml": False,
+            "downloadContentAsText": False,
+            "downloadContentAsMarkdown": False,
+        })
+
+        _run_assemble_session(assembler, session, MAIN_HTML)
+
+        session_dir = os.path.join(storage_root, session_id)
+        assert session.status == "ready"
+        assert session.error_message is None
+        assert session.zip_path.endswith(".html")
+        assert os.path.exists(session.zip_path)
+        assert os.listdir(session_dir) == [os.path.basename(session.zip_path)]
+        # Raw-file metadata is for text outputs only; html output is unchanged.
+        assert "outputFilename" not in session.options
+        assert "outputContentType" not in session.options
 
 
 # ---------------------------------------------------------------------------

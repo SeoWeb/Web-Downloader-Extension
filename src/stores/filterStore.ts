@@ -40,12 +40,15 @@ interface FilterState {
 function validateFilterOptions(options: FilterOptions): FilterOptions {
   const validated = { ...options };
 
-  // If singleFile is selected, disable all other options
+  // If singleFile is selected, disable all other granular options — but
+  // keep HTML on: singleFile produces one self-contained HTML file, so it
+  // is an HTML download. Forcing HTML off here would route the session
+  // into text-only assembly, which has no text sources and fails.
   if (validated.singleFile) {
     return {
       ...DEFAULT_FILTER_OPTIONS,
       singleFile: true,
-      downloadHTML: false,
+      downloadHTML: true,
       downloadImages: false,
       downloadLinks: false,
       downloadAssets: false,
