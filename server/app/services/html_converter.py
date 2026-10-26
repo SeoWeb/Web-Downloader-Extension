@@ -1829,6 +1829,21 @@ def inline_css_into_html(
     else:
         css_path_adjustment = None  # linked pages keep ../ paths
 
+    def _adjust_css_urls(css: str) -> str:
+        """Adjust url() paths: ../images/ → ./images/ when inlining into root."""
+        if not css_path_adjustment:
+            return css
+        return re.sub(
+            r"(url\(\s*['\"]?)\.\.\/",
+            rf"\1{css_path_adjustment[1]}",
+            css,
+        )
+
+    # Inline stylesheets: <link rel="stylesheet"> → <style>.
+    # Track digests of the raw inlined CSS so a <link rel="preload"
+    # as="style"> pointing at the same file (handled below) is not
+    # inlined a second time. Mirrors _build_single_file_soup.
+    inlined_css_digests: set[str] = set()
     for link in soup.find_all("link", rel="stylesheet"):
         href = link.get("href", "")
         if not href or not isinstance(href, str):
@@ -1837,22 +1852,69 @@ def inline_css_into_html(
         # Read the CSS file from disk
         css_content = _read_text_resource(href, storage_root, session_id, filename_map, local_path_to_storage)
         if css_content is None:
-            logger.warning("CSS file not found for inlining, keeping <link>: %s", href)
+            # An unresolvable stylesheet would stay behind as a dead
+            # relative link — worthless offline and misleading (it 404s
+            # if anything resolves it). Remove it instead, mirroring the
+            # dead-link removal in _build_single_file_soup.
+            logger.warning(
+                "Stylesheet link %r not found in filename_map/storage — "
+                "removing dead link (session %s)",
+                href, session_id,
+            )
+            link.decompose()
             continue
 
+        inlined_css_digests.add(hashlib.sha1(css_content.encode("utf-8")).hexdigest())
+
         # Adjust url() paths: ../images/ → ./images/ when inlining into root
-        if css_path_adjustment:
-            css_content = re.sub(
-                r"(url\(\s*['\"]?)\.\.\/",
-                rf"\1{css_path_adjustment[1]}",
-                css_content,
-            )
+        css_content = _adjust_css_urls(css_content)
 
         style_tag = soup.new_tag("style")
         # Neutralize literal </style so the inlined CSS cannot close the tag
         # early; Stylesheet marks cdata-like content (serialized raw).
         style_tag.string = Stylesheet(_STYLE_CLOSE_RE.sub(r"<\\\1", css_content))
         link.replace_with(style_tag)
+
+    # Inline <link rel="preload" as="style"> stylesheets. Mirrors the
+    # preload fallback in _build_single_file_soup: a browser tab can
+    # render a STALE cached build whose rel=stylesheet href points at an
+    # old CSS chunk that was never uploaded (404 on origin), while the
+    # CURRENT build's main CSS is only referenced as preload-as-style
+    # (and WAS stored). Without this pass the pushed page would ship
+    # with no app styles. Resolve and inline the preloaded CSS exactly
+    # like the stylesheet path above (same path-prefix adjustment); on
+    # failure keep the (harmless) preload hint.
+    for link in soup.find_all("link"):
+        rel = link.get("rel") or []
+        # bs4 parses rel as a multi-valued attribute (a list), but be
+        # defensive about plain strings.
+        rel_values = [rel] if isinstance(rel, str) else list(rel)
+        if not any(isinstance(r, str) and "preload" in r.lower() for r in rel_values):
+            continue
+        as_attr = link.get("as")
+        if not isinstance(as_attr, str) or as_attr.lower() != "style":
+            continue
+        href = link.get("href", "")
+        css_content = _read_text_resource(href, storage_root, session_id, filename_map, local_path_to_storage)
+        if css_content is None:
+            logger.warning(
+                "preload-as-style link %r not found in filename_map/storage — "
+                "leaving link in place (session %s)",
+                href, session_id,
+            )
+            continue
+        digest = hashlib.sha1(css_content.encode("utf-8")).hexdigest()
+        if digest not in inlined_css_digests:
+            # Same path-prefix adjustment as the stylesheet path above.
+            css_content = _adjust_css_urls(css_content)
+            style_tag = soup.new_tag("style")
+            # Neutralize literal </style so the inlined CSS cannot close the
+            # tag early; Stylesheet marks cdata-like content (serialized raw).
+            style_tag.string = Stylesheet(_STYLE_CLOSE_RE.sub(r"<\\\1", css_content))
+            link.replace_with(style_tag)
+        else:
+            # Already inlined as a stylesheet — drop the redundant hint.
+            link.decompose()
 
     return str(soup)
 

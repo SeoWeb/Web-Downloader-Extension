@@ -1176,18 +1176,27 @@ def test_inline_css_preserves_url_paths_for_linked_page():
         assert "../images/bg.jpg" in result, f"../images/ should be preserved for linked page, got: {result}"
 
 
-def test_inline_css_missing_file_keeps_link():
-    """Missing CSS file leaves <link> tag unchanged."""
+def test_inline_css_missing_file_removes_link(caplog):
+    """Missing CSS file: dead <link> removed with a warning (mirrors single-file path)."""
+    import logging
     with tempfile.TemporaryDirectory() as tmp:
         sid = "test-session"
         # No CSS file created
         html = '<html><head><link rel="stylesheet" href="./styles/missing.css"></head><body></body></html>'
-        result = inline_css_into_html(html, tmp, sid, path="./")
+        with caplog.at_level(logging.WARNING, logger="app.services.html_converter"):
+            result = inline_css_into_html(html, tmp, sid, path="./")
 
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(result, "lxml")
         link = soup.find("link", rel="stylesheet")
-        assert link is not None, "Link tag should be preserved when CSS file missing"
+        assert link is None, "Dead stylesheet link should be removed when CSS file missing"
+        assert "./styles/missing.css" not in result, "Dead href must not ship in output"
+        assert soup.find("style") is None, "No stray <style> may be added for a missing file"
+        warnings = [
+            r for r in caplog.records
+            if r.levelno == logging.WARNING and "missing.css" in r.getMessage()
+        ]
+        assert warnings, "a warning naming the dead stylesheet must be logged"
 
 
 def test_inline_css_multiple_stylesheets():
@@ -1391,6 +1400,209 @@ def test_inline_css_with_uuid_storage_and_url_adjustment():
 
         assert "./images/bg.jpg" in result, f"Expected ./images/ path, got: {result}"
         assert "../images/bg.jpg" not in result, f"../images/ should be rewritten"
+
+
+def test_inline_css_preload_as_style_inlines_main_css_when_stylesheet_dead(caplog):
+    """Stale-build shape on the multi-page/cloud path: dead stylesheet + stored preload CSS.
+
+    Production shape (session 6446aa32, pushed page 886236a3): the first
+    page's HTML came from a stale cached Next.js build whose rel=stylesheet
+    href points at a chunk that no longer exists on origin (extension fetch
+    failed), while the CURRENT build's CSS WAS captured and is only referenced
+    as <link rel=preload as=style>. The cloud push must drop the dead
+    stylesheet link (with a warning) and inline the preloaded current CSS as
+    <style> — otherwise the pushed page renders unstyled. Mirrors the Round-5
+    single-file safeguard in _build_single_file_soup. Runs for both path
+    prefixes: "./" (main pages) and "../" (linked pages).
+    """
+    import logging
+    import uuid as uuid_mod
+
+    for prefix in ("./", "../"):
+        with tempfile.TemporaryDirectory() as tmp:
+            sid = "test-session-inline"
+            resources_dir = os.path.join(tmp, sid, "resources")
+            os.makedirs(resources_dir, exist_ok=True)
+
+            # Current-build CSS with a url() ref whose adjustment differs
+            # per prefix ("./" rewrites ../images/ → ./images/, "../" keeps it).
+            main_css = (
+                "/*current-css-13wtj8qk4k5l3*/\n"
+                ".app-shell{color:#036}\n"
+                "body{background:url(../images/bg.jpg)}\n"
+            )
+            uuid_name = str(uuid_mod.uuid4())
+            with open(os.path.join(resources_dir, uuid_name), "w") as f:
+                f.write(main_css)
+
+            mapping = {
+                "styles/_next/static/chunks/13wtj8qk4k5l3.css":
+                    os.path.join(resources_dir, uuid_name),
+            }
+
+            html = (
+                "<html><head>"
+                f'<link rel="stylesheet" href="{prefix}styles/0b4kbavwrqeye.css"/>'
+                f'<link rel="preload" as="style" '
+                f'href="{prefix}styles/_next/static/chunks/13wtj8qk4k5l3.css"/>'
+                "</head><body><p>x</p></body></html>"
+            )
+            with caplog.at_level(logging.WARNING, logger="app.services.html_converter"):
+                result = inline_css_into_html(
+                    html, tmp, sid, path=prefix, local_path_to_storage=mapping
+                )
+
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(result, "lxml")
+            assert soup.find("link", rel="stylesheet") is None, (
+                f"[{prefix}] dead stylesheet link must be removed"
+            )
+            assert "0b4kbavwrqeye.css" not in result, (
+                f"[{prefix}] dead relative stylesheet href must not ship in the output"
+            )
+            dead_warnings = [
+                r for r in caplog.records
+                if r.levelno == logging.WARNING and "0b4kbavwrqeye.css" in r.getMessage()
+            ]
+            assert dead_warnings, "a warning naming the dead stylesheet must be logged"
+
+            assert soup.find("link", attrs={"rel": "preload"}) is None, (
+                f"[{prefix}] preload-as-style link must be gone once inlined"
+            )
+            styles = [s for s in soup.find_all("style") if "13wtj8qk4k5l3" in (s.string or "")]
+            assert len(styles) == 1, (
+                f"[{prefix}] current CSS must be inlined exactly once as <style>, "
+                f"got {len(styles)}"
+            )
+            if prefix == "./":
+                assert "url(./images/bg.jpg)" in (styles[0].string or ""), (
+                    f"[./] inlined CSS must be path-adjusted, got: {styles[0].string!r}"
+                )
+                assert "../images/bg.jpg" not in result, (
+                    f"[./] ../images/ refs must be rewritten when inlining into root"
+                )
+            else:
+                assert "url(../images/bg.jpg)" in (styles[0].string or ""), (
+                    f"[../] linked pages must keep ../images/ refs, got: {styles[0].string!r}"
+                )
+
+
+def test_inline_css_dead_stylesheet_without_preload_removed_no_stray_style(caplog):
+    """Dead stylesheet link with no preload fallback: removed, nothing inlined."""
+    import logging
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        # No CSS files created at all
+        html = (
+            "<html><head>"
+            '<link rel="stylesheet" href="./styles/ghost.css"/>'
+            '<link rel="preload" as="style" href="./styles/ghost.css"/>'
+            "</head><body></body></html>"
+        )
+        with caplog.at_level(logging.WARNING, logger="app.services.html_converter"):
+            result = inline_css_into_html(html, tmp, sid, path="./")
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        assert soup.find("link", rel="stylesheet") is None, (
+            "dead stylesheet link must be removed"
+        )
+        assert soup.find("link", attrs={"rel": "preload"}) is not None, (
+            "unresolvable preload-as-style link must be left in place (harmless hint)"
+        )
+        assert soup.find("style") is None, "no stray <style> may be added"
+        warnings = [
+            r for r in caplog.records
+            if r.levelno == logging.WARNING and "ghost.css" in r.getMessage()
+        ]
+        assert warnings, "a warning naming the dead stylesheet must be logged"
+
+
+def test_inline_css_fully_resolvable_page_regression(caplog):
+    """Regression: fully resolvable page keeps today's behavior — links inlined, nothing removed."""
+    import logging
+    for prefix in ("./", "../"):
+        with tempfile.TemporaryDirectory() as tmp:
+            sid = "test-session"
+            _make_css_file(tmp, sid, "styles/a.css", ".a { color: blue; }")
+            _make_css_file(
+                tmp, sid, "styles/b.css", ".b { background: url(../images/bg.jpg); }"
+            )
+
+            html = (
+                "<html><head>"
+                f'<link rel="stylesheet" href="{prefix}styles/a.css">'
+                f'<link rel="stylesheet" href="{prefix}styles/b.css">'
+                "</head><body></body></html>"
+            )
+            with caplog.at_level(logging.WARNING, logger="app.services.html_converter"):
+                result = inline_css_into_html(html, tmp, sid, path=prefix)
+
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(result, "lxml")
+            assert soup.find("link") is None, f"[{prefix}] all links must be replaced"
+            styles = soup.find_all("style")
+            assert len(styles) == 2, (
+                f"[{prefix}] expected 2 inlined style tags, got {len(styles)}"
+            )
+            combined = " ".join(s.string or "" for s in styles)
+            assert ".a { color: blue; }" in combined, f"[{prefix}] first CSS missing"
+            if prefix == "./":
+                assert "url(./images/bg.jpg)" in combined, (
+                    f"[./] url() refs must be adjusted for root pages"
+                )
+            else:
+                assert "url(../images/bg.jpg)" in combined, (
+                    f"[../] linked pages must keep ../ url() refs"
+                )
+            warnings = [
+                r for r in caplog.records
+                if r.levelno >= logging.WARNING and "removing dead link" in r.getMessage()
+            ]
+            assert not warnings, (
+                f"[{prefix}] resolvable pages must not trigger dead-link removal"
+            )
+
+
+def test_inline_css_preload_deduped_when_also_stylesheet():
+    """Same CSS reachable as stylesheet AND preload-as-style inlines exactly once."""
+    import uuid
+    with tempfile.TemporaryDirectory() as tmp:
+        sid = "test-session"
+        resources_dir = os.path.join(tmp, sid, "resources")
+        os.makedirs(resources_dir, exist_ok=True)
+
+        uuid_name = str(uuid.uuid4())
+        uuid_path = os.path.join(resources_dir, uuid_name)
+        with open(uuid_path, "w") as f:
+            f.write(".dup{color:#111}")
+
+        mapping = {
+            "styles/main.css": uuid_path,
+            "styles/_next/static/chunks/main.css": uuid_path,
+        }
+
+        html = (
+            "<html><head>"
+            '<link rel="stylesheet" href="./styles/main.css"/>'
+            '<link rel="preload" as="style" '
+            'href="./styles/_next/static/chunks/main.css"/>'
+            "</head><body><p>x</p></body></html>"
+        )
+        result = inline_css_into_html(
+            html, tmp, sid, path="./", local_path_to_storage=mapping
+        )
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(result, "lxml")
+        assert soup.find("link", rel="stylesheet") is None, "stylesheet link must be replaced"
+        assert soup.find("link", attrs={"rel": "preload"}) is None, (
+            "duplicate preload-as-style link must be dropped"
+        )
+        styles = [s for s in soup.find_all("style") if ".dup{color:#111}" in (s.string or "")]
+        assert len(styles) == 1, (
+            f"same CSS must be inlined exactly once, got {len(styles)} style tags"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -2377,7 +2589,7 @@ def run_all():
         test_inline_css_replaces_link_with_style,
         test_inline_css_adjusts_url_paths_for_root,
         test_inline_css_preserves_url_paths_for_linked_page,
-        test_inline_css_missing_file_keeps_link,
+        test_inline_css_missing_file_removes_link,
         test_inline_css_multiple_stylesheets,
         # Extensionless/undefined fallbacks (inline-css-file-protocol-fix)
         test_extensionless_stylesheet_gets_css_extension,

@@ -483,12 +483,19 @@ async function executeDownloadServerMode(
 
   try {
     // (12.3) Upload main page HTML as chunk to the server.
-    // scrollIndex 0 = first (and possibly only) chunk for the main page.
+    // scrollIndex 0 = first (and only) chunk for the main page.
     //
-    // (13.3) Skip this upload if HTML chunks were already streamed to the
-    // server during scrolling (via SCROLL_AND_EXTRACT_DIFF or
-    // SERVER_UPLOAD_HTML_CHUNK). This prevents double-uploading and
-    // avoids sending an empty/placeholder HTML string.
+    // (13.3 / START_DOWNLOAD lastSnapshot policy) SKIP the re-upload when
+    // HTML chunks were already streamed to the server during scrolling
+    // (via SERVER_UPLOAD_HTML_CHUNK). The sidepanel streams EVERY scroll
+    // step's full document (indices 0..N-1) — including the final settled
+    // DOM — and START_DOWNLOAD receives that same last chunk's HTML
+    // verbatim (the panel's lastHtml is only set after a successful
+    // stream), so a re-upload would be a redundant duplicate.
+    // hasStreamedHtmlChunks() (message.ts) truthfully tracks
+    // explicit-index streams. When nothing was streamed (no pre-created
+    // session, or a caller that never streams), this chunk-0 upload is
+    // what initializes the server skeleton and must run unchanged.
     if (!hasStreamedHtmlChunks(tabId!)) {
       sendMessage({ key: "status.uploadingHtml" });
       // Do NOT send tabUrl as pageUrl for main page — the server uses

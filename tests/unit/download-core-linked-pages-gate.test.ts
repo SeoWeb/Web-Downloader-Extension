@@ -178,6 +178,7 @@ vi.mock("../../src/common/storage/filterStorage", () => ({
 }));
 
 import { downloadResources } from "../../src/background/download-core";
+import { hasStreamedHtmlChunks } from "../../src/background/message";
 import { serverClient } from "../../src/background/server-client";
 import type { FilterOptions } from "../../src/types/filterTypes";
 
@@ -335,5 +336,46 @@ describe("download-core linked-pages gate", () => {
 
     // And nothing ever hits a bare fetch
     expect(gate.fetchCalls).toEqual([]);
+  });
+
+  // ---------------------------------------------------------------------
+  // START_DOWNLOAD lastSnapshot policy: skip the final HTML re-upload
+  // when chunks were streamed during scrolling; upload chunk 0 otherwise.
+  // ---------------------------------------------------------------------
+  it("uploads the initial HTML chunk (index 0) when nothing was streamed", async () => {
+    vi.mocked(hasStreamedHtmlChunks).mockReturnValue(false);
+
+    const sendMessage = await runDownload(downloadOptions());
+
+    expect(serverClient.uploadHtmlChunk).toHaveBeenCalledTimes(1);
+    expect(serverClient.uploadHtmlChunk).toHaveBeenCalledWith(
+      "session-gate-1",
+      "<html><body>page</body></html>",
+      0,
+      "main",
+    );
+    const keys = sendMessage.mock.calls.map(
+      (call) => (call[0] as { key: string }).key,
+    );
+    expect(keys).toContain("status.uploadingHtml");
+    expect(keys).toContain("status.htmlUploaded");
+  });
+
+  it("skips the HTML re-upload when chunks were streamed during scrolling", async () => {
+    // The sidepanel streams every scroll step (including the final settled
+    // DOM) and START_DOWNLOAD receives that same last chunk's HTML — a
+    // re-upload would duplicate it (and at hardcoded index 0 it would
+    // overwrite the skeleton-initializing chunk server-side).
+    vi.mocked(hasStreamedHtmlChunks).mockReturnValue(true);
+
+    const sendMessage = await runDownload(downloadOptions());
+
+    expect(serverClient.uploadHtmlChunk).not.toHaveBeenCalled();
+    const keys = sendMessage.mock.calls.map(
+      (call) => (call[0] as { key: string }).key,
+    );
+    expect(keys).not.toContain("status.uploadingHtml");
+    // The download still completes normally.
+    expect(keys).toContain("status.complete");
   });
 });

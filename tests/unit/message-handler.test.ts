@@ -201,6 +201,169 @@ describe("messageWorker — server-mode message actions", () => {
   });
 
   // -----------------------------------------------------------------------
+  // Streamed-state tracking — explicit scrollIndex uploads must advance the
+  // per-tab counter so hasStreamedHtmlChunks() truthfully reports that
+  // chunks were streamed. Previously the counter only advanced for callers
+  // WITHOUT an explicit index, stayed 0 forever in the sidepanel's flow,
+  // and download-core re-uploaded the final HTML as chunk 0 (overwriting
+  // the skeleton-initializing chunk server-side).
+  // -----------------------------------------------------------------------
+  describe("SERVER_UPLOAD_HTML_CHUNK streamed-state tracking", () => {
+    /** Unique tab ids so module-level session state never leaks across tests. */
+    const TAB_A = 777001;
+    const TAB_B = 777002;
+    const TAB_C = 777003;
+
+    afterEach(async () => {
+      const { deleteServerSessionState } =
+        await import("../../src/background/message");
+      deleteServerSessionState(TAB_A);
+      deleteServerSessionState(TAB_B);
+      deleteServerSessionState(TAB_C);
+    });
+
+    it("advances the tab counter for explicit scrollIndex uploads", async () => {
+      mock("uploadHtmlChunk").mockResolvedValue({ received: true });
+      const { hasStreamedHtmlChunks, setActiveServerSession } =
+        await import("../../src/background/message");
+
+      setActiveServerSession(TAB_A, "sess-stream");
+      // Session registered, but nothing streamed yet.
+      expect(hasStreamedHtmlChunks(TAB_A)).toBe(false);
+
+      // The sidepanel streams chunk 0 first — even index 0 must mark the
+      // tab as having streamed chunks.
+      await messageWorker(
+        messageActions.SERVER_UPLOAD_HTML_CHUNK,
+        {
+          sessionId: "sess-stream",
+          html: "<p>step 0</p>",
+          scrollIndex: 0,
+          pageType: "main",
+          tabId: TAB_A,
+        },
+        addMessage,
+      );
+      expect(hasStreamedHtmlChunks(TAB_A)).toBe(true);
+      expect(mock("uploadHtmlChunk")).toHaveBeenLastCalledWith(
+        "sess-stream",
+        "<p>step 0</p>",
+        0,
+        "main",
+        undefined,
+      );
+
+      // A later explicit index keeps the counter monotonic (count of
+      // streamed chunks = highest index + 1).
+      await messageWorker(
+        messageActions.SERVER_UPLOAD_HTML_CHUNK,
+        {
+          sessionId: "sess-stream",
+          html: "<p>step 2</p>",
+          scrollIndex: 2,
+          pageType: "main",
+          tabId: TAB_A,
+        },
+        addMessage,
+      );
+
+      // The implicit fallback for callers without an explicit index then
+      // continues AFTER the streamed chunks (index 3, not 0) — this is the
+      // observable assertion of the counter's value.
+      await messageWorker(
+        messageActions.SERVER_UPLOAD_HTML_CHUNK,
+        { html: "<p>implicit</p>", tabId: TAB_A },
+        addMessage,
+      );
+      expect(mock("uploadHtmlChunk")).toHaveBeenLastCalledWith(
+        "sess-stream",
+        "<p>implicit</p>",
+        3,
+        undefined,
+        undefined,
+      );
+    });
+
+    it("does not advance the counter when the upload fails", async () => {
+      mock("uploadHtmlChunk").mockRejectedValue(new Error("chunk too large"));
+      const { hasStreamedHtmlChunks, setActiveServerSession } =
+        await import("../../src/background/message");
+
+      setActiveServerSession(TAB_B, "sess-fail");
+
+      const result = await messageWorker(
+        messageActions.SERVER_UPLOAD_HTML_CHUNK,
+        {
+          sessionId: "sess-fail",
+          html: "<p>step 0</p>",
+          scrollIndex: 0,
+          pageType: "main",
+          tabId: TAB_B,
+        },
+        addMessage,
+      );
+
+      expect(result).toEqual({ success: false, error: "chunk too large" });
+      // A failed chunk never reached the server — hasStreamedHtmlChunks
+      // must not claim coverage, or download-core would skip the
+      // skeleton-initializing chunk-0 upload.
+      expect(hasStreamedHtmlChunks(TAB_B)).toBe(false);
+
+      // And the implicit fallback still assigns index 0 (nothing streamed).
+      mock("uploadHtmlChunk").mockResolvedValue({ received: true });
+      await messageWorker(
+        messageActions.SERVER_UPLOAD_HTML_CHUNK,
+        { html: "<p>implicit</p>", tabId: TAB_B },
+        addMessage,
+      );
+      expect(mock("uploadHtmlChunk")).toHaveBeenLastCalledWith(
+        "sess-fail",
+        "<p>implicit</p>",
+        0,
+        undefined,
+        undefined,
+      );
+    });
+
+    it("keeps advancing the counter for implicit-index callers", async () => {
+      mock("uploadHtmlChunk").mockResolvedValue({ received: true });
+      const { hasStreamedHtmlChunks, setActiveServerSession } =
+        await import("../../src/background/message");
+
+      setActiveServerSession(TAB_C, "sess-implicit");
+
+      // Legacy behavior: no explicit scrollIndex → the fallback assigns and
+      // increments the counter itself.
+      await messageWorker(
+        messageActions.SERVER_UPLOAD_HTML_CHUNK,
+        { html: "<p>chunk</p>", tabId: TAB_C },
+        addMessage,
+      );
+      expect(mock("uploadHtmlChunk")).toHaveBeenLastCalledWith(
+        "sess-implicit",
+        "<p>chunk</p>",
+        0,
+        undefined,
+        undefined,
+      );
+      expect(hasStreamedHtmlChunks(TAB_C)).toBe(true);
+
+      await messageWorker(
+        messageActions.SERVER_UPLOAD_HTML_CHUNK,
+        { html: "<p>chunk 2</p>", tabId: TAB_C },
+        addMessage,
+      );
+      expect(mock("uploadHtmlChunk")).toHaveBeenLastCalledWith(
+        "sess-implicit",
+        "<p>chunk 2</p>",
+        1,
+        undefined,
+        undefined,
+      );
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // 13.1 — SERVER_SCRAPE_COMPLETE
   // -----------------------------------------------------------------------
   describe("SERVER_SCRAPE_COMPLETE", () => {

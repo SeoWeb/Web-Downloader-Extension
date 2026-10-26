@@ -362,7 +362,12 @@ export async function messageWorker(
             error: "No active server session",
           };
         }
-        const scrollIdx = data.scrollIndex ?? (state ? state.scrollIndex++ : 0);
+        const hasExplicitIndex = typeof data.scrollIndex === "number";
+        const scrollIdx = hasExplicitIndex
+          ? data.scrollIndex
+          : state
+            ? state.scrollIndex++
+            : 0;
         const result = await serverClient.uploadHtmlChunk(
           targetSessionId,
           data.html,
@@ -370,6 +375,20 @@ export async function messageWorker(
           data.pageType,
           data.pageUrl,
         );
+        // (streamed-state truthfulness fix) The sidepanel streams every
+        // scroll step with an EXPLICIT scrollIndex (0, 1, 2, …) — previously
+        // only the implicit fallback below advanced this counter, so
+        // hasStreamedHtmlChunks() stayed false and download-core
+        // re-uploaded the final HTML as chunk 0 (server-side: overwrites
+        // the skeleton-initializing chunk file and registers a duplicate
+        // append chunk). Advance the counter on SUCCESS only: a failed
+        // chunk never reached the server, and hasStreamedHtmlChunks must
+        // not claim coverage it does not have. Math.max keeps the counter
+        // monotonic — it counts chunks on the server ("next index"
+        // semantics, same as the fallback increment).
+        if (state && hasExplicitIndex) {
+          state.scrollIndex = Math.max(state.scrollIndex, data.scrollIndex + 1);
+        }
         return { success: true, result };
       } catch (error) {
         return {
