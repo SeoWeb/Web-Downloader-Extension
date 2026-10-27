@@ -74,6 +74,17 @@ const DEFAULT_MAX_CONCURRENCY = 12;
 const MAX_RETRIES = 3;
 const BACKOFF_BASE_MS = 1000; // 1s, 2s, 4s
 const MAX_BACKOFF_MS = 8000;
+/**
+ * (D2) Upper bound on a server-requested `Retry-After` wait we are willing
+ * to honor. Values within the cap are slept out; values beyond it fail the
+ * task terminally instead of parking a concurrency slot for minutes/hours
+ * (resume re-fetches the URL later — see design D5).
+ */
+const MAX_RETRY_AFTER_MS = 60_000;
+/** (D2) Max duration of a single `setTimeout` slice in `sleep()` — long
+ *  waits are chunked so cancellation stays responsive and an MV3 worker
+ *  reap cannot silently drop one far-future timer. */
+const MAX_SLEEP_CHUNK_MS = 1000;
 
 // ---------------------------------------------------------------------------
 // UploadQueue
@@ -249,12 +260,17 @@ export class UploadQueue {
     }
     this.doneWaiters.length = 0;
 
-    // (D2) Terminal-failure log — the queue-wide cancel is a terminal outcome
+    // (D6) Terminal-failure log — the queue-wide cancel is a terminal outcome
     // for every active+pending task; summarize once instead of logging each.
-    console.warn(
-      `[UploadQueue] Queue cancelled: ${activeCount} active + ${pendingCount} pending uploads aborted` +
-        ` (${this.completedCount} had completed successfully)`,
-    );
+    // (D6.2) Only when something was actually aborted: cancelling an
+    // already-drained queue (e.g. the caller's safety-net cancel after a
+    // clean finish) stays silent.
+    if (activeCount + pendingCount > 0) {
+      console.warn(
+        `[UploadQueue] Queue cancelled: ${activeCount} active + ${pendingCount} pending uploads aborted` +
+          ` (${this.completedCount} had completed successfully)`,
+      );
+    }
 
     this.notifyProgress();
   }
@@ -331,10 +347,15 @@ export class UploadQueue {
    * Rejects if the queue is cancelled, or if timeoutMs elapses.
    */
   async waitForAll(timeoutMs?: number): Promise<void> {
-    if (this.isDone()) return;
+    // (D3) Cancelled check MUST run first: cancel() empties pending + active,
+    // so a waiter arriving after a cancel would otherwise resolve "successfully"
+    // via the isDone() early-return instead of rejecting per this method's
+    // documented contract. Already-registered waiters are rejected by
+    // cancel() itself (see below) — together both registration orders reject.
     if (this.cancelled) {
       throw new Error("UploadQueue was cancelled");
     }
+    if (this.isDone()) return;
 
     return new Promise<void>((resolve, reject) => {
       const waiter: { resolve: () => void; reject: (err: Error) => void } = {
@@ -457,12 +478,9 @@ export class UploadQueue {
       this.bytesUploaded += task.totalBytes;
       this.active.delete(task.id);
 
-      this.notifyProgress();
-
-      // Continue processing if there are pending tasks
-      if (this.pending.length > 0) {
-        this.scheduleProcessing();
-      }
+      // (D1) All state mutation completes BEFORE the notification so the
+      // progress snapshot the callback sees is already consistent (D4).
+      this.settleActiveTask();
     } catch (err) {
       await this.handleTaskError(task, err);
     }
@@ -473,6 +491,8 @@ export class UploadQueue {
    *
    * - 5xx / network errors → retry with exponential backoff (max 3 retries)
    * - 429 Rate Limit → retry with Retry-After or exponential backoff
+   *   (Retry-After honored only up to MAX_RETRY_AFTER_MS — beyond the cap
+   *   the task fails terminally without consuming retry budget, D2)
    * - 413 Session Full → fatal, trigger onSessionFull callback
    * - Other 4xx → no retry
    * - AuthenticationError → no retry (ServerClient handles re-registration)
@@ -492,11 +512,16 @@ export class UploadQueue {
       task.blob = null; // release memory
       this.failedCount++;
       this.active.delete(task.id);
+      // (D5) The abort path intentionally KEEPS its resourceUrlMap entry:
+      // a per-task abort is only reachable via queue-wide cancel(), and
+      // user-stopped downloads must stay resumable — the checkpoint's URL
+      // list is what lets a later resume re-upload what this run never
+      // delivered.
       // (D2) Abort is terminal for this task — log it once.
       console.warn(
         `[UploadQueue] Upload aborted (cancelled): path=${task.path} url=${task.originalUrl}`,
       );
-      this.notifyProgress();
+      this.settleActiveTask();
       return;
     }
 
@@ -506,13 +531,14 @@ export class UploadQueue {
       task.blob = null;
       this.failedCount++;
       this.active.delete(task.id);
+      this.resourceUrlMap.delete(task.id); // (D5) exclude from checkpoint
       // (D2) Terminal-failure log — auth failures were silent before.
       console.error(
         `[UploadQueue] Authentication failed after re-registration attempts — ` +
           `upload permanently failed: path=${task.path} session=${task.sessionId} ` +
           `error=${err.message}`,
       );
-      this.notifyProgress();
+      this.settleActiveTask();
       return;
     }
 
@@ -522,6 +548,9 @@ export class UploadQueue {
       task.blob = null;
       this.failedCount++;
       this.active.delete(task.id);
+      // (D5) 413 is terminal — exclude from checkpoint so a resumed session
+      // cannot re-trigger 413 with a URL that was already drained.
+      this.resourceUrlMap.delete(task.id);
 
       // Only drain pending and fire callback on the first 413 — subsequent
       // 413s from concurrent uploads just mark their own task as failed.
@@ -535,6 +564,9 @@ export class UploadQueue {
           pendingTask.status = "failed";
           pendingTask.blob = null;
           this.failedCount++;
+          // (D5) Drained pending tasks will never upload — exclude them from
+          // the checkpoint so resume doesn't re-attempt (and re-413) them.
+          this.resourceUrlMap.delete(pendingTask.id);
           drained++;
         }
 
@@ -544,17 +576,33 @@ export class UploadQueue {
             `drained ${drained} pending uploads, finalizing with partial data`,
         );
 
-        this.notifyProgress();
         this.onSessionFull?.(task.sessionId);
       }
+
+      // (D1) Shared terminal tail — the SECOND concurrent 413 must also
+      // notify (resolving doneWaiters) and resume pending processing, not
+      // just the first one.
+      this.settleActiveTask();
       return;
     }
 
     // (9.3) 429 Rate Limit → retryable with Retry-After or exponential backoff
     if (is429Error(err)) {
+      const retryAfterMs = getRetryAfterFromError(err);
+
+      // (D2) Honor server Retry-After only up to MAX_RETRY_AFTER_MS. Beyond
+      // the cap the task fails terminally — same accounting/logging as
+      // 429-retries-exhaustion, but WITHOUT consuming retry budget — instead
+      // of monopolizing a concurrency slot with a far-future sleep. Resume
+      // retries the URL later (it is excluded from the checkpoint, D5),
+      // which is exactly what the server is asking for.
+      if (retryAfterMs !== undefined && retryAfterMs > MAX_RETRY_AFTER_MS) {
+        this.failTaskPermanently(task, err);
+        return;
+      }
+
       if (task.retries < MAX_RETRIES) {
         task.retries++;
-        const retryAfterMs = getRetryAfterFromError(err);
         const backoffMs = Math.min(
           BACKOFF_BASE_MS * Math.pow(2, task.retries - 1),
           MAX_BACKOFF_MS,
@@ -573,17 +621,8 @@ export class UploadQueue {
         this.executeTask(task).catch(() => {});
         return;
       }
-      // Exhausted retries for 429 — terminal (D2): log once.
-      task.status = "failed";
-      task.blob = null;
-      this.failedCount++;
-      this.active.delete(task.id);
-      this.resourceUrlMap.delete(task.id); // exclude from checkpoint
-      console.error(
-        `[UploadQueue] Upload failed permanently: path=${task.path} retries=${task.retries} ` +
-          `error=${err instanceof Error ? err.message : err}`,
-      );
-      this.notifyProgress();
+      // Exhausted retries for 429 — terminal (D2).
+      this.failTaskPermanently(task, err);
       return;
     }
 
@@ -610,23 +649,10 @@ export class UploadQueue {
       }
     }
 
-    // Non-retryable error or exhausted retries
-    task.status = "failed";
-    task.blob = null; // release memory even on failure
-    this.failedCount++;
-    this.active.delete(task.id);
-    this.resourceUrlMap.delete(task.id); // exclude from checkpoint
-    this.notifyProgress();
-
-    console.error(
-      `[UploadQueue] Upload failed permanently: path=${task.path} retries=${task.retries} ` +
-        `error=${err instanceof Error ? err.message : err}`,
-    );
-
-    // Continue processing if there are pending tasks
-    if (this.pending.length > 0) {
-      this.scheduleProcessing();
-    }
+    // Non-retryable error or exhausted retries — terminal. Accounting,
+    // logging, manifest exclusion, and the (D1) exit tail are shared with
+    // the 429 terminal paths via failTaskPermanently().
+    this.failTaskPermanently(task, err);
   }
 
   // -----------------------------------------------------------------------
@@ -645,6 +671,46 @@ export class UploadQueue {
    */
   private wasFailedByQueueCancel(task: UploadTask): boolean {
     return this.cancelled && !this.active.has(task.id);
+  }
+
+  /**
+   * (D1 — terminal-exit tail) The single exit contract for every path that
+   * removes a task from `active`: after all cleanup and logging, notify
+   * progress (which also resolves waitForAll() waiters once the queue
+   * empties) and resume processing so pending uploads always start.
+   * Routing success AND every terminal branch of handleTaskError through
+   * this tail makes the queue's liveness invariants structural — no exit
+   * can strand waiters or leave pending work unscheduled. Safe to call from
+   * every branch: scheduleProcessing() is idempotent via the `processing`
+   * flag, and after a queue-wide cancel() `pending` is empty (no reschedule).
+   */
+  private settleActiveTask(): void {
+    this.notifyProgress();
+
+    // Continue processing if there are pending tasks
+    if (this.pending.length > 0) {
+      this.scheduleProcessing();
+    }
+  }
+
+  /**
+   * (D2/D5) Terminal task failure shared by 429-retries-exhausted, over-cap
+   * Retry-After, and generic non-retryable/exhausted failures, so all three
+   * produce identical accounting (status, blob release, failedCount, active
+   * slot, checkpoint-manifest exclusion) and the same one-line error log,
+   * then exit through the (D1) settle tail.
+   */
+  private failTaskPermanently(task: UploadTask, err: unknown): void {
+    task.status = "failed";
+    task.blob = null; // release memory even on failure
+    this.failedCount++;
+    this.active.delete(task.id);
+    this.resourceUrlMap.delete(task.id); // exclude from checkpoint
+    console.error(
+      `[UploadQueue] Upload failed permanently: path=${task.path} retries=${task.retries} ` +
+        `error=${err instanceof Error ? err.message : err}`,
+    );
+    this.settleActiveTask();
   }
 
   /**
@@ -670,9 +736,22 @@ export class UploadQueue {
   }
 
   private notifyProgress(): void {
-    this.onProgress?.(this.getProgress());
+    // (D4) A throwing onProgress (e.g. the invalidated-extension-context
+    // sendMessage wrapper in download-core) must never kill an upload, push
+    // a completed task back through handleTaskError (double-counting it as
+    // failed), or skip the reschedule tail — log once and swallow. All task
+    // state mutation happens BEFORE this call, so the snapshot is consistent.
+    try {
+      this.onProgress?.(this.getProgress());
+    } catch (err) {
+      console.warn(
+        `[UploadQueue] onProgress callback threw (ignored): ` +
+          `${err instanceof Error ? err.message : err}`,
+      );
+    }
 
-    // Resolve waitForAll() waiters when the queue empties
+    // Resolve waitForAll() waiters when the queue empties — kept OUTSIDE the
+    // try so a throwing callback can never skip waiter resolution.
     if (this.isDone() && this.doneWaiters.length > 0) {
       const waiters = this.doneWaiters.splice(0);
       for (const { resolve } of waiters) {
@@ -681,8 +760,26 @@ export class UploadQueue {
     }
   }
 
+  /**
+   * (D2) Chunked sleep: waits in slices of ≤ MAX_SLEEP_CHUNK_MS, re-checking
+   * `this.cancelled` between chunks. Cancellation during backoff is honored
+   * promptly, and a long wait (e.g. an honored Retry-After) never depends on
+   * a single far-future timer that an MV3 worker reap would silently drop.
+   */
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => {
+      let remaining = ms;
+      const tick = (): void => {
+        if (this.cancelled || remaining <= 0) {
+          resolve();
+          return;
+        }
+        const slice = Math.min(remaining, MAX_SLEEP_CHUNK_MS);
+        remaining -= slice;
+        setTimeout(tick, slice);
+      };
+      tick();
+    });
   }
 }
 

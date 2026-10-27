@@ -553,6 +553,11 @@ async function executeDownloadServerMode(
   // Track total resources for scrape-complete signal
   let totalResourceCount = 0;
   let scrapeCompleteSent = false;
+  // (D6) True when uploadQueue.waitForAll() resolved cleanly (no user abort,
+  // no drain timeout) — lets the finally block below skip the safety-net
+  // cancel() so a fully successful download doesn't log a spurious
+  // "0 active + 0 pending uploads aborted" warning.
+  let uploadsDrainedCleanly = false;
   // Per-category failed-fetch tally, filled by the file handlers via
   // HandlerOptions.failureTally and reported as `resourcesFailed` on
   // scrape-complete. Declared here so the catch path's best-effort
@@ -895,6 +900,10 @@ async function executeDownloadServerMode(
         30 * 60 * 1000, // cap at 30 minutes
       );
       await uploadQueue.waitForAll(uploadTimeoutMs);
+      // (D6) Drain completed cleanly — the finally block can skip the
+      // safety-net cancel(). An abort during the wait or a timeout rejects,
+      // leaving this false.
+      uploadsDrainedCleanly = true;
       console.log("[ServerMode] All uploads completed");
     } catch (err) {
       // Queue may be cancelled — continue anyway, finalization
@@ -1111,10 +1120,17 @@ async function executeDownloadServerMode(
     // download the assembled ZIP/HTML from the server. The server's
     // own retention/cleanup policy (stale-session timeout) handles
     // eventual deletion.
-    try {
-      storage.getUploadQueue().cancel();
-    } catch {
-      // Ignore cleanup errors
+    // (D6) Safety net only: skipped when the drain completed cleanly
+    // (uploadsDrainedCleanly) — a fully successful download must not log
+    // "0 active + 0 pending uploads aborted". Error/abort/timeout paths
+    // still cancel here; genuine user stops also cancel via the
+    // abort-listener wiring near the top of this function.
+    if (!uploadsDrainedCleanly) {
+      try {
+        storage.getUploadQueue().cancel();
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   }
 }

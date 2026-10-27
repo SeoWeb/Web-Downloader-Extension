@@ -1046,3 +1046,323 @@ describe("UploadQueue resource manifest (D4)", () => {
     expect(queue.getResourceUrls()).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Multi-task terminal-reliability regressions (upload-queue-terminal-reliability)
+//
+// These lock in the queue's two liveness invariants across terminal paths:
+// "an emptied active slot lets pending work start" and "a drained queue
+// resolves its waiters" — plus counter integrity, bounded Retry-After, and
+// checkpoint-manifest symmetry. All previous suites were single-task and
+// could not catch any of these.
+// ---------------------------------------------------------------------------
+
+describe("UploadQueue terminal reliability (multi-task regressions)", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  /** Make retry backoff near-instant while keeping sleep async. */
+  function speedUpSleep(queue: UploadQueue): void {
+    const origSleep = (queue as any).sleep;
+    (queue as any).sleep = (ms: number) =>
+      origSleep.call(queue, Math.min(ms, 10));
+  }
+
+  it("starts pending tasks after all active tasks exhaust 429 retries (F8a)", async () => {
+    let failAttempts = 0;
+    let okAttempts = 0;
+
+    const queue = createStandaloneQueue(
+      { maxConcurrency: 2 },
+      async (_sid, path) => {
+        if (path.startsWith("fail")) {
+          failAttempts++;
+          throw new HttpError("Rate limited", 429);
+        }
+        okAttempts++;
+        await sleep(10);
+        return { ...UPLOAD_OK };
+      },
+    );
+    speedUpSleep(queue);
+
+    // Fire-and-forget so all 5 land in `pending` before processing starts:
+    // fail-a and fail-b take both slots, ok-1..3 must wait for a free one.
+    for (const path of ["fail-a", "fail-b", "ok-1", "ok-2", "ok-3"]) {
+      void queue
+        .enqueue("s1", path, createBlob(100), `https://x/${path}`, "image/png")
+        .catch(() => {});
+    }
+
+    const start = Date.now();
+    await queue.waitForAll(5000);
+    const elapsed = Date.now() - start;
+
+    // Both 429 tasks exhausted their budget (initial + MAX_RETRIES each)
+    // and the three pending tasks started and completed afterwards.
+    expect(failAttempts).toBe(8);
+    expect(okAttempts).toBe(3);
+    const progress = queue.getProgress();
+    expect(progress.failedCount).toBe(2); // exhausted tasks only
+    expect(progress.completedCount).toBe(3);
+    expect(progress.totalCount).toBe(5);
+    // Resolved, not timed out — the pre-fix queue stalled here forever.
+    expect(elapsed).toBeLessThan(5000);
+  });
+
+  it("resolves waiters when a second concurrent 413 lands on the last active task (F8b)", async () => {
+    const localSessionFullCalls: string[] = [];
+    const queue = createStandaloneQueue(
+      { maxConcurrency: 2 },
+      async () => {
+        throw new HttpError("Session full", 413);
+      },
+      { onSessionFull: (sid) => localSessionFullCalls.push(sid) },
+    );
+
+    // Synchronous enqueues: big-a and big-b occupy both slots concurrently;
+    // drained-1 and drained-2 stay pending until the first 413 drains them.
+    for (const path of ["big-a", "big-b", "drained-1", "drained-2"]) {
+      void queue
+        .enqueue("s1", path, createBlob(100), `https://x/${path}`, "image/png")
+        .catch(() => {});
+    }
+
+    const start = Date.now();
+    await queue.waitForAll(2000);
+    const elapsed = Date.now() - start;
+
+    // Waiters resolved by the second 413's terminal tail, not by timeout.
+    expect(elapsed).toBeLessThan(2000);
+    expect(localSessionFullCalls).toEqual(["s1"]); // fired exactly once
+    const progress = queue.getProgress();
+    expect(progress.failedCount).toBe(4); // 2 by 413 + 2 drained, each once
+    expect(progress.completedCount).toBe(0);
+    expect(progress.totalCount).toBe(4);
+  });
+
+  it("cancel() during a Retry-After backoff sleep rejects waiters without leaked counts or a post-wakeup retry (F8c)", async () => {
+    let attempts = 0;
+    const queue = createStandaloneQueue({ maxConcurrency: 1 }, async () => {
+      attempts++;
+      // Retry-After 2s — within the 60s cap, so honored as a backoff sleep.
+      throw new HttpError("Rate limited", 429, 2);
+    });
+
+    void queue
+      .enqueue("s1", "img1", createBlob(100), "https://x/1", "image/png")
+      .catch(() => {});
+    void queue
+      .enqueue("s1", "img2", createBlob(100), "https://x/2", "image/png")
+      .catch(() => {});
+    await sleep(20); // img1 active and parked in its Retry-After sleep; img2 pending
+
+    const waitPromise = queue.waitForAll();
+    queue.cancel();
+    await expect(waitPromise).rejects.toThrow("UploadQueue was cancelled");
+
+    // The chunked sleep must wake at the next ≤1s chunk boundary after the
+    // cancel; wait past the full 2s Retry-After so a cancel-unaware sleep
+    // would have woken and retried within this window.
+    await sleep(2200);
+
+    expect(attempts).toBe(1); // no retry fired after wakeup
+    const progress = queue.getProgress();
+    expect(progress.failedCount).toBe(2); // 1 active + 1 pending, each counted once
+    expect(progress.completedCount).toBe(0);
+    expect(progress.totalCount).toBe(2);
+  });
+
+  it("waitForAll() rejects on a queue cancelled BEFORE the call (F8d)", async () => {
+    const queue = createStandaloneQueue({ maxConcurrency: 1 }, async () => {
+      await sleep(5000);
+      return { ...UPLOAD_OK };
+    });
+
+    void queue
+      .enqueue("s1", "img1", createBlob(100), "https://x/1", "image/png")
+      .catch(() => {});
+    await sleep(20); // upload in flight
+
+    queue.cancel();
+
+    // The old isDone() early-return RESOLVED waiters arriving after a cancel
+    // (cancel empties pending+active); the contract says they must reject.
+    await expect(queue.waitForAll()).rejects.toThrow(
+      "UploadQueue was cancelled",
+    );
+  });
+
+  it("a throwing onProgress does not double-count completed tasks or stall the queue (F8e)", async () => {
+    let attempts = 0;
+    const queue = createStandaloneQueue(
+      {},
+      async () => {
+        attempts++;
+        await sleep(5);
+        return { ...UPLOAD_OK };
+      },
+      {
+        onProgress: () => {
+          // Simulates the invalidated-extension-context sendMessage wrapper.
+          throw new Error("Extension context invalidated.");
+        },
+      },
+    );
+
+    for (let i = 1; i <= 3; i++) {
+      void queue
+        .enqueue(
+          "s1",
+          `img${i}`,
+          createBlob(100),
+          `https://x/${i}`,
+          "image/png",
+        )
+        .catch(() => {});
+    }
+
+    await queue.waitForAll(2000);
+
+    expect(attempts).toBe(3); // each task uploaded exactly once — no null-blob retry
+    const progress = queue.getProgress();
+    expect(progress.completedCount).toBe(3); // incremented exactly once per task
+    expect(progress.failedCount).toBe(0); // success never re-routed to failure
+  });
+
+  it("fails terminally on an oversized Retry-After without sleeping, freeing the slot (F8f)", async () => {
+    let throttledAttempts = 0;
+    const queue = createStandaloneQueue(
+      { maxConcurrency: 1 },
+      async (_sid, path) => {
+        if (path === "throttled") {
+          throttledAttempts++;
+          // 1h — far beyond the 60s cap. Must terminate, not sleep.
+          throw new HttpError("Rate limited", 429, 3600);
+        }
+        await sleep(5);
+        return { ...UPLOAD_OK };
+      },
+    );
+
+    void queue
+      .enqueue(
+        "s1",
+        "throttled",
+        createBlob(100),
+        "https://x/throttled",
+        "image/png",
+      )
+      .catch(() => {});
+    void queue
+      .enqueue("s1", "after", createBlob(100), "https://x/after", "image/png")
+      .catch(() => {});
+
+    const start = Date.now();
+    // Bounded real-time wait: the test must never need to advance an hour.
+    await queue.waitForAll(2000);
+    const elapsed = Date.now() - start;
+
+    expect(elapsed).toBeLessThan(2000);
+    expect(throttledAttempts).toBe(1); // terminal — no retry, budget untouched
+    const progress = queue.getProgress();
+    expect(progress.failedCount).toBe(1);
+    expect(progress.completedCount).toBe(1); // slot freed → queued task ran
+    expect(queue.getResourceUrls()).toEqual([
+      {
+        url: "https://x/after",
+        path: "after",
+        contentType: "image/png",
+        size: 100,
+      },
+    ]); // terminated entry excluded from the checkpoint manifest
+  });
+
+  it("checkpoint-manifest symmetry: auth/413/drained excluded, successful and user-cancelled present (F6)", async () => {
+    // --- Exclusions: auth-failed, 413-failed, and 413-drained tasks
+    const localSessionFullCalls: string[] = [];
+    const queue = createStandaloneQueue(
+      { maxConcurrency: 3 },
+      async (_sid, path) => {
+        if (path === "auth-fail") {
+          throw new AuthenticationError(
+            "Authentication failed after re-registration",
+          );
+        }
+        if (path === "four13") {
+          throw new HttpError("Session full", 413);
+        }
+        await sleep(5);
+        return { ...UPLOAD_OK };
+      },
+      { onSessionFull: (sid) => localSessionFullCalls.push(sid) },
+    );
+
+    // ok + auth-fail + four13 fill the three slots; drained stays pending
+    // until the 413's fail-all drain claims it.
+    for (const path of ["ok", "auth-fail", "four13", "drained"]) {
+      void queue
+        .enqueue("s1", path, createBlob(100), `https://x/${path}`, "image/png")
+        .catch(() => {});
+    }
+    await queue.waitForAll(2000);
+
+    expect(localSessionFullCalls).toEqual(["s1"]);
+    const progress = queue.getProgress();
+    expect(progress.completedCount).toBe(1);
+    expect(progress.failedCount).toBe(3); // auth + 413 + drained
+    // Permanently-failed and 413-drained URLs must not leak into a checkpoint
+    // (a resumed session would re-trigger auth/413 with them).
+    expect(queue.getResourceUrls()).toEqual([
+      { url: "https://x/ok", path: "ok", contentType: "image/png", size: 100 },
+    ]);
+
+    // --- Retention: a user-cancelled (abort-path) task stays resumable
+    const cancelQueue = createStandaloneQueue(
+      { maxConcurrency: 1 },
+      async (_sid, _path, _blob, _url, _ct, signal) => {
+        await new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(resolve, 5000);
+          signal?.addEventListener("abort", () => {
+            clearTimeout(timer);
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        });
+      },
+    );
+    void cancelQueue
+      .enqueue(
+        "s1",
+        "stopped",
+        createBlob(100),
+        "https://x/stopped",
+        "image/png",
+      )
+      .catch(() => {});
+    await sleep(20); // let the upload start
+    cancelQueue.cancel();
+    await sleep(30); // let the abort rejection land
+
+    expect(cancelQueue.getProgress().failedCount).toBe(1);
+    // User-stopped downloads keep their manifest entry so a later resume
+    // can re-upload what this run never delivered (design D5).
+    expect(cancelQueue.getResourceUrls()).toEqual([
+      {
+        url: "https://x/stopped",
+        path: "stopped",
+        contentType: "image/png",
+        size: 100,
+      },
+    ]);
+  });
+});
