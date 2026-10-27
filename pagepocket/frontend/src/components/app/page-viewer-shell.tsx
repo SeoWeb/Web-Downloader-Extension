@@ -12,18 +12,27 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ShareDialog } from "@/components/app/share-dialog";
+import { GalleryView } from "@/components/app/gallery-view";
 import {
   IFRAME_SANDBOX,
   PageFormatViewer,
 } from "@/components/app/page-format-viewer";
 import { useHotkeys } from "@/hooks/use-hotkeys";
+import { useGalleryContent } from "@/hooks/use-gallery-images";
 import {
   CONTENT_FILE_NAMES,
   isLegacyHtmlOnly,
   knownContentFormats,
   type ContentFormat,
 } from "@/lib/content-formats";
+import {
+  archiveImageUrl,
+  galleryImagesFromResponse,
+  isImageGalleryTitle,
+} from "@/lib/gallery";
+import { clientApi } from "@/lib/client-api";
 import type { PageResponse } from "@/lib/api/schemas";
 
 type PageViewerShellProps = {
@@ -48,6 +57,25 @@ type PageViewerShellProps = {
 //   controls inside the archived page keep functioning as captured.
 // - Scripts never run: `allow-scripts` is granted by neither layer.
 
+/**
+ * Brief neutral state while the gallery listing is in flight (image gallery
+ * feature): skeleton tiles in the gallery grid's layout, no iframe flash.
+ */
+function GalleryLoadingPlaceholder() {
+  return (
+    <div aria-busy="true" className="min-h-0 flex-1 px-4 py-4 sm:px-6">
+      <div className="mx-auto w-full max-w-6xl">
+        <Skeleton className="mb-3 h-4 w-24" />
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
+          {Array.from({ length: 8 }, (_, i) => (
+            <Skeleton key={i} className="h-[200px] w-full rounded-lg" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
   const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
@@ -61,6 +89,26 @@ export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
     markdown: `/api/pp/archive/pages/${pageId}/f/${CONTENT_FILE_NAMES.markdown}`,
     text: `/api/pp/archive/pages/${pageId}/f/${CONTENT_FILE_NAMES.text}`,
   };
+
+  // Image gallery (image gallery feature): only pages the downloader titled
+  // as image galleries probe the listing — normal pages never fetch. A
+  // usable answer (is_image_gallery + ≥1 image) replaces the iframe/format
+  // viewer entirely (takes precedence over isLegacyHtmlOnly); a failure or
+  // non-gallery answer falls back to today's rendering.
+  const gallery = useGalleryContent(isImageGalleryTitle(pageMeta?.title), () =>
+    clientApi
+      .listPageImages(pageId)
+      .then((response) =>
+        galleryImagesFromResponse(response, (path) =>
+          archiveImageUrl(pageId, path),
+        ),
+      )
+      .catch(() => null),
+  );
+  // While the gallery lightbox is open it owns the keyboard: the shell's
+  // hotkeys (Escape = back, d/s/Delete) are suppressed so Dialog's Esc
+  // closes just the modal.
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   function handleBack() {
     router.push("/app");
@@ -96,30 +144,34 @@ export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
     window.location.assign(`/api/pp/archive/pages/${pageId}/zip`);
   }
 
-  useHotkeys([
-    {
-      key: "Escape",
-      handler: () => handleBack(),
-    },
-    {
-      key: "d",
-      handler: (e) => {
-        e.preventDefault();
-        handleDownload();
-      },
-    },
-    {
-      key: "s",
-      handler: (e) => {
-        e.preventDefault();
-        setShareOpen(true);
-      },
-    },
-    {
-      key: "Delete",
-      handler: () => handleDelete(),
-    },
-  ]);
+  useHotkeys(
+    lightboxOpen
+      ? []
+      : [
+          {
+            key: "Escape",
+            handler: () => handleBack(),
+          },
+          {
+            key: "d",
+            handler: (e) => {
+              e.preventDefault();
+              handleDownload();
+            },
+          },
+          {
+            key: "s",
+            handler: (e) => {
+              e.preventDefault();
+              setShareOpen(true);
+            },
+          },
+          {
+            key: "Delete",
+            handler: () => handleDelete(),
+          },
+        ],
+  );
 
   const title = pageMeta?.title ?? "Saved Page";
   const sourceUrl = pageMeta?.url;
@@ -188,7 +240,14 @@ export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
             </Button>
           </div>
         </div>
-        {isLegacyHtmlOnly(knownFormats) ? (
+        {gallery.status === "gallery" ? (
+          <GalleryView
+            images={gallery.images}
+            onLightboxOpenChange={setLightboxOpen}
+          />
+        ) : gallery.status === "loading" ? (
+          <GalleryLoadingPlaceholder />
+        ) : isLegacyHtmlOnly(knownFormats) ? (
           <iframe
             src={fileUrls.html}
             sandbox={IFRAME_SANDBOX}

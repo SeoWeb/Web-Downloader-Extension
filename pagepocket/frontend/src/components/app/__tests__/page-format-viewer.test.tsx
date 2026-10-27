@@ -421,12 +421,15 @@ describe("PublicViewerShell share parity", () => {
     expect(fetchMock).toHaveBeenCalledWith(SHARE_MD_URL, expect.anything());
   });
 
-  it("legacy share (no formats) keeps the bare iframe", () => {
+  it("legacy share (no formats) keeps the bare iframe", async () => {
     render(<PublicViewerShell token="tok" />);
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    // The share-side gallery probe (image gallery feature) hits the images
+    // route once; the stub's 404 degrades to today's bare iframe.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/sc/tok/images");
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
-    const iframe = screen.getByTitle("Shared page content");
+    const iframe = await screen.findByTitle("Shared page content");
     expect(iframe).toHaveAttribute("src", "/api/sc/tok/index.html");
     expect(iframe).toHaveAttribute("sandbox", "allow-popups allow-forms");
   });

@@ -85,6 +85,11 @@ class ArchiveServiceStub(object):
                 request_serializer=archive__pb2.GetStorageUsageRequest.SerializeToString,
                 response_deserializer=archive__pb2.GetStorageUsageResponse.FromString,
                 _registered_method=True)
+        self.ListPageImages = channel.unary_unary(
+                '/archive.ArchiveService/ListPageImages',
+                request_serializer=archive__pb2.ListPageImagesRequest.SerializeToString,
+                response_deserializer=archive__pb2.ListPageImagesResponse.FromString,
+                _registered_method=True)
 
 
 class ArchiveServiceServicer(object):
@@ -161,6 +166,17 @@ class ArchiveServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ListPageImages(self, request, context):
+        """Additive (gallery-lightbox 1.1/D1): image-asset listing for one archived
+        page, driving the frontend lightbox. The service lists the page's R2
+        assets/ prefix, keeps image extensions only, and returns page-relative
+        paths INCLUDING the assets/ prefix so the existing /f/{path} file routes
+        resolve them directly. Ownership is enforced exactly like GetArchiveFile.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ArchiveServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -213,6 +229,11 @@ def add_ArchiveServiceServicer_to_server(servicer, server):
                     servicer.GetStorageUsage,
                     request_deserializer=archive__pb2.GetStorageUsageRequest.FromString,
                     response_serializer=archive__pb2.GetStorageUsageResponse.SerializeToString,
+            ),
+            'ListPageImages': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListPageImages,
+                    request_deserializer=archive__pb2.ListPageImagesRequest.FromString,
+                    response_serializer=archive__pb2.ListPageImagesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -485,6 +506,33 @@ class ArchiveService(object):
             '/archive.ArchiveService/GetStorageUsage',
             archive__pb2.GetStorageUsageRequest.SerializeToString,
             archive__pb2.GetStorageUsageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListPageImages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/archive.ArchiveService/ListPageImages',
+            archive__pb2.ListPageImagesRequest.SerializeToString,
+            archive__pb2.ListPageImagesResponse.FromString,
             options,
             channel_credentials,
             insecure,

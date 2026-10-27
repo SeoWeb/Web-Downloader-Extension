@@ -172,6 +172,41 @@ async def view_page(request: Request, page_id: str):
     return {"page_id": page_id, "expires_at": resp.expires_at or None}
 
 
+@router.get("/pages/{page_id}/images")
+async def list_page_images(request: Request, page_id: str):
+    """Image-asset listing for the frontend lightbox (gallery-lightbox 2.1).
+
+    Plain proxy of ArchiveService.ListPageImages: ownership is enforced
+    upstream (unknown/foreign ids → NOT_FOUND → 404, no existence leak).
+    Paths are page-relative INCLUDING the assets/ prefix, so the existing
+    /f/{path} routes resolve them directly; order and the is_image_gallery
+    flag pass through untouched (service-side contract).
+    """
+    try:
+        resp = await run_in_threadpool(
+            archive_stub().ListPageImages,
+            archive_pb2.ListPageImagesRequest(
+                page_id=page_id,
+                user_id=request.state.user_id,
+            ),
+            timeout=30,
+        )
+    except grpc.RpcError as e:
+        handle_grpc_error(e)
+    return {
+        "images": [
+            {
+                "path": image.path,
+                "content_type": image.content_type,
+                "size_bytes": image.size_bytes,
+            }
+            for image in resp.images
+        ],
+        "is_image_gallery": resp.is_image_gallery,
+        "total": len(resp.images),
+    }
+
+
 @router.delete("/pages/{page_id}")
 async def delete_page(request: Request, page_id: str):
     try:

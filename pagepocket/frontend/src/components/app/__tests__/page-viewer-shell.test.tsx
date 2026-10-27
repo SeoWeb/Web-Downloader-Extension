@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // Shared, observable next/navigation stub (same shape as
@@ -22,10 +22,47 @@ vi.mock("../share-dialog", () => ({
   ShareDialog: () => null,
 }));
 
+vi.mock("@/lib/client-api", () => ({
+  clientApi: {
+    listPageImages: vi.fn(),
+  },
+}));
+
+import { clientApi } from "@/lib/client-api";
+import type { PageImagesResponse, PageResponse } from "@/lib/api/schemas";
+
 const { PageViewerShell } = await import("../page-viewer-shell");
 
 function renderShell() {
   return render(<PageViewerShell pageId="test-page-id" pageMeta={null} />);
+}
+
+const galleryPageMeta: PageResponse = {
+  id: "test-page-id",
+  user_id: "user-1",
+  url: "https://example.com/trip",
+  title: "Trip — Image Gallery",
+  // No trailing Z — the shell appends one (formatDistanceToNow input).
+  archived_at: "2026-01-01T00:00:00",
+  content_formats: ["html"],
+};
+
+function renderGalleryShell(pageMeta: PageResponse = galleryPageMeta) {
+  return render(<PageViewerShell pageId="test-page-id" pageMeta={pageMeta} />);
+}
+
+function galleryListing(
+  partial: Partial<PageImagesResponse> = {},
+): PageImagesResponse {
+  return {
+    images: [
+      { path: "assets/alpha.jpg", content_type: "image/jpeg", size_bytes: 11 },
+      { path: "assets/beta.png", content_type: "image/png", size_bytes: 22 },
+    ],
+    is_image_gallery: true,
+    total: 2,
+    ...partial,
+  };
 }
 
 // jsdom marks Location members ([LegacyUnforgeable]) non-configurable, so
@@ -45,6 +82,7 @@ beforeEach(() => {
     writable: true,
     configurable: true,
   });
+  vi.mocked(clientApi.listPageImages).mockResolvedValue(galleryListing());
   vi.clearAllMocks();
 });
 
@@ -129,6 +167,89 @@ describe("PageViewerShell", () => {
 
     it("navigates to /app on Escape (same back handler)", () => {
       renderShell();
+      fireEvent.keyDown(document.body, { key: "Escape" });
+      expect(nav.push).toHaveBeenCalledTimes(1);
+      expect(nav.push).toHaveBeenCalledWith("/app");
+    });
+  });
+
+  describe("image gallery (authed side)", () => {
+    it("renders GalleryView instead of the iframe for a gallery-titled page with images", async () => {
+      renderGalleryShell();
+
+      const thumbs = await screen.findAllByRole("img");
+      expect(thumbs).toHaveLength(2);
+      expect(thumbs[0]).toHaveAttribute(
+        "src",
+        "/api/pp/archive/pages/test-page-id/f/assets/alpha.jpg",
+      );
+      expect(screen.getByText("2 images")).toBeInTheDocument();
+      // The gallery branch takes precedence over the legacy iframe.
+      expect(screen.queryByTitle("Saved page content")).not.toBeInTheDocument();
+      expect(clientApi.listPageImages).toHaveBeenCalledTimes(1);
+      expect(clientApi.listPageImages).toHaveBeenCalledWith("test-page-id");
+    });
+
+    it("falls back to the iframe when the images fetch fails", async () => {
+      vi.mocked(clientApi.listPageImages).mockRejectedValue(new Error("boom"));
+
+      renderGalleryShell();
+
+      const iframe = await screen.findByTitle("Saved page content");
+      expect(iframe).toHaveAttribute("sandbox", "allow-popups allow-forms");
+      expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    });
+
+    it("falls back to the iframe when the response is not a gallery", async () => {
+      vi.mocked(clientApi.listPageImages).mockResolvedValue(
+        galleryListing({ is_image_gallery: false }),
+      );
+
+      renderGalleryShell();
+
+      expect(
+        await screen.findByTitle("Saved page content"),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    });
+
+    it("falls back to the iframe when the gallery has no images", async () => {
+      vi.mocked(clientApi.listPageImages).mockResolvedValue(
+        galleryListing({ images: [], total: 0 }),
+      );
+
+      renderGalleryShell();
+
+      expect(
+        await screen.findByTitle("Saved page content"),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    });
+
+    it("never fetches images for a non-gallery title (zero cost for normal pages)", async () => {
+      renderShell();
+
+      expect(screen.getByTitle("Saved page content")).toBeInTheDocument();
+      expect(clientApi.listPageImages).not.toHaveBeenCalled();
+    });
+
+    it("suppressed shell hotkeys while the lightbox is open: Escape closes the modal instead of navigating back", async () => {
+      renderGalleryShell();
+
+      const thumbnail = await screen.findByRole("button", {
+        name: "Open alpha.jpg (1 of 2)",
+      });
+      await userEvent.click(thumbnail);
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(nav.push).not.toHaveBeenCalled();
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+
+      // With the lightbox closed the shell's Escape = back is active again.
       fireEvent.keyDown(document.body, { key: "Escape" });
       expect(nav.push).toHaveBeenCalledTimes(1);
       expect(nav.push).toHaveBeenCalledWith("/app");

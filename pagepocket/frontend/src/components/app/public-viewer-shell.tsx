@@ -4,12 +4,19 @@ import {
   IFRAME_SANDBOX,
   PageFormatViewer,
 } from "@/components/app/page-format-viewer";
+import { GalleryView } from "@/components/app/gallery-view";
+import { useGalleryContent } from "@/hooks/use-gallery-images";
 import {
   CONTENT_FILE_NAMES,
   isLegacyHtmlOnly,
   knownContentFormats,
   type ContentFormat,
 } from "@/lib/content-formats";
+import {
+  fetchSharePageImages,
+  galleryImagesFromResponse,
+  shareImageUrl,
+} from "@/lib/gallery";
 
 // Nested sandbox intersection (defense in depth, archived-html-serving):
 // the serving route (/api/sc/*) already responds with
@@ -44,6 +51,44 @@ export function PublicViewerShell({ token, formats }: PublicViewerShellProps) {
     markdown: `/api/sc/${token}/${CONTENT_FILE_NAMES.markdown}`,
     text: `/api/sc/${token}/${CONTENT_FILE_NAMES.text}`,
   };
+
+  // Image gallery (image gallery feature). The share validation payload
+  // carries NO page title (ValidateShareResponseSchema: valid/page_id/
+  // expires_at/content_formats only), so the title trigger used by the
+  // authed viewer is unavailable here. Safe trigger instead: probe the
+  // images listing ONCE for html-only share pages (gallery archives are
+  // html-only). Cost for a non-gallery share: one cheap 404/JSON request,
+  // after which today's iframe renders unchanged; format-switcher pages
+  // (markdown/text known) are never probed at all. Any failure or
+  // non-gallery answer falls back to today's rendering.
+  const gallery = useGalleryContent(isLegacyHtmlOnly(knownFormats), () =>
+    fetchSharePageImages(token).then((response) =>
+      response
+        ? galleryImagesFromResponse(response, (path) =>
+            shareImageUrl(token, path),
+          )
+        : null,
+    ),
+  );
+
+  if (gallery.status === "gallery") {
+    return (
+      <div className="flex h-[calc(100dvh-3rem)] flex-1 flex-col">
+        <GalleryView images={gallery.images} />
+      </div>
+    );
+  }
+
+  if (gallery.status === "loading") {
+    return (
+      <div
+        aria-busy="true"
+        className="flex h-[calc(100dvh-3rem)] flex-1 items-center justify-center"
+      >
+        <p className="text-muted-foreground text-sm">Loading gallery…</p>
+      </div>
+    );
+  }
 
   if (isLegacyHtmlOnly(knownFormats)) {
     return (

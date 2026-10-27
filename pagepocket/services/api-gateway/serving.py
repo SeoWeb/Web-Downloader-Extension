@@ -14,38 +14,16 @@ an identical, sandboxing header set:
 
 SANDBOX_CSP = "sandbox allow-popups allow-forms"
 
-# Extension → content-type map, shared by every file-serving route (previously
-# duplicated in routers/archive.py and routers/share.py).
-CONTENT_TYPE_MAP: dict[str, str] = {
-    ".html": "text/html; charset=utf-8",
-    ".md": "text/markdown; charset=utf-8",
-    ".txt": "text/plain; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".js": "application/javascript",
-    ".json": "application/json",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".png": "image/png",
-    ".gif": "image/gif",
-    ".webp": "image/webp",
-    ".svg": "image/svg+xml",
-    ".ico": "image/x-icon",
-    ".woff": "font/woff",
-    ".woff2": "font/woff2",
-    ".ttf": "font/ttf",
-    ".mp4": "video/mp4",
-    ".webm": "video/webm",
-    ".mp3": "audio/mpeg",
-    ".wasm": "application/wasm",
-}
-
-DEFAULT_CONTENT_TYPE = "application/octet-stream"
-
-
-def content_type_for_path(file_path: str) -> str:
-    """Pin a content type from the archive-relative path's extension."""
-    ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
-    return CONTENT_TYPE_MAP.get(f".{ext}", DEFAULT_CONTENT_TYPE)
+# Extension → content-type map, shared by every file-serving route. The map
+# itself (and the image-extension set used by archive-service's gallery
+# listing) lives in shared/content_types.py — the canonical cross-service
+# source (gallery-lightbox added .avif → image/avif there). Re-exported here
+# so the gateway's `from serving import ...` imports stay unchanged.
+from content_types import (  # shared/ is on the import path
+    CONTENT_TYPE_MAP,  # noqa: F401  -- re-export for gateway file routes
+    DEFAULT_CONTENT_TYPE,
+    content_type_for_path,  # noqa: F401  -- re-export for gateway file routes
+)
 
 
 def pin_content_type(content_type: str) -> str:

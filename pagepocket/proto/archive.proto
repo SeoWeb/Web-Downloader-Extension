@@ -26,6 +26,12 @@ service ArchiveService {
   // here — that remains an ingest-time concern. The gateway proxies it with
   // the JWT's user_id and plan.
   rpc GetStorageUsage(GetStorageUsageRequest) returns (GetStorageUsageResponse);
+  // Additive (gallery-lightbox 1.1/D1): image-asset listing for one archived
+  // page, driving the frontend lightbox. The service lists the page's R2
+  // assets/ prefix, keeps image extensions only, and returns page-relative
+  // paths INCLUDING the assets/ prefix so the existing /f/{path} file routes
+  // resolve them directly. Ownership is enforced exactly like GetArchiveFile.
+  rpc ListPageImages(ListPageImagesRequest) returns (ListPageImagesResponse);
 }
 
 message Asset {
@@ -201,4 +207,32 @@ message GetStorageUsageResponse {
   int64 storage_limit_bytes = 4;
   int32 page_limit_monthly = 5;
   string plan = 6;
+}
+
+message ListPageImagesRequest {
+  string page_id = 1;
+  // Mandatory: the page owner's user id. Ownership is enforced on every
+  // call — share-token access does NOT bypass user_id scoping (the gateway
+  // resolves the owner from the share token and supplies it here), matching
+  // GetArchiveFile. Unknown/foreign pages are always NOT_FOUND.
+  string user_id = 2;
+}
+
+// One image asset of a page (gallery-lightbox). path is the page-relative
+// archive path INCLUDING the assets/ prefix ("assets/foo.jpg"), so callers
+// can feed it straight into the existing /f/{path} file routes.
+message PageImage {
+  string path = 1;
+  string content_type = 2;
+  int64 size_bytes = 3;
+}
+
+message ListPageImagesResponse {
+  // Image assets only (jpg/jpeg/png/gif/webp/svg/ico/avif), sorted by path
+  // ascending — the same deterministic order the monolith gallery push uses.
+  repeated PageImage images = 1;
+  // True when the page is an images-only gallery push: the page title ends
+  // with " — Image Gallery" (em-dash) or equals "Image Gallery" (monolith
+  // zip_assembler._gallery_title). Independent of the image count.
+  bool is_image_gallery = 2;
 }

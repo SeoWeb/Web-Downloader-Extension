@@ -38,6 +38,7 @@ from cache_config import (
     key_pages_list,
     pattern_pages,
 )
+from content_types import IMAGE_EXTENSIONS, content_type_for_path
 from db import db_session, get_engine
 from grpc_pool import get_stub
 from models import PLAN_LIMITS, Page, UserQuota
@@ -83,6 +84,20 @@ _CONTENT_OBJECTS = {
     "markdown": ("index.md", "text/markdown; charset=utf-8"),
     "text": ("index.txt", "text/plain; charset=utf-8"),
 }
+
+# Gallery pages (gallery-lightbox): the monolith's images-only cloud push
+# (zip_assembler._gallery_title) marks the page row with one of these title
+# shapes; the lightbox flags them so the viewer can open straight into the
+# gallery layout.
+_GALLERY_TITLE = "Image Gallery"
+_GALLERY_TITLE_SUFFIX = " — Image Gallery"  # em-dash U+2014, set by the push
+
+
+def _is_image_gallery_title(title: str | None) -> bool:
+    """True iff the page row's title marks an images-only gallery push."""
+    if not title:
+        return False
+    return title == _GALLERY_TITLE or title.endswith(_GALLERY_TITLE_SUFFIX)
 
 
 def _classify_r2_error(exc: Exception) -> grpc.StatusCode:
@@ -770,6 +785,85 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                 "File not found" if code == grpc.StatusCode.NOT_FOUND else "Storage error"
             )
             return archive_pb2.ArchiveFileResponse()
+
+    def ListPageImages(self, request, context):
+        """Image-asset listing for one page (gallery-lightbox 1.1/D1).
+
+        Ownership is enforced exactly like GetArchiveFile (missing and
+        foreign pages are the same NOT_FOUND — no existence leak). The R2
+        assets/ prefix listing is the source of truth (no manifest needed —
+        same reasoning as ExportPage's D2); non-image extensions and unsafe
+        keys are skipped, and the result is sorted by path ascending so the
+        lightbox order matches the monolith gallery push deterministically.
+        Paths are page-relative INCLUDING the assets/ prefix, so the
+        existing /f/{path} file routes resolve them without mapping.
+        """
+        # Mandatory ownership (2.3): an empty user_id is a hard error, never
+        # a wildcard. Share flows resolve the owner at ValidateToken.
+        if not request.user_id:
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details("user_id is required")
+            return archive_pb2.ListPageImagesResponse()
+
+        with db_session(self.engine) as session:
+            page = session.execute(
+                select(Page).where(Page.id == request.page_id)
+            ).scalar_one_or_none()
+
+            if not page or page.user_id != request.user_id:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details("Page not found")
+                return archive_pb2.ListPageImagesResponse()
+
+            # Read before the session closes (commit would expire instances).
+            user_id = page.user_id
+            page_id = page.id
+            is_gallery = _is_image_gallery_title(page.title)
+
+        assets_prefix = f"{user_id}/{page_id}/assets/"
+
+        # D2: prefix listing over {user_id}/{page_id}/assets/ — the thumbnail
+        # ({user_id}/{page_id}.webp) sits outside it and is excluded
+        # naturally. Size comes straight from the listing (no per-object
+        # HEAD round trip).
+        try:
+            listed: list[tuple[str, int]] = []  # (relative asset path, size)
+            paginator = self.r2.client.get_paginator("list_objects_v2")
+            for page_of in paginator.paginate(Bucket=self.r2.bucket, Prefix=assets_prefix):
+                for obj in page_of.get("Contents", []):
+                    rel = obj["Key"][len(assets_prefix):]
+                    listed.append((rel, int(obj.get("Size") or 0)))
+        except Exception as exc:
+            code = _classify_r2_error(exc)
+            logger.error("ListPageImages: R2 listing failed for %s: %s", assets_prefix, exc)
+            context.set_code(code)
+            context.set_details("Storage error")
+            return archive_pb2.ListPageImagesResponse()
+
+        # Path safety first (2.8): a listed key that cannot be represented as
+        # a safe page-relative path is skipped — never surfaced to clients.
+        # Then keep image extensions only, with the shared serving map's
+        # content type (shared/content_types.py — single source of truth).
+        images: list[archive_pb2.PageImage] = []
+        for rel, size in listed:
+            if not rel or _normalize_archive_rel_path(rel) != rel:
+                logger.warning("ListPageImages: skipping unsafe object key %s%s", assets_prefix, rel)
+                continue
+            ext = os.path.splitext(rel)[1].lower()
+            if ext not in IMAGE_EXTENSIONS:
+                continue
+            images.append(archive_pb2.PageImage(
+                path=f"assets/{rel}",
+                content_type=content_type_for_path(rel),
+                size_bytes=size,
+            ))
+
+        images.sort(key=lambda image: image.path)
+
+        return archive_pb2.ListPageImagesResponse(
+            images=images,
+            is_image_gallery=is_gallery,
+        )
 
     def ExportPage(self, request, context):
         """Stream one archived page as a zip64 ZIP (add-page-export-zip, D1–D3).

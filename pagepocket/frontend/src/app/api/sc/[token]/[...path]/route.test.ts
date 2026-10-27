@@ -266,3 +266,93 @@ describe("streaming body handling", () => {
     );
   });
 });
+
+describe("GET /api/sc/[token]/images — share gallery listing", () => {
+  it("forwards /images without the /f/ infix and streams the JSON through", async () => {
+    const body = '{"images":[],"is_image_gallery":true,"total":0}';
+    fetchMock.mockResolvedValue(
+      gatewayResponse(body, { "Content-Type": "application/json" }),
+    );
+
+    const res = await callGet("tok", ["images"]);
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [upstreamUrl] = fetchMock.mock.calls[0]!;
+    expect(String(upstreamUrl)).toBe(`${API_BASE}/share/public/tok/images`);
+    expect(res.headers.get("content-type")).toBe("application/json");
+    expect(await res.text()).toBe(body);
+  });
+
+  it("applies no sandbox/CORS overlay (first-party JSON, never iframe-served)", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("{}", { "Content-Type": "application/json" }),
+    );
+
+    const res = await callGet("tok", ["images"], {
+      origin: "null",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-security-policy")).toBeNull();
+    expect(res.headers.get("x-content-type-options")).toBeNull();
+    expect(res.headers.get("referrer-policy")).toBeNull();
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("pins no-store when the gateway sends no cache-control (dynamic listing)", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("{}", { "Content-Type": "application/json" }),
+    );
+
+    const res = await callGet("tok", ["images"]);
+
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("keeps the upstream cache-control when present", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("{}", {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=60",
+      }),
+    );
+
+    const res = await callGet("tok", ["images"]);
+
+    expect(res.headers.get("cache-control")).toBe("public, max-age=60");
+  });
+
+  it("passes upstream 404 through (non-gallery share → viewer fallback)", async () => {
+    fetchMock.mockResolvedValue(new Response("Not found", { status: 404 }));
+
+    const res = await callGet("tok", ["images"]);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("still validates the token before proxying the listing", async () => {
+    const res = await callGet("tok%00", ["images"]);
+
+    expect(res.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the file behavior for paths that merely contain 'images'", async () => {
+    fetchMock.mockResolvedValue(
+      gatewayResponse("png-bytes", { "Content-Type": "image/png" }),
+    );
+
+    const res = await callGet("tok", ["assets", "images"]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [upstreamUrl] = fetchMock.mock.calls[0]!;
+    expect(String(upstreamUrl)).toBe(
+      `${API_BASE}/share/public/tok/f/assets/images`,
+    );
+    expect(res.headers.get("content-security-policy")).toBe(
+      "sandbox allow-popups allow-forms",
+    );
+    expect(await res.text()).toBe("png-bytes");
+  });
+});

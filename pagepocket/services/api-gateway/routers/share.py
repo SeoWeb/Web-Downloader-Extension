@@ -153,6 +153,52 @@ async def validate_share_link(token: str):
         handle_grpc_error(e)
 
 
+@router.get("/public/{token}/images")
+async def get_share_images(token: str):
+    """Public endpoint - image listing for the shared page's lightbox
+    (gallery-lightbox 2.2).
+
+    Mirrors the public file route's trust model: ValidateToken resolves the
+    page and its OWNER, and the owner's user_id scopes the upstream
+    ListPageImages call (share access never bypasses ownership scoping —
+    the token itself is the only credential here). Same JSON shape as the
+    authenticated /pages/{page_id}/images route.
+    """
+    try:
+        resp = await run_in_threadpool(
+            share_stub().ValidateToken,
+            share_pb2.ValidateTokenRequest(token=token),
+            timeout=30,
+        )
+        if not resp.valid:
+            raise HTTPException(status_code=404, detail="Share link not found or expired")
+
+        images = await run_in_threadpool(
+            archive_stub().ListPageImages,
+            archive_pb2.ListPageImagesRequest(
+                page_id=resp.page_id,
+                user_id=resp.owner_user_id,
+            ),
+            timeout=30,
+        )
+        return {
+            "images": [
+                {
+                    "path": image.path,
+                    "content_type": image.content_type,
+                    "size_bytes": image.size_bytes,
+                }
+                for image in images.images
+            ],
+            "is_image_gallery": images.is_image_gallery,
+            "total": len(images.images),
+        }
+    except HTTPException:
+        raise
+    except grpc.RpcError as e:
+        handle_grpc_error(e)
+
+
 @router.get("/public/{token}/f/{file_path:path}")
 async def get_share_file(token: str, file_path: str):
     """Public endpoint - serve an archived file for a share token."""

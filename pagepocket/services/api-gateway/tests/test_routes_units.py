@@ -573,6 +573,135 @@ class TestLogoutEndpoint(unittest.TestCase):
         self.assertEqual(self.stub.Logout.call_args.args[0].user_id, "u1")
 
 
+class TestListPageImagesRoutes(unittest.TestCase):
+    """gallery-lightbox 2.1/2.2: the authenticated and share-token image
+    listing routes are plain proxies — shape, order, and the is_image_gallery
+    flag pass through from the archive service untouched."""
+
+    def setUp(self):
+        self.stub = MagicMock()
+        p = patch.object(archive_routes, "archive_stub", return_value=self.stub)
+        p.start()
+        self.addCleanup(p.stop)
+
+    @staticmethod
+    def _stub_response(*images, is_image_gallery=True):
+        return archive_pb2.ListPageImagesResponse(
+            images=[archive_pb2.PageImage(path=p, content_type=ct, size_bytes=s)
+                    for p, ct, s in images],
+            is_image_gallery=is_image_gallery,
+        )
+
+    # -- Authenticated route --
+
+    def test_happy_path_shape_and_passthrough(self):
+        self.stub.ListPageImages.return_value = self._stub_response(
+            ("assets/a.jpg", "image/jpeg", 12345),
+            ("assets/pic.avif", "image/avif", 42),
+            is_image_gallery=True,
+        )
+
+        resp = _run(archive_routes.list_page_images(_fake_request(), "p1"))
+
+        self.assertEqual(resp, {
+            "images": [
+                {"path": "assets/a.jpg", "content_type": "image/jpeg", "size_bytes": 12345},
+                {"path": "assets/pic.avif", "content_type": "image/avif", "size_bytes": 42},
+            ],
+            "is_image_gallery": True,
+            "total": 2,
+        })
+        sent = self.stub.ListPageImages.call_args.args[0]
+        self.assertEqual(sent.page_id, "p1")
+        self.assertEqual(sent.user_id, "u1")  # verified JWT identity
+        self.assertEqual(self.stub.ListPageImages.call_args.kwargs.get("timeout"), 30)
+
+    def test_not_found_maps_to_404(self):
+        self.stub.ListPageImages.side_effect = _FakeRpcError(
+            grpc.StatusCode.NOT_FOUND, "Page not found",
+        )
+        with self.assertRaises(HTTPException) as cm:
+            _run(archive_routes.list_page_images(_fake_request(), "missing"))
+        self.assertEqual(cm.exception.status_code, 404)
+
+    def test_empty_images_is_valid_gallery_false(self):
+        self.stub.ListPageImages.return_value = self._stub_response(is_image_gallery=False)
+
+        resp = _run(archive_routes.list_page_images(_fake_request(), "p1"))
+
+        self.assertEqual(resp, {"images": [], "is_image_gallery": False, "total": 0})
+
+    def test_order_passes_through_untouched(self):
+        """Sorting is the service's contract (path ascending); the gateway
+        must NOT reorder — it proxies whatever order arrives."""
+        self.stub.ListPageImages.return_value = self._stub_response(
+            ("assets/z.webp", "image/webp", 1),
+            ("assets/a.png", "image/png", 2),
+            is_image_gallery=False,
+        )
+
+        resp = _run(archive_routes.list_page_images(_fake_request(), "p1"))
+
+        self.assertEqual([i["path"] for i in resp["images"]], ["assets/z.webp", "assets/a.png"])
+
+    # -- Share route --
+
+    def _share_stubs(self, valid=True, owner="owner-u1", page_id="p1"):
+        """Patch share_routes' share_stub AND its archive_stub (the share
+        router imports both from grpc_clients) with this class's mocks."""
+        share = MagicMock()
+        share.ValidateToken.return_value = share_pb2.ValidateShareResponse(
+            valid=valid, page_id=page_id, owner_user_id=owner,
+        )
+        p1 = patch.object(share_routes, "share_stub", return_value=share)
+        p2 = patch.object(share_routes, "archive_stub", return_value=self.stub)
+        p1.start()
+        p2.start()
+        self.addCleanup(p1.stop)
+        self.addCleanup(p2.stop)
+        return share
+
+    def test_share_images_happy_path_uses_owner_identity(self):
+        self._share_stubs()
+        self.stub.ListPageImages.return_value = self._stub_response(
+            ("assets/1.jpg", "image/jpeg", 7),
+            is_image_gallery=True,
+        )
+
+        resp = _run(share_routes.get_share_images("tok"))
+
+        self.assertEqual(resp, {
+            "images": [{"path": "assets/1.jpg", "content_type": "image/jpeg", "size_bytes": 7}],
+            "is_image_gallery": True,
+            "total": 1,
+        })
+        sent = self.stub.ListPageImages.call_args.args[0]
+        self.assertEqual(sent.page_id, "p1")
+        self.assertEqual(sent.user_id, "owner-u1")  # OWNER identity, never the token
+
+    def test_share_images_invalid_token_404_without_archive_call(self):
+        self._share_stubs(valid=False)
+        with self.assertRaises(HTTPException) as cm:
+            _run(share_routes.get_share_images("bad"))
+        self.assertEqual(cm.exception.status_code, 404)
+        self.stub.ListPageImages.assert_not_called()
+
+    def test_share_images_missing_page_maps_to_404(self):
+        self._share_stubs()
+        self.stub.ListPageImages.side_effect = _FakeRpcError(grpc.StatusCode.NOT_FOUND)
+        with self.assertRaises(HTTPException) as cm:
+            _run(share_routes.get_share_images("tok"))
+        self.assertEqual(cm.exception.status_code, 404)
+
+    # -- .avif rides in the shared content-type map (gallery-lightbox) --
+
+    def test_avif_content_type_from_shared_map(self):
+        from serving import CONTENT_TYPE_MAP, content_type_for_path
+
+        self.assertEqual(content_type_for_path("assets/photo.avif"), "image/avif")
+        self.assertEqual(CONTENT_TYPE_MAP[".avif"], "image/avif")
+
+
 def _load_main_module():
     """Load main.py by explicit path (same pattern as test_config_hygiene)."""
     import importlib.util

@@ -16,6 +16,7 @@ import {
 import {
   ListPagesResponseSchema,
   PageResponseSchema,
+  PageImagesResponseSchema,
   ListCollectionsResponseSchema,
   CollectionResponseSchema,
   SearchResponseSchema,
@@ -128,6 +129,14 @@ export const clientApi = {
     clientFetch({
       route: "/archive/storage",
       schema: StorageUsageSchema,
+    }),
+
+  // Image listing of an archived page (image gallery feature) — the plain
+  // (non-file) BFF proxy passes the JSON listing through untouched.
+  listPageImages: (pageId: string) =>
+    clientFetch({
+      route: `/archive/pages/${pageId}/images`,
+      schema: PageImagesResponseSchema,
     }),
 
   // Library

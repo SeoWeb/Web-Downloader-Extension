@@ -40,6 +40,28 @@ export const ListPagesResponseSchema = z.object({
   page_size: z.number().default(20),
 });
 
+/** One archived image of an images-only page (image gallery feature). */
+export const PageImageSchema = z.object({
+  /** Archive-relative path, `assets/` prefix included (`assets/foo.jpg`). */
+  path: z.string(),
+  /** Advisory metadata — a leaner/older gateway response may omit either. */
+  content_type: z.string().optional(),
+  size_bytes: z.number().optional(),
+});
+
+/**
+ * Image listing for an archived page (`GET /archive/pages/{id}/images` via
+ * the authed BFF, or the public share equivalent under `/api/sc`). The
+ * `is_image_gallery` flag gates gallery rendering in the viewers; tolerant
+ * by contract — defaults everywhere, so a plain page or an older backend
+ * without the route still parses and degrades to the existing rendering.
+ */
+export const PageImagesResponseSchema = z.object({
+  images: z.array(PageImageSchema).default([]),
+  is_image_gallery: z.boolean().default(false),
+  total: z.number().default(0),
+});
+
 export const SuccessResponseSchema = z.object({ success: z.boolean() });
 
 export const CollectionResponseSchema = z.object({
@@ -120,6 +142,8 @@ export type User = z.infer<typeof UserSchema>;
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 export type PageResponse = z.infer<typeof PageResponseSchema>;
 export type ListPagesResponse = z.infer<typeof ListPagesResponseSchema>;
+export type PageImage = z.infer<typeof PageImageSchema>;
+export type PageImagesResponse = z.infer<typeof PageImagesResponseSchema>;
 export type CollectionResponse = z.infer<typeof CollectionResponseSchema>;
 export type ListCollectionsResponse = z.infer<
   typeof ListCollectionsResponseSchema
