@@ -1,0 +1,34 @@
+## Why
+
+A 2026-10 multi-agent audit verified that pressing Stop in the extension frequently does not actually stop the download, and that stop outcomes are inconsistent across the three phases of a server-mode download. All line refs verified against current source:
+
+- **Resume path swallows Stop entirely.** The resume abort listener cancels the upload queue (`download-core.ts:1360-1370`, cancel at `:1367`), but the sequential re-fetch loop keeps running: after a cancel every `enqueue()` throws (`upload-queue.ts:173-174`) and the per-entry catch swallows it (`download-core.ts:1389-1392`), so the loop FETCHES every remaining URL (up to 60 s each — the fetch at `:1377-1379` observes only `AbortSignal.timeout`, never the stop signal). `waitForAll()` (`:1414`) then resolves immediately because `cancel()` emptied the queue and `waitForAll` checks `isDone()` before `cancelled` (`upload-queue.ts:333-337`), and `finalizeAndPollAssembly()` (`:1425`) runs → the archive is delivered with `status.complete` (`:1146-1148`, `:1162-1169`) as if Stop was never pressed, after minutes of wasted fetching.
+- **Stop during resume assembly is a complete no-op.** Both resume-side `downloadWithFallback()` calls (`download-core.ts:1125-1138` in `finalizeAndPollAssembly`, `:1246-1264` in the assembling branch) pass only 7 arguments — the abort signal is the 8th parameter (`server-download.ts:389`). Without it, the polling `sleep(getPollInterval(elapsed), signal)` (`server-download.ts:568-586`, used at `:175` and `:200`) never wakes early, so Stop changes nothing until a poll succeeds or the 35-minute cap (`server-download.ts:85`) fires.
+- **Resume queue failures fail the whole resume.** The resume `waitForAll()` block is try/finally only (`download-core.ts:1397-1417`); any timeout or cancel rejection propagates to the outer catch and is rethrown (`:1434-1450`), so the caller reports the resume as failed (`message.ts:313-326`) instead of finalizing the partial archive the way the main path does (`download-core.ts:877-883`).
+- **Main-path Stop during upload/assembly delivers partial data as success.** The abort listener only cancels the queue (`download-core.ts:496-509`); the `waitForAll` catch ("continue anyway", documented intent at `:878-880`) proceeds to `finalizeSession` + `status.complete` (`:902`, `:959`, `:1000`) — a partial ZIP is delivered and reported as a successful download. Additionally `assemblyAbortController` (`download-state.ts:33,56`, passed at `download-core.ts:947`) is never aborted anywhere, so Stop during assembly does nothing at all; abort is honored only before the flow starts (`:498-500`).
+
+Three different contracts coexist today: main path = "stop finalizes a partial archive and reports it **complete** (documented at `download-core.ts:878-880`)", resume path = "stop ignored", assembly = "stop impossible". This change defines ONE stop contract and implements it in every phase.
+
+## What Changes
+
+- **Unified Stop semantics (D1):** pressing Stop interrupts in-flight client-side work in EVERY phase — scraping, resume re-fetch, upload drain, assembly polling. The flow then salvages what exists (a partial finalize during upload; a single status probe during assembly) and ALWAYS reports the cancellation terminal status (`status.cancelled`, locale key already exists) — never `status.complete` with partial data. The partial archive's download URL is surfaced alongside the cancelled status when the server already produced one.
+- **Signal plumbing (D2):** the per-download user-stop signal is threaded through the resume fetch/enqueue loop (stop-aware per-fetch signal via `AbortSignal.any`, abort-aware loop break that is not swallowed by the per-entry catch) and an assembly-poll signal is passed as the 8th argument to `downloadWithFallback()` at both resume-side call sites; the stop listener now also aborts `assemblyAbortController` so polling wakes immediately.
+- **Cancel-rejection propagation (D3):** the resume path gains the main path's catch-and-continue around `waitForAll()` — queue timeout AND queue cancellation both finalize with what arrived instead of failing the whole resume; a user-stop cancellation maps to the cancelled status, a non-stop timeout maps to today's completion-with-failedCount semantics. Consumes the `upload-queue-terminal-reliability` fix that makes `waitForAll()` reject reliably on a cancelled queue.
+- **Checkpoint semantics:** a user stop is intent to abandon — the checkpoint is cleared and no Resume prompt is offered for a download the user deliberately stopped (checkpoints remain reserved for unintentional interruptions, i.e. service-worker death).
+
+## Capabilities
+
+### New Capabilities
+
+(none — all requirements land in the existing `download-lifecycle-reliability` capability)
+
+### Modified Capabilities
+
+- `download-lifecycle-reliability`: new requirement that a user stop is honored in every download phase (scraping, resume re-fetch, upload drain, assembly polling — including prompt interruption of assembly polling); new requirement that the terminal status after a stop is a cancellation status carrying the partial-archive download URL when the server produced one, never `status.complete`; new requirement that resume upload-wait failures (queue timeout or cancellation) finalize the partial archive instead of failing the whole resume.
+
+## Impact
+
+- **Code:** `src/background/download-core.ts` (resume fetch loop stop signal + abort-aware break; catch-and-continue around the resume `waitForAll()`; stop signal forwarded to both resume-side `downloadWithFallback()` calls; abort listener additionally aborts `assemblyAbortController`; AbortError → `status.cancelled` mapping; salvage status probe after a poll abort), `src/background/download-state.ts` (stop wiring aborts the assembly controller), `src/background/server-download.ts` (no signature change — resume callers start passing the existing 8th `signal` parameter), `src/background/message.ts` (resume AbortError → cancelled status + checkpoint clear instead of generic resume failure).
+- **Dependency:** consumes `upload-queue-terminal-reliability` (reliable `waitForAll()` cancel-rejection: `cancelled` checked before `isDone()`). Until that lands, a post-cancel `waitForAll()` resolves instead of rejecting; this change's catch-and-continue still finalizes partial in that case, so behavior degrades safely rather than hanging.
+- **Tests:** new unit tests — resume loop aborts between fetches; `waitForAll` rejection on resume finalizes with partial data; assembly abort wakes the polling sleep; terminal status says cancelled-not-complete after a stop. Existing suites stay green.
+- **No server changes:** `scrapeComplete`, `finalizeSession`, and `getSessionStatus` are already idempotent/available and sufficient for the salvage step; `minimum_chrome_version` 116 already supports `AbortSignal.any`.
