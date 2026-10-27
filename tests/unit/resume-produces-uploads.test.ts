@@ -69,6 +69,10 @@ vi.mock("../../src/background/download-state", () => ({
   setTabDownloadComplete: vi.fn(),
   isAnyDownloadInProgress: vi.fn().mockReturnValue(false),
   isTabDownloadInProgress: vi.fn().mockReturnValue(false),
+  // (Fix D.1) Liveness tracking exports used by download-core
+  markSessionLive: vi.fn(),
+  markSessionNotLive: vi.fn(),
+  isSessionLive: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock("../../src/common/storage/filterStorage", () => ({

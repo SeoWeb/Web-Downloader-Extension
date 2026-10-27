@@ -27,6 +27,8 @@ export type MessageAction =
   | "CHECK_INTERRUPTED_DOWNLOAD"
   | "RESUME_SERVER_DOWNLOAD"
   | "DISMISS_INTERRUPTED_DOWNLOAD"
+  // (Fix D.1) Liveness query: is a download currently running for a session?
+  | "CHECK_DOWNLOAD_LIVE"
   // PagePocket cloud upload message actions
   | "PAGEPOCKET_UPLOAD_START"
   | "PAGEPOCKET_UPLOAD_PROGRESS"
@@ -62,6 +64,8 @@ export const messageActions: Record<MessageAction, MessageAction> = {
   CHECK_INTERRUPTED_DOWNLOAD: "CHECK_INTERRUPTED_DOWNLOAD",
   RESUME_SERVER_DOWNLOAD: "RESUME_SERVER_DOWNLOAD",
   DISMISS_INTERRUPTED_DOWNLOAD: "DISMISS_INTERRUPTED_DOWNLOAD",
+  // (Fix D.1) Liveness query
+  CHECK_DOWNLOAD_LIVE: "CHECK_DOWNLOAD_LIVE",
   // PagePocket cloud upload message actions
   PAGEPOCKET_UPLOAD_START: "PAGEPOCKET_UPLOAD_START",
   PAGEPOCKET_UPLOAD_PROGRESS: "PAGEPOCKET_UPLOAD_PROGRESS",

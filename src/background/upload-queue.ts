@@ -416,7 +416,7 @@ export class UploadQueue {
       }
 
       console.log(
-        `[UploadQueue] Uploading: path=${task.path} size=${task.totalBytes} type=${task.contentType}`,
+        `[UploadQueue] Uploading: session=${task.sessionId} path=${task.path} size=${task.totalBytes} type=${task.contentType}`,
       );
 
       // (W1) Real-time progress callback: update task.bytesSent as XHR

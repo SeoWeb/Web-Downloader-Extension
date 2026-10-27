@@ -273,7 +273,8 @@ async function handleInterruptedDownload(): Promise<void> {
       }
     } else {
       // No checkpoint but flag was set — clear any stale state
-      await clearCheckpoint();
+      // (Fix D.2: explicit all-flag for the legacy global wipe)
+      await clearCheckpoint(undefined, { all: true });
     }
   } catch {
     // ignore

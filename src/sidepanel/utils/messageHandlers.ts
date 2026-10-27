@@ -7,7 +7,14 @@ export async function handleStartScroll(
   setMessages: (message: any) => void,
   setIsScraping: (value: boolean) => void,
 ): Promise<
-  | { height?: number; html?: string; top?: number; heightChanged?: boolean }
+  | {
+      height?: number;
+      html?: string;
+      top?: number;
+      heightChanged?: boolean;
+      hydrationElapsedMs?: number;
+      imagesPending?: number;
+    }
   | undefined
 > {
   try {

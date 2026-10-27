@@ -906,7 +906,9 @@ class TestCloudPushTextParts:
 
         assert captured == {}  # push_to_archive never invoked
         assert session.cloud_status == "failed"
-        assert "no text content" in session.cloud_error
+        # Round 8: images-only sessions push a gallery instead — so a
+        # failure here means neither documents NOR images were captured.
+        assert "nothing to push" in session.cloud_error
         assert session.status == "ready"
 
     def test_legacy_push_payload_unchanged(self, assembler):

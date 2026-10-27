@@ -121,7 +121,7 @@ export class ServerStorageAdapter implements IStorageAdapter {
     const effectiveOriginalUrl = originalUrl || path;
 
     console.log(
-      `[ServerStorageAdapter] addFile: path=${path} size=${blob.size} type=${contentType}`,
+      `[ServerStorageAdapter] addFile: session=${this.sessionId} path=${path} size=${blob.size} type=${contentType}`,
     );
 
     await this.uploadQueue.enqueue(

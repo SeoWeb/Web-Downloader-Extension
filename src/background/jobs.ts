@@ -14,6 +14,9 @@ export async function scrollDownAndScrape(tabId: number) {
       height,
       viewportHeight: scrollResponse.viewportHeight,
       heightChanged: scrollResponse.heightChanged,
+      // (Fix C — hydration window) Consumed by the panel's early-stop logic.
+      hydrationElapsedMs: scrollResponse.hydrationElapsedMs,
+      imagesPending: scrollResponse.imagesPending,
     };
   }
 

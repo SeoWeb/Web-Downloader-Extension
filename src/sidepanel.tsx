@@ -103,6 +103,10 @@ export default function SidePanel() {
   const [interruptData, setInterruptData] = useState<InterruptData | null>(
     null,
   );
+  // (Fix D.1) Server session id of a download that is CURRENTLY LIVE.
+  // A checkpoint exists for the whole run, so a panel (re)opened mid-download
+  // must show "download in progress" — not the Resume/Restart card.
+  const [liveSessionId, setLiveSessionId] = useState<string | null>(null);
   // PagePocket cloud upload state
   const [cloudUploadState, setCloudUploadState] =
     useState<CloudUploadState | null>(null);
@@ -209,12 +213,34 @@ export default function SidePanel() {
             });
             setIsScraping(false);
             setIsScrapingLinkedPages(false);
+          } else if (ppKey === "status.noDownloadableContent") {
+            // (Fix C — zero-content abort) The background refused to
+            // finalize an empty session. Reset to the connected state with
+            // the warning visible so the user can retry (mirrors the
+            // DOWNLOAD_FAILED reset).
+            setMessages([
+              { key: "status.connected" },
+              { key: "status.noDownloadableContent" },
+            ]);
+            setIsScraping(false);
+            setIsScrapingLinkedPages(false);
+            setAction(null);
+            setDownloadReport(initialDownloadReport);
+            setDownloadResponse(null);
           }
 
           // (15.7) Track server-mode phase transitions from messages.
           // Delegates to applyServerModeMessage() pure function (testable).
           const msgKey = data.message?.key;
           if (msgKey) {
+            // (Fix D.1) Any terminal background outcome ends the live state.
+            if (
+              msgKey === "status.complete" ||
+              msgKey === "status.pagepocketUploadComplete" ||
+              msgKey === "status.pagepocketUploadError"
+            ) {
+              setLiveSessionId(null);
+            }
             setServerModeState((prev) =>
               applyServerModeMessage(prev, msgKey, data.message?.options),
             );
@@ -248,6 +274,8 @@ export default function SidePanel() {
             pageId: data.pageId,
           });
           setAction(messageActions.DOWNLOAD_DONE);
+          // (Fix D.1) The download is no longer live.
+          setLiveSessionId(null);
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
           setDownloadResponse(null);
@@ -261,6 +289,8 @@ export default function SidePanel() {
             errorMessage: data.error,
             isQuotaError: data.isQuotaError ?? false,
           });
+          // (Fix D.1) The download is no longer live.
+          setLiveSessionId(null);
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
           break;
@@ -270,6 +300,8 @@ export default function SidePanel() {
           // Download actually completed - file was saved
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
+          // (Fix D.1) The download is no longer live.
+          setLiveSessionId(null);
           setServerModeState((prev) =>
             prev ? { ...prev, phase: "ready" } : prev,
           );
@@ -300,6 +332,8 @@ export default function SidePanel() {
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
           setAction(null);
+          // (Fix D.1) The download is no longer live.
+          setLiveSessionId(null);
           // (5.3) A failed download leaves no completion screen — drop the
           // partial report collected so far.
           setDownloadReport(initialDownloadReport);
@@ -318,6 +352,8 @@ export default function SidePanel() {
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
           setAction(null);
+          // (Fix D.1) The download is no longer live.
+          setLiveSessionId(null);
           setDownloadReport(initialDownloadReport);
           setDownloadResponse(null);
           break;
@@ -331,6 +367,8 @@ export default function SidePanel() {
             serverSessionId: data.serverSessionId,
             resourceUrls: data.resourceUrls,
           });
+          // (Fix D.1) An interrupted signal means the download is dead.
+          setLiveSessionId(null);
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
           setAction(null);
@@ -364,6 +402,30 @@ export default function SidePanel() {
           {},
         );
         if (result && result.downloadInterrupted) {
+          // (Fix D.1 — liveness) A checkpoint exists for the WHOLE run, so a
+          // checkpoint alone doesn't mean "interrupted". When the background
+          // reports the session as LIVE, show the in-progress state instead
+          // of the Resume/Restart card.
+          if (result.serverSessionId) {
+            try {
+              const live = await sendMessageToBackground(
+                messageActions.CHECK_DOWNLOAD_LIVE,
+                { sessionId: result.serverSessionId },
+              );
+              if (live?.live) {
+                setLiveSessionId(result.serverSessionId);
+                setIsScraping(false);
+                setIsScrapingLinkedPages(false);
+                setMessages([
+                  { key: "status.connected" },
+                  { key: "status.downloadLive" },
+                ]);
+                return;
+              }
+            } catch {
+              // Liveness query unavailable — fall through to the interrupt card
+            }
+          }
           setInterruptData({
             phase: result.phase || "scraping",
             tabUrl: result.tabUrl || "",
@@ -602,6 +664,9 @@ export default function SidePanel() {
           }
         }}
         interruptData={interruptData}
+        // (Fix D.1) A live download shows "in progress" instead of the
+        // Resume/Restart card.
+        liveDownload={liveSessionId !== null}
         onRestartDownload={async () => {
           setInterruptData(null);
           // If we have a server session ID, attempt resume
@@ -660,10 +725,15 @@ export default function SidePanel() {
         onDismissInterrupt={() => {
           setInterruptData(null);
           setMessages([{ key: "status.connected" }]);
-          // Clear the checkpoint so re-opening the panel doesn't show stale state
+          // (Fix D.2 — dismiss scoping) Clear ONLY this session's checkpoint
+          // so re-opening the panel doesn't show stale state. A checkpoint
+          // without a session id requires the explicit all-flag; concurrent
+          // downloads' checkpoints must never be wiped by one card's dismiss.
           sendMessageToBackground(
             messageActions.DISMISS_INTERRUPTED_DOWNLOAD,
-            {},
+            interruptData?.serverSessionId
+              ? { serverSessionId: interruptData.serverSessionId }
+              : { all: true },
           );
         }}
         cloudUploadState={cloudUploadState}

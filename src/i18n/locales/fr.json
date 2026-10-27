@@ -253,7 +253,11 @@
       "htmlUploaded": "Page HTML uploaded",
       "sessionSizeLimitReached": "Size limit reached — finalizing with partial content",
       "serverDownloadReady": "Server archive ready",
-      "archiveReadySubtitle": "Your file is ready to download"
+      "archiveReadySubtitle": "Your file is ready to download",
+      "noDownloadableContent": "No downloadable content found — the page may not have finished loading. Please wait and try again.",
+      "downloadLiveTitle": "Download in progress",
+      "downloadLiveMessage": "This download is still running. The panel will update automatically when it finishes.",
+      "downloadLive": "Download in progress…"
     },
     "permissions": {
       "storage": {

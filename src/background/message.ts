@@ -2,7 +2,7 @@ import { sendMessage } from "../common/chrome";
 import { MessageAction, messageActions } from "../common/message";
 import { scrollDownAndScrape, startDownload } from "./jobs";
 import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
-import { abortActiveDownload } from "./download-state";
+import { abortActiveDownload, isSessionLive } from "./download-state";
 import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
 import { resumeServerDownload } from "./download-core";
 import {
@@ -251,11 +251,27 @@ export async function messageWorker(
     case messageActions.DISMISS_INTERRUPTED_DOWNLOAD: {
       // User dismissed the interrupt UI without resuming — clear the checkpoint
       // so re-opening the panel doesn't show stale interrupt state.
-      // (D4) Clears only the targeted download's checkpoint when the panel
-      // provides its session id; no id → legacy global clear.
-      await clearCheckpoint(data?.serverSessionId);
+      // (D4 + Fix D.2) Clears ONLY the targeted download's checkpoint when
+      // the panel provides its session id. With no id, the panel must pass
+      // `all: true` explicitly — a bare undefined no longer wipes every
+      // checkpoint (a concurrent download's checkpoint must survive).
+      if (data?.serverSessionId) {
+        await clearCheckpoint(data.serverSessionId);
+      } else if (data?.all === true) {
+        await clearCheckpoint(undefined, { all: true });
+      } else {
+        console.warn(
+          "[Dismiss] No serverSessionId provided — refusing to clear all checkpoints",
+        );
+      }
       return { success: true };
     }
+
+    case messageActions.CHECK_DOWNLOAD_LIVE:
+      // (Fix D.1) Liveness query — lets the panel show "download in
+      // progress" instead of a Resume/Restart card for a checkpoint whose
+      // download is actually still running.
+      return { live: isSessionLive(data?.sessionId) };
 
     case messageActions.RESUME_SERVER_DOWNLOAD: {
       // (D10 / task 4.6) Read the checkpoint but DO NOT clear it before the

@@ -18,6 +18,7 @@ Tasks covered:
 
 import asyncio
 import hashlib
+import html
 import logging
 import os
 import re
@@ -26,7 +27,7 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import PurePosixPath
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from app.config import settings
 from app.services.html_converter import (
@@ -68,6 +69,13 @@ CLOUD_ASSET_READ_BATCH_BYTES = 32 * 1024 * 1024
 # Progress surfaced while the gRPC push is in flight so status polls can
 # distinguish an actively progressing push from a stalled one (6.1/6.2).
 CLOUD_PUSH_PROGRESS_PCT = 50
+
+# Round 8: a cloud session with no pushable document AND no image resources
+# has no representation in the archive (the data model requires
+# html_content or a text document) — fail with this explicit, stable error.
+CLOUD_NOTHING_TO_PUSH_ERROR = (
+    "nothing to push: no HTML/text/markdown selected and no images captured"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -924,6 +932,16 @@ class ZipAssemblerService:
         ``html_content`` and no HTML assets (assets and linked-page HTML
         documents exist solely to render HTML).
 
+        Round 8 (images-only cloud sessions): a push with no document at
+        all (``download_html=False``, no markdown, no text) that DID
+        capture image resources pushes a generated gallery page instead —
+        a self-contained inline-styled grid with one ``<img>`` per pushed
+        image asset, each ``src`` matching the pushed asset filename
+        exactly (percent-encoded for URL/attribute safety). Only when
+        there are neither documents nor images does the push fail, with
+        ``CLOUD_NOTHING_TO_PUSH_ERROR``. The gallery is push-only: the
+        cloud branch still never builds a local ZIP.
+
         6.2 hardening: the push payload is accounted BEFORE assets are read
         from disk (stat-only manifest + in-RAM HTML sizes), so an oversize
         session fails in milliseconds with a precise quota-style error
@@ -952,23 +970,66 @@ class ZipAssemblerService:
         markdown_bytes = markdown_content.encode("utf-8") if markdown_content else None
         text_bytes = text_content.encode("utf-8") if text_content else None
 
-        # Text-only push with neither document would be a zero-document
-        # ingest — the archive service rejects those deterministically, so
-        # fail here with a precise error instead of burning the retry budget.
+        # Zero-document guard (Round 8): with no HTML/markdown/text document
+        # the archive data model has nothing to store — UNLESS the session
+        # captured image resources, in which case a self-contained gallery
+        # page is pushed instead (push-only: the cloud branch never builds
+        # a local ZIP). With neither documents nor images, fail here with a
+        # precise error instead of burning the retry budget on an ingest
+        # the archive service rejects deterministically.
+        gallery_assets: Optional[list[tuple[str, str, bytes]]] = None
         if not download_html and not markdown_bytes and not text_bytes:
-            logger.error(
-                "Cloud push rejected (no documents): session=%s "
-                "(HTML off and no text document available)",
-                session_id,
-            )
-            session.cloud_status = "failed"
-            session.cloud_error = "text-only push produced no text content"
-            session.status = "ready"
-            session.assembly_phase = None
-            session.assembly_progress_pct = None
-            session.zip_path = None
-            await db.flush()
-            return
+            try:
+                built_assets = await self._build_cloud_assets(
+                    session_id, db, archive_paths,
+                )
+            except CloudPayloadTooLargeError as exc:
+                logger.error(
+                    "Cloud push pre-flight rejected (gallery assets): "
+                    "session=%s %s",
+                    session_id, exc,
+                )
+                session.cloud_status = "failed"
+                session.cloud_error = str(exc)
+                session.status = "ready"
+                session.assembly_phase = None
+                session.assembly_progress_pct = None
+                session.zip_path = None
+                await db.flush()
+                return
+
+            image_assets = [
+                (name, content_type, data)
+                for name, content_type, data in built_assets
+                if content_type.lower().startswith("image/")
+                or name.startswith("images/")
+            ]
+            if not image_assets:
+                logger.error(
+                    "Cloud push rejected (nothing to push): session=%s "
+                    "(HTML off, no text/markdown document, no images)",
+                    session_id,
+                )
+                session.cloud_status = "failed"
+                session.cloud_error = CLOUD_NOTHING_TO_PUSH_ERROR
+                session.status = "ready"
+                session.assembly_phase = None
+                session.assembly_progress_pct = None
+                session.zip_path = None
+                await db.flush()
+                return
+
+            # Images-only session → gallery page push. Stable ordering:
+            # sort by asset path so the <img> sequence and the pushed
+            # asset list are deterministic regardless of DB order.
+            image_assets.sort(key=lambda asset: asset[0])
+            gallery_assets = image_assets
+            gallery_title = self._gallery_title(main_html, session.url)
+            html_bytes = self._build_gallery_html(
+                gallery_title,
+                [name for name, _ct, _data in gallery_assets],
+            ).encode("utf-8")
+            title = gallery_title
 
         linked_assets: list[tuple[str, str, bytes]] = []
         if download_html:
@@ -1005,8 +1066,14 @@ class ZipAssemblerService:
         # Pre-flight layer 2: _build_cloud_assets stats the resource files
         # (no reads) and raises CloudPayloadTooLargeError if the assets
         # alone exceed the cap — before a single byte is read from disk.
-        # Skipped entirely for a text-only push: no assets are pushed.
-        if download_html:
+        # Skipped for a gallery push (its image assets were already read
+        # and sized in the zero-document guard above) and for a text-only
+        # push: no assets are pushed there.
+        if gallery_assets is not None:
+            # Gallery push: the sorted image assets are already in RAM —
+            # the gallery <img> srcs reference exactly these filenames.
+            assets = gallery_assets
+        elif download_html:
             try:
                 assets = await self._build_cloud_assets(session_id, db, archive_paths)
             except CloudPayloadTooLargeError as exc:
@@ -1284,6 +1351,68 @@ class ZipAssemblerService:
             return ""
         m = re.search(r"^#\s+(.+?)\s*$", markdown_text, re.MULTILINE)
         return m.group(1).strip()[:500] if m else ""
+
+    @staticmethod
+    def _gallery_title(main_html: str, url: str) -> str:
+        """Title for an images-only gallery push (Round 8).
+
+        Prefers the ``<title>`` of the merged main HTML — the merge runs
+        before the cloud branch even when HTML delivery is off, so the
+        captured page title is available here. Falls back to the source
+        URL hostname when the document has none. The gallery suffix is
+        appended whenever a base title exists.
+        """
+        base = ZipAssemblerService._extract_title(main_html.encode("utf-8"))
+        if not base:
+            base = urlparse(url).hostname or ""
+        if not base:
+            return "Image Gallery"
+        return f"{base} — Image Gallery"
+
+    @staticmethod
+    def _build_gallery_html(title: str, image_paths: list) -> str:
+        """Build a self-contained gallery document for an images-only push.
+
+        A minimal inline-styled grid with one ``<img>`` per pushed image
+        asset — no external references, no scripts. ``src`` values are
+        percent-encoded (spaces/unicode become valid URL text that
+        resolves back to the pushed asset filename) and attribute-escaped;
+        ``alt`` is the asset basename. Ordering follows ``image_paths``
+        (the caller sorts by path for stability).
+        """
+        rows = []
+        for path in image_paths:
+            src = html.escape(quote(path, safe="/"), quote=True)
+            alt = html.escape(PurePosixPath(path).name or path, quote=True)
+            rows.append(f'<img src="{src}" alt="{alt}" loading="lazy">')
+        title_attr = html.escape(title, quote=True)
+        title_body = html.escape(title)
+        imgs = "\n".join(rows)
+        return (
+            "<!DOCTYPE html>\n"
+            "<html>\n"
+            "<head>\n"
+            '<meta charset="utf-8">\n'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+            f"<title>{title_attr}</title>\n"
+            "<style>\n"
+            "body{margin:0;font-family:system-ui,sans-serif;background:#fafafa;"
+            "color:#111}\n"
+            "h1{font-size:1.25rem;margin:1rem}\n"
+            ".gallery{display:grid;grid-template-columns:"
+            "repeat(auto-fill,minmax(200px,1fr));gap:8px;padding:0 1rem 1rem}\n"
+            ".gallery img{width:100%;height:200px;object-fit:cover;display:block;"
+            "border-radius:4px;background:#e5e5e5}\n"
+            "</style>\n"
+            "</head>\n"
+            "<body>\n"
+            f"<h1>{title_body}</h1>\n"
+            '<div class="gallery">\n'
+            f"{imgs}\n"
+            "</div>\n"
+            "</body>\n"
+            "</html>\n"
+        )
 
     @staticmethod
     async def _cloud_resource_manifest(

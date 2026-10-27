@@ -27,6 +27,171 @@ export interface ScrollingResponse {
   viewportHeight?: number;
   /** Whether the page's scrollHeight changed during the last scroll step. */
   heightChanged?: boolean;
+  /** (Fix C — hydration window) ms since the first scroll step of this run. */
+  hydrationElapsedMs?: number;
+  /** (Fix C — hydration window) visible <img> elements still loading. */
+  imagesPending?: number;
+}
+
+// ---------------------------------------------------------------------------
+// (Fix C — hydration window) Early-stop parameters.
+//
+// A page that is still hydrating presents a short skeleton DOM: the first
+// scroll step is instantly "at bottom" with no growth, which the previous
+// logic read as settled — producing 0-resource downloads. The stop decision
+// therefore requires ALL of:
+//   1. the existing bottom/no-growth/no-motion conditions,
+//   2. at least MIN_SETTLES_BEFORE_STOP consecutive no-growth settles,
+//   3. at least MIN_SCRAPE_DURATION_MS elapsed since the first scroll step,
+//   4. no visible <img> still loading — OR IMAGE_SETTLE_CAP_MS elapsed, so
+//      a single slow image can never stall the scrape indefinitely.
+// The max-scroll-attempts safety stop is intentionally NOT gated by the
+// window. Linked-page scraping runs its own inline scroll script and is
+// unaffected.
+// ---------------------------------------------------------------------------
+
+/** Minimum elapsed time before an early stop is allowed (hydration floor). */
+export const MIN_SCRAPE_DURATION_MS = 1800;
+/** Consecutive no-growth settles required before an early stop. */
+export const MIN_SETTLES_BEFORE_STOP = 2;
+/**
+ * Cap for the pending-image wait: past this, stop even if images are still
+ * loading (one forever-spinning image must not stall the download).
+ */
+export const IMAGE_SETTLE_CAP_MS = 10000;
+
+/** Inputs for the pure early-stop decision (extracted for unit testing). */
+export interface ScrollStopDecisionInput {
+  /** Previous scroll response (null on the first step). */
+  prev: ScrollingResponse | null;
+  /** Current scroll response. */
+  response: ScrollingResponse;
+  /** Previous page height (prevHeightRef value BEFORE this step). */
+  prevHeight: number;
+  /** Current consecutive-settle count BEFORE this step. */
+  settleCount: number;
+  /** Scroll attempts completed so far (safety limit input). */
+  scrollAttempts: number;
+  /** Safety limit for very long pages. */
+  maxScrollAttempts?: number;
+  /** Minimum elapsed time before an early stop is allowed. */
+  minDurationMs?: number;
+  /** Consecutive no-growth settles required before an early stop. */
+  minSettles?: number;
+  /** Cap for the pending-image wait. */
+  imageCapMs?: number;
+}
+
+export interface ScrollStopDecision {
+  /** Stop scrolling (page settled, stuck, or safety limit). */
+  stop: boolean;
+  /** Safety limit reached — the caller adds a user-facing message. */
+  maxScrollAttemptsReached: boolean;
+  /** Which condition produced the stop (diagnostics/tests). */
+  reason: "settled" | "stuck" | "maxAttempts" | null;
+  /** New height baseline to store in prevHeightRef. */
+  nextPrevHeight: number;
+  /** New settle count to store in settleCountRef. */
+  nextSettleCount: number;
+}
+
+/**
+ * Pure early-stop decision for the main-page scroll loop (Fix C).
+ *
+ * Preserves the previous behavior exactly (bottom/no-growth settle logic,
+ * stuck detection, 500-step safety limit) and ADDs the hydration-window
+ * constraints: the "settled" and "stuck" stops only fire once the page has
+ * had a minimum time to hydrate and no visible <img> is still loading
+ * (bounded by the time cap).
+ */
+export function decideScrollStop({
+  prev,
+  response,
+  prevHeight,
+  settleCount,
+  scrollAttempts,
+  maxScrollAttempts = 500,
+  minDurationMs = MIN_SCRAPE_DURATION_MS,
+  minSettles = MIN_SETTLES_BEFORE_STOP,
+  imageCapMs = IMAGE_SETTLE_CAP_MS,
+}: ScrollStopDecisionInput): ScrollStopDecision {
+  const prevTop = prev?.top || 0;
+  const currentTop = response.top || 0;
+  const currentHeight = response.height || 0;
+  const heightChanged = response.heightChanged ?? false;
+
+  // Calculate if we're at the bottom of the page
+  const viewportHeight = response.viewportHeight || 1000;
+  const isAtBottom = currentTop + viewportHeight >= currentHeight - 100; // 100px buffer
+
+  const scrollPositionChanged = Math.abs(currentTop - prevTop) > 10; // More than 10px change
+
+  // Page-growth awareness: if height increased, don't stop even if at bottom
+  const pageGrew = currentHeight > prevHeight;
+
+  // Settle mechanism: when at bottom, wait more iterations to confirm
+  // the page isn't still growing.
+  let nextSettleCount: number;
+  if (isAtBottom) {
+    nextSettleCount = pageGrew || heightChanged ? 0 : settleCount + 1;
+  } else {
+    nextSettleCount = 0;
+  }
+
+  // (Fix C) Hydration window: elapsed time since the first scroll step and
+  // pending-image state gate the "settled"/"stuck" early stops. Undefined
+  // elapsed (older responses / direct callers) is treated as "window not
+  // yet satisfied" ONLY when a duration floor is configured — a zero floor
+  // keeps the legacy behavior for tests that opt out.
+  const elapsed = response.hydrationElapsedMs ?? 0;
+  const imagesPending = response.imagesPending ?? 0;
+  const hydrationSettled =
+    elapsed >= minDurationMs && (imagesPending === 0 || elapsed >= imageCapMs);
+
+  const settledStop =
+    isAtBottom &&
+    !pageGrew &&
+    !heightChanged &&
+    !scrollPositionChanged &&
+    nextSettleCount >= minSettles &&
+    hydrationSettled;
+  const stuckStop =
+    !!prev && !scrollPositionChanged && !pageGrew && hydrationSettled;
+
+  if (settledStop) {
+    return {
+      stop: true,
+      maxScrollAttemptsReached: false,
+      reason: "settled",
+      nextPrevHeight: currentHeight,
+      nextSettleCount,
+    };
+  }
+  if (stuckStop) {
+    return {
+      stop: true,
+      maxScrollAttemptsReached: false,
+      reason: "stuck",
+      nextPrevHeight: currentHeight,
+      nextSettleCount,
+    };
+  }
+  if (scrollAttempts >= maxScrollAttempts) {
+    return {
+      stop: true,
+      maxScrollAttemptsReached: true,
+      reason: "maxAttempts",
+      nextPrevHeight: currentHeight,
+      nextSettleCount,
+    };
+  }
+  return {
+    stop: false,
+    maxScrollAttemptsReached: false,
+    reason: null,
+    nextPrevHeight: currentHeight,
+    nextSettleCount,
+  };
 }
 
 interface UseScrapingDownloaderProps {
@@ -63,6 +228,47 @@ export function useScrapingDownloader({
   const isScrapingRef = useRef(isScraping);
   isScrapingRef.current = isScraping;
 
+  // ---------------------------------------------------------------------
+  // (Fix A — replay loop) Single-fire gate + press-time tab pinning.
+  //
+  // The download effect used to re-run on EVERY render whose dependencies
+  // changed (fresh `scrape`/`startDownload` identities, live tabId/tabUrl,
+  // downloadResponse.html) and replayed START_DOWNLOAD each time — a tab
+  // switch mid-flow retargeted the replay at the newly focused tab while
+  // carrying the ORIGINAL tab's html, creating server sessions for pages
+  // the user never requested (one press → five sessions incident).
+  //
+  // Two mechanisms close that hole:
+  //   1. `downloadStartedRef` — a started gate. START_DOWNLOAD fires at
+  //      most ONCE per intentional run; it is reset only when a new run
+  //      begins (the isScraping false→true transition of a fresh press or
+  //      retry). Dependency identity churn can no longer replay it.
+  //   2. `targetRef` — the tab snapshot taken AT PRESS TIME (the render in
+  //      which isScraping flips true). Every background interaction of the
+  //      flow (scrolling, session creation, chunk streaming, START_DOWNLOAD,
+  //      stop) uses this snapshot — never the live useActiveTabInfo values —
+  //      so a tab switch mid-flow cannot retarget anything.
+  // ---------------------------------------------------------------------
+  const downloadStartedRef = useRef<boolean>(false);
+  /** True while a press-initiated run is in flight (isScraping true). */
+  const runActiveRef = useRef<boolean>(false);
+  /** Press-time tab snapshot — pinned for the whole run. */
+  const targetRef = useRef<{ tabId: number; tabUrl: string }>({
+    tabId: 0,
+    tabUrl: "",
+  });
+  // Render-time mirror of the live tab values (read only when a NEW run
+  // starts, i.e. at press time — mirrors the actionRef pattern above).
+  const liveTabRef = useRef<{ tabId: number; tabUrl: string }>({
+    tabId,
+    tabUrl,
+  });
+  liveTabRef.current = { tabId, tabUrl };
+  // Options mirror so stable callbacks always see the current options
+  // without identity churn.
+  const downloadOptionsRef = useRef<DownloadOptions | null>(downloadOptions);
+  downloadOptionsRef.current = downloadOptions;
+
   // (13.3) In server mode, track the server session ID and scroll index
   // for streaming HTML chunks during scrolling instead of accumulating
   // the full HTML in downloadResponse.
@@ -80,24 +286,34 @@ export function useScrapingDownloader({
   const startScrolling = useCallback(async (): Promise<
     ScrollingResponse | undefined
   > => {
+    // (Fix A) Always scroll the PRESS-TIME tab, never the focused one.
     return handleStartScroll(
-      tabId,
+      targetRef.current.tabId,
       (msg) => setMessages((prev) => [...prev, msg]),
       setIsScraping,
     );
-  }, [tabId, setIsScraping, setMessages]);
+  }, [setIsScraping, setMessages]);
 
   const startDownload = useCallback(
     async (html: string): Promise<string[] | undefined> => {
-      return handleStartDownload(tabId, html, tabUrl, downloadOptions, (msg) =>
-        setMessages((prev) => [...prev, msg]),
+      // (Fix A) START_DOWNLOAD carries the PRESS-TIME tab snapshot — a tab
+      // switch mid-flow can no longer retarget the download.
+      const target = targetRef.current;
+      return handleStartDownload(
+        target.tabId,
+        html,
+        target.tabUrl,
+        downloadOptionsRef.current,
+        (msg) => setMessages((prev) => [...prev, msg]),
       );
     },
-    [tabId, tabUrl, downloadOptions, setMessages],
+    [setMessages],
   );
 
   const stopScraping = useCallback(async () => {
-    await sendMessageToBackground(messageActions.SCRAPER_STOP, { tabId });
+    await sendMessageToBackground(messageActions.SCRAPER_STOP, {
+      tabId: targetRef.current.tabId,
+    });
     if (isScrapingRef.current) {
       stoppedByUserRef.current = true;
       // (5.5) Partial save: communicate what is happening instead of
@@ -106,10 +322,12 @@ export function useScrapingDownloader({
       onPartialSave?.();
     }
     setIsScraping(false);
-  }, [tabId, setIsScraping, setMessages, onPartialSave]);
+  }, [setIsScraping, setMessages, onPartialSave]);
 
   const scrape = useCallback(async () => {
-    if (!tabId) {
+    // (Fix A) The whole flow runs against the press-time snapshot.
+    const target = targetRef.current;
+    if (!target.tabId) {
       setIsScraping(false);
       setMessages((prev) => [
         ...prev,
@@ -128,19 +346,19 @@ export function useScrapingDownloader({
         const result = await sendMessageToBackground(
           messageActions.SERVER_CREATE_SESSION,
           {
-            url: tabUrl,
+            url: target.tabUrl,
             options: {
-              singleFile: downloadOptions?.singleFile ?? false,
+              singleFile: downloadOptionsRef.current?.singleFile ?? false,
               // Forwarded so the pre-created session (reused by
               // download-core) carries the markdown option too.
               downloadContentAsMarkdown:
-                downloadOptions?.downloadContentAsMarkdown ?? false,
+                downloadOptionsRef.current?.downloadContentAsMarkdown ?? false,
               // text-native-downloads 6.1: the HTML/text flags ride the
               // pre-created session as well — download-core reuses it
               // instead of creating a new one.
-              downloadHtml: downloadOptions?.downloadHTML ?? true,
+              downloadHtml: downloadOptionsRef.current?.downloadHTML ?? true,
               downloadContentAsText:
-                downloadOptions?.downloadContentAsText ?? false,
+                downloadOptionsRef.current?.downloadContentAsText ?? false,
               retentionDays: 1,
             },
             setActive: true, // Store as active session in background
@@ -237,57 +455,31 @@ export function useScrapingDownloader({
               top: response.top,
               height: response.height,
               viewportHeight: response.viewportHeight,
+              // (Fix C) Hydration-window fields ride along so the stop
+              // decision below sees the CURRENT page state.
+              hydrationElapsedMs: response.hydrationElapsedMs,
+              imagesPending: response.imagesPending,
             }
           : mergeDownloadResponse(prev, response);
 
-        // Check if we've reached the bottom of the page
-        const prevTop = prev?.top || 0;
-        const currentTop = response.top || 0;
-        const currentHeight = response.height || 0;
-        const heightChanged = response.heightChanged ?? false;
+        // (Fix C — hydration window) Pure stop decision, extracted for unit
+        // testing. Preserves the bottom/stuck/safety-limit logic and adds
+        // the minimum-duration + image-settle constraints.
+        const decision = decideScrollStop({
+          prev,
+          response: { ...response, ...data },
+          prevHeight: prevHeightRef.current,
+          settleCount: settleCountRef.current,
+          scrollAttempts,
+        });
+        prevHeightRef.current = decision.nextPrevHeight;
+        settleCountRef.current = decision.nextSettleCount;
 
-        // Calculate if we're at the bottom: scrollTop + viewport height >= total page height
-        const viewportHeight = response.viewportHeight || 1000;
-        const isAtBottom = currentTop + viewportHeight >= currentHeight - 100; // 100px buffer
-
-        const scrollPositionChanged = Math.abs(currentTop - prevTop) > 10; // More than 10px change
-
-        // Page-growth awareness: if height increased, don't stop even if at bottom
-        const pageGrew = currentHeight > prevHeightRef.current;
-        prevHeightRef.current = currentHeight;
-
-        // Settle mechanism: when at bottom, wait one more iteration to confirm
-        // the page isn't still growing. Only stop when: at bottom AND height
-        // unchanged AND position unchanged.
-        if (isAtBottom) {
-          if (pageGrew || heightChanged) {
-            // Page is still growing — reset settle counter and keep scrolling
-            settleCountRef.current = 0;
-          } else {
-            settleCountRef.current++;
+        if (decision.stop) {
+          setIsScraping(false);
+          if (decision.maxScrollAttemptsReached) {
+            setMessages((prev) => [...prev, { key: "app.maxScrollAttempts" }]);
           }
-        } else {
-          settleCountRef.current = 0;
-        }
-
-        // Stop scrolling if:
-        // 1. At bottom AND page hasn't grown AND position unchanged AND settle count >= 1, OR
-        // 2. Position hasn't changed (stuck), OR
-        // 3. We've exceeded the safety limit
-        if (
-          isAtBottom &&
-          !pageGrew &&
-          !heightChanged &&
-          !scrollPositionChanged &&
-          settleCountRef.current >= 1
-        ) {
-          setIsScraping(false);
-        } else if (prev && !scrollPositionChanged && !pageGrew) {
-          setIsScraping(false);
-        } else if (scrollAttempts >= 500) {
-          // Increased safety limit for very long pages
-          setIsScraping(false);
-          setMessages((prev) => [...prev, { key: "app.maxScrollAttempts" }]);
         } else {
           // Continue scrolling
           setScrollAttempts((prevCount) => prevCount + 1);
@@ -300,86 +492,117 @@ export function useScrapingDownloader({
       setMessages((prev) => [...prev, { key: "status.failed" }]);
     }
   }, [
-    tabId,
-    tabUrl,
     startScrolling,
     setIsScraping,
     setMessages,
+    setDownloadResponse,
     scrollAttempts,
-    downloadOptions?.singleFile,
-    downloadOptions?.downloadContentAsMarkdown,
-    downloadOptions?.downloadHTML,
-    downloadOptions?.downloadContentAsText,
+    t,
   ]);
 
+  // ---------------------------------------------------------------------
+  // Effect 1 — scroll driver (loop mechanics unchanged).
+  //
+  // The loop is driven by `scrape`'s identity changing per iteration
+  // (scrollAttempts state → new callback → effect re-runs → next step).
+  // On the FIRST invocation of a run (runActiveRef false) this is a fresh
+  // press/retry: reset the single-fire gate and pin the press-time tab
+  // snapshot. Later invocations within the same run NEVER re-snapshot, so
+  // a mid-run tab switch cannot retarget anything.
+  // ---------------------------------------------------------------------
   useEffect(() => {
     if (isScraping) {
-      stoppedByUserRef.current = false;
-      scrape();
-    } else if (downloadOptions) {
-      if (stoppedByUserRef.current) {
+      if (!runActiveRef.current) {
+        runActiveRef.current = true;
+        downloadStartedRef.current = false;
         stoppedByUserRef.current = false;
-
-        const htmlForStopDownload = serverSessionIdRef.current
-          ? lastHtmlRef.current
-          : downloadResponse?.html;
-
-        if (htmlForStopDownload) {
-          const stopOptions = {
-            ...downloadOptions,
-            downloadLinks: false,
-            downloadLinksFullScraping: false,
-          };
-          handleStartDownload(
-            tabId,
-            htmlForStopDownload,
-            tabUrl,
-            stopOptions,
-            (msg) => setMessages((prev) => [...prev, msg]),
-          )
-            .then(() => {
-              if (serverSessionIdRef.current) {
-                setServerStreamingDone(true);
-              }
-            })
-            .catch(() => {
-              setMessages((prev) => [...prev, { key: "status.failed" }]);
-              setDownloadResponse(null);
-            });
-        }
-        return;
+        // (Fix A) Press-time snapshot of tabId/tabUrl.
+        targetRef.current = { ...liveTabRef.current };
       }
+      scrape();
+    } else {
+      runActiveRef.current = false;
+    }
+  }, [isScraping, scrape]);
 
-      // (13.3) In server mode, HTML chunks have already been streamed to
-      // the server during scrolling. We pass the LAST scroll response's HTML
-      // to startDownload so that download-core.ts can extract resource URLs
-      // from it. The actual HTML content is already on the server.
-      const htmlForDownload = serverSessionIdRef.current
+  // ---------------------------------------------------------------------
+  // Effect 2 — START_DOWNLOAD, exactly once per intentional run (Fix A).
+  //
+  // `downloadStartedRef` gates BOTH the stop-partial-save path and the
+  // normal path: once a START_DOWNLOAD has been sent for this run, no
+  // dependency change (tab switch, fresh callback identities, options
+  // updates, downloadResponse churn) can send another. The gate resets
+  // only when a NEW run begins (Effect 1's run-start branch).
+  // ---------------------------------------------------------------------
+  useEffect(() => {
+    if (isScraping) return; // run in progress — scrolling drives this effect
+    if (!downloadOptions) return; // no intentional run
+    if (downloadStartedRef.current) return; // (Fix A) already fired this run
+
+    if (stoppedByUserRef.current) {
+      stoppedByUserRef.current = false;
+
+      const htmlForStopDownload = serverSessionIdRef.current
         ? lastHtmlRef.current
         : downloadResponse?.html;
 
-      if (htmlForDownload) {
-        startDownload(htmlForDownload)
+      if (htmlForStopDownload) {
+        downloadStartedRef.current = true;
+        const stopOptions = {
+          ...downloadOptions,
+          downloadLinks: false,
+          downloadLinksFullScraping: false,
+        };
+        handleStartDownload(
+          targetRef.current.tabId,
+          htmlForStopDownload,
+          targetRef.current.tabUrl,
+          stopOptions,
+          (msg) => setMessages((prev) => [...prev, msg]),
+        )
           .then(() => {
-            // (13.3) Mark streaming as done
             if (serverSessionIdRef.current) {
               setServerStreamingDone(true);
             }
-            // Don't reset downloadResponse here - keep it to maintain filter hidden state
-            // It will be cleared when DOWNLOAD_COMPLETE or DOWNLOAD_CANCELLED message is received
           })
           .catch(() => {
             setMessages((prev) => [...prev, { key: "status.failed" }]);
-            // Reset on error
             setDownloadResponse(null);
           });
       }
+      return;
+    }
+
+    // (13.3) In server mode, HTML chunks have already been streamed to
+    // the server during scrolling. We pass the LAST scroll response's HTML
+    // to startDownload so that download-core.ts can extract resource URLs
+    // from it. The actual HTML content is already on the server.
+    const htmlForDownload = serverSessionIdRef.current
+      ? lastHtmlRef.current
+      : downloadResponse?.html;
+
+    if (htmlForDownload) {
+      // (Fix A) The ONE START_DOWNLOAD of this run.
+      downloadStartedRef.current = true;
+      startDownload(htmlForDownload)
+        .then(() => {
+          // (13.3) Mark streaming as done
+          if (serverSessionIdRef.current) {
+            setServerStreamingDone(true);
+          }
+          // Don't reset downloadResponse here - keep it to maintain filter hidden state
+          // It will be cleared when DOWNLOAD_COMPLETE or DOWNLOAD_CANCELLED message is received
+        })
+        .catch(() => {
+          setMessages((prev) => [...prev, { key: "status.failed" }]);
+          // Reset on error
+          setDownloadResponse(null);
+        });
     }
   }, [
     isScraping,
     downloadResponse?.html,
     downloadOptions,
-    scrape,
     startDownload,
     setMessages,
     setDownloadResponse,

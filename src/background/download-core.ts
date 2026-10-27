@@ -13,6 +13,8 @@ import {
   createKeepalivePort,
   disconnectKeepalivePort,
   createDownloadContext,
+  markSessionLive,
+  markSessionNotLive,
   type DownloadContext,
 } from "./download-state";
 import {
@@ -70,6 +72,62 @@ import {
 import { ensureCloudBinding, getCloudBinding } from "./cloud-binding";
 
 const EMPTY_MAP: Map<string, string> = new Map();
+
+/** Shape of getResources()' result needed for the zero-content decision. */
+interface ExtractedResources {
+  css: string[];
+  js: string[];
+  documents: string[];
+  images: string[];
+  links: string[];
+  text: string;
+}
+
+/**
+ * (Fix C — zero-content abort) Decide whether a MAIN-flow download would
+ * produce an EMPTY server session — the condition that created the
+ * "successful" 0-resource downloads / empty pushed pages from the incident.
+ *
+ * A download is considered empty when ALL of the following hold:
+ *   - no resources would actually be uploaded (each category is only
+ *     non-empty when its download flag is enabled),
+ *   - the HTML page itself is not part of the output (downloadHTML off),
+ *   - no text document would be produced (text flag on AND extracted text
+ *     non-empty) and no markdown document was requested (the server
+ *     derives content.md from the uploaded HTML regardless of downloadHtml),
+ *   - linked-page scraping would not produce content either (flag off, or
+ *     no links discovered).
+ *
+ * Pure function — exported for unit testing.
+ */
+export function isEmptyDownload(
+  downloadOptions: FilterOptions,
+  data: ExtractedResources,
+): boolean {
+  // 1. Any actually-uploaded resource counts as content.
+  const hasResources =
+    (downloadOptions.downloadImages && data.images.length > 0) ||
+    (downloadOptions.downloadAssets &&
+      (data.css.length > 0 || data.js.length > 0)) ||
+    (downloadOptions.downloadDocuments && data.documents.length > 0);
+  if (hasResources) return false;
+
+  // 2. The HTML page itself is content.
+  if (downloadOptions.downloadHTML !== false) return false;
+
+  // 3. Text / markdown documents are content.
+  if (downloadOptions.downloadContentAsText && data.text.trim().length > 0) {
+    return false;
+  }
+  if (downloadOptions.downloadContentAsMarkdown) return false;
+
+  // 4. Linked-page scraping would still produce content.
+  if (downloadOptions.downloadLinksFullScraping && data.links.length > 0) {
+    return false;
+  }
+
+  return true;
+}
 
 /**
  * Resolve the PagePocket credential for cloud-mode session creation
@@ -427,6 +485,11 @@ async function executeDownloadServerMode(
   context.uploadQueue = uploadQueue;
   context.serverSessionId = sessionId;
 
+  // (Fix D.1 — liveness) Mark this session as LIVE for the whole flow so
+  // the panel can distinguish "download still running" from "interrupted —
+  // offer Resume/Restart" when it (re)opens and finds a checkpoint.
+  markSessionLive(sessionId);
+
   // Link the download-level abort controller to the upload queue
   // so that pressing Stop aborts in-flight uploads.
   const downloadAbort = context.abortController;
@@ -482,6 +545,28 @@ async function executeDownloadServerMode(
   const resourceFailureTally: ResourceFailureTally = {};
 
   try {
+    // Extract resources from the HTML (moved above the HTML chunk upload so
+    // the zero-content abort below can skip the upload entirely — an
+    // aborted session must not leave a skeleton chunk on the server).
+    const data = getResources(html);
+
+    // (Fix C — zero-content abort) A main-flow download whose session would
+    // be completely EMPTY (no resources, no HTML output, no text/markdown
+    // document, nothing from linked pages) is aborted here — before
+    // scrapeComplete/finalize — instead of producing one of the instant
+    // "successful" 0-resource downloads that pushed empty pages. The user
+    // gets a clear retry hint through the panel's status path (mirrors the
+    // pagepocketUploadError surfacing below). The server session is left to
+    // its normal retention cleanup; the checkpoint is cleared by the outer
+    // finally in downloadResources().
+    if (isEmptyDownload(downloadOptions, data)) {
+      console.warn(
+        "[ServerMode] Zero-content download aborted (no resources, HTML off, no text/markdown document).",
+      );
+      sendMessage({ key: "status.noDownloadableContent" });
+      return;
+    }
+
     // (12.3) Upload main page HTML as chunk to the server.
     // scrollIndex 0 = first (and only) chunk for the main page.
     //
@@ -504,9 +589,6 @@ async function executeDownloadServerMode(
       await serverClient.uploadHtmlChunk(sessionId, html, 0, "main");
       sendMessage({ key: "status.htmlUploaded" });
     }
-
-    // Extract resources from the HTML
-    const data = getResources(html);
 
     // Start all three asset categories concurrently. Use a single
     // Promise.allSettled so a failure in one category doesn't cancel the
@@ -988,6 +1070,9 @@ async function executeDownloadServerMode(
 
     throw error;
   } finally {
+    // (Fix D.1 — liveness) The download is no longer running for this
+    // session — success, failure, or abort.
+    markSessionNotLive(sessionId);
     // Clear the active server session so subsequent scrolling
     // doesn't try to upload to a stale session.
     setActiveServerSession(tabId!, null);
@@ -1105,6 +1190,11 @@ export async function resumeServerDownload(
   if (!serverSessionId) {
     throw new Error("No server session ID in checkpoint");
   }
+
+  // (Fix D.1 — liveness) A resumed download is a live download — mark the
+  // session so a concurrently (re)opened panel doesn't offer Resume/Restart
+  // for a download that is actually running.
+  markSessionLive(serverSessionId);
 
   // Create keepalive port and per-tab abort controller so the user
   // can press Stop to cancel a resumed download.
@@ -1359,6 +1449,9 @@ export async function resumeServerDownload(
     }
     throw error;
   } finally {
+    // (Fix D.1 — liveness) Resume finished (or failed) — the session is no
+    // longer live.
+    markSessionNotLive(serverSessionId);
     if (tabId) {
       disconnectKeepalivePort(tabId);
       setDownloadAbortController(null, tabId);

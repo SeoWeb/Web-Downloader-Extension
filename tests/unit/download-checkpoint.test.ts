@@ -214,14 +214,26 @@ describe("download-checkpoint per-download keying (D4)", () => {
     expect(await readCheckpoint("sess-B")).not.toBeNull();
   });
 
-  it("clearCheckpoint() without an id clears every checkpoint key", async () => {
+  it("clearCheckpoint() with the explicit all-flag clears every checkpoint key", async () => {
     await writeCheckpoint({ phase: "scraping", serverSessionId: "sess-A" });
     await writeCheckpoint({ phase: "scraping", serverSessionId: "sess-B" });
 
-    await clearCheckpoint();
+    // (Fix D.2) The global wipe now requires the explicit all-flag.
+    await clearCheckpoint(undefined, { all: true });
 
     expect(await readAllCheckpoints()).toHaveLength(0);
     expect(store.size).toBe(0);
+  });
+
+  it("clearCheckpoint() without an id and without the all-flag is a NO-OP (Fix D.2)", async () => {
+    await writeCheckpoint({ phase: "scraping", serverSessionId: "sess-A" });
+    await writeCheckpoint({ phase: "scraping", serverSessionId: "sess-B" });
+
+    // An unscoped call must never wipe a concurrent download's checkpoint.
+    await clearCheckpoint();
+
+    expect(await readAllCheckpoints()).toHaveLength(2);
+    expect(store.size).toBe(2);
   });
 
   it("a write without a server session id falls back to the legacy global key", async () => {

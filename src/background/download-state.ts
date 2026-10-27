@@ -190,3 +190,30 @@ export const removeDownloadsForTab = (tabId: number): void => {
     }
   }
 };
+
+// ---------------------------------------------------------------------------
+// (Fix D.1 — liveness) Server-session liveness tracking.
+//
+// Checkpoints exist for the WHOLE duration of a download (they are the
+// recovery manifest), so a panel that (re)opens mid-download would find one
+// and wrongly offer Resume/Restart for a download that is actually still
+// running. The background tracks the session ids of LIVE downloads here;
+// the panel queries them via the CHECK_DOWNLOAD_LIVE message action.
+// ---------------------------------------------------------------------------
+
+const liveServerSessionIds = new Set<string>();
+
+/** Mark a server session as live (called when its download starts/resumes). */
+export function markSessionLive(sessionId: string): void {
+  liveServerSessionIds.add(sessionId);
+}
+
+/** Mark a server session as no longer live (completion, failure, abort). */
+export function markSessionNotLive(sessionId: string): void {
+  liveServerSessionIds.delete(sessionId);
+}
+
+/** True when the given server session currently has a running download. */
+export function isSessionLive(sessionId?: string): boolean {
+  return !!sessionId && liveServerSessionIds.has(sessionId);
+}

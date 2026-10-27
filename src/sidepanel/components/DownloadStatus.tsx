@@ -59,6 +59,12 @@ interface DownloadStatusProps {
   onDownloadFromServer?: () => void;
   /** Interrupt data: non-null when a download was interrupted by SW restart. */
   interruptData?: InterruptData | null;
+  /**
+   * (Fix D.1) True when the background reports the download for the found
+   * checkpoint as STILL RUNNING — renders a "download in progress" card
+   * instead of the Resume/Restart card.
+   */
+  liveDownload?: boolean;
   /** Restart the download after interruption. */
   onRestartDownload?: () => void;
   /** Dismiss the interrupted state without restarting. */
@@ -160,6 +166,7 @@ export function DownloadStatus({
   onRetryServer,
   onDownloadFromServer,
   interruptData,
+  liveDownload,
   onRestartDownload,
   onDismissInterrupt,
   cloudUploadState,
@@ -177,6 +184,30 @@ export function DownloadStatus({
   // from rendering on top of the completion state.
   if (action === messageActions.DOWNLOAD_DONE) {
     return null;
+  }
+
+  // -----------------------------------------------------------------------
+  // (Fix D.1) Download still live — the checkpoint belongs to a running
+  // download, so show an in-progress card instead of Resume/Restart.
+  // -----------------------------------------------------------------------
+  if (liveDownload) {
+    return (
+      <div className="pt-8 animate-fade-in">
+        <div className="card p-6 bg-gradient-to-b from-indigo-50 to-white border-indigo-200 space-y-4">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin flex-shrink-0" />
+            <div>
+              <h3 className="font-bold text-slate-800">
+                {t("status.downloadLiveTitle")}
+              </h3>
+              <p className="text-sm text-slate-600 mt-1">
+                {t("status.downloadLiveMessage")}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // -----------------------------------------------------------------------

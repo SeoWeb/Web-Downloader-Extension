@@ -134,15 +134,21 @@ export async function updateCheckpointResourceUrls(
 }
 
 /**
- * Clear the checkpoint for `serverSessionId`. When no session id is given,
- * ALL checkpoint keys are cleared (legacy global-clear semantics, used by
- * the panel dismiss flow).
+ * Clear the checkpoint for `serverSessionId`.
  *
- * Upgrade path: the legacy single global key is also removed when it holds
- * THIS session's checkpoint (written by an extension version before
- * per-download keying).
+ * (Fix D.2 — dismiss scoping) Callers MUST scope their clear:
+ *   - `clearCheckpoint(sessionId)` clears ONLY that download's checkpoint
+ *     (plus the legacy global key when it holds THIS session's checkpoint).
+ *   - `clearCheckpoint(undefined, { all: true })` clears every checkpoint —
+ *     the explicit opt-in replaces the accidental global wipe.
+ *   - `clearCheckpoint()` with neither a session id nor the all-flag is a
+ *     NO-OP (logged), so an unscoped call can never destroy a concurrent
+ *     download's recovery state.
  */
-export async function clearCheckpoint(serverSessionId?: string): Promise<void> {
+export async function clearCheckpoint(
+  serverSessionId?: string,
+  options?: { all?: boolean },
+): Promise<void> {
   if (!chrome.storage?.session) return;
   if (serverSessionId) {
     const keys = [checkpointKey(serverSessionId)];
@@ -152,6 +158,13 @@ export async function clearCheckpoint(serverSessionId?: string): Promise<void> {
     }
     await chrome.storage.session.remove(keys);
     console.log(`[Checkpoint] Cleared (session=${serverSessionId})`);
+    return;
+  }
+  if (options?.all !== true) {
+    console.warn(
+      "[Checkpoint] clearCheckpoint() without a session id and without " +
+        "{ all: true } is a no-op — pass the session id to scope the clear.",
+    );
     return;
   }
   const everything = await chrome.storage.session.get(null);
