@@ -2,7 +2,10 @@ import { sendMessage } from "../common/chrome";
 import { MessageAction, messageActions } from "../common/message";
 import { scrollDownAndScrape, startDownload } from "./jobs";
 import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
-import { abortActiveDownload, isSessionLive } from "./download-state";
+import {
+  abortActiveDownload,
+  getSessionDownloadSnapshot,
+} from "./download-state";
 import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
 import { resumeServerDownload } from "./download-core";
 import {
@@ -271,7 +274,12 @@ export async function messageWorker(
       // (Fix D.1) Liveness query — lets the panel show "download in
       // progress" instead of a Resume/Restart card for a checkpoint whose
       // download is actually still running.
-      return { live: isSessionLive(data?.sessionId) };
+      // (Round 9 — Fix B) Extended snapshot: live flag + the run's
+      // upload-queue progress + terminal error. The panel polls this every
+      // ~2.5s while a download is tracked, because pushed PANEL_MESSAGEs
+      // are dropped when the focused tab changes; lastError lets the final
+      // poll surface a failure that its push could not deliver.
+      return getSessionDownloadSnapshot(data?.sessionId);
 
     case messageActions.RESUME_SERVER_DOWNLOAD: {
       // (D10 / task 4.6) Read the checkpoint but DO NOT clear it before the

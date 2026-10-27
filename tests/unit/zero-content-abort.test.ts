@@ -415,7 +415,12 @@ describe("zero-content abort in downloadResources (main flow)", () => {
     expect(keys).not.toContain("status.uploadingHtml");
 
     // Liveness was marked and cleared around the (aborted) flow — Fix D.1
-    expect(markSessionLive).toHaveBeenCalledWith("session-empty-1");
+    // (Round 9 — Fix B: markSessionLive now also carries the run's tab +
+    // phase for the panel's CHECK_DOWNLOAD_LIVE snapshot.)
+    expect(markSessionLive).toHaveBeenCalledWith("session-empty-1", {
+      tabId: 77,
+      phase: "uploading",
+    });
     expect(markSessionNotLive).toHaveBeenCalledWith("session-empty-1");
   });
 

@@ -77,6 +77,17 @@ CLOUD_NOTHING_TO_PUSH_ERROR = (
     "nothing to push: no HTML/text/markdown selected and no images captured"
 )
 
+# Round 9: the local counterpart of CLOUD_NOTHING_TO_PUSH_ERROR. A non-cloud
+# session whose options select no document format (HTML off, no markdown, no
+# text) and that captured no image resources has no representable artifact —
+# fail with this explicit, stable error. Aligned with the cloud wording
+# (replaces the classic "Text-only download produced no text content": that
+# message was misleading for an images-capable session that simply selected
+# no text format).
+LOCAL_NOTHING_TO_ASSEMBLE_ERROR = (
+    "nothing to download: no HTML/text/markdown selected and no images captured"
+)
+
 
 # ---------------------------------------------------------------------------
 # ZipAssemblerService
@@ -513,13 +524,41 @@ class ZipAssemblerService:
                     # index.html and no HTML-only extras. Applies only when
                     # HTML is off and singleFile is not set (singleFile
                     # implies HTML delivery, see the options coercion above).
-                    output_path = await self._assemble_text_only(
-                        session_id, db, session,
-                        content_md=content_md,
-                        content_text=content_text,
-                        page_md_list=page_md_list,
-                        page_hash_to_filename=page_hash_to_filename,
+                    #
+                    # Round 9: a session with NO text document at all but
+                    # captured image resources is images-only, not empty —
+                    # build a local gallery ZIP instead of failing in
+                    # text-only assembly (the local mirror of the Round 8
+                    # cloud gallery push). Only the truly-nothing case (no
+                    # documents AND no image resources) falls through to the
+                    # text-only failure path.
+                    has_text_document = (
+                        content_md is not None
+                        or content_text is not None
+                        or bool(page_md_list)
                     )
+                    image_resources = (
+                        self._image_resources(
+                            all_resources, archive_path_by_resource_id,
+                        )
+                        if not has_text_document
+                        else []
+                    )
+                    if image_resources:
+                        output_path = await self._assemble_images_only_zip(
+                            session_id, db, session,
+                            main_html=main_html,
+                            image_resources=image_resources,
+                            archive_paths=archive_path_by_resource_id,
+                        )
+                    else:
+                        output_path = await self._assemble_text_only(
+                            session_id, db, session,
+                            content_md=content_md,
+                            content_text=content_text,
+                            page_md_list=page_md_list,
+                            page_hash_to_filename=page_hash_to_filename,
+                        )
                 elif is_single_file:
                     # v1 (download-as-markdown D7): single-file output does not
                     # embed markdown — the option is forced off under singleFile
@@ -740,6 +779,136 @@ class ZipAssemblerService:
             return None
 
     # ------------------------------------------------------------------
+    # Images-only local assembly (Round 9)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _image_resources(resources: list, archive_paths: Optional[dict]) -> list:
+        """Filter a session's image resources (Round 9).
+
+        Same predicate as the Round 8 cloud gallery filter: the final
+        archive path sits under ``images/`` or the declared content type
+        is an image MIME. ``archive_paths`` is the 3.7 resource id →
+        final archive path map, so collision-suffixed entries are judged
+        by the path that would actually be written to the artifact.
+        Resources without a local path or storage path can never be
+        written and are excluded up front.
+        """
+        image_resources: list = []
+        for r in resources:
+            if not r.local_path or not r.storage_path:
+                continue
+            archive_name = (
+                (archive_paths or {}).get(getattr(r, "id", ""), None)
+                or r.local_path
+            )
+            content_type = (r.content_type or "").lower()
+            if content_type.startswith("image/") or archive_name.startswith("images/"):
+                image_resources.append(r)
+        return image_resources
+
+    async def _assemble_images_only_zip(
+        self,
+        session_id: str,
+        db,
+        session,
+        *,
+        main_html: str,
+        image_resources: list,
+        archive_paths: Optional[dict[str, str]] = None,
+    ) -> Optional[str]:
+        """Assemble a local images-only artifact (Round 9).
+
+        A session with ``downloadHtml=false`` that produced no text
+        document but DID capture image resources builds a browsable ZIP
+        instead of failing in text-only assembly: a generated gallery
+        ``index.html`` at the ZIP root (the same ``_build_gallery_html`` /
+        ``_gallery_title`` pair as the Round 8 cloud gallery push) plus
+        every image resource at its regular archive path — the exact
+        ``sanitize_zip_path(preresolved or local_path)`` entries the
+        ``_assemble_zip`` resource pass would write (``images/`` tree,
+        3.7 collision dedup applied), so the gallery ``<img src>``
+        references resolve inside the archive with no path logic of its
+        own. Missing/unreadable files are skipped with the same 6.6 rule
+        as ``_assemble_zip``. The caller only routes sessions that have
+        image resources, and the gallery document itself is always
+        written, so an empty artifact is not possible here.
+        """
+        session_dir = os.path.join(self.storage_root, session_id)
+        zip_filename = generate_safe_filename(session.url, ".zip")
+        zip_path = os.path.join(session_dir, zip_filename)
+
+        # Resolve final archive entries up front so the gallery <img> srcs
+        # and the written ZIP entries can never drift apart. Stable
+        # ordering: sort by archive path (same rule as the cloud gallery).
+        entries: list[tuple[str, str]] = []  # (archive_path, storage_path)
+        for resource in image_resources:
+            preresolved = (archive_paths or {}).get(
+                getattr(resource, "id", ""), None
+            )
+            safe_path = sanitize_zip_path(preresolved or resource.local_path)
+            if not safe_path:
+                continue
+            if not os.path.isfile(resource.storage_path):
+                logger.warning(
+                    "Missing resource file skipped: session=%s path=%s storage=%s",
+                    session_id, safe_path, resource.storage_path,
+                )
+                continue
+            entries.append((safe_path, resource.storage_path))
+        entries.sort(key=lambda entry: entry[0])
+
+        gallery_title = self._gallery_title(main_html, session.url)
+        gallery_html = self._build_gallery_html(
+            gallery_title, [path for path, _storage in entries],
+        )
+
+        total_steps = len(entries) + 1  # +index.html
+        steps_done = 0
+
+        try:
+            with zipfile.ZipFile(
+                zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=ZIP_COMPRESSION_LEVEL,
+            ) as zf:
+                # 1. Write the gallery index.html
+                zf.writestr("index.html", gallery_html)
+                steps_done += 1
+                await self._update_progress(
+                    db, session, "assembling_zip",
+                    int(steps_done / max(total_steps, 1) * 100),
+                )
+
+                # 2. Write image resources at their designated paths (6.2)
+                batch_size = 10
+                for i, (safe_path, storage_path) in enumerate(entries):
+                    try:
+                        zf.write(storage_path, safe_path)
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to add resource to ZIP: session=%s path=%s exc=%s",
+                            session_id, safe_path, exc,
+                        )
+                    steps_done += 1
+                    await self._update_progress(
+                        db, session, "assembling_zip",
+                        int(steps_done / max(total_steps, 1) * 100),
+                        flush=(i + 1) % batch_size == 0 or (i + 1) == len(entries),
+                    )
+
+            await self._update_progress(db, session, "assembling_zip", 100)
+            return zip_path
+
+        except Exception as exc:
+            # Clean up partial ZIP (6.6)
+            if os.path.exists(zip_path):
+                try:
+                    os.remove(zip_path)
+                except OSError:
+                    pass
+            await self._mark_failed(db, session, f"Images-only ZIP assembly error: {exc}")
+            return None
+
+    # ------------------------------------------------------------------
     # Text-only assembly (text-native-downloads 3.2)
     # ------------------------------------------------------------------
 
@@ -783,9 +952,12 @@ class ZipAssemblerService:
                 files.append((md_path, page_md))
 
         if not files:
+            # Round 9: with the images-only branch handled by the caller's
+            # routing, reaching this guard means the session selected no
+            # document format AND captured no image resources — fail with
+            # the cloud-aligned explicit error.
             await self._mark_failed(
-                db, session,
-                "Text-only download produced no text content",
+                db, session, LOCAL_NOTHING_TO_ASSEMBLE_ERROR,
             )
             return None
 

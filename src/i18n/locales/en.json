@@ -129,6 +129,7 @@
       "downloadLive": "Download in progress…",
       "downloadLiveTitle": "Download in progress",
       "downloadLiveMessage": "This download is still running. The panel will update automatically when it finishes.",
+      "downloadLiveProgress": "Resources: {{completed}}/{{total}}",
       "memoryLimitError": "Download failed due to memory limits. Attempting cleanup...",
       "networkError": "Download failed due to network issues. Please check your connection.",
       "memoryCleanupPerformed": "Memory cleanup performed. Please try downloading again with fewer options selected.",

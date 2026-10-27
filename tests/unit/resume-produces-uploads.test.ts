@@ -73,6 +73,10 @@ vi.mock("../../src/background/download-state", () => ({
   markSessionLive: vi.fn(),
   markSessionNotLive: vi.fn(),
   isSessionLive: vi.fn().mockReturnValue(false),
+  // (Round 9 — Fix B) Trusted-progress exports used by download-core
+  setSessionUploadQueue: vi.fn(),
+  setSessionPhase: vi.fn(),
+  setSessionLastError: vi.fn(),
 }));
 
 vi.mock("../../src/common/storage/filterStorage", () => ({

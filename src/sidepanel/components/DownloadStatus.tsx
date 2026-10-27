@@ -3,6 +3,7 @@ import { MessageAction, messageActions } from "../../common/message";
 import { ScrollingResponse } from "../hooks/useScrapingDownloader";
 import { useTranslation } from "react-i18next";
 import { sendMessage } from "../../common/chrome";
+import type { DownloadLiveSnapshot } from "../../background/download-state";
 import {
   Upload,
   Server,
@@ -65,6 +66,13 @@ interface DownloadStatusProps {
    * instead of the Resume/Restart card.
    */
   liveDownload?: boolean;
+  /**
+   * (Round 9 — Fix B) Trusted progress snapshot polled from
+   * CHECK_DOWNLOAD_LIVE. Rendered on the live card and the downloading card
+   * because pushed progress messages are dropped when the focused tab
+   * changes.
+   */
+  liveProgress?: DownloadLiveSnapshot | null;
   /** Restart the download after interruption. */
   onRestartDownload?: () => void;
   /** Dismiss the interrupted state without restarting. */
@@ -167,6 +175,7 @@ export function DownloadStatus({
   onDownloadFromServer,
   interruptData,
   liveDownload,
+  liveProgress,
   onRestartDownload,
   onDismissInterrupt,
   cloudUploadState,
@@ -191,6 +200,13 @@ export function DownloadStatus({
   // download, so show an in-progress card instead of Resume/Restart.
   // -----------------------------------------------------------------------
   if (liveDownload) {
+    // (Round 9 — Fix B) Show the polled progress counters when the
+    // background has them — this card used to be static text while a
+    // reopened download's only progress channel (pushed messages) was
+    // dropped by the tab filter.
+    const hasCounts =
+      typeof liveProgress?.completed === "number" &&
+      typeof liveProgress?.total === "number";
     return (
       <div className="pt-8 animate-fade-in">
         <div className="card p-6 bg-gradient-to-b from-indigo-50 to-white border-indigo-200 space-y-4">
@@ -201,7 +217,12 @@ export function DownloadStatus({
                 {t("status.downloadLiveTitle")}
               </h3>
               <p className="text-sm text-slate-600 mt-1">
-                {t("status.downloadLiveMessage")}
+                {hasCounts
+                  ? t("status.downloadLiveProgress", {
+                      completed: liveProgress!.completed,
+                      total: liveProgress!.total,
+                    })
+                  : t("status.downloadLiveMessage")}
               </p>
             </div>
           </div>
@@ -548,11 +569,25 @@ export function DownloadStatus({
   // Show progress when download is in progress but not actively scraping
   // and not in a server-mode phase (uploading/assembling/ready handled above).
   if (!isScraping && !isScrapingLinkedPages && !!downloadResponse) {
+    // (Round 9 — Fix B) Trustworthy counters from the liveness poll, shown
+    // alongside the message stream: pushed progress messages freeze when
+    // the user switches tabs; this line comes straight from the background.
+    const hasCounts =
+      typeof liveProgress?.completed === "number" &&
+      typeof liveProgress?.total === "number";
     return (
       <div className="pt-8">
         <h3 className="pb-2 font-bold">
           {t("status.downloadingWebsiteContent")}
         </h3>
+        {hasCounts && (
+          <p className="pb-2 text-sm text-slate-500">
+            {t("status.downloadLiveProgress", {
+              completed: liveProgress!.completed,
+              total: liveProgress!.total,
+            })}
+          </p>
+        )}
         <ScrapingControls
           tabId={tabId}
           isPaused={isPaused}

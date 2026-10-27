@@ -81,10 +81,14 @@ vi.mock("../../src/background/download-checkpoint", () => ({
 import { messageWorker } from "../../src/background/message";
 import { messageActions } from "../../src/common/message";
 import { clearCheckpoint } from "../../src/background/download-checkpoint";
+import type { UploadQueue } from "../../src/background/upload-queue";
 import {
   markSessionLive,
   markSessionNotLive,
   isSessionLive,
+  setSessionUploadQueue,
+  setSessionPhase,
+  setSessionLastError,
 } from "../../src/background/download-state";
 
 const addMessage = vi.fn();
@@ -104,7 +108,14 @@ describe("CHECK_DOWNLOAD_LIVE (Fix D.1 liveness)", () => {
       { sessionId: "sess-live" },
       addMessage,
     );
-    expect(result).toEqual({ live: false });
+    expect(result).toEqual({
+      live: false,
+      phase: null,
+      completed: null,
+      total: null,
+      tabId: null,
+      serverSessionId: "sess-live",
+    });
   });
 
   it("reports live:true once the session was marked live", async () => {
@@ -116,7 +127,14 @@ describe("CHECK_DOWNLOAD_LIVE (Fix D.1 liveness)", () => {
       { sessionId: "sess-live" },
       addMessage,
     );
-    expect(result).toEqual({ live: true });
+    expect(result).toEqual({
+      live: true,
+      phase: null,
+      completed: null,
+      total: null,
+      tabId: null,
+      serverSessionId: "sess-live",
+    });
   });
 
   it("reports live:false again after the session was unmarked", async () => {
@@ -128,7 +146,14 @@ describe("CHECK_DOWNLOAD_LIVE (Fix D.1 liveness)", () => {
       { sessionId: "sess-live" },
       addMessage,
     );
-    expect(result).toEqual({ live: false });
+    expect(result).toEqual({
+      live: false,
+      phase: null,
+      completed: null,
+      total: null,
+      tabId: null,
+      serverSessionId: "sess-live",
+    });
   });
 
   it("handles a missing session id without throwing", async () => {
@@ -137,7 +162,14 @@ describe("CHECK_DOWNLOAD_LIVE (Fix D.1 liveness)", () => {
       {},
       addMessage,
     );
-    expect(result).toEqual({ live: false });
+    expect(result).toEqual({
+      live: false,
+      phase: null,
+      completed: null,
+      total: null,
+      tabId: null,
+      serverSessionId: null,
+    });
   });
 
   it("tracks sessions independently (one live download doesn't leak to another)", () => {
@@ -146,6 +178,121 @@ describe("CHECK_DOWNLOAD_LIVE (Fix D.1 liveness)", () => {
     expect(isSessionLive("sess-b")).toBe(false);
     markSessionNotLive("sess-a");
     expect(isSessionLive("sess-a")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (Round 9 — Fix B) Extended CHECK_DOWNLOAD_LIVE snapshot: phase, tab,
+// upload-queue progress, and the terminal error.
+// ---------------------------------------------------------------------------
+
+/** Minimal upload-queue stand-in exposing only getProgress(). */
+function fakeQueue(progress: {
+  completedCount: number;
+  totalCount: number;
+}): UploadQueue {
+  return {
+    getProgress: () => ({
+      completedCount: progress.completedCount,
+      failedCount: 0,
+      totalCount: progress.totalCount,
+      bytesUploaded: 0,
+      totalBytes: 0,
+    }),
+  } as unknown as UploadQueue;
+}
+
+describe("CHECK_DOWNLOAD_LIVE extended snapshot (Round 9 Fix B)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("reports the run's tab, phase, and upload-queue counters while live", async () => {
+    markSessionLive("sess-r9", { tabId: 7, phase: "uploading" });
+    setSessionUploadQueue(
+      "sess-r9",
+      fakeQueue({ completedCount: 5, totalCount: 12 }),
+    );
+
+    const result = await messageWorker(
+      messageActions.CHECK_DOWNLOAD_LIVE,
+      { sessionId: "sess-r9" },
+      addMessage,
+    );
+    expect(result).toEqual({
+      live: true,
+      phase: "uploading",
+      completed: 5,
+      total: 12,
+      tabId: 7,
+      serverSessionId: "sess-r9",
+    });
+  });
+
+  it("tracks phase changes from the run (uploading → assembling)", async () => {
+    markSessionLive("sess-r9b", { tabId: 3, phase: "uploading" });
+    setSessionPhase("sess-r9b", "assembling");
+
+    const result = await messageWorker(
+      messageActions.CHECK_DOWNLOAD_LIVE,
+      { sessionId: "sess-r9b" },
+      addMessage,
+    );
+    expect(result).toMatchObject({ live: true, phase: "assembling" });
+  });
+
+  it("reports null counters when no queue is attached", async () => {
+    markSessionLive("sess-r9c", { tabId: 3 });
+
+    const result = await messageWorker(
+      messageActions.CHECK_DOWNLOAD_LIVE,
+      { sessionId: "sess-r9c" },
+      addMessage,
+    );
+    expect(result).toMatchObject({
+      live: true,
+      completed: null,
+      total: null,
+    });
+  });
+
+  it("keeps lastError visible AFTER the session stopped (final poll), and clears it on a new run", async () => {
+    markSessionLive("sess-r9d", { tabId: 3 });
+    setSessionLastError("sess-r9d", "Assembly timed out");
+    markSessionNotLive("sess-r9d");
+
+    const dead = await messageWorker(
+      messageActions.CHECK_DOWNLOAD_LIVE,
+      { sessionId: "sess-r9d" },
+      addMessage,
+    );
+    expect(dead).toMatchObject({
+      live: false,
+      lastError: "Assembly timed out",
+    });
+
+    // A restarted run for the same session clears the previous failure.
+    markSessionLive("sess-r9d", { tabId: 3 });
+    const restarted = await messageWorker(
+      messageActions.CHECK_DOWNLOAD_LIVE,
+      { sessionId: "sess-r9d" },
+      addMessage,
+    );
+    expect(restarted).toMatchObject({ live: true });
+    expect(restarted).not.toHaveProperty("lastError");
+  });
+
+  it("omits lastError for a clean run", async () => {
+    markSessionLive("sess-r9e");
+    markSessionNotLive("sess-r9e");
+
+    const result = await messageWorker(
+      messageActions.CHECK_DOWNLOAD_LIVE,
+      { sessionId: "sess-r9e" },
+      addMessage,
+    );
+    expect(result).toMatchObject({ live: false });
+    expect(result).not.toHaveProperty("lastError");
   });
 });
 

@@ -22,6 +22,9 @@ import {
   serverClient,
   upgradeInsecureServerUrl,
 } from "./background/server-client";
+import type { DownloadLiveSnapshot } from "./background/download-state";
+import { isPushForPanel } from "./sidepanel/utils/tabFilter";
+import { decideLivePollStep } from "./sidepanel/utils/livePolling";
 import {
   ServerModeState,
   initialServerModeState,
@@ -107,6 +110,21 @@ export default function SidePanel() {
   // A checkpoint exists for the whole run, so a panel (re)opened mid-download
   // must show "download in progress" — not the Resume/Restart card.
   const [liveSessionId, setLiveSessionId] = useState<string | null>(null);
+  // (Round 9 — Fix B) Trusted progress polled from CHECK_DOWNLOAD_LIVE.
+  // Pushed progress messages are dropped whenever the focused tab changes,
+  // so the downloading card can freeze on a stale count — this snapshot is
+  // the trustworthy source instead.
+  const [liveProgress, setLiveProgress] = useState<DownloadLiveSnapshot | null>(
+    null,
+  );
+  // (Round 9 — Fix B) Session tracked by the poll: the reopened live
+  // download's session (Fix D.1 mount flow) or the press-run's server
+  // session once START_DOWNLOAD fires (download phase). Null = not tracking.
+  const [pollSessionId, setPollSessionId] = useState<string | null>(null);
+  // (Round 9) Poll bookkeeping — see the polling effect below.
+  const sawLiveRef = useRef(false);
+  const downloadSettledRef = useRef(false);
+  const confirmPendingRef = useRef(false);
   // PagePocket cloud upload state
   const [cloudUploadState, setCloudUploadState] =
     useState<CloudUploadState | null>(null);
@@ -141,6 +159,8 @@ export default function SidePanel() {
     setDownloadResponse,
     setScrollAttempts,
     stopScraping,
+    getPinnedTabId,
+    getServerSessionId,
   } = useScrapingDownloader({
     tabId,
     tabUrl,
@@ -153,7 +173,36 @@ export default function SidePanel() {
     onPartialSave: () => {
       setDownloadReport((prev) => ({ ...prev, partial: true }));
     },
+    // (Round 9 — Fix B) Pin liveness polling to the download phase of this
+    // press-run and re-arm the terminal detection for the new run.
+    onDownloadStarted: (serverSessionId) => {
+      sawLiveRef.current = false;
+      downloadSettledRef.current = false;
+      confirmPendingRef.current = false;
+      setPollSessionId(serverSessionId);
+    },
+    // (Round 9 — Fix B) The START_DOWNLOAD promise settled — the run is
+    // terminal-eligible even if no poll observed the session live.
+    onDownloadSettled: () => {
+      downloadSettledRef.current = true;
+    },
   });
+
+  // (Round 9 — Fix 3/4) Mirror the hook's press-time snapshot + session id
+  // into refs every render, so the message filter and the poll loop always
+  // read the CURRENT values without re-subscribing the message listener.
+  const pinnedDownloadTabRef = useRef<number>(0);
+  pinnedDownloadTabRef.current = getPinnedTabId();
+  const activeSessionIdRef = useRef<string | null>(null);
+  activeSessionIdRef.current = getServerSessionId();
+
+  // (Round 9 — Fix 3) Push acceptance: the focused tab OR the pinned
+  // download tab. See isPushForPanel for the multi-tab semantics.
+  const acceptsTab = useCallback(
+    (senderTabId: number | undefined) =>
+      isPushForPanel(senderTabId, tabId, pinnedDownloadTabRef.current),
+    [tabId],
+  );
 
   // Memoize messageWorker to stabilize useMessageListener dependency
   const messageWorker = useCallback(
@@ -164,8 +213,15 @@ export default function SidePanel() {
           return "PONG";
 
         case messageActions.PANEL_MESSAGE:
-          // Ignore messages from other tabs
-          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          // (Round 9 — Fix 3) Accept pushes for the focused tab OR for the
+          // tab of the download this panel started (press-time snapshot).
+          // The old filter compared against the live focused tab only, so
+          // EVERY push from an active download — progress and the terminal
+          // outcome alike — was dropped once the user switched tabs (the
+          // panel froze at "Images progress: 1/353" while the server
+          // received all images). Genuinely unrelated tabs' downloads are
+          // still ignored; a newer press re-pins the snapshot.
+          if (!acceptsTab(data.tabId)) break;
           setMessages((prev) => [...prev, data.message]);
           if (data.message?.options?.isPaused !== undefined) {
             setIsPaused(data.message.options.isPaused);
@@ -234,12 +290,18 @@ export default function SidePanel() {
           const msgKey = data.message?.key;
           if (msgKey) {
             // (Fix D.1) Any terminal background outcome ends the live state.
+            // (Round 9) status.noDownloadableContent is also terminal (the
+            // zero-content abort) — and every terminal outcome stops the
+            // liveness poll, so the poll-driven finalize can't override the
+            // push-driven outcome.
             if (
               msgKey === "status.complete" ||
               msgKey === "status.pagepocketUploadComplete" ||
-              msgKey === "status.pagepocketUploadError"
+              msgKey === "status.pagepocketUploadError" ||
+              msgKey === "status.noDownloadableContent"
             ) {
               setLiveSessionId(null);
+              setPollSessionId(null);
             }
             setServerModeState((prev) =>
               applyServerModeMessage(prev, msgKey, data.message?.options),
@@ -255,19 +317,19 @@ export default function SidePanel() {
 
         // PagePocket cloud upload message handling
         case messageActions.PAGEPOCKET_UPLOAD_START:
-          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          if (!acceptsTab(data.tabId)) break;
           setCloudUploadState({ status: "uploading", progress: 0 });
           break;
 
         case messageActions.PAGEPOCKET_UPLOAD_PROGRESS:
-          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          if (!acceptsTab(data.tabId)) break;
           setCloudUploadState((prev) =>
             prev ? { ...prev, progress: data.progress ?? prev.progress } : prev,
           );
           break;
 
         case messageActions.PAGEPOCKET_UPLOAD_COMPLETE:
-          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          if (!acceptsTab(data.tabId)) break;
           setCloudUploadState({
             status: "success",
             progress: 100,
@@ -276,13 +338,15 @@ export default function SidePanel() {
           setAction(messageActions.DOWNLOAD_DONE);
           // (Fix D.1) The download is no longer live.
           setLiveSessionId(null);
+          // (Round 9) Stop the liveness poll — terminal via push.
+          setPollSessionId(null);
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
           setDownloadResponse(null);
           break;
 
         case messageActions.PAGEPOCKET_UPLOAD_ERROR:
-          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          if (!acceptsTab(data.tabId)) break;
           setCloudUploadState({
             status: "error",
             progress: 0,
@@ -291,17 +355,21 @@ export default function SidePanel() {
           });
           // (Fix D.1) The download is no longer live.
           setLiveSessionId(null);
+          // (Round 9) Stop the liveness poll — terminal via push.
+          setPollSessionId(null);
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
           break;
 
         case messageActions.DOWNLOAD_COMPLETE:
-          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          if (!acceptsTab(data.tabId)) break;
           // Download actually completed - file was saved
           setMessages((prev) => [...prev, { key: "status.scraped" }]);
           setAction(messageActions.DOWNLOAD_DONE);
           // (Fix D.1) The download is no longer live.
           setLiveSessionId(null);
+          // (Round 9) Stop the liveness poll — terminal via push.
+          setPollSessionId(null);
           setServerModeState((prev) =>
             prev ? { ...prev, phase: "ready" } : prev,
           );
@@ -319,7 +387,7 @@ export default function SidePanel() {
           break;
 
         case messageActions.DOWNLOAD_FAILED:
-          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          if (!acceptsTab(data.tabId)) break;
           // Download failed or was interrupted
           // Reset messages to connected status with error message
           setMessages([
@@ -334,6 +402,8 @@ export default function SidePanel() {
           setAction(null);
           // (Fix D.1) The download is no longer live.
           setLiveSessionId(null);
+          // (Round 9) Stop the liveness poll — terminal via push.
+          setPollSessionId(null);
           // (5.3) A failed download leaves no completion screen — drop the
           // partial report collected so far.
           setDownloadReport(initialDownloadReport);
@@ -342,7 +412,7 @@ export default function SidePanel() {
           break;
 
         case messageActions.DOWNLOAD_CANCELLED:
-          if (data.tabId !== undefined && data.tabId !== tabId) break;
+          if (!acceptsTab(data.tabId)) break;
           // (5.5) Full cancel — show explicit feedback instead of silently
           // resetting to the connected state.
           setMessages([
@@ -354,6 +424,8 @@ export default function SidePanel() {
           setAction(null);
           // (Fix D.1) The download is no longer live.
           setLiveSessionId(null);
+          // (Round 9) Stop the liveness poll — terminal via push.
+          setPollSessionId(null);
           setDownloadReport(initialDownloadReport);
           setDownloadResponse(null);
           break;
@@ -369,6 +441,8 @@ export default function SidePanel() {
           });
           // (Fix D.1) An interrupted signal means the download is dead.
           setLiveSessionId(null);
+          // (Round 9) Stop the liveness poll — terminal via push.
+          setPollSessionId(null);
           setIsScraping(false);
           setIsScrapingLinkedPages(false);
           setAction(null);
@@ -388,7 +462,7 @@ export default function SidePanel() {
       return null;
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [setDownloadResponse],
+    [setDownloadResponse, acceptsTab],
   ); // Add setDownloadResponse to dependencies
 
   useMessageListener({ messageWorker });
@@ -414,6 +488,10 @@ export default function SidePanel() {
               );
               if (live?.live) {
                 setLiveSessionId(result.serverSessionId);
+                // (Round 9 — Fix B) Track this session for liveness polling
+                // so a terminal outcome that arrives via dropped pushes is
+                // still surfaced.
+                setPollSessionId(result.serverSessionId);
                 setIsScraping(false);
                 setIsScrapingLinkedPages(false);
                 setMessages([
@@ -448,6 +526,132 @@ export default function SidePanel() {
       }
     })();
   }, []); // Run once on mount
+
+  // -------------------------------------------------------------------------
+  // (Round 9 — Fix B) Liveness / progress polling.
+  //
+  // Pushed PANEL_MESSAGEs are dropped whenever the focused tab changes (the
+  // old tabId filter), so the downloading card could freeze on a stale count
+  // and a terminal failure was never shown. While a download is tracked —
+  // the reopened live session, an active scrape, or a press-run after
+  // START_DOWNLOAD — poll CHECK_DOWNLOAD_LIVE every 2.5s and:
+  //   - publish the snapshot as the downloading card's trusted progress,
+  //   - on live:false (once terminal-eligible: seen live, or START_DOWNLOAD
+  //     settled) confirm with ONE more poll, then drive the terminal state:
+  //     failure when the background recorded lastError, completion only when
+  //     the download was actually observed live.
+  // Push-driven terminals clear pollSessionId/liveSessionId, which stops
+  // this loop — the poll is strictly the fallback for lost pushes.
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    const tracked =
+      liveSessionId !== null || isScraping || pollSessionId !== null;
+    if (!tracked) return;
+    let cancelled = false;
+
+    const snapshotSessionId =
+      liveSessionId ?? pollSessionId ?? activeSessionIdRef.current ?? undefined;
+
+    const finalizeAsFailure = (lastError: string) => {
+      // Mirrors the DOWNLOAD_FAILED reset — the failure push was lost, so
+      // the poll drives the same terminal state.
+      setMessages([
+        { key: "status.connected" },
+        {
+          key: "status.failedWithError",
+          options: { error: lastError || t("app.unknownError") },
+        },
+      ]);
+      setIsScraping(false);
+      setIsScrapingLinkedPages(false);
+      setAction(null);
+      setLiveSessionId(null);
+      setPollSessionId(null);
+      setLiveProgress(null);
+      setDownloadReport(initialDownloadReport);
+      setDownloadResponse(null);
+    };
+
+    const finalizeAsComplete = () => {
+      // Mirrors the DOWNLOAD_COMPLETE reset.
+      setMessages((prev) => [
+        ...prev,
+        { key: "status.scraped" },
+        { key: "status.creating" },
+        { key: "status.complete" },
+      ]);
+      setAction(messageActions.DOWNLOAD_DONE);
+      setLiveSessionId(null);
+      setPollSessionId(null);
+      setLiveProgress(null);
+      setServerModeState((prev) => (prev ? { ...prev, phase: "ready" } : prev));
+      setDownloadResponse(null);
+      setIsScraping(false);
+      setIsScrapingLinkedPages(false);
+    };
+
+    const stopTracking = () => {
+      // The run settled without ever being observed live: it either surfaced
+      // its own outcome via pushes already or aborted pre-session. Stop the
+      // poll without faking a completion card.
+      setPollSessionId(null);
+      setLiveProgress(null);
+    };
+
+    const pollOnce = async () => {
+      try {
+        const snapshot: DownloadLiveSnapshot | null =
+          await sendMessageToBackground(
+            messageActions.CHECK_DOWNLOAD_LIVE,
+            snapshotSessionId ? { sessionId: snapshotSessionId } : {},
+          );
+        if (cancelled || !snapshot) return;
+        const decision = decideLivePollStep({
+          snapshot,
+          sawLive: sawLiveRef.current,
+          downloadSettled: downloadSettledRef.current,
+          confirmPending: confirmPendingRef.current,
+        });
+        switch (decision.action) {
+          case "progress":
+            sawLiveRef.current = true;
+            confirmPendingRef.current = false;
+            setLiveProgress(decision.snapshot);
+            break;
+          case "wait":
+            // Download phase not observed yet — keep polling.
+            break;
+          case "armConfirm":
+            confirmPendingRef.current = true;
+            break;
+          case "finalizeFailure":
+            finalizeAsFailure(decision.error);
+            break;
+          case "finalizeComplete":
+            finalizeAsComplete();
+            break;
+          case "stopTracking":
+            stopTracking();
+            break;
+        }
+      } catch {
+        // Transient (background restarting) — the next tick retries.
+      }
+    };
+
+    void pollOnce();
+    const interval = setInterval(() => {
+      void pollOnce();
+    }, 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+    // The finalize callbacks close over state setters only; the hook's
+    // setDownloadResponse wrapper is unstable, so it must stay out of the
+    // dep array or the poll interval would be torn down on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveSessionId, isScraping, pollSessionId, t]);
 
   // Listen for download completion via chrome.storage
   useEffect(() => {
@@ -515,6 +719,9 @@ export default function SidePanel() {
       setServerModeState(initialServerModeState); // Reset server-mode state
       setCloudUploadState(null); // Reset cloud upload state
       setDownloadReport(initialDownloadReport); // (5.3) Reset download report
+      // (Round 9 — Fix B) Stop any liveness poll from a finished run.
+      setPollSessionId(null);
+      setLiveProgress(null);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [setDownloadResponse, setScrollAttempts],
@@ -667,6 +874,8 @@ export default function SidePanel() {
         // (Fix D.1) A live download shows "in progress" instead of the
         // Resume/Restart card.
         liveDownload={liveSessionId !== null}
+        // (Round 9 — Fix B) Trusted progress from the liveness poll.
+        liveProgress={liveProgress}
         onRestartDownload={async () => {
           setInterruptData(null);
           // If we have a server session ID, attempt resume

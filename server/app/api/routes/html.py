@@ -7,6 +7,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy import update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_client, require_session_owner
@@ -197,6 +198,22 @@ async def upload_html_chunk(
     )
     db.add(chunk)
     await db.flush()
+
+    # Round 9 counter fix: restore the stored sessions.html_chunks counter.
+    # The deadlock fix removed ALL per-upload counter updates, but unlike
+    # resources_received (reconciled once at finalize) this column was never
+    # written again anywhere — so create/list responses (which read the
+    # stored column) reported 0 even with chunks stored, including the very
+    # first "main" skeleton chunk (pageType "main" / page_url_hash "main",
+    # scrollIndex 0). Every non-duplicate chunk — main skeleton, appends,
+    # linked pages — now increments the column atomically server-side (Core
+    # UPDATE, same pattern as the finalize guarded transition); the /status
+    # endpoint's live COUNT remains the authoritative in-flight view.
+    await db.execute(
+        sa_update(Session)
+        .where(Session.id == session_id)
+        .values(html_chunks=Session.html_chunks + 1)
+    )
 
     # Register the chunk with the in-memory HTML merger service so that
     # the assembly pipeline can find it without relying on disk-based

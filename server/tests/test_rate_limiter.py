@@ -187,6 +187,7 @@ class TestResourceUploadRateLimited:
             _scalar_one(_mock_session()),   # session lookup
             _scalar(0),                     # post-write size (passes)
             _scalar_one(None),              # dedup → no match
+            MagicMock(),                    # counter UPDATE (Round 9)
         )
 
         def _upload():

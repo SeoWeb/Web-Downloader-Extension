@@ -15,6 +15,9 @@ import {
   createDownloadContext,
   markSessionLive,
   markSessionNotLive,
+  setSessionUploadQueue,
+  setSessionPhase,
+  setSessionLastError,
   type DownloadContext,
 } from "./download-state";
 import {
@@ -359,6 +362,14 @@ export async function downloadResources(
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
 
+    // (Round 9 — Fix B) Record the terminal error so the panel's
+    // CHECK_DOWNLOAD_LIVE poll can surface the failure even when its
+    // failure push was dropped by a tab switch. Only possible when a
+    // session exists — a failed session CREATION has no key to record under.
+    if (serverSessionId) {
+      setSessionLastError(serverSessionId, errorMessage);
+    }
+
     let userFriendlyMessage: string | { key: string; options?: any } = {
       key: "status.failedWithError",
       options: { error: errorMessage },
@@ -488,7 +499,11 @@ async function executeDownloadServerMode(
   // (Fix D.1 — liveness) Mark this session as LIVE for the whole flow so
   // the panel can distinguish "download still running" from "interrupted —
   // offer Resume/Restart" when it (re)opens and finds a checkpoint.
-  markSessionLive(sessionId);
+  // (Round 9 — Fix B) Also record the run's tab + phase and attach the
+  // upload queue so the panel's CHECK_DOWNLOAD_LIVE poll reads trustworthy
+  // progress from here instead of relying on lossy pushed messages.
+  markSessionLive(sessionId, { tabId, phase: "uploading" });
+  setSessionUploadQueue(sessionId, uploadQueue);
 
   // Link the download-level abort controller to the upload queue
   // so that pressing Stop aborts in-flight uploads.
@@ -562,6 +577,13 @@ async function executeDownloadServerMode(
     if (isEmptyDownload(downloadOptions, data)) {
       console.warn(
         "[ServerMode] Zero-content download aborted (no resources, HTML off, no text/markdown document).",
+      );
+      // (Round 9 — Fix B) The abort IS the terminal outcome — record it so
+      // the panel's final poll surfaces it instead of faking a completion
+      // when the noDownloadableContent push was dropped by a tab switch.
+      setSessionLastError(
+        sessionId,
+        "No downloadable content found — the page may not have finished loading.",
       );
       sendMessage({ key: "status.noDownloadableContent" });
       return;
@@ -903,6 +925,8 @@ async function executeDownloadServerMode(
     updateCheckpointPhase("assembling", sessionId);
 
     // Poll for assembly completion and trigger download
+    // (Round 9 — Fix B) Keep the polled snapshot truthful about the phase.
+    setSessionPhase(sessionId, "assembling");
     sendMessage({ key: "status.assemblingServer" });
     const handler = getServerDownloadHandler();
 
@@ -1032,6 +1056,12 @@ async function executeDownloadServerMode(
       errorStack,
     );
 
+    // (Round 9 — Fix B) Record the terminal error (includes assembly
+    // timeouts/failures) so the panel's final CHECK_DOWNLOAD_LIVE poll can
+    // distinguish this failure from a normal completion even when the
+    // failure push was dropped by a tab switch.
+    setSessionLastError(sessionId, errorMessage);
+
     if (
       error instanceof ServerUnavailableError ||
       error instanceof AssemblyTimeoutError ||
@@ -1120,6 +1150,8 @@ async function finalizeAndPollAssembly(
     // May already be assembling — proceed to poll
   }
 
+  // (Round 9 — Fix B) Keep the polled snapshot truthful about the phase.
+  setSessionPhase(sessionId, "assembling");
   sendMessage({ key: "status.assemblingServer" });
   const handler = getServerDownloadHandler();
   const downloadResult = await handler.downloadWithFallback(
@@ -1194,7 +1226,12 @@ export async function resumeServerDownload(
   // (Fix D.1 — liveness) A resumed download is a live download — mark the
   // session so a concurrently (re)opened panel doesn't offer Resume/Restart
   // for a download that is actually running.
-  markSessionLive(serverSessionId);
+  // (Round 9 — Fix B) Carry the tab + checkpoint phase into the polled
+  // snapshot and clear any previous run's terminal error.
+  markSessionLive(serverSessionId, {
+    tabId,
+    phase: checkpoint.phase ?? "uploading",
+  });
 
   // Create keepalive port and per-tab abort controller so the user
   // can press Stop to cancel a resumed download.
@@ -1241,6 +1278,8 @@ export async function resumeServerDownload(
     // If assembling, just poll for completion
     if (status.status === "assembling") {
       scrapeCompleteSent = true; // session already past SCRAPING
+      // (Round 9 — Fix B) Keep the polled snapshot truthful.
+      setSessionPhase(serverSessionId, "assembling");
       sendMessage({ key: "status.assemblingServer" });
       const handler = getServerDownloadHandler();
       const downloadResult = await handler.downloadWithFallback(
@@ -1345,6 +1384,8 @@ export async function resumeServerDownload(
 
     // Create a fresh upload queue
     const uploadQueue = new UploadQueue(serverClient);
+    // (Round 9 — Fix B) Expose the resume queue to CHECK_DOWNLOAD_LIVE.
+    setSessionUploadQueue(serverSessionId, uploadQueue);
     uploadQueue.onProgress = (progress) => {
       sendMessage({
         key: "status.uploadProgress",
@@ -1447,6 +1488,12 @@ export async function resumeServerDownload(
         // Best effort — don't mask the original error
       }
     }
+    // (Round 9 — Fix B) Record the terminal error for the panel's final
+    // liveness poll (mirrors executeDownloadServerMode's catch block).
+    setSessionLastError(
+      serverSessionId,
+      error instanceof Error ? error.message : "Unknown resume error",
+    );
     throw error;
   } finally {
     // (Fix D.1 — liveness) Resume finished (or failed) — the session is no

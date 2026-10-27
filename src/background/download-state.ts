@@ -203,17 +203,133 @@ export const removeDownloadsForTab = (tabId: number): void => {
 
 const liveServerSessionIds = new Set<string>();
 
-/** Mark a server session as live (called when its download starts/resumes). */
-export function markSessionLive(sessionId: string): void {
+/**
+ * Mark a server session as live (called when its download starts/resumes).
+ *
+ * (Round 9 — Fix B) The optional meta records the run's tab and coarse
+ * pipeline phase for the panel's CHECK_DOWNLOAD_LIVE snapshot, and clears
+ * any terminal error left by a previous run of the same session.
+ */
+export function markSessionLive(
+  sessionId: string,
+  meta: { tabId?: number; phase?: string } = {},
+): void {
   liveServerSessionIds.add(sessionId);
+  const prev = liveSessionStates.get(sessionId);
+  liveSessionStates.set(sessionId, {
+    tabId: meta.tabId ?? prev?.tabId,
+    phase: meta.phase ?? prev?.phase,
+    uploadQueue: prev?.uploadQueue,
+  });
+  // A (re)started run must not inherit the previous run's failure.
+  lastErrorBySession.delete(sessionId);
 }
 
 /** Mark a server session as no longer live (completion, failure, abort). */
 export function markSessionNotLive(sessionId: string): void {
   liveServerSessionIds.delete(sessionId);
+  // Drop the heavy runtime state (it holds the upload-queue reference) but
+  // KEEP the terminal error — the panel performs one final poll after the
+  // download stops and must still be able to tell "failed" from "completed".
+  liveSessionStates.delete(sessionId);
 }
 
 /** True when the given server session currently has a running download. */
 export function isSessionLive(sessionId?: string): boolean {
   return !!sessionId && liveServerSessionIds.has(sessionId);
+}
+
+// ---------------------------------------------------------------------------
+// (Round 9 — Fix B) Per-session progress you can trust.
+//
+// Pushed PANEL_MESSAGEs are lossy: the panel drops them whenever the user
+// focuses another tab, so its progress card can freeze on a stale count
+// while the background runs on — and a terminal failure may never be shown
+// at all (Round 9 incident: 351 images uploaded at full speed while the
+// panel sat on "Images progress: 1/353"). The panel therefore polls
+// CHECK_DOWNLOAD_LIVE, which answers from THIS authoritative state: the
+// live/finished flag, the run's upload-queue counters, and the terminal
+// error of the last finished run for the session.
+// ---------------------------------------------------------------------------
+
+interface LiveSessionState {
+  /** Tab this download runs in. */
+  tabId?: number;
+  /** Coarse pipeline phase (uploading/assembling) reported to the UI. */
+  phase?: string;
+  /** The run's upload queue — polled at query time for live counters. */
+  uploadQueue?: UploadQueue;
+}
+
+const liveSessionStates = new Map<string, LiveSessionState>();
+
+/**
+ * Terminal error of the last finished run, keyed by session. Deliberately
+ * NOT cleared by markSessionNotLive (see its comment); cleared when the
+ * session goes live again.
+ */
+const lastErrorBySession = new Map<string, string>();
+
+/** Attach the run's upload queue so CHECK_DOWNLOAD_LIVE can read progress. */
+export function setSessionUploadQueue(
+  sessionId: string,
+  uploadQueue: UploadQueue,
+): void {
+  const state = liveSessionStates.get(sessionId);
+  if (state) state.uploadQueue = uploadQueue;
+}
+
+/** Update the coarse pipeline phase reported to the panel. */
+export function setSessionPhase(sessionId: string, phase: string): void {
+  const state = liveSessionStates.get(sessionId);
+  if (state) state.phase = phase;
+}
+
+/** Record the terminal error of a failed run (persists past unmarking). */
+export function setSessionLastError(sessionId: string, error: string): void {
+  lastErrorBySession.set(sessionId, error);
+}
+
+/** Snapshot returned to the panel by CHECK_DOWNLOAD_LIVE (Round 9 Fix B). */
+export interface DownloadLiveSnapshot {
+  live: boolean;
+  phase: string | null;
+  completed: number | null;
+  total: number | null;
+  tabId: number | null;
+  serverSessionId: string | null;
+  lastError?: string;
+}
+
+/**
+ * Build the CHECK_DOWNLOAD_LIVE answer for a session. Counters come from
+ * the run's own upload queue at query time (no per-image pushes); a missing
+ * queue or a counter failure degrades to nulls instead of throwing.
+ */
+export function getSessionDownloadSnapshot(
+  sessionId?: string,
+): DownloadLiveSnapshot {
+  const live = isSessionLive(sessionId);
+  const state = sessionId ? liveSessionStates.get(sessionId) : undefined;
+  let completed: number | null = null;
+  let total: number | null = null;
+  if (live && state?.uploadQueue) {
+    try {
+      const progress = state.uploadQueue.getProgress();
+      completed = progress.completedCount;
+      total = progress.totalCount;
+    } catch {
+      // Counters unavailable — report nulls rather than throwing.
+    }
+  }
+  const lastError = sessionId ? lastErrorBySession.get(sessionId) : undefined;
+  return {
+    live,
+    phase: (live && state?.phase) || null,
+    completed,
+    total,
+    tabId: state?.tabId ?? null,
+    serverSessionId: sessionId ?? null,
+    ...(lastError !== undefined ? { lastError } : {}),
+  };
 }

@@ -258,6 +258,7 @@ class TestPostWriteSizeCheck:
             _scalar_one(_mock_session(session_id, client_id)),  # session
             _scalar(1 * 1024 * 1024),                           # post-write size (passes)
             _scalar_one(None),                                   # dedup → no match
+            MagicMock(),                                        # counter UPDATE (Round 9)
         )
 
         with patch("app.api.routes.resources.settings") as cfg, \
@@ -591,6 +592,7 @@ class TestGzipBombGuard:
             _scalar_one(_mock_session(session_id, client_id)),  # session lookup
             _scalar(0),                                          # session size query
             _scalar_one(None),                                   # dedup → no match
+            MagicMock(),                                        # counter UPDATE (Round 9)
         )
 
         with patch("app.api.routes.resources.settings") as cfg, \

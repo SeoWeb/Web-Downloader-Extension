@@ -20,6 +20,7 @@ from fastapi import (
 )
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy import update as sa_update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -416,6 +417,24 @@ async def upload_resource(
                 deduplicated=True,
             )
         raise
+
+    # Round 9 counter fix: accumulate the stored size into the
+    # sessions.total_size column, which after the deadlock fix was never
+    # written anywhere (it stayed 0 even for sessions with hundreds of MB
+    # of resources). Counted value = the RAW logical size (``original_size``):
+    # for X-Content-Gzipped uploads that is the decompressed byte count, for
+    # plain uploads the exact received byte count — in both cases the size of
+    # the file actually stored, i.e. the same number Resource.size carries,
+    # so this column and the /status live SUM(Resource.size) aggregate agree.
+    # Deadlock-fix style: a single Core UPDATE with a server-side increment
+    # (no ORM attribute write, no extra lock scope beyond this statement).
+    # Dedup paths above return early, so duplicated bytes are never counted
+    # twice.
+    await db.execute(
+        sa_update(Session)
+        .where(Session.id == session_id)
+        .values(total_size=Session.total_size + original_size)
+    )
 
     logger.info(
         "Resource uploaded: session=%s path=%s size=%d content_type=%s",

@@ -203,6 +203,18 @@ interface UseScrapingDownloaderProps {
   setMessages: React.Dispatch<React.SetStateAction<any[]>>;
   /** (5.5) Called when the user stops mid-scrape and a partial save proceeds. */
   onPartialSave?: () => void;
+  /**
+   * (Round 9 — Fix B) Called when the download phase begins, with this
+   * run's server session id (or null when none was created). The panel pins
+   * its CHECK_DOWNLOAD_LIVE polling to that session.
+   */
+  onDownloadStarted?: (serverSessionId: string | null) => void;
+  /**
+   * (Round 9 — Fix B) Called when the START_DOWNLOAD promise settles
+   * (success or failure) — lets the panel treat the run as terminal-eligible
+   * even when no poll observed the session live (very fast downloads).
+   */
+  onDownloadSettled?: () => void;
 }
 
 export function useScrapingDownloader({
@@ -213,6 +225,8 @@ export function useScrapingDownloader({
   downloadOptions,
   setMessages,
   onPartialSave,
+  onDownloadStarted,
+  onDownloadSettled,
 }: UseScrapingDownloaderProps) {
   const { t } = useTranslation();
   const [downloadResponse, setDownloadResponse] =
@@ -268,6 +282,13 @@ export function useScrapingDownloader({
   // without identity churn.
   const downloadOptionsRef = useRef<DownloadOptions | null>(downloadOptions);
   downloadOptionsRef.current = downloadOptions;
+  // (Round 9) Optional panel callbacks mirrored into refs so the effects
+  // below can invoke them without adding unstable identities to their
+  // dependency arrays.
+  const onDownloadStartedRef = useRef(onDownloadStarted);
+  onDownloadStartedRef.current = onDownloadStarted;
+  const onDownloadSettledRef = useRef(onDownloadSettled);
+  onDownloadSettledRef.current = onDownloadSettled;
 
   // (13.3) In server mode, track the server session ID and scroll index
   // for streaming HTML chunks during scrolling instead of accumulating
@@ -305,9 +326,14 @@ export function useScrapingDownloader({
         target.tabUrl,
         downloadOptionsRef.current,
         (msg) => setMessages((prev) => [...prev, msg]),
+        // (Round 9 — Fix 4) The START_DOWNLOAD response carried a terminal
+        // failure — clear the run state so the panel doesn't sit on the
+        // downloading card (the failure message itself is surfaced in
+        // handleStartDownload).
+        () => setDownloadResponse(null),
       );
     },
-    [setMessages],
+    [setMessages, setDownloadResponse],
   );
 
   const stopScraping = useCallback(async () => {
@@ -323,6 +349,14 @@ export function useScrapingDownloader({
     }
     setIsScraping(false);
   }, [setIsScraping, setMessages, onPartialSave]);
+
+  // (Round 9 — Fix 3) Press-time pinned download tab — lets the panel accept
+  // pushes from the ACTIVE download even after the user switches tabs
+  // (consumed by isPushForPanel).
+  const getPinnedTabId = useCallback(() => targetRef.current.tabId, []);
+  // (Round 9 — Fix B) This run's server session id, once created — the
+  // target for the panel's CHECK_DOWNLOAD_LIVE polling.
+  const getServerSessionId = useCallback(() => serverSessionIdRef.current, []);
 
   const scrape = useCallback(async () => {
     // (Fix A) The whole flow runs against the press-time snapshot.
@@ -548,6 +582,9 @@ export function useScrapingDownloader({
 
       if (htmlForStopDownload) {
         downloadStartedRef.current = true;
+        // (Round 9) The partial save starts a download phase of its own —
+        // let the panel pin its liveness polling to this run.
+        onDownloadStartedRef.current?.(serverSessionIdRef.current);
         const stopOptions = {
           ...downloadOptions,
           downloadLinks: false,
@@ -559,15 +596,20 @@ export function useScrapingDownloader({
           targetRef.current.tabUrl,
           stopOptions,
           (msg) => setMessages((prev) => [...prev, msg]),
+          // (Round 9 — Fix 4) Reset the run state on a response-carried
+          // failure (message surfaced in handleStartDownload).
+          () => setDownloadResponse(null),
         )
           .then(() => {
             if (serverSessionIdRef.current) {
               setServerStreamingDone(true);
             }
+            onDownloadSettledRef.current?.();
           })
           .catch(() => {
             setMessages((prev) => [...prev, { key: "status.failed" }]);
             setDownloadResponse(null);
+            onDownloadSettledRef.current?.();
           });
       }
       return;
@@ -584,6 +626,9 @@ export function useScrapingDownloader({
     if (htmlForDownload) {
       // (Fix A) The ONE START_DOWNLOAD of this run.
       downloadStartedRef.current = true;
+      // (Round 9 — Fix B) The download phase begins — hand the run's server
+      // session to the panel so it can poll CHECK_DOWNLOAD_LIVE for it.
+      onDownloadStartedRef.current?.(serverSessionIdRef.current);
       startDownload(htmlForDownload)
         .then(() => {
           // (13.3) Mark streaming as done
@@ -592,11 +637,13 @@ export function useScrapingDownloader({
           }
           // Don't reset downloadResponse here - keep it to maintain filter hidden state
           // It will be cleared when DOWNLOAD_COMPLETE or DOWNLOAD_CANCELLED message is received
+          onDownloadSettledRef.current?.();
         })
         .catch(() => {
           setMessages((prev) => [...prev, { key: "status.failed" }]);
           // Reset on error
           setDownloadResponse(null);
+          onDownloadSettledRef.current?.();
         });
     }
   }, [
@@ -613,6 +660,13 @@ export function useScrapingDownloader({
     lastHtml: lastHtmlRef.current,
     scrollAttempts,
     stopScraping,
+    // (Round 9 — Fix 3) Press-time pinned download tab — lets the panel
+    // accept pushes from the ACTIVE download even after the user switches
+    // tabs (isPushForPanel).
+    getPinnedTabId,
+    // (Round 9 — Fix B) This run's server session id, once created — the
+    // target for the panel's CHECK_DOWNLOAD_LIVE polling.
+    getServerSessionId,
     setDownloadResponse: (
       value: React.SetStateAction<ScrollingResponse | null>,
     ) => {

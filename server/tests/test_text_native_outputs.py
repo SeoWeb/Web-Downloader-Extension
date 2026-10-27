@@ -561,7 +561,9 @@ class TestTextOnlyAssembly:
 
         assert out_path is None
         assert session.status == "failed"
-        assert "no text content" in session.error_message
+        # Round 9: aligned with the cloud CLOUD_NOTHING_TO_PUSH_ERROR wording
+        # (was: "Text-only download produced no text content").
+        assert "nothing to download" in session.error_message
 
 
 class TestOutputShapeRules:
