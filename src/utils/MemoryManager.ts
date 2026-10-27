@@ -305,6 +305,14 @@ export class MemoryManager {
     });
     this.currentUsage = liveUsage;
 
+    // (D1 / task 1.2) Re-evaluate pressure NOW: if the cleanup recovered
+    // enough memory to leave the high zone, the boundary delivery reaches
+    // the pressure callbacks immediately instead of waiting for the next
+    // periodic check — a memory-gated queue pause lifts as soon as the
+    // recovery actually happened. evaluateMemoryPressure keeps its
+    // boundary-transition discipline (no callback churn on low/medium).
+    this.evaluateMemoryPressure();
+
     // Suggest garbage collection
     this.hintGC();
   }

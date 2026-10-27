@@ -1600,4 +1600,150 @@ describe("ServerClient", () => {
       expect(fetchCalls).toHaveLength(0);
     });
   });
+
+  // -----------------------------------------------------------------------
+  // 6.1 / D6 — register() and checkHealth() are timeout-bounded
+  //
+  // Both call sites must pass an abort signal to fetch (the shared
+  // control-call discipline). A server that accepts the connection but
+  // never responds must fail within the 60s bound: checkHealth surfaces
+  // ServerUnavailableError; register consumes its retry budget and fails
+  // ensureApiKey with AuthenticationError — START_DOWNLOAD errors visibly
+  // instead of hanging.
+  //
+  // Node's AbortSignal.timeout captures its internal timer at module load
+  // and never fires under vitest fake timers, so the test stubs it with an
+  // AbortController armed through the (faked) global setTimeout — same
+  // contract (TimeoutError reason after the configured delay), fully
+  // fake-timer driven, and the configured duration stays assertable.
+  // -----------------------------------------------------------------------
+  describe("control-call timeout on register and checkHealth (6.1 / D6)", () => {
+    let timeoutSpy: vi.SpiedFunction<typeof AbortSignal.timeout>;
+
+    beforeEach(() => {
+      timeoutSpy = vi
+        .spyOn(AbortSignal, "timeout")
+        .mockImplementation((ms: number): AbortSignal => {
+          const controller = new AbortController();
+          setTimeout(
+            () =>
+              controller.abort(
+                new DOMException("The signal timed out.", "TimeoutError"),
+              ),
+            ms,
+          );
+          return controller.signal;
+        });
+    });
+
+    afterEach(() => {
+      timeoutSpy.mockRestore();
+      vi.useRealTimers();
+    });
+
+    /** A fetch that accepts the connection but never responds (honors the abort signal). */
+    function mockHangingFetch(): void {
+      fetchSpy.mockImplementation(
+        (_url: string | URL | Request, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () =>
+              reject((init.signal as AbortSignal).reason),
+            );
+          }),
+      );
+    }
+
+    it("passes an abort signal to the register and health-check fetches", async () => {
+      const observed: Array<{ url: string; signal: unknown }> = [];
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          observed.push({ url: urlStr, signal: init?.signal });
+          if (urlStr.includes("/health")) {
+            return mockResponse(200, {
+              status: "ok",
+              version: "1.0.0",
+              mysql: "connected",
+              storage_available_mb: 5000,
+              storage_total_mb: 10000,
+              description: null,
+              api_version: "v1",
+            });
+          }
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            return mockResponse(201, {
+              id: "sess-signal",
+              url: "",
+              status: "scraping",
+              html_chunks: 0,
+              resources_discovered: null,
+              resources_received: 0,
+              created_at: "",
+              expires_at: "",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      await client.checkHealth();
+      // createSession with no stored key → ensureApiKey → register
+      await client.createSession("https://example.com");
+
+      const health = observed.find((c) => c.url.includes("/health"));
+      const register = observed.find((c) => c.url.includes("/auth/register"));
+      expect(health).toBeDefined();
+      expect(register).toBeDefined();
+      expect(health?.signal).toBeInstanceOf(AbortSignal);
+      expect(register?.signal).toBeInstanceOf(AbortSignal);
+      // Both bounds come from the shared 60s control-call timeout (the
+      // follow-up authenticated sessions POST gets one too).
+      expect(timeoutSpy).toHaveBeenCalledWith(60 * 1000);
+      expect(timeoutSpy).toHaveBeenCalledTimes(3);
+    });
+
+    it("throws ServerUnavailableError within the control-call bound when the server never responds", async () => {
+      mockHangingFetch();
+      vi.useFakeTimers();
+
+      const client = createClient();
+      const done = expect(client.checkHealth()).rejects.toThrow(
+        ServerUnavailableError,
+      );
+
+      // Advances past exactly one control-call bound — the abort must
+      // release the call here, not hang the caller.
+      await vi.advanceTimersByTimeAsync(60_000);
+      await done;
+      expect(timeoutSpy).toHaveBeenCalledWith(60 * 1000);
+    });
+
+    it("exhausts the registration retry budget into an ensureApiKey failure within the bound", async () => {
+      mockHangingFetch(); // every /auth/register fetch hangs forever
+      vi.useFakeTimers();
+
+      const client = createClient();
+      // Public entry into register(): createSession → ensureApiKey → register
+      const done = expect(
+        client.createSession("https://example.com"),
+      ).rejects.toThrow(AuthenticationError);
+
+      // 3 attempts × 60s timeout, 1s + 2s backoff in between
+      await vi.advanceTimersByTimeAsync(0); // let the storage dance complete
+      await vi.advanceTimersByTimeAsync(60_000 + 1_000);
+      await vi.advanceTimersByTimeAsync(60_000 + 2_000);
+      await vi.advanceTimersByTimeAsync(60_000 + 1_000);
+      await done;
+
+      // Every attempt was bounded (one timeout signal per attempt)
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+      expect(timeoutSpy).toHaveBeenCalledTimes(3);
+      expect(timeoutSpy).toHaveBeenCalledWith(60 * 1000);
+    });
+  });
 });

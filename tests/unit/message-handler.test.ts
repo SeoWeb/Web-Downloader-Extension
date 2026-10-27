@@ -88,11 +88,16 @@ function mock(method: string): vi.Mock {
 /** No-op addMessage callback */
 const addMessage = vi.fn();
 
-/** Reset the active server session between tests. */
+/** Reset the active server session between tests.
+ *
+ * (Signature note) setActiveServerSession takes (tabId, sessionId); the old
+ * single-arg call `setActiveServerSession(null)` happened to work at runtime
+ * (null tab key, sessionId undefined) but only because test files are not
+ * type-checked (tsconfig includes src only). Pass both arguments. */
 async function resetActiveSession() {
   const { setActiveServerSession } =
     await import("../../src/background/message");
-  setActiveServerSession(null);
+  setActiveServerSession(null as unknown as number, null);
 }
 
 // ---------------------------------------------------------------------------
@@ -730,6 +735,205 @@ describe("messageWorker — server-mode message actions", () => {
 
       // Clean up
       await resetActiveSession();
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // (D3 / tasks 3.1–3.3) SCROLL_AND_EXTRACT_DIFF — the chunk counter may
+  // only advance AFTER uploadHtmlChunk resolves successfully. The old
+  // `sessionState.scrollIndex++` argument evaluated (incremented) BEFORE
+  // the await resolved, so a failed upload still counted as streamed,
+  // hasStreamedHtmlChunks() went true, and download-core skipped the
+  // chunk-0 "main" initialization upload — finalizing a session with no
+  // main-page HTML.
+  // -----------------------------------------------------------------------
+  describe("SCROLL_AND_EXTRACT_DIFF success-only chunk counter", () => {
+    /** Unique tab ids so module-level session state never leaks across tests. */
+    const TAB_DIFF_FAIL = 777101;
+    const TAB_DIFF_RETRY = 777102;
+    const TAB_DIFF_OK = 777103;
+
+    afterEach(async () => {
+      const { deleteServerSessionState } =
+        await import("../../src/background/message");
+      deleteServerSessionState(TAB_DIFF_FAIL);
+      deleteServerSessionState(TAB_DIFF_RETRY);
+      deleteServerSessionState(TAB_DIFF_OK);
+    });
+
+    it("failed first chunk leaves the counter at 0 (task 3.2)", async () => {
+      // Client retries exhausted → uploadHtmlChunk rejects.
+      mock("uploadHtmlChunk").mockRejectedValue(
+        new Error("upload failed: retries exhausted"),
+      );
+      const { setActiveServerSession, hasStreamedHtmlChunks } =
+        await import("../../src/background/message");
+
+      setActiveServerSession(TAB_DIFF_FAIL, "sess-diff-fail");
+
+      const result = await messageWorker(
+        messageActions.SCROLL_AND_EXTRACT_DIFF,
+        {
+          tabId: TAB_DIFF_FAIL,
+          htmlChunk: "<p>scroll step 0</p>",
+          assemblyJobId: "aj-diff-1",
+        },
+        addMessage,
+      );
+
+      expect(result).toEqual({
+        success: false,
+        error: "upload failed: retries exhausted",
+      });
+      // The upload was attempted with the CURRENT index — not a
+      // pre-incremented one.
+      expect(mock("uploadHtmlChunk")).toHaveBeenCalledTimes(1);
+      expect(mock("uploadHtmlChunk")).toHaveBeenCalledWith(
+        "sess-diff-fail",
+        "<p>scroll step 0</p>",
+        0,
+        "main",
+        undefined,
+      );
+      // The counter did NOT move: a failed chunk never reached the server.
+      expect(hasStreamedHtmlChunks(TAB_DIFF_FAIL)).toBe(false);
+    });
+
+    it("a re-requested failed chunk retries at the SAME index, then advances on success", async () => {
+      mock("uploadHtmlChunk")
+        .mockRejectedValueOnce(new Error("transient network error"))
+        .mockResolvedValueOnce({ received: true });
+      const { setActiveServerSession, hasStreamedHtmlChunks } =
+        await import("../../src/background/message");
+
+      setActiveServerSession(TAB_DIFF_RETRY, "sess-diff-retry");
+
+      // First attempt (index 0) fails …
+      const failed = await messageWorker(
+        messageActions.SCROLL_AND_EXTRACT_DIFF,
+        { tabId: TAB_DIFF_RETRY, htmlChunk: "<p>step 0</p>" },
+        addMessage,
+      );
+      expect(failed.success).toBe(false);
+      expect(mock("uploadHtmlChunk")).toHaveBeenLastCalledWith(
+        "sess-diff-retry",
+        "<p>step 0</p>",
+        0,
+        "main",
+        undefined,
+      );
+      expect(hasStreamedHtmlChunks(TAB_DIFF_RETRY)).toBe(false);
+
+      // … the sidepanel re-requests the same chunk — still index 0.
+      const retried = await messageWorker(
+        messageActions.SCROLL_AND_EXTRACT_DIFF,
+        { tabId: TAB_DIFF_RETRY, htmlChunk: "<p>step 0</p>" },
+        addMessage,
+      );
+      expect(retried.success).toBe(true);
+      expect(mock("uploadHtmlChunk")).toHaveBeenLastCalledWith(
+        "sess-diff-retry",
+        "<p>step 0</p>",
+        0,
+        "main",
+        undefined,
+      );
+      // Now (and only now) the session counts as having streamed chunks.
+      expect(hasStreamedHtmlChunks(TAB_DIFF_RETRY)).toBe(true);
+    });
+
+    it("successful chunks advance the counter to the next index (task 3.3)", async () => {
+      mock("uploadHtmlChunk").mockResolvedValue({ received: true });
+      const { setActiveServerSession, hasStreamedHtmlChunks } =
+        await import("../../src/background/message");
+
+      setActiveServerSession(TAB_DIFF_OK, "sess-diff-ok");
+      expect(hasStreamedHtmlChunks(TAB_DIFF_OK)).toBe(false);
+
+      await messageWorker(
+        messageActions.SCROLL_AND_EXTRACT_DIFF,
+        { tabId: TAB_DIFF_OK, htmlChunk: "<p>step 0</p>" },
+        addMessage,
+      );
+      expect(mock("uploadHtmlChunk")).toHaveBeenLastCalledWith(
+        "sess-diff-ok",
+        "<p>step 0</p>",
+        0,
+        "main",
+        undefined,
+      );
+      expect(hasStreamedHtmlChunks(TAB_DIFF_OK)).toBe(true);
+
+      // The next scroll step streams at index 1 (server "next index"
+      // semantics, monotonic).
+      await messageWorker(
+        messageActions.SCROLL_AND_EXTRACT_DIFF,
+        { tabId: TAB_DIFF_OK, htmlChunk: "<p>step 1</p>" },
+        addMessage,
+      );
+      expect(mock("uploadHtmlChunk")).toHaveBeenLastCalledWith(
+        "sess-diff-ok",
+        "<p>step 1</p>",
+        1,
+        "main",
+        undefined,
+      );
+    });
+
+    // (task 3.3) Main-page chunk 0 is uploaded exactly once per session.
+    // The skip leg lives in executeDownloadServerMode (download-core.ts):
+    // `if (!hasStreamedHtmlChunks(tabId!))` → the initialization upload
+    // `uploadHtmlChunk(sessionId, html, 0, "main")` runs ONLY when nothing
+    // streamed. Both legs are pinned end-to-end by zero-content-abort.test.ts
+    // ("proceeds normally when the download has content" — non-streamed run
+    // uploads the skeleton chunk — and "does not re-upload the HTML chunk
+    // for streamed sessions"). This file pins the truth-source the skip
+    // reads: hasStreamedHtmlChunks() flips true only after a SUCCESSFUL
+    // stream (asserted above), and a failed stream leaves it false, so the
+    // initialization upload runs and the archive always contains the main
+    // page — exactly once, either streamed at index 0 or initialized.
+    it("main-page chunk 0: hasStreamedHtmlChunks gates the download-core skip", async () => {
+      mock("uploadHtmlChunk").mockRejectedValue(
+        new Error("permanently failing endpoint"),
+      );
+      const { setActiveServerSession, hasStreamedHtmlChunks } =
+        await import("../../src/background/message");
+
+      setActiveServerSession(TAB_DIFF_FAIL, "sess-diff-fail");
+
+      // Every stream attempt fails — the counter stays at 0.
+      await messageWorker(
+        messageActions.SCROLL_AND_EXTRACT_DIFF,
+        { tabId: TAB_DIFF_FAIL, htmlChunk: "<p>step 0</p>" },
+        addMessage,
+      );
+      await messageWorker(
+        messageActions.SCROLL_AND_EXTRACT_DIFF,
+        { tabId: TAB_DIFF_FAIL, htmlChunk: "<p>step 1</p>" },
+        addMessage,
+      );
+
+      expect(mock("uploadHtmlChunk")).toHaveBeenCalledTimes(2);
+      // Both attempts evaluated at index 0 — no phantom advance.
+      expect(mock("uploadHtmlChunk")).toHaveBeenNthCalledWith(
+        1,
+        "sess-diff-fail",
+        "<p>step 0</p>",
+        0,
+        "main",
+        undefined,
+      );
+      expect(mock("uploadHtmlChunk")).toHaveBeenNthCalledWith(
+        2,
+        "sess-diff-fail",
+        "<p>step 1</p>",
+        0,
+        "main",
+        undefined,
+      );
+      // download-core's skip therefore stays OFF and the final HTML goes
+      // out as chunk 0 ("main") — the initialization upload.
+      expect(hasStreamedHtmlChunks(TAB_DIFF_FAIL)).toBe(false);
     });
   });
 });

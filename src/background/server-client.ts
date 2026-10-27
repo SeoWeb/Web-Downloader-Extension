@@ -757,12 +757,18 @@ export class ServerClient {
     return (await res.json()) as SessionStatusResponse;
   }
 
-  /** (8.10) Check server health without authentication. */
+  /** (8.10) Check server health without authentication.
+   *
+   * (D6 / task 6.1) The fetch carries the shared control-call timeout: a
+   * server that accepts the connection but never responds aborts at the 60s
+   * bound (TimeoutError), which the catch below classifies as
+   * ServerUnavailableError — visible failure instead of a hung caller. */
   async checkHealth(): Promise<HealthResponse> {
     this.assertConfigured();
     try {
       const res = await fetch(`${this.serverUrl}/api/v1/health`, {
         method: "GET",
+        signal: AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS),
       });
 
       if (!res.ok) {
@@ -1030,10 +1036,15 @@ export class ServerClient {
 
     for (let attempt = 0; attempt < MAX_REGISTRATION_ATTEMPTS; attempt++) {
       try {
+        // (D6 / task 6.1) Control-call timeout — a black-holed server must
+        // not hang registration (and therefore START_DOWNLOAD) forever. The
+        // TimeoutError abort lands in the catch below, consuming the retry
+        // budget and ultimately surfacing as AuthenticationError.
         const res = await fetch(`${this.serverUrl}/api/v1/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ client_id: instanceId }),
+          signal: AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS),
         });
 
         if (!res.ok) {

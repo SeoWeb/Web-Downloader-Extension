@@ -39,12 +39,19 @@ memoryManager.registerCleanupCallback(async () => {
 });
 
 memoryManager.registerMemoryPressureCallback(async (level) => {
-  if (level === MemoryPressureLevel.CRITICAL) {
-    // Pause queue processing during critical memory pressure
-    requestQueue.pause();
-  } else if (level === MemoryPressureLevel.LOW) {
+  // (D1 / task 1.1) Rank comparison, not equality: the manager delivers
+  // only high-zone BOUNDARY levels (entering or leaving the high zone) and
+  // carries the boundary level, so the transition that leaves the high zone
+  // (critical → medium) delivers MEDIUM. Resuming only on LOW waited for a
+  // delivery the notification discipline never sends — the queue then stayed
+  // paused forever after a critical burst. Any subcritical level is the
+  // resume signal; CRITICAL (and anything at/above it) pauses.
+  if (level < MemoryPressureLevel.CRITICAL) {
     // Resume normal queue operation
     requestQueue.resume();
+  } else {
+    // Pause queue processing during critical memory pressure
+    requestQueue.pause();
   }
 });
 

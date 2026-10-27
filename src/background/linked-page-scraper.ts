@@ -81,6 +81,36 @@ export function clampMaxPages(value: number | undefined): number {
   return Math.min(Math.max(Math.floor(value), MIN_MAX_PAGES), MAX_MAX_PAGES);
 }
 
+/**
+ * Bounded watchdog for a paused scraper (D2.2): if a pause outlives this
+ * period the scraper stops itself so the download finalizes instead of
+ * hanging forever (safe default per D2 — the UI that could resume is gone).
+ *
+ * Sized on the order of the scraper's pageTimeout (default 30s) but twice as
+ * generous: comfortably above the worst-case single-page processing time
+ * (pageTimeout navigation + scroll budget + DOM capture ≈ 57s at defaults),
+ * so a pause issued while the current page is still legitimately finishing
+ * is not cut off — while still bounding finalization to about a minute.
+ */
+export const PAUSED_WATCHDOG_MS = 60_000;
+
+/**
+ * Normalize a URL for navigation-completion matching (D4 / task 4.1):
+ * origin + path + query, hash-insensitive. Hash-only differences fire
+ * during anchor scrolling and must not disqualify a completion. The query
+ * is KEPT — paginated URLs that differ only in `?page=` are different
+ * pages, and a stale completion from the previous page must not resolve
+ * the wait.
+ */
+export function normalizeNavigationUrl(raw: string): string {
+  try {
+    const parsed = new URL(raw);
+    return `${parsed.origin}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return raw;
+  }
+}
+
 export class LinkedPageScraper {
   private internalQueue: LinkedPageJob[] = [];
   private externalQueue: LinkedPageJob[] = [];
@@ -99,6 +129,9 @@ export class LinkedPageScraper {
   private isStopped: boolean = false;
   private resumePromise: Promise<void> | null = null;
   private resumeResolve: (() => void) | null = null;
+  /** Watchdog timer while paused (D2.2) — stops the scraper when the pause
+   *  outlives PAUSED_WATCHDOG_MS. Cleared on resume()/stop(). */
+  private pausedWatchdog: ReturnType<typeof setTimeout> | null = null;
   /** When true, extract and accumulate body text from linked pages. */
   private extractText: boolean = true;
   /** Every URL this scraper intended to navigate to (dedup'd scrape set). */
@@ -126,12 +159,14 @@ export class LinkedPageScraper {
       this.resumePromise = new Promise((resolve) => {
         this.resumeResolve = resolve;
       });
+      this.armPausedWatchdog();
     }
   }
 
   resume() {
     if (this.isPaused && this.resumeResolve) {
       this.isPaused = false;
+      this.clearPausedWatchdog();
       this.resumeResolve();
       this.resumePromise = null;
       this.resumeResolve = null;
@@ -140,9 +175,51 @@ export class LinkedPageScraper {
 
   stop() {
     this.isStopped = true;
+    this.clearPausedWatchdog();
     // If paused, resume so loop can exit
     if (this.isPaused) {
       this.resume();
+    }
+  }
+
+  /**
+   * Keepalive-port disconnect hook (D2.1 / task 2.1).
+   *
+   * The side panel is the only sender of SCRAPER_RESUME/SCRAPER_STOP; when
+   * its keepalive port disconnects, no UI remains that could resume a paused
+   * wait. Safe default: stop the scraper so the download finalizes instead
+   * of hanging. Idempotent by construction: when not paused (panel reopened
+   * and resumed before the event, or already stopped) this is a no-op, and
+   * resume() after a disconnect-stop is a no-op as well.
+   */
+  handleKeepaliveDisconnect() {
+    if (this.isPaused && !this.isStopped) {
+      console.log(
+        "[LinkedPageScraper] Keepalive port disconnected while paused — stopping scraper",
+      );
+      this.stop();
+    }
+  }
+
+  /** Arm the bounded paused-state watchdog (D2.2). Shared by both queue
+   *  phases because pause() is the single arming point. */
+  private armPausedWatchdog() {
+    this.clearPausedWatchdog();
+    this.pausedWatchdog = setTimeout(() => {
+      this.pausedWatchdog = null;
+      if (this.isPaused && !this.isStopped) {
+        console.log(
+          "[LinkedPageScraper] Paused watchdog expired — stopping scraper",
+        );
+        this.stop();
+      }
+    }, PAUSED_WATCHDOG_MS);
+  }
+
+  private clearPausedWatchdog() {
+    if (this.pausedWatchdog !== null) {
+      clearTimeout(this.pausedWatchdog);
+      this.pausedWatchdog = null;
     }
   }
 
@@ -568,6 +645,16 @@ export class LinkedPageScraper {
     // Remember the last URL we navigated to — restoreOriginalPage compares
     // the tab's current URL against it to detect user navigation (task 4.7).
     this.lastNavigatedUrl = url;
+    // (D4 / task 4.1) Only resolve on a completion that belongs to THIS
+    // navigation. A `complete` for a different URL (the previous page's
+    // late completion) is ignored — otherwise the wrong page's DOM would be
+    // captured for the job.
+    const targetUrl = normalizeNavigationUrl(url);
+    // Set when the tab begins loading the requested URL. A completion whose
+    // URL differs from the target is accepted ONLY after the target was seen
+    // loading (client-side redirect landed elsewhere) — never on a stale
+    // completion belonging to a page this call did not navigate to.
+    let sawTargetLoading = false;
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         cleanup();
@@ -581,10 +668,22 @@ export class LinkedPageScraper {
         changeInfo: chrome.tabs.TabChangeInfo,
         tab: chrome.tabs.Tab,
       ) => {
-        if (updatedTabId === tabId && changeInfo.status === "complete") {
-          cleanup();
-          resolve(tab.url || url);
+        if (updatedTabId !== tabId) return;
+        const eventUrl = changeInfo.url ?? tab.url ?? "";
+        if (changeInfo.status === "loading") {
+          if (normalizeNavigationUrl(eventUrl) === targetUrl) {
+            sawTargetLoading = true;
+          }
+          return;
         }
+        if (changeInfo.status !== "complete") return;
+        const isTarget = normalizeNavigationUrl(eventUrl) === targetUrl;
+        if (!isTarget && !sawTargetLoading) {
+          // Stale completion from the previous page — keep waiting.
+          return;
+        }
+        cleanup();
+        resolve(eventUrl || url);
       };
 
       const cleanup = () => {
@@ -609,21 +708,33 @@ export class LinkedPageScraper {
   private async capturePageDOM(tabId: number): Promise<string> {
     const timeout = 10000; // 10 second timeout for DOM capture
 
-    const result = await Promise.race([
-      chrome.scripting.executeScript({
-        target: { tabId },
-        func: () => document.documentElement.outerHTML,
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("DOM capture timeout")), timeout),
-      ),
-    ]);
+    // (D5 / task 5.1) Keep the timeout handle and clear it when the race
+    // settles (winner OR timeout) so no stray timer outlives the capture.
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new Error("DOM capture timeout")),
+        timeout,
+      );
+    });
 
-    if (!result || result.length === 0 || !result[0].result) {
-      throw new Error("Failed to capture DOM");
+    try {
+      const result = await Promise.race([
+        chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => document.documentElement.outerHTML,
+        }),
+        timeoutPromise,
+      ]);
+
+      if (!result || result.length === 0 || !result[0].result) {
+        throw new Error("Failed to capture DOM");
+      }
+
+      return result[0].result as string;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    return result[0].result as string;
   }
 
   /**
@@ -649,31 +760,41 @@ export class LinkedPageScraper {
 
     type ChunkResult = { skeleton: string; bodyChildren: string[] };
 
-    const result = await Promise.race([
-      chrome.scripting.executeScript({
-        target: { tabId },
-        func: () => {
-          const skeleton = document.documentElement.outerHTML.replace(
-            /<body[^>]*>[\s\S]*<\/body>/i,
-            "<body></body>",
-          );
-          const children: string[] = [];
-          for (const child of Array.from(document.body.children)) {
-            children.push((child as Element).outerHTML);
-          }
-          return { skeleton, bodyChildren: children } as {
-            skeleton: string;
-            bodyChildren: string[];
-          };
-        },
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("DOM chunk capture timeout")),
-          timeout,
-        ),
-      ),
-    ]);
+    // (D5 / task 5.1) Keep the timeout handle and clear it when the race
+    // settles (winner OR timeout) so no stray timer outlives the capture.
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new Error("DOM chunk capture timeout")),
+        timeout,
+      );
+    });
+
+    let result;
+    try {
+      result = await Promise.race([
+        chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => {
+            const skeleton = document.documentElement.outerHTML.replace(
+              /<body[^>]*>[\s\S]*<\/body>/i,
+              "<body></body>",
+            );
+            const children: string[] = [];
+            for (const child of Array.from(document.body.children)) {
+              children.push((child as Element).outerHTML);
+            }
+            return { skeleton, bodyChildren: children } as {
+              skeleton: string;
+              bodyChildren: string[];
+            };
+          },
+        }),
+        timeoutPromise,
+      ]);
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!result || result.length === 0 || !result[0].result) {
       // Fallback: single full outerHTML capture

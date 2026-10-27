@@ -229,15 +229,32 @@ export async function messageWorker(
         if (data.tabId) {
           const sessionState = getServerSessionState(data.tabId);
           if (sessionState.sessionId) {
+            // (D3 / task 3.1) Success-only counter advance, mirroring the
+            // SERVER_UPLOAD_HTML_CHUNK pattern: evaluate the chunk index
+            // WITHOUT incrementing, await the upload, advance only on
+            // success. The old `sessionState.scrollIndex++` argument
+            // incremented BEFORE the await resolved, so a failed upload
+            // (retries exhausted) still counted as streamed —
+            // hasStreamedHtmlChunks() went true and download-core skipped
+            // the chunk-0 "main" initialization upload, finalizing a
+            // session with no main-page HTML.
+            const chunkIndex = sessionState.scrollIndex;
             await serverClient.uploadHtmlChunk(
               sessionState.sessionId,
               data.htmlChunk,
-              sessionState.scrollIndex++,
+              chunkIndex,
               "main",
               // Do NOT send pageUrl for main pages — the server uses the
               // absence of pageUrl to set page_url_hash="main", which the
               // assembler looks up as merge_results.get("main").
               undefined,
+            );
+            // Advance on SUCCESS only. Math.max keeps the counter monotonic
+            // (server "next index" semantics, same as the explicit-index
+            // path) even if a concurrent writer moved it forward.
+            sessionState.scrollIndex = Math.max(
+              sessionState.scrollIndex,
+              chunkIndex + 1,
             );
           }
         }

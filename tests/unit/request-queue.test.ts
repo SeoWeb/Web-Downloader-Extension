@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RequestQueue } from "../../src/utils/RequestQueue";
 import { DomainLimiterFactory } from "../../src/utils/DomainLimiter";
 import { memoryManager } from "../../src/utils/MemoryManager";
+import { MemoryPressureLevel } from "../../src/utils/memoryLimits";
 import {
   MAX_DEDUP_CACHE_BODY_SIZE,
   RequestPriority,
@@ -213,7 +214,10 @@ describe("RequestQueue", () => {
     const releaseSpy = vi.spyOn(memoryManager, "releaseResource");
 
     const queue = createQueue({ requestTimeout: 1000 });
-    const { result, failure, id } = enqueueAsset(queue, "https://hung.test/a.png");
+    const { result, failure, id } = enqueueAsset(
+      queue,
+      "https://hung.test/a.png",
+    );
     const requestId = await id;
 
     await vi.advanceTimersByTimeAsync(50);
@@ -459,12 +463,11 @@ describe("RequestQueue", () => {
     const originalProcess = (
       queue as unknown as { processQueue: () => Promise<void> }
     ).processQueue.bind(queue);
-    (
-      queue as unknown as { processQueue: () => Promise<void> }
-    ).processQueue = () => {
-      processSpy();
-      return originalProcess();
-    };
+    (queue as unknown as { processQueue: () => Promise<void> }).processQueue =
+      () => {
+        processSpy();
+        return originalProcess();
+      };
 
     const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
@@ -499,7 +502,12 @@ describe("RequestQueue", () => {
     const queue = createQueue();
 
     // Download B completes one asset — its result lands in the dedup cache.
-    const cached = enqueueAsset(queue, "https://cache.test/x.png", ResourceType.IMAGE, "download-B");
+    const cached = enqueueAsset(
+      queue,
+      "https://cache.test/x.png",
+      ResourceType.IMAGE,
+      "download-B",
+    );
     await vi.advanceTimersByTimeAsync(50);
     await cached.result;
     const fetchesAfterCache = assetCallsOf(fetchMock).length;
@@ -509,8 +517,18 @@ describe("RequestQueue", () => {
     DomainLimiterFactory.getLimiter("dl-a.test", 1).startRequest();
     DomainLimiterFactory.getLimiter("dl-b.test", 1).startRequest();
 
-    const a = enqueueAsset(queue, "https://dl-a.test/a.png", ResourceType.IMAGE, "download-A");
-    const b = enqueueAsset(queue, "https://dl-b.test/b.png", ResourceType.IMAGE, "download-B");
+    const a = enqueueAsset(
+      queue,
+      "https://dl-a.test/a.png",
+      ResourceType.IMAGE,
+      "download-A",
+    );
+    const b = enqueueAsset(
+      queue,
+      "https://dl-b.test/b.png",
+      ResourceType.IMAGE,
+      "download-B",
+    );
     await a.id;
     await b.id;
     await vi.advanceTimersByTimeAsync(50);
@@ -533,7 +551,12 @@ describe("RequestQueue", () => {
     expect(queuedIdsOf(queue)).toContain(await b.id);
 
     // ...and B's dedup cache entry is still served without a new fetch.
-    const cachedAgain = enqueueAsset(queue, "https://cache.test/x.png", ResourceType.IMAGE, "download-B");
+    const cachedAgain = enqueueAsset(
+      queue,
+      "https://cache.test/x.png",
+      ResourceType.IMAGE,
+      "download-B",
+    );
     await cachedAgain.id;
     const r2 = await cachedAgain.result;
     await expect(r2.response.text()).resolves.toBe("DATA");
@@ -563,8 +586,18 @@ describe("RequestQueue", () => {
     DomainLimiterFactory.getLimiter("dl-b.test", 1).startRequest();
 
     const queue = createQueue({ maxRetries: 2 });
-    const a = enqueueAsset(queue, "https://flaky.test/a.png", ResourceType.IMAGE, "download-A");
-    const b = enqueueAsset(queue, "https://dl-b.test/b.png", ResourceType.IMAGE, "download-B");
+    const a = enqueueAsset(
+      queue,
+      "https://flaky.test/a.png",
+      ResourceType.IMAGE,
+      "download-A",
+    );
+    const b = enqueueAsset(
+      queue,
+      "https://dl-b.test/b.png",
+      ResourceType.IMAGE,
+      "download-B",
+    );
     await a.id;
     await b.id;
 
@@ -616,7 +649,12 @@ describe("RequestQueue", () => {
     DomainLimiterFactory.getLimiter("dl-a.test", 1).startRequest();
 
     const queue = createQueue();
-    const a = enqueueAsset(queue, "https://dl-a.test/a.png", ResourceType.IMAGE, "download-A");
+    const a = enqueueAsset(
+      queue,
+      "https://dl-a.test/a.png",
+      ResourceType.IMAGE,
+      "download-A",
+    );
     await a.id;
     await vi.advanceTimersByTimeAsync(50);
     expect(queuedIdsOf(queue)).toContain(await a.id);
@@ -699,7 +737,131 @@ describe("RequestQueue", () => {
       expect(perUrl[1][1].mode).toBe("cors");
     }
     expect(
-      fetchMock.mock.calls.filter((c) => (c[1] as RequestInit).mode === "no-cors"),
+      fetchMock.mock.calls.filter(
+        (c) => (c[1] as RequestInit).mode === "no-cors",
+      ),
     ).toHaveLength(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // Task 1.5 / design D1 — the download.ts pressure-callback contract.
+  // Resume must happen on ANY delivered level below CRITICAL: the manager
+  // delivers only high-zone boundary levels, so the transition leaving the
+  // high zone (critical → medium) delivers MEDIUM — the old resume-only-
+  // on-LOW contract waited for a delivery the discipline never sends and
+  // the queue stayed paused forever. The tests drive the REAL callback
+  // download.ts registers on the singletons.
+  // -------------------------------------------------------------------------
+
+  describe("memory-pressure pause/resume contract (download.ts wiring)", () => {
+    let deliverPressure: (level: MemoryPressureLevel) => void;
+    let queueSingleton: RequestQueue;
+
+    beforeAll(async () => {
+      // download.ts registers its listeners at import time — give the module
+      // graph the chrome surfaces it touches at load (setup.cjs only
+      // provides chrome.storage.local).
+      const chromeAny = globalThis.chrome as unknown as Record<string, any>;
+      chromeAny.downloads = {
+        onChanged: { addListener: () => {} },
+        onErased: { addListener: () => {} },
+        search: async () => [],
+      };
+      chromeAny.alarms = {
+        onAlarm: { addListener: () => {} },
+        create: () => {},
+      };
+      chromeAny.runtime = {
+        ...(chromeAny.runtime ?? {}),
+        onInstalled: { addListener: () => {} },
+        onSuspend: { addListener: () => {} },
+        connect: () => ({
+          onMessage: { addListener: () => {} },
+          postMessage: () => {},
+          disconnect: () => {},
+        }),
+      };
+      chromeAny.tabs = { onRemoved: { addListener: () => {} } };
+
+      const [{ memoryManager }, { requestQueue }] = await Promise.all([
+        import("../../src/utils/MemoryManager"),
+        import("../../src/utils/RequestQueue"),
+      ]);
+      // Importing download.ts registers the REAL pressure callback on the
+      // singleton memory manager.
+      await import("../../src/background/download");
+
+      queueSingleton = requestQueue;
+      const callbacks = (
+        memoryManager as unknown as {
+          memoryPressureCallbacks: Array<(level: MemoryPressureLevel) => void>;
+        }
+      ).memoryPressureCallbacks;
+      expect(callbacks.length).toBeGreaterThan(0);
+      deliverPressure = callbacks[callbacks.length - 1];
+    });
+
+    beforeEach(() => {
+      // The tests share the singleton queue: drop anything a previous test
+      // (or a hung pre-fix delivery) left behind, including the paused flag
+      // — each contract test starts from an idle, running queue.
+      queueSingleton.clear();
+      queueSingleton.resume();
+    });
+
+    it("resumes on a MEDIUM boundary delivery after CRITICAL (no LOW dependency)", async () => {
+      const fetchMock = stubFetch((url) => {
+        if (url.includes("/robots.txt")) {
+          return new Response(ROBOTS_OK, { status: 200 });
+        }
+        return new Response("DATA", { status: 200 });
+      });
+
+      const asset = enqueueAsset(queueSingleton, "https://pressure.test/a.png");
+      await asset.id;
+
+      // CRITICAL delivery pauses processing before the request even starts.
+      deliverPressure(MemoryPressureLevel.CRITICAL);
+      await vi.advanceTimersByTimeAsync(200);
+      expect(assetCallsOf(fetchMock)).toHaveLength(0);
+      expect(queuedIdsOf(queueSingleton)).toContain(await asset.id);
+
+      // The boundary transition leaving the high zone delivers MEDIUM —
+      // under the old contract this delivery was ignored and the queued
+      // request stayed pending forever (the download hang).
+      deliverPressure(MemoryPressureLevel.MEDIUM);
+      await vi.advanceTimersByTimeAsync(200);
+
+      const completed = await asset.result;
+      expect(completed.snapshot.status).toBe(200);
+      expect(assetCallsOf(fetchMock)).toHaveLength(1);
+      expect(queuedIdsOf(queueSingleton)).not.toContain(await asset.id);
+    });
+
+    it("still resumes on a LOW delivery after CRITICAL (backwards-compatible path)", async () => {
+      const fetchMock = stubFetch((url) => {
+        if (url.includes("/robots.txt")) {
+          return new Response(ROBOTS_OK, { status: 200 });
+        }
+        return new Response("DATA", { status: 200 });
+      });
+
+      const asset = enqueueAsset(
+        queueSingleton,
+        "https://pressure-low.test/b.png",
+      );
+      await asset.id;
+
+      deliverPressure(MemoryPressureLevel.CRITICAL);
+      await vi.advanceTimersByTimeAsync(200);
+      expect(assetCallsOf(fetchMock)).toHaveLength(0);
+
+      deliverPressure(MemoryPressureLevel.LOW);
+      await vi.advanceTimersByTimeAsync(200);
+
+      const completed = await asset.result;
+      expect(completed.snapshot.status).toBe(200);
+      expect(assetCallsOf(fetchMock)).toHaveLength(1);
+    });
   });
 });

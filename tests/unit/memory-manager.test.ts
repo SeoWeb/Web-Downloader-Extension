@@ -303,7 +303,71 @@ describe("MemoryManager", () => {
 
     // … allocations released → resume on LOW.
     manager.releaseResource("a");
-    expect(levels).toEqual([MemoryPressureLevel.CRITICAL, MemoryPressureLevel.LOW]);
+    expect(levels).toEqual([
+      MemoryPressureLevel.CRITICAL,
+      MemoryPressureLevel.LOW,
+    ]);
     expect(manager.getMemoryStats().totalMemoryUsed).toBe(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // Task 1.4 / design D1 — forceCleanup re-evaluates pressure
+  // -------------------------------------------------------------------------
+
+  it("forceCleanup re-evaluates pressure and fires the resume callback (pause → cleanup → resume)", async () => {
+    const manager = createManager();
+    const levels: MemoryPressureLevel[] = [];
+    manager.registerMemoryPressureCallback((level) => levels.push(level));
+
+    // Critical pressure pauses the queue (the download.ts callback contract).
+    manager.trackResourceAllocation("a", 900); // 90% → critical
+    expect(levels).toEqual([MemoryPressureLevel.CRITICAL]);
+
+    // In-flight resources are abandoned without per-record releases (the
+    // queue teardown aborts fetches whose releaseResource can lag behind the
+    // recompute) — the stale accounting keeps the pause engaged.
+    (
+      manager as unknown as { activeAllocations: Map<string, unknown> }
+    ).activeAllocations.delete("a");
+    expect(manager.getMemoryStats().memoryPressureLevel).toBe(
+      MemoryPressureLevel.CRITICAL,
+    );
+
+    // forceCleanup recomputes usage from the live (empty) allocation set …
+    await manager.forceCleanup();
+
+    // … and must re-evaluate pressure IMMEDIATELY: the subcritical boundary
+    // delivery reaches the callback now (resume) instead of waiting for the
+    // next periodic memory check.
+    expect(levels).toEqual([
+      MemoryPressureLevel.CRITICAL,
+      MemoryPressureLevel.LOW,
+    ]);
+    expect(manager.getMemoryStats().totalMemoryUsed).toBe(0);
+    expect(manager.getMemoryStats().memoryPressureLevel).toBe(
+      MemoryPressureLevel.LOW,
+    );
+  });
+
+  it("forceCleanup stays silent when the recomputed usage is still in the high zone (no callback churn)", async () => {
+    const manager = createManager();
+    const levels: MemoryPressureLevel[] = [];
+    manager.registerMemoryPressureCallback((level) => levels.push(level));
+
+    manager.trackResourceAllocation("a", 850); // 85% → critical
+    manager.trackResourceAllocation("b", 50); // 90% still critical — silent
+    expect(levels).toEqual([MemoryPressureLevel.CRITICAL]);
+
+    // Only the small allocation is recovered — the live remainder (850)
+    // is still at the pause threshold.
+    (
+      manager as unknown as { activeAllocations: Map<string, unknown> }
+    ).activeAllocations.delete("b");
+
+    await manager.forceCleanup();
+
+    // Same level after the recompute → no boundary transition → no callback.
+    expect(levels).toEqual([MemoryPressureLevel.CRITICAL]);
+    expect(manager.getMemoryStats().totalMemoryUsed).toBe(850);
   });
 });

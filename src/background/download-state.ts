@@ -119,6 +119,22 @@ export const setKeepalivePort = (
   }
 };
 
+/**
+ * Liveness hook invoked when a keepalive port disconnects (D2 / task 2.1).
+ * scraper-state registers a handler that resolves the affected tab's paused
+ * scraper wait with STOP semantics — when the port dies, the side panel is
+ * gone and no context can deliver a resume anymore. Kept as a registered
+ * hook (rather than a direct import) so download-state stays independent of
+ * the scraper module graph.
+ */
+let keepaliveDisconnectHook: ((tabId: number) => void) | null = null;
+
+export function setKeepaliveDisconnectHook(
+  hook: ((tabId: number) => void) | null,
+): void {
+  keepaliveDisconnectHook = hook;
+}
+
 /** Create a keepalive port for a given tab to prevent the service worker from being killed.
  *  Safe to call multiple times — reuses existing port. */
 export function createKeepalivePort(tabId: number): void {
@@ -128,6 +144,21 @@ export function createKeepalivePort(tabId: number): void {
     port.onMessage.addListener((msg) => {
       if (msg.type === "keepalive-ping") {
         port.postMessage({ type: "keepalive-pong" });
+      }
+    });
+    // (D2 / task 2.1) The panel side dying fires onDisconnect HERE — the
+    // observable signal that no UI remains to resume a paused scraper.
+    // Forget the dead port (a reopened panel creates a fresh one) and run
+    // the liveness hook; the hook is a no-op when nothing is paused, so
+    // panel-reopen races are tolerated idempotently.
+    port.onDisconnect.addListener(() => {
+      if (keepalivePorts.get(tabId) === port) {
+        keepalivePorts.delete(tabId);
+      }
+      try {
+        keepaliveDisconnectHook?.(tabId);
+      } catch (error) {
+        console.warn("[Keepalive] Disconnect hook failed:", error);
       }
     });
     keepalivePorts.set(tabId, port);

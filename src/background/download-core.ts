@@ -76,6 +76,70 @@ import { ensureCloudBinding, getCloudBinding } from "./cloud-binding";
 
 const EMPTY_MAP: Map<string, string> = new Map();
 
+/**
+ * (D7 / task 1.3) Promise.allSettled with a safety bound.
+ *
+ * Behaves like Promise.allSettled while every promise settles within
+ * `boundMs`. If the bound elapses first, the wait is RELEASED: categories
+ * that already settled keep their real outcome, categories that have not
+ * settled are reported as REJECTED with a synthetic timeout error, so a
+ * single stalled category (e.g. a request queue paused forever) cannot hold
+ * finalization hostage. Late settle/reject of an abandoned category is
+ * recorded into the local array and otherwise ignored (no unhandled
+ * rejection). The timer is cleared in `finally` — no stray timer outlives
+ * the wait. Exported for unit testing (download-liveness.test.ts).
+ */
+export async function allSettledWithBound<T>(
+  promises: Promise<T>[],
+  boundMs: number,
+): Promise<PromiseSettledResult<T>[]> {
+  const results: Array<PromiseSettledResult<T> | undefined> = new Array(
+    promises.length,
+  );
+  const trackers = promises.map((promise, index) =>
+    promise.then(
+      (value) => {
+        results[index] = { status: "fulfilled", value };
+      },
+      (reason) => {
+        results[index] = { status: "rejected", reason };
+      },
+    ),
+  );
+
+  let boundTimer: ReturnType<typeof setTimeout> | undefined;
+  const bound = new Promise<PromiseSettledResult<T>[]>((resolve) => {
+    boundTimer = setTimeout(() => {
+      // NB: build the output from the INDICES — a plain results.map() would
+      // preserve the empty slots of the sparse array as holes instead of
+      // running the fallback for them.
+      resolve(
+        promises.map((_promise, index) => {
+          const result: PromiseSettledResult<T> | undefined = results[index];
+          return (
+            result ?? {
+              status: "rejected",
+              reason: new Error(
+                "Asset-category wait exceeded its safety bound",
+              ),
+            }
+          );
+        }),
+      );
+    }, boundMs);
+  });
+
+  const allSettled = Promise.all(trackers).then(
+    () => results as PromiseSettledResult<T>[],
+  );
+
+  try {
+    return await Promise.race([allSettled, bound]);
+  } finally {
+    clearTimeout(boundTimer);
+  }
+}
+
 /** Shape of getResources()' result needed for the zero-content decision. */
 interface ExtractedResources {
   css: string[];
@@ -729,11 +793,24 @@ async function executeDownloadServerMode(
         )
       : Promise.resolve(EMPTY_MAP);
 
-    const [imagesResult, assetsResult, docsResult] = await Promise.allSettled([
-      imagesPromise,
-      assetsPromise,
-      docsPromise,
-    ]);
+    // (D7 / task 1.3) The category wait gates finalization, so it carries a
+    // safety bound sized from the remaining workload — the same calculus as
+    // the upload drain below: 30s per resource, capped at 30 minutes. Only
+    // true stalls trip it (memory-gated pauses resume via D1); on expiry the
+    // stalled category is reported failed and finalization proceeds.
+    const categoryResourceCount =
+      data.images.length +
+      data.css.length +
+      data.js.length +
+      data.documents.length;
+    const categoryWaitBoundMs = Math.min(
+      Math.max(categoryResourceCount, 1) * 30 * 1000,
+      30 * 60 * 1000,
+    );
+    const [imagesResult, assetsResult, docsResult] = await allSettledWithBound(
+      [imagesPromise, assetsPromise, docsPromise],
+      categoryWaitBoundMs,
+    );
 
     // Propagate any non-images errors after all categories have settled.
     if (assetsResult.status === "rejected") {

@@ -176,10 +176,12 @@ import { serverClient } from "../../src/background/server-client";
 import type { FilterOptions } from "../../src/types/filterTypes";
 
 // tests/setup.cjs provides chrome.storage.local; createKeepalivePort needs
-// chrome.runtime.connect as well.
+// chrome.runtime.connect as well. The port exposes onMessage AND
+// onDisconnect (D2 / task 2.1 — panel-close liveness).
 (globalThis.chrome as { runtime?: unknown }).runtime = {
   connect: () => ({
     onMessage: { addListener: () => {} },
+    onDisconnect: { addListener: () => {} },
     postMessage: () => {},
     disconnect: () => {},
   }),
