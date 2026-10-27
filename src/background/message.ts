@@ -147,6 +147,20 @@ export function isDefinitiveResumeFailure(err: unknown): boolean {
   );
 }
 
+/**
+ * (stop-cancel-semantics D2) AbortError discriminator — local copy of the
+ * convention used by downloadWithFallback (server-download.ts) and
+ * download-core's isAbortError: a DOMException/Error named "AbortError" is
+ * a user cancellation, not a failure. AbortSignal.timeout() rejects with
+ * "TimeoutError" and correctly does NOT match.
+ */
+function isAbortError(err: unknown): boolean {
+  return (
+    (err instanceof DOMException && err.name === "AbortError") ||
+    (err instanceof Error && err.name === "AbortError")
+  );
+}
+
 export async function messageWorker(
   action: MessageAction,
   data: any,
@@ -319,6 +333,30 @@ export async function messageWorker(
           }
           return { success: true };
         } catch (err) {
+          // (stop-cancel-semantics D3/D4 / task 3.5) An AbortError escaping
+          // resumeServerDownload is user intent — the user pressed Stop.
+          // Report the cancellation, clear the checkpoint (a deliberately
+          // stopped download must not resurface as a Resume prompt), and
+          // return WITHOUT the generic resume-failure payload (no Retry/
+          // Restart offer, no panel-side full-restart fallback). Normal
+          // resume stops are salvaged and reported inside
+          // resumeServerDownload itself; this is the safety net for any
+          // abort that escapes without salvage.
+          if (isAbortError(err)) {
+            if (cameFromStorage) {
+              await clearCheckpoint(checkpoint.serverSessionId);
+            }
+            addMessage({
+              action: messageActions.PANEL_MESSAGE,
+              data: {
+                message: {
+                  key: "status.cancelled",
+                  options: { serverSessionId: checkpoint.serverSessionId },
+                },
+              },
+            });
+            return { success: true };
+          }
           // Definitive failure (expired/invalid session) — the checkpoint
           // can never be used again; clear it so the panel offers Restart.
           if (cameFromStorage && isDefinitiveResumeFailure(err)) {

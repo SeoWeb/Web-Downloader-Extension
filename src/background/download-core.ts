@@ -250,6 +250,56 @@ async function lookupFallbackUrl(
   }
 }
 
+/**
+ * (stop-cancel-semantics D2) AbortError discriminator — the same convention
+ * `downloadWithFallback` uses to let a cancelled poll pass through without
+ * the fallback offer (server-download.ts): a DOMException/Error named
+ * "AbortError" is a cancellation, not a failure. Note `AbortSignal.timeout()`
+ * rejects with "TimeoutError" instead, so per-resource timeouts correctly do
+ * NOT match.
+ */
+function isAbortError(err: unknown): boolean {
+  return (
+    (err instanceof DOMException && err.name === "AbortError") ||
+    (err instanceof Error && err.name === "AbortError")
+  );
+}
+
+/**
+ * (stop-cancel-semantics D1 / tasks 2.4 + 3.4) Terminal salvage report for a
+ * user-stopped download: ONE cheap status probe (the `lookupFallbackUrl`
+ * pattern). When the server already produced the archive, its URL is
+ * surfaced via the existing `status.serverDownloadReady` affordance
+ * (self-healed) alongside `status.cancelled`; when not, the plain
+ * cancellation is reported and the session is left to server retention.
+ *
+ * Never polls and never throws — a probe failure degrades to the plain
+ * cancellation. The assembly-poll abort (both paths) and the main-path
+ * stop catch report through this helper.
+ */
+async function reportCancelledSession(
+  sessionId: string,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
+  options: { failedCount?: number } = {},
+): Promise<void> {
+  const downloadUrl = await lookupFallbackUrl(sessionId);
+  if (downloadUrl) {
+    sendMessage({
+      key: "status.serverDownloadReady",
+      options: { downloadUrl, serverSessionId: sessionId },
+    });
+  }
+  sendMessage({
+    key: "status.cancelled",
+    options: {
+      serverSessionId: sessionId,
+      ...(typeof options.failedCount === "number"
+        ? { failedCount: options.failedCount }
+        : {}),
+    },
+  });
+}
+
 export async function downloadResources(
   html: string,
   tabUrl: string,
@@ -366,7 +416,9 @@ export async function downloadResources(
     // CHECK_DOWNLOAD_LIVE poll can surface the failure even when its
     // failure push was dropped by a tab switch. Only possible when a
     // session exists — a failed session CREATION has no key to record under.
-    if (serverSessionId) {
+    // (stop-cancel-semantics D1) A user stop is not a failure — don't
+    // record one.
+    if (serverSessionId && !isAbortError(error)) {
       setSessionLastError(serverSessionId, errorMessage);
     }
 
@@ -378,6 +430,19 @@ export async function downloadResources(
 
     if (error instanceof PanelUnavailableError) {
       userFriendlyMessage = { key: "app.panelUnavailable" };
+    } else if (isAbortError(error)) {
+      // (stop-cancel-semantics D1/2.2) A stop-induced AbortError is user
+      // intent, not a failure — report the cancellation, never
+      // status.failedWithError("Download was cancelled"). This covers the
+      // pre-flow window (Stop pressed while the session is still being
+      // created, before executeDownloadServerMode's own wiring); stops
+      // inside the flow are salvaged and reported by
+      // executeDownloadServerMode itself. Nothing to salvage here — the
+      // session (if any) is empty and left to server retention.
+      userFriendlyMessage = {
+        key: "status.cancelled",
+        ...(serverSessionId ? { options: { serverSessionId } } : {}),
+      };
     } else if (
       error instanceof HttpError &&
       error.statusCode === 403 &&
@@ -513,11 +578,16 @@ async function executeDownloadServerMode(
     if (downloadAbort.signal.aborted) {
       throw new DOMException("Download was cancelled", "AbortError");
     }
-    // When the download-level controller aborts, also cancel the upload queue
+    // When the download-level controller aborts, cancel the upload queue AND
+    // abort the assembly-poll signal (stop-cancel-semantics D2 / task 1.1) —
+    // pressing Stop must also wake pollAssemblyStatus's abortable sleep
+    // immediately instead of letting it run to its next tick or the
+    // 35-minute cap.
     downloadAbort.signal.addEventListener(
       "abort",
       () => {
         uploadQueue.cancel();
+        context.assemblyAbortController.abort();
       },
       { once: true },
     );
@@ -908,6 +978,11 @@ async function executeDownloadServerMode(
     } catch (err) {
       // Queue may be cancelled — continue anyway, finalization
       // will proceed and the server will assemble whatever it has.
+      // (stop-cancel-semantics D1 / task 2.3) A user stop cancels the
+      // queue and this rejection surfaces immediately — no residual drain
+      // time is awaited. The flow goes straight to finalizeSession with
+      // what arrived; the polling call below then aborts at once via the
+      // assembly signal (aborted by the stop listener above).
       console.warn("[ServerMode] Upload queue error:", err);
     } finally {
       clearInterval(heartbeatInterval);
@@ -979,6 +1054,30 @@ async function executeDownloadServerMode(
       // Per-download polling signal (task 4.2) — no shared controller.
       context.assemblyAbortController.signal,
     );
+
+    // (stop-cancel-semantics D1 / task 2.1) A user stop NEVER terminates as
+    // status.complete. This branch only covers the tiny race where the stop
+    // fires after the poll returned but before the terminal sends (a stop
+    // during polling surfaces as AbortError from the call above); the
+    // terminal message becomes status.cancelled, with the produced archive
+    // URL surfaced via the existing serverDownloadReady affordance.
+    if (downloadAbort.signal.aborted) {
+      if (downloadResult?.downloadUrl) {
+        sendMessage({
+          key: "status.serverDownloadReady",
+          options: {
+            downloadUrl: downloadResult.downloadUrl,
+            isSingleFile: downloadOptions.singleFile,
+            serverSessionId: sessionId,
+          },
+        });
+      }
+      sendMessage({
+        key: "status.cancelled",
+        options: { serverSessionId: sessionId, failedCount: failedUploadCount },
+      });
+      return;
+    }
 
     // Cloud mode: server pushed to PagePocket, show cloud success
     if (downloadResult?.cloudPageId) {
@@ -1065,6 +1164,22 @@ async function executeDownloadServerMode(
       errorStack,
     );
 
+    // (stop-cancel-semantics D1 / tasks 2.2 + 2.4) A stop-induced AbortError
+    // is user intent, not a failure — run the salvage probe (one status
+    // lookup; surface the archive URL when the server already produced one)
+    // and report status.cancelled instead of the generic failure branches.
+    // No terminal error is recorded and nothing is rethrown, so the outer
+    // catch cannot relabel the stop as status.failedWithError.
+    if (isAbortError(error)) {
+      console.log(
+        "[ServerMode] Download cancelled by user — salvaging partial archive",
+      );
+      await reportCancelledSession(sessionId, sendMessage, {
+        failedCount: uploadQueue.getProgress().failedCount,
+      });
+      return;
+    }
+
     // (Round 9 — Fix B) Record the terminal error (includes assembly
     // timeouts/failures) so the panel's final CHECK_DOWNLOAD_LIVE poll can
     // distinguish this failure from a normal completion even when the
@@ -1112,6 +1227,10 @@ async function executeDownloadServerMode(
     // (Fix D.1 — liveness) The download is no longer running for this
     // session — success, failure, or abort.
     markSessionNotLive(sessionId);
+    // (stop-cancel-semantics D2 / task 1.5) Teardown: no poll may outlive
+    // its flow — abort the assembly signal so any lingering poll loop
+    // wakes immediately (no-op when it already finished or was stopped).
+    context.assemblyAbortController.abort();
     // Clear the active server session so subsequent scrolling
     // doesn't try to upload to a stale session.
     setActiveServerSession(tabId!, null);
@@ -1149,6 +1268,13 @@ async function executeDownloadServerMode(
  * `failedCount` (D3) is the resume queue's terminal upload-failure count —
  * propagated into the status.complete payload (0 when the resume path
  * performed no local re-uploads).
+ *
+ * (stop-cancel-semantics D2 / task 1.2) `signal` is the caller's
+ * assembly-poll signal — passed as the 8th argument to
+ * downloadWithFallback so polling wakes immediately when it aborts. A
+ * stop-induced AbortError is routed to the salvage step (one status probe,
+ * status.cancelled — task 2.4's helper) instead of the error path; an
+ * already-aborted signal never starts polling (task 3.3).
  */
 async function finalizeAndPollAssembly(
   client: typeof serverClient,
@@ -1158,7 +1284,14 @@ async function finalizeAndPollAssembly(
   saveAs: boolean,
   sendMessage: (message: string | { key: string; options?: any }) => void,
   failedCount = 0,
+  signal?: AbortSignal,
 ): Promise<void> {
+  // (stop-cancel-semantics / task 3.3) An already-stopped resume never
+  // starts polling — surface the stop as AbortError so the caller's catch
+  // runs the salvage step (best-effort scrapeComplete + finalize + probe).
+  if (signal?.aborted) {
+    throw new DOMException("Download was cancelled", "AbortError");
+  }
   sendMessage({ key: "status.finalizingServer" });
   try {
     await client.finalizeSession(sessionId);
@@ -1170,20 +1303,62 @@ async function finalizeAndPollAssembly(
   setSessionPhase(sessionId, "assembling");
   sendMessage({ key: "status.assemblingServer" });
   const handler = getServerDownloadHandler();
-  const downloadResult = await handler.downloadWithFallback(
-    sessionId,
-    tabUrl,
-    false,
-    async () => false,
-    (_status, phase, progressPct, elapsedSeconds) => {
+  let downloadResult: Awaited<ReturnType<typeof handler.downloadWithFallback>>;
+  try {
+    downloadResult = await handler.downloadWithFallback(
+      sessionId,
+      tabUrl,
+      false,
+      async () => false,
+      (_status, phase, progressPct, elapsedSeconds) => {
+        sendMessage({
+          key: "status.assemblyProgress",
+          options: { status: "assembling", phase, progressPct, elapsedSeconds },
+        });
+      },
+      tabId,
+      saveAs,
+      // Assembly-poll signal (stop-cancel-semantics D2) — aborting it wakes
+      // the polling sleep immediately and rejects with AbortError.
+      signal,
+    );
+  } catch (error) {
+    if (isAbortError(error)) {
+      // (stop-cancel-semantics D1 / task 1.2) Stop during assembly polling —
+      // salvage: one status probe, the archive URL when the server already
+      // produced one, terminal status.cancelled. Never the error path —
+      // the session is already finalized above.
+      console.log("[Resume] Assembly polling cancelled by user — salvaging");
+      await reportCancelledSession(sessionId, sendMessage, { failedCount });
+      return;
+    }
+    throw error;
+  }
+
+  // (stop-cancel-semantics D1 / task 2.1 parity) A user stop NEVER
+  // terminates as status.complete — on the resume path either. This
+  // mirrors the main path's post-poll guard: it only covers the tiny race
+  // where the stop fires after the poll returned but before the terminal
+  // sends (a stop during polling surfaces as AbortError from the call
+  // above); the terminal message becomes status.cancelled, with the
+  // already-produced archive URL surfaced via the existing
+  // serverDownloadReady affordance.
+  if (signal?.aborted) {
+    if (downloadResult?.downloadUrl) {
       sendMessage({
-        key: "status.assemblyProgress",
-        options: { status: "assembling", phase, progressPct, elapsedSeconds },
+        key: "status.serverDownloadReady",
+        options: {
+          downloadUrl: downloadResult.downloadUrl,
+          serverSessionId: sessionId,
+        },
       });
-    },
-    tabId,
-    saveAs,
-  );
+    }
+    sendMessage({
+      key: "status.cancelled",
+      options: { serverSessionId: sessionId, failedCount },
+    });
+    return;
+  }
 
   if (downloadResult?.cloudPageId) {
     sendMessage({
@@ -1249,12 +1424,28 @@ export async function resumeServerDownload(
     phase: checkpoint.phase ?? "uploading",
   });
 
+  // (stop-cancel-semantics D2 / task 1.3) Per-resume assembly-poll signal —
+  // aborted by the same user-stop controller that cancels the upload queue
+  // (listener attached below) and on teardown, so no poll outlives this
+  // resume. The resume path does not build a DownloadContext, so it owns
+  // its controller.
+  const resumeAssemblyAbort = new AbortController();
+
   // Create keepalive port and per-tab abort controller so the user
   // can press Stop to cancel a resumed download.
+  let stopSignal: AbortSignal | null = null;
   if (tabId) {
     createKeepalivePort(tabId);
     const abortCtrl = new AbortController();
     setDownloadAbortController(abortCtrl, tabId);
+    stopSignal = abortCtrl.signal;
+    // Pressing Stop also aborts assembly polling — this listener must be
+    // live before the assembling-branch poll below starts.
+    abortCtrl.signal.addEventListener(
+      "abort",
+      () => resumeAssemblyAbort.abort(),
+      { once: true },
+    );
   }
 
   let scrapeCompleteSent = false;
@@ -1293,6 +1484,12 @@ export async function resumeServerDownload(
 
     // If assembling, just poll for completion
     if (status.status === "assembling") {
+      // (stop-cancel-semantics / task 3.3) An already-stopped resume never
+      // starts polling — surface the stop as AbortError for the catch's
+      // salvage step.
+      if (stopSignal?.aborted) {
+        throw new DOMException("Download was cancelled", "AbortError");
+      }
       scrapeCompleteSent = true; // session already past SCRAPING
       // (Round 9 — Fix B) Keep the polled snapshot truthful.
       setSessionPhase(serverSessionId, "assembling");
@@ -1316,7 +1513,30 @@ export async function resumeServerDownload(
         },
         tabId,
         saveAs,
+        // Assembly-poll signal (stop-cancel-semantics D2 / task 1.3) —
+        // aborting the stop controller aborts this poll immediately.
+        resumeAssemblyAbort.signal,
       );
+      // (stop-cancel-semantics D1 / task 2.1 parity) Same post-poll race
+      // guard as the main path and finalizeAndPollAssembly: a stop after
+      // the poll returned but before the terminal sends still reports
+      // status.cancelled (with the produced URL), never status.complete.
+      if (resumeAssemblyAbort.signal.aborted) {
+        if (downloadResult?.downloadUrl) {
+          sendMessage({
+            key: "status.serverDownloadReady",
+            options: {
+              downloadUrl: downloadResult.downloadUrl,
+              serverSessionId,
+            },
+          });
+        }
+        sendMessage({
+          key: "status.cancelled",
+          options: { serverSessionId, failedCount: 0 },
+        });
+        return;
+      }
       if (downloadResult?.cloudPageId) {
         sendMessage({
           key: "status.pagepocketUploadComplete",
@@ -1375,6 +1595,9 @@ export async function resumeServerDownload(
           tabId,
           saveAs,
           sendMessage,
+          0,
+          // Assembly-poll signal (stop-cancel-semantics D2 / task 1.3).
+          resumeAssemblyAbort.signal,
         );
         return; // Done — skip the normal upload path below
       }
@@ -1415,24 +1638,38 @@ export async function resumeServerDownload(
     };
 
     // Wire up the per-tab abort controller so pressing Stop cancels uploads
+    // AND aborts assembly polling (stop-cancel-semantics D2 / task 1.3).
     const resumeAbort = tabId ? getDownloadAbortController(tabId) : null;
     if (resumeAbort) {
       if (resumeAbort.signal.aborted) {
         uploadQueue.cancel();
+        resumeAssemblyAbort.abort();
         throw new DOMException("Download was cancelled", "AbortError");
       }
-      resumeAbort.signal.addEventListener("abort", () => uploadQueue.cancel(), {
-        once: true,
-      });
+      resumeAbort.signal.addEventListener(
+        "abort",
+        () => {
+          uploadQueue.cancel();
+          resumeAssemblyAbort.abort();
+        },
+        { once: true },
+      );
     }
 
     // Re-fetch each resource directly by URL and enqueue for upload.
     // Uses direct fetch() instead of the content script because the
     // content script may not be available after a service worker restart.
+    // (stop-cancel-semantics D2 / task 1.4) The loop observes the stop
+    // signal: check before each fetch, fetch under AbortSignal.any so a
+    // stop interrupts the in-flight fetch, re-check after the awaited
+    // enqueue, and break on the user-abort AbortError.
     for (const entry of resourceUrls) {
+      if (resumeAbort?.signal.aborted) break;
       try {
         const response = await fetch(entry.url, {
-          signal: AbortSignal.timeout(60_000),
+          signal: resumeAbort
+            ? AbortSignal.any([resumeAbort.signal, AbortSignal.timeout(60_000)])
+            : AbortSignal.timeout(60_000),
         });
         if (!response.ok) continue;
         const blob = await response.blob();
@@ -1443,7 +1680,16 @@ export async function resumeServerDownload(
           entry.url,
           entry.contentType,
         );
-      } catch {
+        // A stop during the (awaited) enqueue must not fetch the next URL.
+        if (resumeAbort?.signal.aborted) break;
+      } catch (err) {
+        // (stop-cancel-semantics D2 / task 1.4) NEVER swallow the
+        // user-abort: an AbortError here means the stop signal fired
+        // mid-fetch (the 60s timeout rejects with "TimeoutError" instead —
+        // see isRetryableError in upload-queue) — break the loop and let
+        // the wait/finalize below run the salvage. Individual per-resource
+        // failures keep the skip-and-log behavior.
+        if (isAbortError(err)) break;
         // Skip resources that can no longer be fetched
         console.warn(`[Resume] Failed to fetch resource: ${entry.url}`);
       }
@@ -1469,6 +1715,18 @@ export async function resumeServerDownload(
       const remaining = uploadQueue.getProgress().totalCount;
       const timeoutMs = Math.min(remaining * 30 * 1000, 30 * 60 * 1000);
       await uploadQueue.waitForAll(timeoutMs);
+    } catch (err) {
+      // (stop-cancel-semantics D3 / tasks 3.1 + 3.2) Parity with the main
+      // path: a queue timeout OR a cancel-rejection must not fail the whole
+      // resume — the flow proceeds to finalize with whatever arrived. The
+      // terminal status is decided downstream: a stop-induced cancellation
+      // leaves the assembly signal aborted, so finalizeAndPollAssembly
+      // reports status.cancelled via the salvage step; a non-stop timeout
+      // keeps today's completion-with-failedCount semantics.
+      console.warn(
+        "[Resume] Upload wait failed — finalizing with partial data:",
+        err,
+      );
     } finally {
       if (heartbeatInterval !== undefined) clearInterval(heartbeatInterval);
     }
@@ -1487,6 +1745,10 @@ export async function resumeServerDownload(
       saveAs,
       sendMessage,
       failedCount,
+      // Assembly-poll signal (stop-cancel-semantics D2 / task 1.3) — an
+      // aborted signal short-circuits at the entry check and the catch
+      // below runs the salvage (tasks 3.2 + 3.4).
+      resumeAssemblyAbort.signal,
     );
   } catch (error) {
     // Best-effort scrapeComplete so the server transitions out of SCRAPING.
@@ -1504,6 +1766,28 @@ export async function resumeServerDownload(
         // Best effort — don't mask the original error
       }
     }
+    // (stop-cancel-semantics D1/D3 / tasks 3.4 + D4) An AbortError here is
+    // the user pressing Stop — intent to abandon, not a resume failure.
+    // Run the same salvage step as the main path: finalize the partial
+    // archive (idempotent — it may already have run inside
+    // finalizeAndPollAssembly), one status probe, and the cancelled
+    // terminal (+ partial URL when the server already produced one).
+    // Nothing is rethrown: message.ts must not wrap the stop in its
+    // generic resume-failure payload, and the checkpoint clears on the
+    // success path — a deliberately stopped download never resurfaces as
+    // a Resume prompt.
+    if (isAbortError(error)) {
+      console.log(
+        "[Resume] Download cancelled by user — salvaging partial archive",
+      );
+      try {
+        await serverClient.finalizeSession(serverSessionId);
+      } catch {
+        // Already finalized/assembling/failed — the probe below reports.
+      }
+      await reportCancelledSession(serverSessionId, sendMessage);
+      return;
+    }
     // (Round 9 — Fix B) Record the terminal error for the panel's final
     // liveness poll (mirrors executeDownloadServerMode's catch block).
     setSessionLastError(
@@ -1515,6 +1799,9 @@ export async function resumeServerDownload(
     // (Fix D.1 — liveness) Resume finished (or failed) — the session is no
     // longer live.
     markSessionNotLive(serverSessionId);
+    // (stop-cancel-semantics D2 / task 1.5) Teardown: no poll may outlive
+    // this resume — abort the assembly signal (no-op when already aborted).
+    resumeAssemblyAbort.abort();
     if (tabId) {
       disconnectKeepalivePort(tabId);
       setDownloadAbortController(null, tabId);

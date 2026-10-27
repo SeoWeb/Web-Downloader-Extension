@@ -29,7 +29,9 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Create a mock SessionStatusResponse. */
-function mockStatus(overrides: Partial<SessionStatusResponse> = {}): SessionStatusResponse {
+function mockStatus(
+  overrides: Partial<SessionStatusResponse> = {},
+): SessionStatusResponse {
   return {
     id: "test-session-id",
     status: "assembling",
@@ -227,7 +229,9 @@ describe("ServerDownloadHandler", () => {
       const result = await handler.pollAssemblyStatus("test-session-id");
 
       expect(result.status).toBe("ready");
-      expect(result.download_url).toBe("http://localhost:8000/api/v1/sessions/test/download");
+      expect(result.download_url).toBe(
+        "http://localhost:8000/api/v1/sessions/test/download",
+      );
       expect(mockGetSessionStatus).toHaveBeenCalledTimes(1);
     });
 
@@ -238,7 +242,10 @@ describe("ServerDownloadHandler", () => {
       mockGetSessionStatus.mockImplementation(async () => {
         callCount++;
         if (callCount < 3) {
-          return mockStatus({ status: "assembling", assembly_progress_pct: callCount * 30 });
+          return mockStatus({
+            status: "assembling",
+            assembly_progress_pct: callCount * 30,
+          });
         }
         return mockStatus({
           status: "ready",
@@ -247,10 +254,17 @@ describe("ServerDownloadHandler", () => {
         });
       });
 
-      const statusUpdates: Array<{ status: string; phase: string | null; pct: number | null }> = [];
-      const promise = handler.pollAssemblyStatus("test-session-id", (status, phase, pct) => {
-        statusUpdates.push({ status, phase, pct });
-      });
+      const statusUpdates: Array<{
+        status: string;
+        phase: string | null;
+        pct: number | null;
+      }> = [];
+      const promise = handler.pollAssemblyStatus(
+        "test-session-id",
+        (status, phase, pct) => {
+          statusUpdates.push({ status, phase, pct });
+        },
+      );
 
       // Adaptive intervals: first poll at 1s (elapsed < 6s)
       await vi.advanceTimersByTimeAsync(1000);
@@ -286,7 +300,7 @@ describe("ServerDownloadHandler", () => {
       vi.setSystemTime(new Date(2025, 0, 1, 0, 0, 0));
 
       const client = new ServerClient();
-      const mockStatusFn = vi.spyOn(client, 'getSessionStatus');
+      const mockStatusFn = vi.spyOn(client, "getSessionStatus");
       mockStatusFn.mockResolvedValue(mockStatus({ status: "assembling" }));
       const handlerTimeout = new ServerDownloadHandler(client);
 
@@ -361,8 +375,11 @@ describe("ServerDownloadHandler", () => {
       const { handler, mockGetSessionStatus } = createHandler();
 
       // Older server shape: no assembly_elapsed_seconds field at all
-      const legacyStatus = mockStatus({ status: "assembling" }) as SessionStatusResponse;
-      delete (legacyStatus as Partial<SessionStatusResponse>).assembly_elapsed_seconds;
+      const legacyStatus = mockStatus({
+        status: "assembling",
+      }) as SessionStatusResponse;
+      delete (legacyStatus as Partial<SessionStatusResponse>)
+        .assembly_elapsed_seconds;
       mockGetSessionStatus.mockResolvedValue(legacyStatus);
 
       const updates: Array<number | null | undefined> = [];
@@ -396,7 +413,11 @@ describe("ServerDownloadHandler", () => {
       mockGetSessionStatus.mockImplementation(async () => {
         callCount++;
         if (callCount === 1) {
-          throw new ServerUnavailableError("Network error", undefined, undefined);
+          throw new ServerUnavailableError(
+            "Network error",
+            undefined,
+            undefined,
+          );
         }
         return mockStatus({
           status: "ready",
@@ -417,7 +438,7 @@ describe("ServerDownloadHandler", () => {
 
     it("can be cancelled via a caller-supplied AbortSignal", async () => {
       const client = new ServerClient();
-      const mockStatusFn = vi.spyOn(client, 'getSessionStatus');
+      const mockStatusFn = vi.spyOn(client, "getSessionStatus");
       mockStatusFn.mockResolvedValue(mockStatus({ status: "assembling" }));
       const handlerCancel = new ServerDownloadHandler(client);
 
@@ -447,6 +468,37 @@ describe("ServerDownloadHandler", () => {
       expect(error.name).toBe("AbortError");
 
       mockStatusFn.mockRestore();
+    });
+
+    it("abort wakes the polling sleep IMMEDIATELY — no wait for the pending timer, no further status requests (stop-cancel-semantics, task 4.3)", async () => {
+      const { handler, mockGetSessionStatus } = createHandler();
+
+      mockGetSessionStatus.mockResolvedValue(
+        mockStatus({ status: "assembling" }),
+      );
+      const controller = new AbortController();
+
+      const pollPromise = handler.pollAssemblyStatus(
+        "test-session-id",
+        undefined,
+        controller.signal,
+      );
+      const rejectionPromise = pollPromise.catch((err) => err);
+
+      // Let exactly one poll complete and the abortable sleep register —
+      // WITHOUT advancing past its 1–5s interval.
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mockGetSessionStatus).toHaveBeenCalledTimes(1);
+
+      // Stop pressed: the sleep must reject NOW, while its timer is still
+      // pending — advancing no further time proves the wake is immediate.
+      controller.abort();
+      const error = await rejectionPromise;
+
+      expect(error).toBeInstanceOf(DOMException);
+      expect(error.name).toBe("AbortError");
+      // The loop died in the sleep — no follow-up status request ever fired.
+      expect(mockGetSessionStatus).toHaveBeenCalledTimes(1);
     });
 
     it("cancelling one poll leaves a concurrent poll running (task 4.2)", async () => {
@@ -492,7 +544,8 @@ describe("ServerDownloadHandler", () => {
       mockStatusFn.mockResolvedValue(
         mockStatus({
           status: "ready",
-          download_url: "http://localhost:8000/api/v1/sessions/session-B/download",
+          download_url:
+            "http://localhost:8000/api/v1/sessions/session-B/download",
         }),
       );
       vi.setSystemTime(Date.now() + 5000);
@@ -528,10 +581,17 @@ describe("ServerDownloadHandler", () => {
         }),
       );
 
-      const updates: Array<{ status: string; phase: string | null; pct: number | null }> = [];
-      const promise = handler.pollAssemblyStatus("test-session-id", (status, phase, pct) => {
-        updates.push({ status, phase, pct });
-      });
+      const updates: Array<{
+        status: string;
+        phase: string | null;
+        pct: number | null;
+      }> = [];
+      const promise = handler.pollAssemblyStatus(
+        "test-session-id",
+        (status, phase, pct) => {
+          updates.push({ status, phase, pct });
+        },
+      );
 
       // Let one poll happen
       await vi.advanceTimersByTimeAsync(2000);
@@ -632,7 +692,9 @@ describe("ServerDownloadHandler", () => {
 
       // Verify result
       expect(result.downloadId).toBe(42);
-      expect(result.downloadUrl).toBe("http://localhost:8000/api/v1/sessions/test/download");
+      expect(result.downloadUrl).toBe(
+        "http://localhost:8000/api/v1/sessions/test/download",
+      );
       expect(result.filename).toMatch(/\.zip$/);
     });
 
@@ -667,7 +729,11 @@ describe("ServerDownloadHandler", () => {
       );
 
       await expect(
-        handler.waitForDownload("test-session-id", "https://example.com/page", false),
+        handler.waitForDownload(
+          "test-session-id",
+          "https://example.com/page",
+          false,
+        ),
       ).rejects.toThrow("no download URL returned");
     });
   });
@@ -840,7 +906,7 @@ describe("ServerDownloadHandler", () => {
       // After timeout, the AssemblyTimeoutError will be thrown, but we need
       // to test ServerUnavailableError categorization in downloadWithFallback.
       // Instead, directly test by making pollAssemblyStatus throw ServerUnavailableError.
-      const pollSpy = vi.spyOn(handler, 'pollAssemblyStatus');
+      const pollSpy = vi.spyOn(handler, "pollAssemblyStatus");
       pollSpy.mockRejectedValue(
         new ServerUnavailableError("Connection refused", undefined, 503),
       );
@@ -861,6 +927,40 @@ describe("ServerDownloadHandler", () => {
       );
 
       pollSpy.mockRestore();
+    });
+
+    it("rethrows AbortError WITHOUT offering the local fallback (stop-cancel-semantics, task 4.3)", async () => {
+      const { handler, mockGetSessionStatus } = createHandler();
+
+      mockGetSessionStatus.mockResolvedValue(
+        mockStatus({ status: "assembling" }),
+      );
+      const controller = new AbortController();
+      const fallbackCb = vi.fn().mockResolvedValue(true);
+
+      const promise = handler.downloadWithFallback(
+        "test-session-id",
+        "https://example.com/page",
+        false,
+        fallbackCb,
+        undefined, // onStatusUpdate
+        undefined, // tabId
+        true, // saveAs
+        controller.signal,
+      );
+      const rejectionPromise = promise.catch((err) => err);
+
+      // One poll completes, the abortable sleep registers…
+      await vi.advanceTimersByTimeAsync(1);
+      // …then the caller's stop signal fires — no fallback dialog may show.
+      controller.abort();
+
+      const error = await rejectionPromise;
+      expect(error).toBeInstanceOf(DOMException);
+      expect(error.name).toBe("AbortError");
+      // A cancelled poll is teardown, not failure — no fallback offer.
+      expect(fallbackCb).not.toHaveBeenCalled();
+      expect(mockGetSessionStatus).toHaveBeenCalledTimes(1);
     });
   });
 });

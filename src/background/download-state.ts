@@ -66,7 +66,9 @@ export interface DownloadInfo {
 export const activeDownloads = new Map<number, DownloadInfo>();
 
 /** Per-tab AbortController map. When the user presses "Stop", the controller
- *  for that tab is aborted, causing the upload queue and download flow to cancel. */
+ *  for that tab is aborted (see abortActiveDownload) — all phase-specific
+ *  cancellation (upload queue, resume re-fetch loop, assembly polling)
+ *  flows from the abort listeners each flow registers on that signal. */
 const downloadAbortControllers = new Map<number, AbortController>();
 
 export const getDownloadAbortController = (tabId: number) =>
@@ -82,7 +84,17 @@ export const setDownloadAbortController = (
   }
 };
 
-/** Abort the active download for a given tab (called when user presses Stop). */
+/**
+ * Abort the active download for a given tab (called when user presses Stop).
+ *
+ * (stop-cancel-semantics D2 / task 1.5) This aborts ONLY the per-tab stop
+ * controller — all phase-specific cancellation flows from the abort
+ * listeners registered on its signal (upload-queue cancel + assembly-signal
+ * abort on the main path; queue cancel + resume-assembly abort + stop-aware
+ * re-fetch loop on the resume path). The assembly controllers themselves
+ * are aborted by those listeners and by each flow's teardown (the
+ * `finally` blocks in download-core.ts), so no poll outlives its flow.
+ */
 export const abortActiveDownload = (tabId: number): boolean => {
   const controller = downloadAbortControllers.get(tabId);
   if (controller && !controller.signal.aborted) {

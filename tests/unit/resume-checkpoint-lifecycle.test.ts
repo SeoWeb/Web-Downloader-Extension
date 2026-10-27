@@ -217,6 +217,63 @@ describe("RESUME_SERVER_DOWNLOAD checkpoint lifecycle (task 4.6)", () => {
     });
     expect(mockResumeServerDownload).not.toHaveBeenCalled();
   });
+
+  // -----------------------------------------------------------------------
+  // stop-cancel-semantics — task 4.6 (D3/D4): an AbortError escaping the
+  // resume is the user pressing Stop, not a resume failure.
+  // -----------------------------------------------------------------------
+
+  it("reports a resume AbortError as cancelled, clears the checkpoint, and returns success — no resume-failure payload (task 4.6)", async () => {
+    mockResumeServerDownload.mockRejectedValue(
+      new DOMException("Download was cancelled", "AbortError"),
+    );
+
+    const result = await messageWorker(
+      messageActions.RESUME_SERVER_DOWNLOAD,
+      {},
+      addMessage,
+    );
+
+    // User intent — NOT a failed resume (no Retry/fallback offer).
+    expect(result).toEqual({ success: true });
+    // A deliberately stopped download must not resurface as a Resume prompt.
+    expect(mockClearCheckpoint).toHaveBeenCalledTimes(1);
+    expect(mockClearCheckpoint).toHaveBeenCalledWith("sess-42");
+    // The panel hears about the cancellation…
+    expect(addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: messageActions.PANEL_MESSAGE,
+        data: {
+          message: expect.objectContaining({ key: "status.cancelled" }),
+        },
+      }),
+    );
+    // …with the session id, so the panel can clean up its active pointer.
+    const panelMessage = addMessage.mock.calls
+      .map((c) => c[0]?.data?.message)
+      .find((m: any) => m?.key === "status.cancelled");
+    expect(panelMessage.options).toEqual({ serverSessionId: "sess-42" });
+  });
+
+  it("treats a TimeoutError as a real failure — NOT a user stop (task 4.6 discriminator)", async () => {
+    // AbortSignal.timeout() rejects with "TimeoutError" — that is a hung
+    // request, not the Stop button, so the generic failure mapping applies.
+    mockResumeServerDownload.mockRejectedValue(
+      new DOMException(
+        "The operation was aborted due to timeout",
+        "TimeoutError",
+      ),
+    );
+
+    const result = await messageWorker(
+      messageActions.RESUME_SERVER_DOWNLOAD,
+      {},
+      addMessage,
+    );
+
+    expect(result).toMatchObject({ success: false, fallback: true });
+    expect(mockClearCheckpoint).not.toHaveBeenCalled();
+  });
 });
 
 describe("isDefinitiveResumeFailure", () => {
@@ -236,7 +293,9 @@ describe("isDefinitiveResumeFailure", () => {
   it("treats missing session data as definitive", () => {
     expect(
       isDefinitiveResumeFailure(
-        new Error("No resource URLs in checkpoint and server has no resources (session=x, received=0) — full restart required"),
+        new Error(
+          "No resource URLs in checkpoint and server has no resources (session=x, received=0) — full restart required",
+        ),
       ),
     ).toBe(true);
     expect(
@@ -250,15 +309,21 @@ describe("isDefinitiveResumeFailure", () => {
     // Same class the message module instanceof-checks (both come from the
     // mocked server-client module).
     expect(
-      isDefinitiveResumeFailure(new AuthenticationError("Authentication failed")),
+      isDefinitiveResumeFailure(
+        new AuthenticationError("Authentication failed"),
+      ),
     ).toBe(true);
   });
 
   it("treats transient errors as NOT definitive", () => {
     expect(
-      isDefinitiveResumeFailure(new ServerUnavailableError("Server unreachable")),
+      isDefinitiveResumeFailure(
+        new ServerUnavailableError("Server unreachable"),
+      ),
     ).toBe(false);
-    expect(isDefinitiveResumeFailure(new TypeError("fetch failed"))).toBe(false);
+    expect(isDefinitiveResumeFailure(new TypeError("fetch failed"))).toBe(
+      false,
+    );
     expect(isDefinitiveResumeFailure(new Error("boom"))).toBe(false);
   });
 });
