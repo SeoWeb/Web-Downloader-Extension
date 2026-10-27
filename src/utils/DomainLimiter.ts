@@ -5,6 +5,9 @@
 
 import { DomainLimiter as IDomainLimiter } from "../types/queue";
 
+/** Bounded backoff while the per-domain connection pool is saturated. */
+const POOL_SATURATION_BACKOFF_MS = 100;
+
 export class DomainLimiter implements IDomainLimiter {
   public readonly domain: string;
   public maxRequestsPerSecond: number;
@@ -101,6 +104,15 @@ export class DomainLimiter implements IDomainLimiter {
     if (this.respectRobotsTxt && this.crawlDelay > 0) {
       const timeSinceLastRequest = now - this.lastRequestTime;
       return Math.max(0, this.crawlDelay - timeSinceLastRequest);
+    }
+
+    // Connection pool saturated. Per-connection start times are not tracked,
+    // so return a small bounded backoff instead of 0: the pool drains as
+    // in-flight fetches settle (typically within seconds), and the queue's
+    // nearestDomainWaitMs clamping turns this into one real wait per
+    // backoff interval instead of minimum-tick polling (design D4).
+    if (this.activeConnections >= this.connectionPoolSize) {
+      return POOL_SATURATION_BACKOFF_MS;
     }
 
     return 0;

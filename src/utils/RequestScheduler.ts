@@ -20,6 +20,8 @@ export class RequestScheduler {
   private eventListeners: QueueEventListeners = {};
   private processingTimer: NodeJS.Timeout | null = null;
   private isProcessing: boolean = false;
+  /** While paused, the 1 ms self-rescheduling loop stays stopped (design D3). */
+  private paused: boolean = false;
 
   // Statistics
   private totalProcessed: number = 0;
@@ -265,20 +267,36 @@ export class RequestScheduler {
   }
 
   /**
-   * Clear the queue (cancel all requests). Returns the removed queued
-   * requests so the caller can settle their callbacks.
+   * Clear the queue (cancel all requests). Returns ALL removed requests —
+   * still-queued AND active — so the caller can settle their callbacks:
+   * dropping either kind without settling leaves the awaiting handler
+   * promise pending forever. (Active entries carry no abort logic here —
+   * aborting in-flight fetches is the caller's job; this only guarantees no
+   * dropped request lacks a settlement owner.)
    */
   public clear(): QueuedRequest[] {
     // Cancel all queued requests
     const removed = this.queue;
+    // A limiter-deferred request can sit in BOTH the queue and the active
+    // map (getNextRequest() moves it to active before the queue re-enqueues
+    // it while deferral lasts). Dedupe by id so it is returned exactly once
+    // — the caller settles every entry, so a duplicate here means a
+    // double-settled handler.
+    const seen = new Set<string>();
     for (const request of removed) {
       request.status = RequestStatus.CANCELLED;
+      seen.add(request.id);
     }
     this.queue = [];
 
-    // Cancel all active requests
+    // Cancel all active requests — surfaced to the caller alongside the
+    // queued ones instead of being silently dropped.
     for (const request of this.activeRequests.values()) {
       request.status = RequestStatus.CANCELLED;
+      if (!seen.has(request.id)) {
+        seen.add(request.id);
+        removed.push(request);
+      }
     }
     this.activeRequests.clear();
 
@@ -294,6 +312,26 @@ export class RequestScheduler {
   }
 
   /**
+   * Pause the processing loop: no timer is armed while paused, so a queued
+   * backlog costs no busy work. `shutdown()` still overrides this.
+   */
+  public pause(): void {
+    this.paused = true;
+    if (this.processingTimer) {
+      clearTimeout(this.processingTimer);
+      this.processingTimer = null;
+    }
+  }
+
+  /**
+   * Resume the processing loop, restarting processing of queued work.
+   */
+  public resume(): void {
+    this.paused = false;
+    this.scheduleProcessing();
+  }
+
+  /**
    * Shutdown the scheduler
    */
   public shutdown(): void {
@@ -305,6 +343,9 @@ export class RequestScheduler {
     }
 
     this.isProcessing = false;
+    // Shutdown overrides pause: the scheduler ends fully stopped, not
+    // parked in a paused state.
+    this.paused = false;
   }
 
   /**
@@ -413,7 +454,8 @@ export class RequestScheduler {
    * Schedule the next processing cycle
    */
   private scheduleProcessing(): void {
-    if (this.processingTimer) {
+    // Paused: no self-rescheduling — resume() re-arms the loop.
+    if (this.paused || this.processingTimer) {
       return;
     }
 
@@ -427,7 +469,7 @@ export class RequestScheduler {
    * Process the queue
    */
   private processQueue(): void {
-    if (!this.isProcessing) {
+    if (!this.isProcessing || this.paused) {
       return;
     }
 

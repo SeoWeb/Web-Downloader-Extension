@@ -291,6 +291,9 @@ export class RequestQueue {
       this.processingTimer = null;
       this.nextProcessingAt = 0;
     }
+    // Stop the scheduler's 1 ms self-rescheduling loop too — a paused queue
+    // must not keep a busy timer alive while work is queued (design D3).
+    this.scheduler.pause();
   }
 
   /**
@@ -298,6 +301,9 @@ export class RequestQueue {
    */
   public resume(): void {
     this.isProcessing = true;
+    // Restart the scheduler's loop, then the queue's own — both loops pick
+    // up already-queued work (design D3).
+    this.scheduler.resume();
     this.scheduleProcessing();
   }
 
@@ -316,16 +322,42 @@ export class RequestQueue {
     }
     this.retryTimers.clear();
 
-    // Cancel all active requests
+    // Design D2 — settle before dropping. Settle every in-flight request
+    // BEFORE removing its map entry, and release the domain-limiter slot it
+    // holds. Each aborted fetch rejects later, but its failRequest /
+    // completeRequest early-returns (map entry already gone) make that late
+    // rejection a no-op BY CONSTRUCTION — the early-return is the
+    // double-settlement guard, so a late rejection can neither re-fire
+    // onError nor re-release the limiter slot.
+    const settledIds = new Set<string>();
     for (const activeRequest of this.activeRequests.values()) {
+      settledIds.add(activeRequest.request.id);
       activeRequest.controller.abort();
+      if (activeRequest.request.onError) {
+        activeRequest.request.onError(
+          new RequestQueueError("Request queue cleared", "cancelled"),
+        );
+      }
+      DomainLimiterFactory.getLimiter(
+        activeRequest.request.domain,
+      ).completeRequest();
     }
     this.activeRequests.clear();
 
     // Clear scheduler; settle the dropped queued requests so awaiting
     // handlers resolve instead of hanging on a promise that never settles.
+    // The scheduler's active entries are the same objects settled above —
+    // the settledIds guard keeps this idempotent should the two maps ever
+    // diverge.
     const dropped = this.scheduler.clear();
+    // Defense in depth for design D2 ("exactly once"): a duplicate entry in
+    // `dropped` (same id in queue AND active) must never settle twice.
+    const droppedSeen = new Set<string>();
     for (const request of dropped) {
+      if (settledIds.has(request.id) || droppedSeen.has(request.id)) {
+        continue;
+      }
+      droppedSeen.add(request.id);
       if (request.onError) {
         request.onError(
           new RequestQueueError("Request queue cleared", "cancelled"),
@@ -457,14 +489,12 @@ export class RequestQueue {
       },
 
       onError: (request, error) => {
-        // Handle retries - only retry transient errors, not permanent ones
-        const maxRetries =
-          this.options.throttling?.maxRetries ??
-          DEFAULT_THROTTLING_CONFIG.maxRetries;
-        const shouldRetry =
-          request.retryCount < maxRetries && this.isRetryableError(error);
-
-        if (shouldRetry) {
+        // Handle retries - only retry transient errors, not permanent ones.
+        // This MUST be the same decision `failRequest` gates the handler
+        // settlement on: both derive from `shouldRetryRequest` so retry
+        // scheduling and the terminal-outcome gate cannot disagree (design
+        // D1 — retry owns the failure signal).
+        if (this.shouldRetryRequest(request, error)) {
           this.retryRequest(request);
         } else {
           if (originalListeners.onError) {
@@ -552,7 +582,6 @@ export class RequestQueue {
       return;
     }
 
-    let startedCount = 0;
     let deferredCount = 0;
     let globalThrottleBlocked = false;
     let nearestDomainWaitMs = Number.POSITIVE_INFINITY;
@@ -596,8 +625,12 @@ export class RequestQueue {
 
         requestsToStart.push(request);
       }
-    } catch {
-      // Ignore
+    } catch (error) {
+      // An internal throw (adaptive concurrency, throttle check, limiter
+      // lookup, dequeue) must never strand a non-empty scheduler: log it and
+      // re-schedule so the queue gets another cycle.
+      console.warn("RequestQueue: processing cycle failed", error);
+      this.scheduleProcessing();
     }
 
     // Requests whose head domain is saturated go back, order preserved.
@@ -622,9 +655,11 @@ export class RequestQueue {
         QUEUE_TICK_MS,
       );
       this.scheduleProcessing(throttleDelay);
-    } else if (startedCount === 0 && deferredCount > 0) {
-      // Every queued request is blocked by its domain limiter — wait for the
-      // nearest limiter availability instead of busy-spinning.
+    } else if (requestsToStart.length === 0 && deferredCount > 0) {
+      // Nothing was started and every queued request is blocked by its
+      // domain limiter — wait for the nearest limiter availability instead
+      // of busy-spinning. (If requests WERE started, their completion
+      // callbacks trigger the next processing cycle.)
       const waitMs = Math.min(
         Math.max(nearestDomainWaitMs, QUEUE_TICK_MS),
         MAX_SCHEDULE_DELAY_MS,
@@ -950,6 +985,16 @@ export class RequestQueue {
       return;
     }
 
+    // Design D1 — retry owns the failure signal. Decide retry vs terminal
+    // BEFORE `scheduler.failRequest` fires the wrapped onError listener:
+    // for a retryable error that listener schedules the detached retry,
+    // which increments retryCount and would flip this decision. The
+    // handler's onError fires ONLY on the terminal outcome; when a retry is
+    // scheduled the handler stays pending and is settled later by the
+    // retry's final outcome (success → completeRequest → onComplete,
+    // exhaustion → terminal failRequest → onError).
+    const willRetry = this.shouldRetryRequest(activeRequest.request, error);
+
     // Update domain limiter
     const domainLimiter = DomainLimiterFactory.getLimiter(
       activeRequest.request.domain,
@@ -959,16 +1004,33 @@ export class RequestQueue {
     // Remove from active requests
     this.activeRequests.delete(requestId);
 
-    // Fail in scheduler
+    // Fail in scheduler — fires the wrapped onError listener, which
+    // schedules the detached retry for retryable errors using the same
+    // `shouldRetryRequest` decision computed above (same pre-increment
+    // state, so the two can never disagree).
     this.scheduler.failRequest(requestId, error);
 
-    // Call error callback
-    if (activeRequest.request.onError) {
+    // Call error callback ONLY when the outcome is terminal
+    if (!willRetry && activeRequest.request.onError) {
       activeRequest.request.onError(error);
     }
 
     // Trigger next processing cycle
     this.scheduleProcessing();
+  }
+
+  /**
+   * Single source of truth for the retry decision (design D1). Both the
+   * wrapped onError listener (retry scheduling) and `failRequest` (the
+   * terminal-outcome gate on handler settlement) derive from this, so they
+   * cannot disagree. Must be evaluated on the PRE-increment retryCount —
+   * `retryRequest` increments only afterwards.
+   */
+  private shouldRetryRequest(request: QueuedRequest, error: Error): boolean {
+    const maxRetries =
+      this.options.throttling?.maxRetries ??
+      DEFAULT_THROTTLING_CONFIG.maxRetries;
+    return request.retryCount < maxRetries && this.isRetryableError(error);
   }
 
   /**

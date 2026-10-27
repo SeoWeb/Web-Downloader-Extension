@@ -184,6 +184,28 @@ describe("DomainLimiter", () => {
     });
   });
 
+  describe("connection pool saturation (task 6.7)", () => {
+    it("returns a bounded backoff when the pool is saturated", () => {
+      const limiter = new DomainLimiter("pool-sat.test", 8);
+      limiter.activeConnections = limiter.connectionPoolSize;
+
+      expect(limiter.canMakeRequest()).toBe(false);
+      const wait = limiter.getWaitTime();
+      // A real, bounded backoff — not 0 (which degraded into minimum-tick
+      // polling in the queue).
+      expect(wait).toBeGreaterThan(0);
+      expect(wait).toBeLessThanOrEqual(100);
+    });
+
+    it("returns 0 when the pool still has a free slot", () => {
+      const limiter = new DomainLimiter("pool-free.test", 8);
+      limiter.activeConnections = limiter.connectionPoolSize - 1;
+
+      expect(limiter.canMakeRequest()).toBe(true);
+      expect(limiter.getWaitTime()).toBe(0);
+    });
+  });
+
   describe("DomainLimiterFactory", () => {
     it("returns the same limiter per domain", () => {
       const a = DomainLimiterFactory.getLimiter("factory.test");
