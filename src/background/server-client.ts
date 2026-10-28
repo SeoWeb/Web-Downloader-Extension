@@ -391,6 +391,42 @@ function parseRetryAfterSeconds(header: string | null): number | null {
 }
 
 /**
+ * Extract the machine-readable `error` code from a register error body
+ * (api-abuse-hardening D2). The repo's structured error style wraps the
+ * code as `{ detail: { error: ... } }`, while the PoP gate bodies use the
+ * flat `{ error: ... }` form (`reauth_required`, `reauth_proof_invalid`).
+ * Returns null for anything unparsable or without a string code.
+ */
+function parseRegisterErrorCode(bodyText: string): string | null {
+  try {
+    const json = JSON.parse(bodyText) as {
+      error?: unknown;
+      detail?: { error?: unknown };
+    };
+    if (typeof json?.error === "string") return json.error;
+    if (typeof json?.detail?.error === "string") return json.detail.error;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether a register failure is a proof-of-possession gate rejection
+ * (api-abuse-hardening D2/D3): 409 `reauth_required` (the instance id is
+ * already registered and no proof was presented) or 401
+ * `reauth_proof_invalid` (the presented key does not match). Both mean the
+ * stored identity is unrecoverable as-is and call for the fresh-instance
+ * rotation recovery instead of retrying the same identity.
+ */
+function isReauthRejection(status: number, errorCode: string | null): boolean {
+  return (
+    (status === 409 && errorCode === "reauth_required") ||
+    (status === 401 && errorCode === "reauth_proof_invalid")
+  );
+}
+
+/**
  * Combine an optional user-provided AbortSignal with a timeout.
  * Uses AbortSignal.any() when available (Chrome 116+), falls back to
  * manual AbortController + setTimeout for Chrome 110-115.
@@ -1051,12 +1087,22 @@ export class ServerClient {
    * With `freshInstance`, a new instance id is minted (and persisted) before
    * the attempt loop — a fresh id forces the server to create a new client
    * row + key instead of resolving the doomed identity again.
+   *
+   * api-abuse-hardening D3 (tasks 4.1–4.4): when a key is already held
+   * (in-memory or chrome.storage.session) it is sent as the `X-API-Key`
+   * proof, so re-registering an already-registered instance id re-unlocks
+   * the same identity; with no key held no proof header is sent. A 409
+   * `reauth_required` (registered id, no proof) or 401
+   * `reauth_proof_invalid` (held proof wrong/revoked) rotates to a fresh
+   * instance id — persisted, inside this single-flight registration — and
+   * completes as a fresh client. The rotation consumes one attempt of the
+   * bounded budget; persistent failure still surfaces as AuthenticationError.
    */
   private async register(
     options: { freshInstance?: boolean } = {},
   ): Promise<string> {
     let lastError: Error | null = null;
-    const instanceId = options.freshInstance
+    let instanceId = options.freshInstance
       ? await this.rotateInstanceId()
       : await this.getOrCreateInstanceId();
 
@@ -1066,13 +1112,26 @@ export class ServerClient {
       // catch below instead of the default exponential backoff.
       let retryAfterSeconds: number | null = null;
       try {
+        // (api-abuse-hardening D3 / task 4.1) Proof of possession: present
+        // the currently held key (memory first, then session storage) so a
+        // re-registration of an already-registered id re-unlocks the same
+        // identity. No key held → no proof header (first registration stays
+        // unauthenticated).
+        const proofKey = this.apiKey ?? (await this.loadApiKeyFromStorage());
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (proofKey) {
+          headers["X-API-Key"] = proofKey;
+        }
+
         // (D6 / task 6.1) Control-call timeout — a black-holed server must
         // not hang registration (and therefore START_DOWNLOAD) forever. The
         // TimeoutError abort lands in the catch below, consuming the retry
         // budget and ultimately surfacing as AuthenticationError.
         const res = await fetch(`${this.serverUrl}/api/v1/auth/register`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({ client_id: instanceId }),
           signal: AbortSignal.timeout(CONTROL_CALL_TIMEOUT_MS),
         });
@@ -1084,6 +1143,22 @@ export class ServerClient {
             );
           }
           const errorBody = await res.text().catch(() => "");
+
+          // (api-abuse-hardening D3 / tasks 4.2–4.3) PoP gate rejection:
+          // the stored identity cannot be registered as-is. Rotate to a
+          // fresh instance id (persisted by rotateInstanceId) and retry as
+          // a fresh client — the same recovery the post-401 path uses —
+          // still inside this single-flight registration. The `continue`
+          // burns one attempt of the bounded loop (no extra backoff: the
+          // rejection is deterministic, not server load); persistent
+          // failure still lands in the AuthenticationError below.
+          if (
+            isReauthRejection(res.status, parseRegisterErrorCode(errorBody))
+          ) {
+            instanceId = await this.rotateInstanceId();
+            continue;
+          }
+
           throw new Error(`Registration failed: ${res.status} ${errorBody}`);
         }
 
@@ -1297,9 +1372,16 @@ export class ServerClient {
         json?.detail?.message ??
         json?.detail?.error ??
         json?.message ??
+        // api-abuse-hardening: the new session-create error bodies use the
+        // flat `{ error: ... }` style (url_not_allowed / session_limit_
+        // exceeded) — surface the code as the message when nothing more
+        // descriptive is present.
+        json?.error ??
         JSON.stringify(json);
       if (typeof json?.detail?.error === "string") {
         errorCode = json.detail.error;
+      } else if (typeof json?.error === "string") {
+        errorCode = json.error;
       }
     } catch {
       detail = bodyText || `HTTP ${status}`;

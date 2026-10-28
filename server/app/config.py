@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     max_retention_days: int = 30
     min_retention_days: int = 1
     stale_session_timeout_minutes: int = 30
+    # Session-creation quota per API key (api-abuse-hardening D5): the
+    # concurrency cap counts this client's sessions in scraping/uploading/
+    # assembling status; the rolling cap bounds creations per trailing 24h.
+    # Both are plan-independent in v1 — pagepocket_plan is null for the
+    # (default) unbound population, so gating on it would exempt exactly
+    # the anonymous abuser.
+    max_active_sessions_per_client: int = 20
+    max_sessions_per_client_per_day: int = 200
 
     # CORS
     cors_allowed_origins: list[str] = []

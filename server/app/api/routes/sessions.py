@@ -23,6 +23,7 @@ from app.models.resource import Resource
 from app.models.session import Session, SessionStatus
 from app.services import archive_client
 from app.services.assembly_manager import assembly_task_manager
+from app.services.url_validation import validate_session_url
 
 logger = logging.getLogger(__name__)
 
@@ -358,6 +359,25 @@ async def create_session(
     """Create a new download session with optional singleFile and retentionDays options."""
     opts = body.options or SessionOptions()
 
+    # --- Session-URL validation (api-abuse-hardening 2.x, D4) ---
+    # Judged BEFORE any DB write, storage-directory creation, or quota
+    # accounting: a rejected URL must leave zero trace — no session row,
+    # no directory, no burned quota. Literal-only v1: the URL's textual
+    # form is judged and hostnames are NEVER resolved via DNS (the server
+    # performs no outbound fetches of session URLs — see the
+    # server-session-input-validation spec).
+    verdict = validate_session_url(body.url)
+    if not verdict.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "url_not_allowed",
+                "reason": verdict.reason,
+                "message": verdict.message,
+                "api_version": "v1",
+            },
+        )
+
     # Clamp retention days
     retention_days = max(
         settings.min_retention_days,
@@ -395,6 +415,77 @@ async def create_session(
             )
 
     now = datetime.now(timezone.utc)
+
+    # --- Per-client session-creation quota (api-abuse-hardening 3.x, D5) ---
+    # Two indexed COUNTs against ix_sessions_client_id, evaluated BEFORE
+    # the insert so a rejected request creates no row and no directory.
+    # Plan-independent in v1 (D5): pagepocket_plan is null for the default
+    # population, so gating on it would exempt exactly the anonymous
+    # abuser. The active cap bounds concurrent pipeline work; the rolling
+    # window bounds churn independent of session completion.
+    active_count = (await db.execute(
+        select(func.count()).select_from(Session).where(
+            Session.client_id == client.id,
+            Session.status.in_((
+                SessionStatus.SCRAPING,
+                SessionStatus.UPLOADING,
+                SessionStatus.ASSEMBLING,
+            )),
+        )
+    )).scalar() or 0
+    if active_count >= settings.max_active_sessions_per_client:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": "session_limit_exceeded",
+                "limit_type": "active_sessions",
+                "limit": settings.max_active_sessions_per_client,
+                # Completion time is unknowable — no honest hint exists,
+                # so the active case deliberately omits Retry-After (D5).
+                "retry_after": None,
+                "api_version": "v1",
+            },
+        )
+    window_start = now - timedelta(hours=24)
+    daily_count = (await db.execute(
+        select(func.count()).select_from(Session).where(
+            Session.client_id == client.id,
+            Session.created_at > window_start,
+        )
+    )).scalar() or 0
+    if daily_count >= settings.max_sessions_per_client_per_day:
+        oldest_created_at = (await db.execute(
+            select(func.min(Session.created_at)).where(
+                Session.client_id == client.id,
+                Session.created_at > window_start,
+            )
+        )).scalar()
+        retry_after = 0
+        if oldest_created_at is not None:
+            # DateTime columns round-trip naive (UTC by convention — same
+            # normalization as the elapsed-seconds computation in /status).
+            if oldest_created_at.tzinfo is None:
+                oldest_created_at = oldest_created_at.replace(
+                    tzinfo=timezone.utc
+                )
+            # Accurate and monotonic-clock-safe: the oldest in-window
+            # creation ages out of the 24h window at +86400s; clamped ≥ 0
+            # so a skewed (future-dated) row can't emit a negative hint.
+            retry_after = max(0, int(
+                (oldest_created_at + timedelta(hours=24) - now).total_seconds()
+            ))
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": "session_limit_exceeded",
+                "limit_type": "daily_creations",
+                "limit": settings.max_sessions_per_client_per_day,
+                "retry_after": retry_after,
+                "api_version": "v1",
+            },
+            headers={"Retry-After": str(retry_after)},
+        )
+
     session = Session(
         client_id=client.id,
         url=body.url,

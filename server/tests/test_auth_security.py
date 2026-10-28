@@ -465,10 +465,11 @@ class TestDedupRegistrationBudget:
     async def test_fifteen_dedup_registrations_same_key_no_budget(
         self, sqlite_db
     ):
-        """15 consecutive registrations of an already-registered instance id
-        all return the SAME key, and the instance limiter bucket is never
-        even created (pre-D5 code burns the 10/day budget and 429s on
-        attempt 11)."""
+        """15 consecutive proof-of-possession re-registrations of an
+        already-registered instance id all return the SAME key, and the
+        instance limiter bucket is never even created (api-abuse-hardening:
+        the dedup path requires the current key as ``X-API-Key`` proof; the
+        per-instance budget remains fresh-registration-only)."""
         from app.api.routes.auth import RegisterRequest, register
 
         _engine, factory = sqlite_db
@@ -488,16 +489,21 @@ class TestDedupRegistrationBudget:
             for attempt in range(1, 16):
                 async with factory() as db:
                     response = await register(
-                        _make_request(),
+                        _make_request(headers={"X-API-Key": "dup-key"}),
                         body=RegisterRequest(client_id=self.DUP_INSTANCE_ID),
                         db=db,
                     )
                 assert response.api_key == "dup-key", (
-                    f"attempt {attempt}: dedup'd registration did not return "
-                    "the existing key (instance budget burned?)"
+                    f"attempt {attempt}: proof-bearing re-registration did "
+                    "not return the existing key (instance budget burned?)"
                 )
                 assert response.client_id == "dup-client"
                 assert response.extension_instance_id == self.DUP_INSTANCE_ID
+
+        # No duplicate rows appeared either.
+        async with factory() as db:
+            rows = (await db.execute(select(Client))).scalars().all()
+        assert len(rows) == 1
 
         # The bucket for this id is untouched — never even created
         # (``in`` on a defaultdict does not insert).
@@ -535,7 +541,7 @@ class TestDedupRegistrationBudget:
 
             async with factory() as db:
                 second = await register(
-                    _make_request(),
+                    _make_request(headers={"X-API-Key": first.api_key}),
                     body=RegisterRequest(client_id="spy-inst"),
                     db=db,
                 )
@@ -629,3 +635,402 @@ class TestDedupRegistrationBudget:
         cap = _retry_after_cap()
         retry_after = int(exc.value.headers["Retry-After"])
         assert 1 <= retry_after <= cap
+
+
+# ---------------------------------------------------------------------------
+# api-abuse-hardening 5.1 (D1/D2) — proof-of-possession re-registration
+# ---------------------------------------------------------------------------
+
+
+def _ip_sentinel(capacity: int = 2):
+    """A fresh RateLimiter with the per-IP registration limiter's production
+    shape (5/min), at a small capacity so bursts are cheap to test."""
+    from app.api import rate_limiter as rl
+
+    return rl.RateLimiter(rate=5 / 60, capacity=capacity)
+
+
+class TestProofOfPossessionRegistration:
+    """D1/D2: a registered instance ID alone no longer yields a key.
+
+    Re-registration of an existing ``extension_instance_id`` must present
+    that client's current API key in the ``X-API-Key`` header:
+
+    - proof matches        → 200 RegisterResponse with the existing
+                             key/identity (re-unlock, no duplicate row)
+    - no proof header      → 409 ``reauth_required``
+    - proof doesn't verify → 401 ``reauth_proof_invalid``
+
+    Proof verification uses the same lookup strategy as
+    ``authenticate_client`` scoped to the resolved row: SHA-256 compare on
+    ``api_key_hash`` first, plaintext ``api_key`` fallback for legacy rows
+    (with lazy hash migration).
+    """
+
+    INSTANCE_ID = "pop-inst"
+
+    def _seed_client(self, **kwargs) -> Client:
+        params = {
+            "id": "pop-client",
+            "api_key": "pop-key",
+            "extension_instance_id": self.INSTANCE_ID,
+        }
+        params.update(kwargs)
+        return Client(**params)
+
+    @pytest.mark.asyncio
+    async def test_fresh_registration_is_unchanged(self, sqlite_db):
+        """A never-registered id needs no proof and mints a fresh key."""
+        from fastapi import Response
+
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("app.api.routes.auth.registration_limiter.is_allowed",
+                       lambda key: (True, 0))
+            mp.setattr(
+                "app.api.routes.auth.registration_instance_limiter.is_allowed",
+                lambda key: (True, 0),
+            )
+            async with factory() as db:
+                route_response = Response()
+                response = await register(
+                    _make_request(),
+                    body=RegisterRequest(client_id="brand-new-inst"),
+                    db=db,
+                    response=route_response,
+                )
+                await db.commit()
+
+        assert route_response.status_code == 201
+        assert response.api_key != "pop-key"  # freshly minted
+        assert response.extension_instance_id == "brand-new-inst"
+
+    @pytest.mark.asyncio
+    async def test_reunlock_with_correct_proof_returns_200_same_key(
+        self, sqlite_db
+    ):
+        """Proof-bearing re-registration re-unlocks the same identity with
+        200 and creates no duplicate row."""
+        from fastapi import Response
+
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        await _seed(factory, self._seed_client(
+            api_key_hash=Client.hash_key("pop-key"),
+        ))
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("app.api.routes.auth.registration_limiter.is_allowed",
+                       lambda key: (True, 0))
+            async with factory() as db:
+                route_response = Response()
+                response = await register(
+                    _make_request(headers={"X-API-Key": "pop-key"}),
+                    body=RegisterRequest(client_id=self.INSTANCE_ID),
+                    db=db,
+                    response=route_response,
+                )
+
+        assert route_response.status_code == 200, (
+            "the re-unlock path must return 200, not the 201 of a fresh "
+            "registration"
+        )
+        assert response.api_key == "pop-key"
+        assert response.client_id == "pop-client"
+        assert response.extension_instance_id == self.INSTANCE_ID
+
+        async with factory() as db:
+            rows = (await db.execute(select(Client))).scalars().all()
+        assert len(rows) == 1, "re-unlock must not create a duplicate row"
+
+    @pytest.mark.asyncio
+    async def test_reunlock_via_hash_when_plaintext_rotated(self, sqlite_db):
+        """Hash lookup is the primary proof path: a row whose plaintext
+        column is stale still re-unlocks on the current (hashed) key."""
+        from fastapi import Response
+
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        await _seed(factory, self._seed_client(
+            api_key="rotated-away-value",
+            api_key_hash=Client.hash_key("the-real-key"),
+        ))
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("app.api.routes.auth.registration_limiter.is_allowed",
+                       lambda key: (True, 0))
+            async with factory() as db:
+                route_response = Response()
+                response = await register(
+                    _make_request(headers={"X-API-Key": "the-real-key"}),
+                    body=RegisterRequest(client_id=self.INSTANCE_ID),
+                    db=db,
+                    response=route_response,
+                )
+
+        assert route_response.status_code == 200
+        assert response.client_id == "pop-client"
+        assert response.extension_instance_id == self.INSTANCE_ID
+
+    @pytest.mark.asyncio
+    async def test_id_only_reregistration_rejected_409_no_key_material(
+        self, sqlite_db
+    ):
+        """ID-only re-registration of a registered id is rejected 409
+        ``reauth_required`` — and the body carries no key material."""
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        await _seed(factory, self._seed_client())
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("app.api.routes.auth.registration_limiter.is_allowed",
+                       lambda key: (True, 0))
+            async with factory() as db:
+                with pytest.raises(HTTPException) as exc:
+                    await register(
+                        _make_request(),  # no X-API-Key header at all
+                        body=RegisterRequest(client_id=self.INSTANCE_ID),
+                        db=db,
+                    )
+
+        assert exc.value.status_code == 409
+        assert exc.value.detail["error"] == "reauth_required"
+        assert "api_version" in exc.value.detail
+        assert "pop-key" not in str(exc.value.detail), (
+            "the 409 body must not leak key material"
+        )
+
+        async with factory() as db:
+            rows = (await db.execute(select(Client))).scalars().all()
+        assert len(rows) == 1, "rejection must not create a row"
+
+    @pytest.mark.asyncio
+    async def test_wrong_key_proof_rejected_401(self, sqlite_db):
+        """A proof that doesn't verify against the resolved client is
+        rejected 401 ``reauth_proof_invalid`` without leaking the key."""
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        await _seed(factory, self._seed_client())
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("app.api.routes.auth.registration_limiter.is_allowed",
+                       lambda key: (True, 0))
+            async with factory() as db:
+                with pytest.raises(HTTPException) as exc:
+                    await register(
+                        _make_request(headers={"X-API-Key": "not-the-key"}),
+                        body=RegisterRequest(client_id=self.INSTANCE_ID),
+                        db=db,
+                    )
+
+        assert exc.value.status_code == 401
+        assert exc.value.detail["error"] == "reauth_proof_invalid"
+        assert "api_version" in exc.value.detail
+        assert "pop-key" not in str(exc.value.detail), (
+            "the 401 body must not leak the target identity's key"
+        )
+
+        async with factory() as db:
+            rows = (await db.execute(select(Client))).scalars().all()
+        assert len(rows) == 1, "rejection must not create a row"
+
+    @pytest.mark.asyncio
+    async def test_legacy_plaintext_row_reunlock_migrates_hash(self, sqlite_db):
+        """A legacy plaintext-only row re-unlocks via the plaintext fallback
+        and its hash column is populated lazily (same migration as auth)."""
+        from fastapi import Response
+
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        await _seed(factory, self._seed_client())  # no api_key_hash
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("app.api.routes.auth.registration_limiter.is_allowed",
+                       lambda key: (True, 0))
+            async with factory() as db:
+                route_response = Response()
+                await register(
+                    _make_request(headers={"X-API-Key": "pop-key"}),
+                    body=RegisterRequest(client_id=self.INSTANCE_ID),
+                    db=db,
+                    response=route_response,
+                )
+                await db.commit()
+
+        assert route_response.status_code == 200
+        async with factory() as db:
+            row = (await db.execute(
+                select(Client).where(Client.id == "pop-client")
+            )).scalar_one()
+        assert row.api_key_hash == Client.hash_key("pop-key")
+
+
+class TestRegistrationLimiterCoverage:
+    """api-abuse-hardening 5.3 / resource-guards spec: EVERY register
+    outcome consumes the per-IP bucket (fresh 201, re-unlock 200, 409, 401)
+    — the PoP gate cannot be probed at unbounded volume — while the
+    per-instance daily budget stays fresh-registration-only."""
+
+    INSTANCE_ID = "lim-inst"
+
+    async def _seed_registered(self, factory):
+        await _seed(factory, Client(
+            id="lim-client",
+            api_key="lim-key",
+            extension_instance_id=self.INSTANCE_ID,
+        ))
+
+    def _patches(self, mp, ip_sentinel, instance_sentinel=None):
+        mp.setattr("app.api.routes.auth.registration_limiter", ip_sentinel)
+        mp.setattr(
+            "app.api.routes.auth.registration_instance_limiter",
+            instance_sentinel if instance_sentinel is not None
+            else _instance_sentinel(),
+        )
+
+    @pytest.mark.asyncio
+    async def test_id_only_409s_exhaust_per_ip_bucket(self, sqlite_db):
+        """Repeated ID-only re-registrations (rejected 409) each consume a
+        per-IP token; the burst ends in 429 rate_limit_exceeded."""
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        await self._seed_registered(factory)
+        ip_sentinel = _ip_sentinel(capacity=2)
+
+        with pytest.MonkeyPatch.context() as mp:
+            self._patches(mp, ip_sentinel)
+            for _ in range(2):
+                async with factory() as db:
+                    with pytest.raises(HTTPException) as exc:
+                        await register(
+                            _make_request(),
+                            body=RegisterRequest(client_id=self.INSTANCE_ID),
+                            db=db,
+                        )
+                assert exc.value.status_code == 409
+
+            async with factory() as db:
+                with pytest.raises(HTTPException) as exc:
+                    await register(
+                        _make_request(),
+                        body=RegisterRequest(client_id=self.INSTANCE_ID),
+                        db=db,
+                    )
+
+        assert exc.value.status_code == 429
+        assert exc.value.detail["error"] == "rate_limit_exceeded"
+
+    @pytest.mark.asyncio
+    async def test_reunlock_200s_exhaust_per_ip_bucket(self, sqlite_db):
+        """Proof-bearing re-unlocks (200) each consume a per-IP token too."""
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        await self._seed_registered(factory)
+        ip_sentinel = _ip_sentinel(capacity=2)
+
+        with pytest.MonkeyPatch.context() as mp:
+            self._patches(mp, ip_sentinel)
+            for _ in range(2):
+                async with factory() as db:
+                    response = await register(
+                        _make_request(headers={"X-API-Key": "lim-key"}),
+                        body=RegisterRequest(client_id=self.INSTANCE_ID),
+                        db=db,
+                    )
+                assert response.api_key == "lim-key"
+
+            async with factory() as db:
+                with pytest.raises(HTTPException) as exc:
+                    await register(
+                        _make_request(headers={"X-API-Key": "lim-key"}),
+                        body=RegisterRequest(client_id=self.INSTANCE_ID),
+                        db=db,
+                    )
+
+        assert exc.value.status_code == 429
+        assert exc.value.detail["error"] == "rate_limit_exceeded"
+
+    @pytest.mark.asyncio
+    async def test_dedup_and_pop_hits_leave_instance_budget_intact(
+        self, sqlite_db
+    ):
+        """The per-instance daily budget is consumed by fresh registrations
+        only: 409/200 re-registration outcomes must leave its bucket
+        untouched (capacity 1 — a single burned token would 429 the rest)."""
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        await self._seed_registered(factory)
+        instance_sentinel = _instance_sentinel(capacity=1)
+        ip_sentinel = _ip_sentinel(capacity=100)
+
+        with pytest.MonkeyPatch.context() as mp:
+            self._patches(mp, ip_sentinel, instance_sentinel)
+            # 5× ID-only (409) and 5× proof-bearing (200) re-registrations.
+            for proof in [None] * 5 + ["lim-key"] * 5:
+                request = _make_request(
+                    headers={"X-API-Key": proof} if proof else None,
+                )
+                async with factory() as db:
+                    if proof is None:
+                        with pytest.raises(HTTPException) as exc:
+                            await register(
+                                request,
+                                body=RegisterRequest(client_id=self.INSTANCE_ID),
+                                db=db,
+                            )
+                        assert exc.value.status_code == 409
+                    else:
+                        response = await register(
+                            request,
+                            body=RegisterRequest(client_id=self.INSTANCE_ID),
+                            db=db,
+                        )
+                        assert response.api_key == "lim-key"
+
+        assert self.INSTANCE_ID not in instance_sentinel._buckets, (
+            "dedup/PoP hits must not consume the per-instance budget"
+        )
+
+    @pytest.mark.asyncio
+    async def test_distinct_id_flood_from_one_ip_is_bounded(self, sqlite_db):
+        """Guessing many distinct instance ids from one IP stays per-IP
+        bounded — and each unregistered id yields only a fresh client."""
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        ip_sentinel = _ip_sentinel(capacity=2)
+
+        with pytest.MonkeyPatch.context() as mp:
+            self._patches(mp, ip_sentinel)
+            for suffix in (1, 2):
+                async with factory() as db:
+                    response = await register(
+                        _make_request(),
+                        body=RegisterRequest(
+                            client_id=f"flood-{suffix}",
+                        ),
+                        db=db,
+                    )
+                    await db.commit()
+                assert response.api_key  # fresh key minted
+
+            async with factory() as db:
+                with pytest.raises(HTTPException) as exc:
+                    await register(
+                        _make_request(),
+                        body=RegisterRequest(client_id="flood-3"),
+                        db=db,
+                    )
+
+        assert exc.value.status_code == 429
+        assert exc.value.detail["error"] == "rate_limit_exceeded"

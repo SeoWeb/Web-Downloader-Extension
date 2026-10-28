@@ -1933,4 +1933,355 @@ describe("ServerClient", () => {
       await done;
     });
   });
+
+  // -----------------------------------------------------------------------
+  // api-abuse-hardening D3 / tasks 4.1–4.4, 6.1–6.4 — proof-of-possession
+  // registration and recovery.
+  //
+  // The server's register route now gates already-registered instance ids:
+  // no proof → 409 {"error": "reauth_required"}; wrong proof → 401
+  // {"error": "reauth_proof_invalid"}. The extension must present its held
+  // key as X-API-Key proof, and on either gate rejection rotate to a fresh
+  // instance id (single-flight, persisted) instead of retrying the doomed
+  // identity. The new session-create bodies (400 url_not_allowed /
+  // 429 session_limit_exceeded) must surface as terminal errors.
+  // -----------------------------------------------------------------------
+  describe("register proof-of-possession (api-abuse-hardening D3)", () => {
+    const SESSION_CREATED = {
+      id: "sess-ok",
+      url: "",
+      status: "scraping",
+      html_chunks: 0,
+      resources_discovered: null,
+      resources_received: 0,
+      created_at: "",
+      expires_at: "",
+      api_version: "v1",
+    };
+
+    /** Read X-API-Key from a fetch init (null when absent). */
+    function readProofHeader(init?: RequestInit): string | null {
+      return new Headers(init?.headers).get("X-API-Key");
+    }
+
+    /**
+     * Mock server emulating the PoP gate: `respond` answers each register
+     * call by client_id; session creations succeed only with
+     * `validSessionKey` when one is given (proving the recovered key is
+     * actually used).
+     */
+    function mockRegisterGate(opts: {
+      respond: (clientId: string) => Response;
+      validSessionKey?: string;
+    }): { registerIds: string[]; sessionKeys: string[] } {
+      const registerIds: string[] = [];
+      const sessionKeys: string[] = [];
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            const body = JSON.parse((init?.body as string) ?? "{}");
+            registerIds.push(body.client_id);
+            return opts.respond(body.client_id);
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            const key = readProofHeader(init) ?? "";
+            sessionKeys.push(key);
+            if (
+              opts.validSessionKey !== undefined &&
+              key !== opts.validSessionKey
+            ) {
+              return mockResponse(401, {
+                detail: { error: "invalid_api_key" },
+              });
+            }
+            return mockResponse(201, SESSION_CREATED);
+          }
+          return mockResponse(404, {});
+        },
+      );
+      return { registerIds, sessionKeys };
+    }
+
+    // -----------------------------------------------------------------
+    // 6.1 — held key is presented as proof; no key → no proof header
+    // -----------------------------------------------------------------
+    it("sends the held API key as X-API-Key proof on the register call (4.1)", async () => {
+      sessionStore[EXTENSION_INSTANCE_ID_KEY] = "ext-held";
+      sessionStore[API_KEY_STORAGE_KEY] = "held-key";
+
+      const registerProofs: Array<string | null> = [];
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            registerProofs.push(readProofHeader(init));
+            return mockResponse(200, {
+              api_key: "recovery-key",
+              client_id: "ext-fresh",
+            });
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            if (readProofHeader(init) === "held-key") {
+              // Server no longer accepts the held key on API calls
+              return mockResponse(401, {
+                detail: { error: "invalid_api_key" },
+              });
+            }
+            return mockResponse(201, {
+              ...SESSION_CREATED,
+              id: "sess-pop",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      const sessionId = await client.createSession("https://example.com");
+      expect(sessionId).toBe("sess-pop");
+
+      // The registration (fresh-instance recovery) carried the held key
+      expect(registerProofs).toHaveLength(1);
+      expect(registerProofs[0]).toBe("held-key");
+    });
+
+    it("sends no proof header when no API key is held (4.1)", async () => {
+      sessionStore[EXTENSION_INSTANCE_ID_KEY] = "ext-brand-new";
+
+      let proof: string | null = "sentinel-not-read";
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            proof = readProofHeader(init);
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            return mockResponse(201, SESSION_CREATED);
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      await client.createSession("https://example.com");
+
+      // First registration is unauthenticated — no proof header
+      expect(proof).toBeNull();
+    });
+
+    // -----------------------------------------------------------------
+    // 6.2 — 409 reauth_required: fresh-instance recovery
+    // -----------------------------------------------------------------
+    it("recovers from 409 reauth_required: rotates the instance id, registers fresh, persists id and new key (4.2)", async () => {
+      // Storage holds only the instance id — the key was lost
+      sessionStore[EXTENSION_INSTANCE_ID_KEY] = "ext-stored";
+
+      const server = mockRegisterGate({
+        respond: (clientId) =>
+          clientId === "ext-stored"
+            ? mockResponse(409, { error: "reauth_required" })
+            : mockResponse(200, {
+                api_key: "key-fresh",
+                client_id: clientId,
+              }),
+        validSessionKey: "key-fresh",
+      });
+
+      const client = createClient();
+      const sessionId = await client.createSession("https://example.com");
+
+      expect(sessionId).toBe("sess-ok");
+      // One gated 409 + one fresh registration with a rotated id — no
+      // doomed-identity retries on ext-stored
+      expect(server.registerIds).toHaveLength(2);
+      expect(server.registerIds[0]).toBe("ext-stored");
+      expect(server.registerIds[1]).not.toBe("ext-stored");
+      // The rotated id is persisted
+      expect(sessionStore[EXTENSION_INSTANCE_ID_KEY]).toBe(
+        server.registerIds[1],
+      );
+      // The new key is stored AND used for the session creation
+      expect(sessionStore[API_KEY_STORAGE_KEY]).toBe("key-fresh");
+      expect(server.sessionKeys).toEqual(["key-fresh"]);
+    });
+
+    it("single-flights the 409 recovery across concurrent register callers (4.2/4.4)", async () => {
+      sessionStore[EXTENSION_INSTANCE_ID_KEY] = "ext-stored";
+
+      const server = mockRegisterGate({
+        respond: (clientId) =>
+          clientId === "ext-stored"
+            ? mockResponse(409, { error: "reauth_required" })
+            : mockResponse(200, {
+                api_key: "key-fresh",
+                client_id: clientId,
+              }),
+        validSessionKey: "key-fresh",
+      });
+
+      const client = createClient();
+      const results = await Promise.all([
+        client.createSession("https://example.com/a"),
+        client.createSession("https://example.com/b"),
+        client.createSession("https://example.com/c"),
+      ]);
+
+      results.forEach((id) => expect(id).toBe("sess-ok"));
+      // ONE gated 409 + ONE fresh registration shared by all callers —
+      // not one rotation chain per caller
+      expect(server.registerIds).toHaveLength(2);
+      expect(server.registerIds[0]).toBe("ext-stored");
+      expect(server.registerIds[1]).not.toBe("ext-stored");
+    });
+
+    it("surfaces AuthenticationError when the fresh registration after a 409 also fails (4.4)", async () => {
+      sessionStore[EXTENSION_INSTANCE_ID_KEY] = "ext-stored";
+
+      const server = mockRegisterGate({
+        respond: (clientId) =>
+          clientId === "ext-stored"
+            ? mockResponse(409, { error: "reauth_required" })
+            : mockResponse(500, { detail: "registration unavailable" }),
+      });
+
+      const client = createClient();
+      await expect(client.createSession("https://example.com")).rejects.toThrow(
+        AuthenticationError,
+      );
+
+      // Recovery rotated once per attempt, then the bounded budget was
+      // spent — no unbounded rotation loop
+      expect(server.registerIds).toHaveLength(3);
+      expect(server.registerIds[0]).toBe("ext-stored");
+      expect(server.registerIds[1]).not.toBe("ext-stored");
+      expect(server.registerIds[2]).not.toBe("ext-stored");
+    }, 15000);
+
+    // -----------------------------------------------------------------
+    // 6.3 — 401 reauth_proof_invalid: same fresh-instance recovery
+    // -----------------------------------------------------------------
+    it("recovers from 401 reauth_proof_invalid with a fresh-instance registration (4.3)", async () => {
+      sessionStore[EXTENSION_INSTANCE_ID_KEY] = "ext-stored";
+
+      const server = mockRegisterGate({
+        respond: (clientId) =>
+          clientId === "ext-stored"
+            ? mockResponse(401, { error: "reauth_proof_invalid" })
+            : mockResponse(200, {
+                api_key: "key-fresh",
+                client_id: clientId,
+              }),
+        validSessionKey: "key-fresh",
+      });
+
+      const client = createClient();
+      const sessionId = await client.createSession("https://example.com");
+
+      expect(sessionId).toBe("sess-ok");
+      expect(server.registerIds).toHaveLength(2);
+      expect(server.registerIds[0]).toBe("ext-stored");
+      expect(server.registerIds[1]).not.toBe("ext-stored");
+      expect(sessionStore[EXTENSION_INSTANCE_ID_KEY]).toBe(
+        server.registerIds[1],
+      );
+      expect(sessionStore[API_KEY_STORAGE_KEY]).toBe("key-fresh");
+    });
+
+    it("surfaces AuthenticationError after bounded attempts when reauth_proof_invalid persists (4.3/4.4)", async () => {
+      sessionStore[EXTENSION_INSTANCE_ID_KEY] = "ext-stored";
+
+      // Every registration is rejected — the held proof never matches
+      const server = mockRegisterGate({
+        respond: () => mockResponse(401, { error: "reauth_proof_invalid" }),
+      });
+
+      const client = createClient();
+      await expect(client.createSession("https://example.com")).rejects.toThrow(
+        AuthenticationError,
+      );
+
+      // Exactly MAX_REGISTRATION_ATTEMPTS fetches, each with a freshly
+      // rotated id — bounded, no infinite rotation loop
+      expect(server.registerIds).toHaveLength(3);
+      expect(new Set(server.registerIds).size).toBe(3);
+    }, 15000);
+
+    // -----------------------------------------------------------------
+    // 6.4 — new session-create error codes are terminal, message intact
+    // (createSession does not use withRetry; a single fetch proves no
+    // retry churn against the daily creation budget)
+    // -----------------------------------------------------------------
+    it("propagates 400 url_not_allowed from createSession as a terminal HttpError (6.4)", async () => {
+      sessionStore[API_KEY_STORAGE_KEY] = "key-1";
+      let sessionCalls = 0;
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            sessionCalls++;
+            return mockResponse(400, {
+              error: "url_not_allowed",
+              reason: "scheme_not_allowed",
+              message: "Only http(s) URLs are allowed",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      const err = await client
+        .createSession("file:///etc/passwd")
+        .catch((e) => e);
+
+      expect(err).toBeInstanceOf(HttpError);
+      expect(err.statusCode).toBe(400);
+      expect(err.errorCode).toBe("url_not_allowed");
+      expect(err.message).toContain("Only http(s) URLs are allowed");
+      // Terminal: exactly one fetch — no retry loop
+      expect(sessionCalls).toBe(1);
+    });
+
+    it("propagates 429 session_limit_exceeded from createSession as a terminal HttpError (6.4)", async () => {
+      sessionStore[API_KEY_STORAGE_KEY] = "key-1";
+      let sessionCalls = 0;
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            sessionCalls++;
+            return mockResponse(
+              429,
+              {
+                error: "session_limit_exceeded",
+                limit_type: "daily_creations",
+                limit: 200,
+                retry_after: 60,
+                api_version: "v1",
+              },
+              { "Retry-After": "60" },
+            );
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      const err = await client
+        .createSession("https://example.com")
+        .catch((e) => e);
+
+      expect(err).toBeInstanceOf(HttpError);
+      expect(err.statusCode).toBe(429);
+      expect(err.errorCode).toBe("session_limit_exceeded");
+      expect(err.retryAfter).toBe(60);
+      expect(err.message).toContain("session_limit_exceeded");
+      // Terminal: exactly one fetch — the daily creation budget is not
+      // churned by retries
+      expect(sessionCalls).toBe(1);
+    });
+  });
 });
