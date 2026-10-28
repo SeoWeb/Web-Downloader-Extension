@@ -235,3 +235,56 @@ class TestResourceUploadRateLimited:
         retry_after = bucket.retry_after_seconds()
         assert retry_after < 1.0
         assert math.ceil(retry_after) == 1
+
+
+# ---------------------------------------------------------------------------
+# server-assembly-honesty 11.9 (D9): `_call_count` advances exactly once per
+# is_allowed() call so stale-bucket pruning fires every ~100 calls, not
+# twice as often.
+# ---------------------------------------------------------------------------
+
+
+class TestCleanupCadence:
+    def test_is_allowed_increments_call_counter_exactly_once(self):
+        """100 is_allowed() calls advance `_call_count` by exactly 100 (the
+        pre-D9 double increment produced 200)."""
+        limiter = RateLimiter(rate=1e-9, capacity=1000)  # ~no refill in-test
+        for _ in range(100):
+            limiter.is_allowed("k")
+        assert limiter._call_count == 100
+
+    def test_cleanup_if_needed_does_not_advance_counter(self):
+        """Only is_allowed() owns the counter — a manual cleanup call must
+        leave it alone (it is also invoked from inside is_allowed())."""
+        limiter = RateLimiter(rate=1e-9, capacity=10)
+        removed = limiter.cleanup_if_needed()
+        assert removed == 0  # no buckets yet, nothing to prune
+        assert limiter._call_count == 0
+
+    def test_stale_pruning_fires_once_at_100_call_boundary(self, monkeypatch):
+        """With the clock frozen past `_BUCKET_MAX_AGE`, the stale bucket is
+        still present at call 99 and pruned exactly once at the 100th call
+        boundary; the recent bucket survives."""
+        clock = {"now": 1000.0}
+        monkeypatch.setattr(
+            "app.api.rate_limiter.time.monotonic", lambda: clock["now"]
+        )
+        limiter = RateLimiter(rate=1e-9, capacity=100)
+
+        limiter.is_allowed("stale-key")  # call 1 → bucket stamped @1000s
+        assert "stale-key" in limiter._buckets
+
+        clock["now"] = 2000.0  # idle 1000s > _BUCKET_MAX_AGE (600s)
+        for _ in range(98):  # calls 2..99 — boundary not yet reached
+            limiter.is_allowed("fresh-key")
+
+        assert limiter._call_count == 99
+        assert "stale-key" in limiter._buckets, (
+            "stale bucket pruned before the 100-call boundary "
+            "(cleanup firing too often?)"
+        )
+
+        limiter.is_allowed("fresh-key")  # call 100 → cleanup fires here
+        assert limiter._call_count == 100
+        assert "stale-key" not in limiter._buckets
+        assert "fresh-key" in limiter._buckets  # recent bucket survives

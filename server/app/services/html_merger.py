@@ -21,6 +21,7 @@ import logging
 import os
 import re
 import shutil
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -28,6 +29,7 @@ from typing import Optional
 from lxml import etree
 
 from app.config import settings
+from app.services.assembly_manager import assembly_task_manager
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +116,10 @@ class AssemblyJob:
     chunk_dedup_keys: set[str] = field(default_factory=set)  # "hash:scrollIndex"
     total_size: int = 0
     initialized: bool = False
+    # Monotonic wall-clock timestamp of the last job interaction (D9):
+    # updated by get_or_create_job() and register_chunk(); drives
+    # evict_stale_jobs() so sessions that never finalize stop leaking jobs.
+    last_activity: float = field(default_factory=time.time)
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +173,9 @@ class HtmlMergerService:
                 page_url=page_url,
                 chunk_dir=chunk_dir,
             )
-        return self._jobs[key]
+        job = self._jobs[key]
+        job.last_activity = time.time()
+        return job
 
     def get_job(self, session_id: str, page_url_hash: str) -> Optional[AssemblyJob]:
         key = self._job_key(session_id, page_url_hash)
@@ -176,6 +184,38 @@ class HtmlMergerService:
     def remove_job(self, session_id: str, page_url_hash: str) -> None:
         key = self._job_key(session_id, page_url_hash)
         self._jobs.pop(key, None)
+
+    def evict_stale_jobs(self, max_age_seconds: float) -> int:
+        """Remove assembly jobs idle longer than ``max_age_seconds`` (D9).
+
+        Sessions that upload chunks but never finalize would otherwise leak
+        their in-memory jobs (holding chunk paths and sizes) forever.  Jobs
+        for sessions with a registered active assembly task are never
+        evicted: the assembly pipeline is about to consume them, and the
+        task's snapshot references the in-memory job state.
+
+        Returns:
+            Number of evicted jobs.
+        """
+        cutoff = time.time() - max_age_seconds
+        stale_keys = [
+            key
+            for key, job in self._jobs.items()
+            if job.last_activity < cutoff
+            # Guard (8.3): never evict a job whose session has an active
+            # assembly task registered in the in-process task manager.
+            and not assembly_task_manager.is_running(job.session_id)
+        ]
+        for key in stale_keys:
+            self._jobs.pop(key, None)
+
+        if stale_keys:
+            logger.info(
+                "Evicted %d idle assembly job(s) (idle > %.0fs)",
+                len(stale_keys),
+                max_age_seconds,
+            )
+        return len(stale_keys)
 
     # ------------------------------------------------------------------
     # 4.2 – Skeleton initialization (first-chunk detection)
@@ -238,6 +278,42 @@ class HtmlMergerService:
         job.chunk_dedup_keys.add(dedup_key)
         job.chunks.append(storage_path)
         job.total_size += size
+        job.last_activity = time.time()
+
+    def replace_chunk(
+        self, job: AssemblyJob, content_hash: str, scroll_index: int, storage_path: str, size_delta: int
+    ) -> None:
+        """Replace the registration for a scroll index (same-index conflict, D4).
+
+        A chunk re-captured at a position it already occupies swaps its
+        dedup key and nets ``total_size`` by ``size_delta`` (new size minus
+        superseded size), so merged output never contains the chunk twice
+        and size accounting stays correct.  The storage path is deterministic
+        per (page, scroll index) and the new file atomically replaced the
+        old one on disk, so the chunk list keeps exactly one entry for it —
+        preserving its position (merge order follows upload order).
+        """
+        suffix = f":{scroll_index}"
+        for key in [k for k in job.chunk_dedup_keys if k.endswith(suffix)]:
+            job.chunk_dedup_keys.discard(key)
+        job.chunk_dedup_keys.add(f"{content_hash}:{scroll_index}")
+
+        # Exactly one registration of the storage path (also collapses any
+        # legacy duplicate registrations of the same path).
+        kept: list[str] = []
+        path_present = False
+        for path_entry in job.chunks:
+            if path_entry == storage_path:
+                if path_present:
+                    continue
+                path_present = True
+            kept.append(path_entry)
+        if not path_present:
+            kept.append(storage_path)
+        job.chunks = kept
+
+        job.total_size += size_delta
+        job.last_activity = time.time()
 
     # ------------------------------------------------------------------
     # 4.4 – Full merge on finalization

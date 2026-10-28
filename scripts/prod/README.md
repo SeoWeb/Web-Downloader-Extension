@@ -53,11 +53,20 @@ Health endpoints (both **GET only** — the monolith returns 405 for HEAD):
 
 `server/.env` (0600) — new interpolated keys (5.12):
 
-| Variable                        | Required?        | Notes                                                                                                                        |
-| ------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `MYSQL_ROOT_PASSWORD`           | REQUIRED by 5.12 | legacy default `root_password` remains only as a dev fallback                                                                |
-| `MYSQL_USER` / `MYSQL_PASSWORD` | REQUIRED by 5.12 | feed `MYSQL_CONNECTION_STRING` + the db container                                                                            |
-| `TRUST_PROXY`                   | REQUIRED in prod | `true` — without it `download_url` is built from uvicorn's http scheme behind the proxy → the extension rejects the download |
+| Variable                        | Required?        | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MYSQL_ROOT_PASSWORD`           | REQUIRED by 5.12 | legacy default `root_password` remains only as a dev fallback                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `MYSQL_USER` / `MYSQL_PASSWORD` | REQUIRED by 5.12 | feed `MYSQL_CONNECTION_STRING` + the db container                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `TRUST_PROXY`                   | REQUIRED in prod | `true` — REQUIRED for TWO reasons behind nginx: (1) without it `download_url` is built from uvicorn's http scheme behind the proxy → the extension rejects the download; (2) without it the per-IP **registration** limiter keys every client by the nginx peer address, so all registrants share the proxy's single 5/min bucket (shared-bucket collapse → mass registration 429s). The monolith logs a rate-limited WARNING when requests carry `X-Forwarded-For` while `TRUST_PROXY` is off — treat it as a prod-config alarm |
+
+`TRUST_PROXY` and the registration limiter: the per-IP registration
+throttle (5/min) is keyed by `get_client_ip` — the peer address unless
+`TRUST_PROXY=true`. Production binds `127.0.0.1:8000` behind nginx, so
+with `TRUST_PROXY` unset every registrant's key is the nginx hop address:
+all clients collapse into ONE bucket and a handful of registrations 429
+everyone. Verify `TRUST_PROXY=true` in `server/.env` on the host as part
+of the pre-deploy env checklist (both for `download_url` and for
+registration limiting).
 
 The monolith's MySQL credential is no longer only a committed literal:
 `server/docker-compose.yml` interpolates `${MYSQL_*}` from `server/.env`.

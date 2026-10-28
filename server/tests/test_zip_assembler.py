@@ -2555,3 +2555,360 @@ class TestStoragePathMapSeeding:
             "Stylesheet content not inlined — the seeded href did not "
             f"resolve through the storage map. index.html: {index_html}"
         )
+
+
+# ---------------------------------------------------------------------------
+# server-assembly-honesty 11.8 — D8 gather fan-out isolation (9.5)
+# ---------------------------------------------------------------------------
+
+
+_D8_MAIN_HTML = (
+    "<!DOCTYPE html><html><head><title>D8</title></head>"
+    "<body><p>Main content</p></body></html>"
+)
+
+
+def _d8_mock_session(session_id):
+    """Mock session carrying every attribute assemble_session reads."""
+    import types
+
+    return types.SimpleNamespace(
+        id=session_id,
+        url="https://example.com/page",
+        status="assembling",
+        assembly_phase="assembling_zip",
+        assembly_progress_pct=0,
+        options={},
+        pagepocket_user_id=None,
+        pagepocket_plan=None,
+        cloud_status=None,
+        cloud_page_id=None,
+        cloud_error=None,
+        zip_path=None,
+        error_message=None,
+        filename_map={},
+    )
+
+
+class _D8FakeDB:
+    """Async-context-manager DB whose execute() always yields the session.
+
+    The FIRST instantiation is the pipeline's shared assembly session; only
+    its flushes are recorded as shared-session touch events so the test can
+    assert nothing touches that session after failure handling begins.
+    Later instantiations are the fresh failure-handling sessions.
+    """
+
+    def __init__(self, session, events, record_touch):
+        self._session = session
+        self._events = events
+        self._record_touch = record_touch
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def execute(self, _stmt):
+        session = self._session
+
+        class _Result:
+            def scalar_one_or_none(_self):
+                return session
+
+        return _Result()
+
+    async def flush(self):
+        if self._record_touch:
+            self._events.append(("shared:flush",))
+
+
+def _d8_run_assembly(
+    assembler, session_id, session, events, factory_calls, monkeypatch,
+    *,
+    merge_results,
+):
+    """Run the REAL assemble_session with collaborators stubbed out.
+
+    Stubs the merger + HTML converters (as test_images_only_local.py does),
+    records every shared-session progress/flush touch, counts factory
+    instantiations (mainline + fresh failure-handling session), and spies on
+    ``_mark_failed`` to mark exactly when failure handling begins.
+    """
+    from app.services import zip_assembler as za_module
+    from app.services.html_converter import html_converter_service
+
+    def _factory():
+        factory_calls.append(1)
+        # First open = the pipeline's shared session; later opens are the
+        # fresh failure-handling sessions.
+        return _D8FakeDB(session, events, record_touch=len(factory_calls) == 1)
+
+    async def _recording_progress(db, sess, phase, pct, **kwargs):
+        events.append(("shared:progress", phase, pct))
+
+    def _identity(html, *args, **kwargs):
+        return html
+
+    original_mark_failed = assembler._mark_failed
+
+    async def _spy_mark_failed(db, sess, reason):
+        events.append("failure_handling_begins")
+        await original_mark_failed(db, sess, reason)
+
+    monkeypatch.setattr(
+        za_module.html_merger_service, "merge_session",
+        lambda sid: dict(merge_results),
+    )
+    monkeypatch.setattr(html_converter_service, "convert_html", _identity)
+    monkeypatch.setattr(
+        html_converter_service, "inline_css_into_html", _identity,
+    )
+    monkeypatch.setattr(assembler, "_update_progress", _recording_progress)
+    monkeypatch.setattr(assembler, "_mark_failed", _spy_mark_failed)
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(
+            assembler.assemble_session(session_id, _factory)
+        )
+    finally:
+        loop.close()
+
+
+def _d8_shared_touches_after_failure(events):
+    """Events recorded after failure handling began (must be none)."""
+    failure_idx = events.index("failure_handling_begins")
+    return [
+        event
+        for event in events[failure_idx + 1:]
+        if isinstance(event, tuple) and event[0].startswith("shared:")
+    ]
+
+
+class TestGatherSiblingIsolationCss:
+    """D8 (9.5): the CSS conversion fan-out is isolated.
+
+    One sibling raising must not abandon the others: with
+    ``return_exceptions=True`` every sibling finishes BEFORE the first
+    failure is marshaled into the mainline path (fresh-session
+    ``_mark_failed``), each exception is logged with its resource identity,
+    and no sibling can touch the shared assembly session afterwards.
+    """
+
+    def test_css_sibling_raise_fails_session_via_fresh_session(
+        self, assembler, storage_root, monkeypatch, caplog,
+    ):
+        import gc
+        import logging
+        import os
+        import types
+
+        from app.models.session import SessionStatus
+        from app.services.html_merger import MergeResult
+
+        session_id = "d8-css-sibling"
+        session = _d8_mock_session(session_id)
+        events = []
+        factory_calls = []
+
+        # Three CSS resources on disk; the conversion itself is patched.
+        styles_dir = os.path.join(
+            storage_root, session_id, "resources", "styles",
+        )
+        os.makedirs(styles_dir, exist_ok=True)
+        paths = {}
+        for name in ("bad", "slow", "fast"):
+            css_path = os.path.join(styles_dir, f"{name}.css")
+            with open(css_path, "w") as f:
+                f.write(f"body {{ /* {name} */ }}")
+            paths[name] = css_path
+
+        def _res(name):
+            return types.SimpleNamespace(
+                id=f"r-{name}",
+                original_url=f"https://example.com/{name}.css",
+                url_hash=name * 8,
+                local_path=f"styles/{name}.css",
+                storage_path=paths[name],
+                content_type="text/css",
+                size=32,
+            )
+
+        css_resources = [_res("bad"), _res("slow"), _res("fast")]
+
+        async def _css_convert(resource, *args, **kwargs):
+            if resource.local_path == "styles/bad.css":
+                # Fails immediately: with bare gather the mainline failure
+                # handling would start while "slow" is still in flight.
+                raise RuntimeError("boom-css")
+            if resource.local_path == "styles/slow.css":
+                # Stays in flight long enough to land AFTER failure handling
+                # begins unless the gather waited for every sibling.
+                await asyncio.sleep(0.05)
+            events.append(("sibling:done", resource.local_path))
+
+        async def _all_resources(db, sid):
+            return css_resources
+
+        async def _by_prefix(db, sid, prefix):
+            return css_resources
+
+        monkeypatch.setattr(assembler, "_convert_css_resource", _css_convert)
+        monkeypatch.setattr(assembler, "_get_all_resources", _all_resources)
+        monkeypatch.setattr(
+            assembler, "_get_resources_by_prefix", _by_prefix,
+        )
+
+        with caplog.at_level(logging.ERROR):
+            _d8_run_assembly(
+                assembler, session_id, session, events, factory_calls,
+                monkeypatch,
+                merge_results={
+                    "main": MergeResult(success=True, html=_D8_MAIN_HTML),
+                },
+            )
+            gc.collect()
+
+        # First failure marshaled into the normal failure path via a FRESH
+        # database session (factory opened once for the pipeline, at least
+        # once more for failure handling).
+        assert session.status == SessionStatus.FAILED
+        assert "CSS conversion failed for resource" in session.error_message
+        assert "styles/bad.css" in session.error_message
+        assert "boom-css" in session.error_message
+        assert len(factory_calls) >= 2, (
+            "session must be marked failed via a fresh database session"
+        )
+        assert session.zip_path is None
+
+        # Remaining siblings completed despite the failure.
+        done = {e[1] for e in events if e[0] == "sibling:done"}
+        assert done == {"styles/slow.css", "styles/fast.css"}
+
+        # Each exception retrieved and logged with its resource identity.
+        identity_logs = [
+            r for r in caplog.records if "CSS conversion failed" in r.getMessage()
+        ]
+        assert identity_logs, (
+            "sibling failure must be logged with its resource identity"
+        )
+        assert any(
+            "styles/bad.css" in r.getMessage() for r in identity_logs
+        )
+        assert any(session_id in r.getMessage() for r in identity_logs)
+        assert not [
+            r for r in caplog.records
+            if "Task exception was never retrieved" in r.getMessage()
+        ]
+
+        # No sibling touched the shared session after failure handling began.
+        assert _d8_shared_touches_after_failure(events) == []
+
+
+class TestGatherSiblingIsolationLinkedPages:
+    """D8 (9.5): the linked-page conversion fan-out is isolated."""
+
+    def test_linked_page_siblings_raise_fail_session_via_fresh_session(
+        self, assembler, storage_root, monkeypatch, caplog,
+    ):
+        import gc
+        import logging
+        import time
+
+        from app.models.session import SessionStatus
+        from app.services.html_converter import html_converter_service
+        from app.services.html_merger import MergeResult
+
+        session_id = "d8-lp-sibling"
+        session = _d8_mock_session(session_id)
+        events = []
+        factory_calls = []
+
+        merge_results = {
+            "main": MergeResult(success=True, html=_D8_MAIN_HTML),
+            "bad1": MergeResult(
+                success=True, html="<html><body>BAD ONE</body></html>",
+                page_url="https://example.com/bad1",
+            ),
+            "good": MergeResult(
+                success=True, html="<html><body>GOOD</body></html>",
+                page_url="https://example.com/good",
+            ),
+            "bad2": MergeResult(
+                success=True, html="<html><body>BAD TWO</body></html>",
+                page_url="https://example.com/bad2",
+            ),
+        }
+
+        def _convert_linked_page(html, *args, **kwargs):
+            if "BAD" in html:
+                raise RuntimeError(f"boom-lp:{html}")
+            # The healthy sibling stays in flight (in a worker thread, as
+            # production's asyncio.to_thread does) so that, without
+            # return_exceptions=True, failure handling would begin before
+            # it finishes.
+            time.sleep(0.05)
+            events.append(("sibling:done", "good"))
+            return html
+
+        monkeypatch.setattr(
+            html_converter_service, "convert_linked_page_html",
+            _convert_linked_page,
+        )
+
+        async def _no_resources(db, sid):
+            return []
+
+        async def _no_prefix(db, sid, prefix):
+            return []
+
+        monkeypatch.setattr(assembler, "_get_all_resources", _no_resources)
+        monkeypatch.setattr(
+            assembler, "_get_resources_by_prefix", _no_prefix,
+        )
+
+        with caplog.at_level(logging.ERROR):
+            _d8_run_assembly(
+                assembler, session_id, session, events, factory_calls,
+                monkeypatch,
+                merge_results=merge_results,
+            )
+            gc.collect()
+
+        # First failure marshaled into the normal failure path.
+        assert session.status == SessionStatus.FAILED
+        assert "linked page conversion failed for page" in session.error_message
+        assert "bad1" in session.error_message
+        assert "boom-lp" in session.error_message
+        assert len(factory_calls) >= 2, (
+            "session must be marked failed via a fresh database session"
+        )
+        assert session.zip_path is None
+
+        # The healthy sibling completed despite the failures.
+        assert ("sibling:done", "good") in events
+
+        # EVERY sibling exception was retrieved and logged with page identity
+        # (both bad1 and bad2), never abandoned.
+        identity_logs = [
+            r for r in caplog.records
+            if "Linked-page conversion failed" in r.getMessage()
+        ]
+        assert identity_logs, (
+            "each sibling failure must be logged with its page identity"
+        )
+        assert any("bad1" in r.getMessage() for r in identity_logs)
+        assert any("bad2" in r.getMessage() for r in identity_logs)
+        assert any(
+            "https://example.com/bad1" in r.getMessage()
+            for r in identity_logs
+        )
+        assert not [
+            r for r in caplog.records
+            if "Task exception was never retrieved" in r.getMessage()
+        ]
+
+        # No sibling touched the shared session after failure handling began.
+        assert _d8_shared_touches_after_failure(events) == []

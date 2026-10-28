@@ -1746,4 +1746,191 @@ describe("ServerClient", () => {
       expect(timeoutSpy).toHaveBeenCalledWith(60 * 1000);
     });
   });
+
+  // -----------------------------------------------------------------------
+  // server-assembly-honesty D11 / tasks 10.1–10.2 — register() honors
+  // Retry-After on 429
+  //
+  // The server caps its own Retry-After hint (D5); the client honors it
+  // bounded to 60 s so a hostile/buggy header can't hang the worker. The
+  // wait REPLACES (never adds to) the exponential backoff and must not
+  // consume an attempt — only real fetch attempts advance the bounded
+  // attempt loop. A 429 without a usable header keeps the 1 s/2 s backoff.
+  // -----------------------------------------------------------------------
+  describe("register retry honors Retry-After (D11)", () => {
+    /** Session-creation response body shared by the success paths below. */
+    const SESSION_CREATED = {
+      id: "sess-ra",
+      url: "",
+      status: "scraping",
+      html_chunks: 0,
+      resources_discovered: null,
+      resources_received: 0,
+      created_at: "",
+      expires_at: "",
+      api_version: "v1",
+    };
+
+    /**
+     * Mock server: the first `rateLimitedAttempts.length` registration calls
+     * return 429 with the given headers record; every later call succeeds.
+     * Records Date.now() at each registration attempt (fake-timer clock) so
+     * the tests can assert where the retry actually landed.
+     */
+    function mockRegisterServer(
+      rateLimitedAttempts: Array<Record<string, string>>,
+    ): { registerCallTimes: number[] } {
+      const registerCallTimes: number[] = [];
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            registerCallTimes.push(Date.now());
+            const index = registerCallTimes.length - 1;
+            if (index < rateLimitedAttempts.length) {
+              return mockResponse(
+                429,
+                { detail: "rate limited" },
+                rateLimitedAttempts[index],
+              );
+            }
+            return mockResponse(200, {
+              api_key: "retry-after-key",
+              client_id: "c1",
+            });
+          }
+          if (urlStr.includes("/sessions") && init?.method === "POST") {
+            return mockResponse(201, SESSION_CREATED);
+          }
+          return mockResponse(404, {});
+        },
+      );
+      return { registerCallTimes };
+    }
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("waits Retry-After seconds after a 429, then succeeds on attempt 2", async () => {
+      const { registerCallTimes } = mockRegisterServer([
+        { "Retry-After": "5" },
+      ]);
+      vi.useFakeTimers();
+
+      const client = createClient();
+      const done = client.createSession("https://example.com");
+
+      // Let the storage dance settle and the first attempt fire
+      await vi.advanceTimersByTimeAsync(0);
+      expect(registerCallTimes).toHaveLength(1);
+
+      // Just under the hint: no second attempt yet — the old 1 s backoff
+      // would already have fired here
+      await vi.advanceTimersByTimeAsync(4_999);
+      expect(registerCallTimes).toHaveLength(1);
+
+      // Crossing the 5 s boundary releases the retry
+      await vi.advanceTimersByTimeAsync(1);
+      expect(registerCallTimes).toHaveLength(2);
+
+      const sessionId = await done;
+      expect(sessionId).toBe("sess-ra");
+      // The retry landed at the hinted 5 s mark — not the default 1 s
+      expect(registerCallTimes[1] - registerCallTimes[0]).toBe(5_000);
+    });
+
+    it("clamps Retry-After to 60 seconds", async () => {
+      const { registerCallTimes } = mockRegisterServer([
+        { "Retry-After": "9999" },
+      ]);
+      vi.useFakeTimers();
+
+      const client = createClient();
+      const done = client.createSession("https://example.com");
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(registerCallTimes).toHaveLength(1);
+
+      // Still waiting just under the 60 s client cap — a full minute, far
+      // beyond the 1 s default backoff, proving the hint was clamped
+      await vi.advanceTimersByTimeAsync(59_999);
+      expect(registerCallTimes).toHaveLength(1);
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(registerCallTimes).toHaveLength(2);
+
+      const sessionId = await done;
+      expect(sessionId).toBe("sess-ra");
+      expect(registerCallTimes[1] - registerCallTimes[0]).toBe(60_000);
+    });
+
+    it("falls back to the 1s/2s exponential backoff when Retry-After is absent or unusable", async () => {
+      const { registerCallTimes } = mockRegisterServer([
+        {}, // no header at all
+        { "Retry-After": "soon" }, // non-numeric — unusable
+        { "Retry-After": "-30" }, // negative — unusable
+      ]);
+      vi.useFakeTimers();
+
+      const client = createClient();
+      const done = expect(
+        client.createSession("https://example.com"),
+      ).rejects.toThrow(AuthenticationError);
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(registerCallTimes).toHaveLength(1);
+
+      // Attempt 2 arrives after the 1 s backoff
+      await vi.advanceTimersByTimeAsync(999);
+      expect(registerCallTimes).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(registerCallTimes).toHaveLength(2);
+      expect(registerCallTimes[1] - registerCallTimes[0]).toBe(1_000);
+
+      // Attempt 3 arrives after the 2 s backoff (exponential growth)
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(registerCallTimes).toHaveLength(2);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(registerCallTimes).toHaveLength(3);
+      expect(registerCallTimes[2] - registerCallTimes[1]).toBe(2_000);
+
+      // MAX_REGISTRATION_ATTEMPTS is spent — the server kept rejecting
+      await done;
+    });
+
+    it("keeps attempts bounded at MAX_REGISTRATION_ATTEMPTS even when Retry-After is supplied", async () => {
+      // MAX_REGISTRATION_ATTEMPTS is 3 — every attempt is rate limited,
+      // each time with a usable Retry-After hint
+      const { registerCallTimes } = mockRegisterServer([
+        { "Retry-After": "1" },
+        { "Retry-After": "1" },
+        { "Retry-After": "1" },
+      ]);
+      vi.useFakeTimers();
+
+      const client = createClient();
+      const done = expect(
+        client.createSession("https://example.com"),
+      ).rejects.toThrow(AuthenticationError);
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(registerCallTimes).toHaveLength(1);
+
+      // Retry at the hinted 1 s mark
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(registerCallTimes).toHaveLength(2);
+
+      // Second retry at the hinted 1 s mark — attempt 3 of 3
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(registerCallTimes).toHaveLength(3);
+
+      // A long wait never produces a 4th attempt: the budget is spent
+      // (the Retry-After waits themselves consumed none of it)
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(registerCallTimes).toHaveLength(3);
+
+      await done;
+    });
+  });
 });

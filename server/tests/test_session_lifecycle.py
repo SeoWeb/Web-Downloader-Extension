@@ -19,9 +19,11 @@ Verifies:
 """
 
 import asyncio
+import contextlib
 import os
 import shutil
 import tempfile
+import time
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -471,6 +473,116 @@ class TestCleanupServicePeriodic:
             "orphaned_dirs_removed": 0,
             "orphaned_sessions_removed": 0,
         }
+
+# ---------------------------------------------------------------------------
+# D9 (task 11.7) — Periodic sweep evicts idle in-memory HTML merger jobs
+# ---------------------------------------------------------------------------
+
+
+class TestPeriodicCleanupMergerEviction:
+    """The periodic sweep calls html_merger_service.evict_stale_jobs with
+    settings.stale_session_timeout_minutes * 60 (D9).
+
+    The eviction count is LOGGED (INFO when > 0, DEBUG when 0), NOT added to
+    the result dict — the dict's key set is pinned by
+    test_periodic_cleanup_uses_stale_assembly_check — so these tests assert
+    merger state instead.
+    """
+
+    @pytest.mark.asyncio
+    async def test_periodic_cleanup_evicts_stale_merger_jobs(self, cleanup, mock_db):
+        """Idle jobs are evicted by the sweep; fresh jobs and jobs for sessions
+        with a registered active assembly task survive."""
+        from app.config import settings
+        from app.services.assembly_manager import assembly_task_manager
+        from app.services.html_merger import HtmlMergerService
+
+        merger = HtmlMergerService(storage_root="/nonexistent-eviction-test")
+        max_age = settings.stale_session_timeout_minutes * 60
+
+        stale = merger.get_or_create_job("sweep-stale", "main", page_type="main")
+        stale.last_activity = time.time() - max_age - 60
+        fresh = merger.get_or_create_job("sweep-fresh", "main", page_type="main")
+        fresh.last_activity = time.time()
+        protected = merger.get_or_create_job("sweep-protected", "main", page_type="main")
+        protected.last_activity = time.time() - max_age - 60
+
+        # Fake ACTIVE assembly task registered for the protected session
+        task = asyncio.ensure_future(asyncio.sleep(3600))
+        assembly_task_manager.register("sweep-protected", task)
+        try:
+            # create=True: on pre-D9 code the cleanup module has no
+            # html_merger_service attribute; the sweep simply never evicts
+            # and the merger-state assertions below fail.
+            with patch("app.services.cleanup.html_merger_service", merger,
+                       create=True):
+                cleanup._mark_stale_sessions_failed = AsyncMock(return_value=0)
+                cleanup._mark_stale_assembling_sessions_failed = AsyncMock(return_value=0)
+                cleanup._remove_expired_sessions = AsyncMock(return_value=0)
+                cleanup._cleanup_orphaned_api_keys = AsyncMock(return_value=0)
+                cleanup._cleanup_orphaned_directories = AsyncMock(return_value=0)
+                cleanup._cleanup_orphaned_db_records = AsyncMock(return_value=0)
+                # Below the aggressive-cleanup threshold
+                cleanup._get_disk_usage_pct = MagicMock(return_value=50.0)
+
+                result = await cleanup.run_periodic_cleanup(mock_db)
+
+            # Stale idle job: evicted by the sweep
+            assert merger.get_job("sweep-stale", "main") is None, (
+                "the periodic sweep must evict jobs idle beyond the timeout"
+            )
+            # Fresh job: survives
+            assert merger.get_job("sweep-fresh", "main") is not None
+            # Session with an active assembly task: survives
+            assert merger.get_job("sweep-protected", "main") is not None, (
+                "jobs for sessions with an active assembly task must survive "
+                "the periodic sweep"
+            )
+
+            # The result-dict contract is unchanged: the eviction count is
+            # logged only, never folded into the dict.
+            assert set(result) == {
+                "stale_sessions_failed",
+                "stale_assembling_sessions_failed",
+                "expired_sessions_removed",
+                "orphaned_keys_removed",
+                "orphaned_dirs_removed",
+                "orphaned_sessions_removed",
+            }
+        finally:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+            assembly_task_manager.unregister("sweep-protected")
+
+    @pytest.mark.asyncio
+    async def test_periodic_cleanup_with_no_stale_merger_jobs_is_quiet(
+        self, cleanup, mock_db
+    ):
+        """A sweep with nothing to evict still succeeds (DEBUG log path) and
+        leaves merger state untouched."""
+        from app.services.html_merger import HtmlMergerService
+
+        merger = HtmlMergerService(storage_root="/nonexistent-eviction-test")
+        job = merger.get_or_create_job("sweep-quiet", "main", page_type="main")
+        job.last_activity = time.time()
+
+        with patch("app.services.cleanup.html_merger_service", merger,
+                   create=True):
+            cleanup._mark_stale_sessions_failed = AsyncMock(return_value=0)
+            cleanup._mark_stale_assembling_sessions_failed = AsyncMock(return_value=0)
+            cleanup._remove_expired_sessions = AsyncMock(return_value=0)
+            cleanup._cleanup_orphaned_api_keys = AsyncMock(return_value=0)
+            cleanup._cleanup_orphaned_directories = AsyncMock(return_value=0)
+            cleanup._cleanup_orphaned_db_records = AsyncMock(return_value=0)
+            cleanup._get_disk_usage_pct = MagicMock(return_value=50.0)
+
+            await cleanup.run_periodic_cleanup(mock_db)
+
+        assert merger.get_job("sweep-quiet", "main") is not None, (
+            "a fresh job must not be evicted"
+        )
+
 
     @pytest.mark.asyncio
     async def test_startup_cleanup_order(self, cleanup, mock_db):
@@ -1380,3 +1492,318 @@ class TestPeriodicCleanupAssemblyProtection:
             except asyncio.CancelledError:
                 pass
             assembly_task_manager.unregister(session_id)
+
+
+# ---------------------------------------------------------------------------
+# D2 (task 11.2) — HTML chunk upload commits BEFORE the success response
+# ---------------------------------------------------------------------------
+
+
+async def _seed_client_session_row(factory, session_id, client_id,
+                                   status=SessionStatus.SCRAPING):
+    """Seed a Client + Session pair and commit (setup, not under test)."""
+    async with factory() as db:
+        db.add(Client(
+            id=client_id, api_key=f"key-{client_id}",
+            api_key_hash=Client.hash_key(f"key-{client_id}"),
+        ))
+        db.add(Session(
+            id=session_id, client_id=client_id,
+            url="https://example.com",
+            status=status,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        ))
+        await db.commit()
+
+
+class TestHtmlChunkCommitBeforeRespond:
+    """D2 (task 11.2, 2.2): upload_html_chunk commits BEFORE the 200.
+
+    SQLite-backed: a commit failure must surface as an error (5xx in the
+    app) with no chunk row, no counter increment, and no chunk file left
+    behind; the happy path must leave the row visible to a FRESH session
+    without the test committing anything itself.
+    """
+
+    def _chunk_request(self, html="<html><body>chunk</body></html>", scroll=0):
+        from app.api.routes.html import HtmlChunkRequest
+
+        return HtmlChunkRequest(
+            html=html, scrollIndex=scroll, pageType="main", pageUrl=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_commit_failure_raises_no_row_no_file_no_counter(
+        self, sqlite_db, tmp_path
+    ):
+        from sqlalchemy import select
+
+        from app.api.routes.html import upload_html_chunk
+        from app.models.html_chunk import HtmlChunk
+
+        _engine, factory = sqlite_db
+        session_id, client_id = "sess-chunk-d2-fail", "client-chunk-d2-fail"
+        await _seed_client_session_row(factory, session_id, client_id)
+
+        async with factory() as db:
+            client = (await db.execute(
+                select(Client).where(Client.id == client_id)
+            )).scalar_one()
+            db.commit = AsyncMock(
+                side_effect=RuntimeError("pool exhausted (simulated D2 commit failure)")
+            )
+            # Wrap (not replace) the real rollback so the discipline is both
+            # asserted AND performed.
+            real_rollback = db.rollback
+            db.rollback = AsyncMock(side_effect=real_rollback)
+
+            with patch("app.api.routes.html.settings") as cfg:
+                cfg.max_html_chunk_size_mb = 10
+                cfg.max_session_size_mb = 1000
+                cfg.storage_root = str(tmp_path)
+
+                # The route re-raises after rollback → the app maps this to 5xx.
+                with pytest.raises(RuntimeError, match="pool exhausted"):
+                    await upload_html_chunk(
+                        session_id,
+                        body=self._chunk_request(),
+                        client=client,
+                        db=db,
+                    )
+            db.rollback.assert_awaited()
+
+        # FRESH session: no chunk row, counter untouched.
+        async with factory() as db:
+            rows = (await db.execute(
+                select(HtmlChunk).where(HtmlChunk.session_id == session_id)
+            )).scalars().all()
+            assert rows == [], "no chunk row may survive a failed commit"
+            sess = (await db.execute(
+                select(Session).where(Session.id == session_id)
+            )).scalar_one()
+            assert sess.html_chunks == 0, "html_chunks counter must be unchanged"
+
+        # The chunk file written during the request was removed.
+        chunks_dir = os.path.join(str(tmp_path), session_id, "chunks")
+        leftovers = [
+            name for _, _, files in os.walk(chunks_dir) for name in files
+        ] if os.path.exists(chunks_dir) else []
+        assert leftovers == [], f"chunk file must be removed after failure; found {leftovers}"
+
+    @pytest.mark.asyncio
+    async def test_happy_path_chunk_visible_to_fresh_session(self, sqlite_db, tmp_path):
+        """A 200 implies a COMMITTED chunk row + file + counter: visible to a
+        fresh session with the test never committing anything itself."""
+        from sqlalchemy import select
+
+        from app.api.routes.html import upload_html_chunk
+        from app.models.html_chunk import HtmlChunk
+
+        _engine, factory = sqlite_db
+        session_id, client_id = "sess-chunk-d2-ok", "client-chunk-d2-ok"
+        await _seed_client_session_row(factory, session_id, client_id)
+
+        html = "<html><body>committed chunk</body></html>"
+
+        async with factory() as db:
+            client = (await db.execute(
+                select(Client).where(Client.id == client_id)
+            )).scalar_one()
+            # Wrap (not replace) the real commit to assert the handler committed.
+            real_commit = db.commit
+            db.commit = AsyncMock(side_effect=real_commit)
+
+            with patch("app.api.routes.html.settings") as cfg:
+                cfg.max_html_chunk_size_mb = 10
+                cfg.max_session_size_mb = 1000
+                cfg.storage_root = str(tmp_path)
+
+                response = await upload_html_chunk(
+                    session_id,
+                    body=self._chunk_request(html=html),
+                    client=client,
+                    db=db,
+                )
+            assert response.deduplicated is False
+            assert response.chunk_count == 1
+            assert response.total_size == len(html.encode("utf-8"))
+            db.commit.assert_awaited()  # D2: committed before the response
+
+        # FRESH session: row + counter are already durable.
+        async with factory() as db:
+            chunk = (await db.execute(
+                select(HtmlChunk).where(HtmlChunk.session_id == session_id)
+            )).scalar_one()
+            assert chunk.size == len(html.encode("utf-8"))
+            sess = (await db.execute(
+                select(Session).where(Session.id == session_id)
+            )).scalar_one()
+            assert sess.html_chunks == 1
+
+        with open(chunk.storage_path, encoding="utf-8") as f:
+            assert f.read() == html
+
+
+# ---------------------------------------------------------------------------
+# D7 (task 11.5) — content-text body caps (upload_content, sessions.py)
+# ---------------------------------------------------------------------------
+
+
+def _scalar_result(value):
+    """Mock execute() result whose .scalar() returns `value`."""
+    r = MagicMock()
+    r.scalar.return_value = value
+    return r
+
+
+def _scalar_one_result(value):
+    """Mock execute() result whose .scalar_one_or_none() returns `value`."""
+    r = MagicMock()
+    r.scalar_one_or_none.return_value = value
+    return r
+
+
+class TestContentBodyCaps:
+    """Content-text uploads are size-capped at max_content_text_mb (413
+    content_too_large, nothing appended) and count against the session's
+    max_session_size_mb quota (413 session_size_exceeded)."""
+
+    def _mock_session_row(self, session_id="sess-content", client_id="client-content"):
+        s = MagicMock()
+        s.id = session_id
+        s.client_id = client_id
+        s.status = SessionStatus.SCRAPING
+        return s
+
+    def _content_db(self, *execute_returns):
+        db = AsyncMock()
+        db.execute = AsyncMock(side_effect=list(execute_returns))
+        return db
+
+    @pytest.mark.asyncio
+    async def test_oversized_content_text_rejected_413(self, tmp_path):
+        """text over max_content_text_mb → 413 content_too_large; nothing is
+        appended (content.txt is never even created) and no quota query runs."""
+        from app.api.routes.sessions import ContentUploadRequest, upload_content
+        from fastapi import HTTPException
+
+        session_id, client_id = "sess-content-big", "client-content-big"
+        storage_root = str(tmp_path)
+        oversized = "x" * (1024 * 1024 + 1)  # 1 byte over a 1 MB cap
+
+        # Only the session lookup may execute — the cap fires before any
+        # aggregate query (an extra consume would raise StopIteration).
+        db = self._content_db(_scalar_one_result(self._mock_session_row(session_id, client_id)))
+
+        with patch("app.api.routes.sessions.settings") as cfg, \
+             patch("app.api.routes.sessions.require_session_owner"):
+            cfg.max_content_text_mb = 1
+            cfg.max_session_size_mb = 1000
+            cfg.storage_root = storage_root
+
+            with pytest.raises(HTTPException) as exc:
+                await upload_content(
+                    session_id,
+                    body=ContentUploadRequest(text=oversized),
+                    client=MagicMock(id=client_id),
+                    db=db,
+                )
+
+        assert exc.value.status_code == 413
+        assert exc.value.detail["error"] == "content_too_large"
+        assert exc.value.detail["upload_size"] == len(oversized.encode("utf-8"))
+        assert exc.value.detail["max_size"] == 1024 * 1024
+
+        content_path = os.path.join(storage_root, session_id, "content.txt")
+        assert not os.path.exists(content_path), (
+            "an oversized text upload must not touch the content file"
+        )
+        assert db.execute.await_count == 1  # session lookup only
+
+    @pytest.mark.asyncio
+    async def test_content_counts_against_session_quota(self, tmp_path):
+        """Accepted-size text that would push the session over
+        max_session_size_mb → 413 session_size_exceeded; existing
+        content.txt bytes count too (the endpoint appends)."""
+        from app.api.routes.sessions import ContentUploadRequest, upload_content
+        from fastapi import HTTPException
+
+        session_id, client_id = "sess-content-quota", "client-content-quota"
+        storage_root = str(tmp_path)
+
+        # 6 MB stored as resources + 3 MB as chunks (aggregate values) and a
+        # real 1 MB content.txt → current_total = 10 MB = the whole quota.
+        mb = 1024 * 1024
+        session_dir = os.path.join(storage_root, session_id)
+        os.makedirs(session_dir, exist_ok=True)
+        content_path = os.path.join(session_dir, "content.txt")
+        with open(content_path, "wb") as f:
+            f.write(b"a" * mb)
+        before = os.path.getsize(content_path)
+
+        db = self._content_db(
+            _scalar_one_result(self._mock_session_row(session_id, client_id)),
+            _scalar_result(6 * mb),  # SUM(resources.size)
+            _scalar_result(3 * mb),  # SUM(html_chunks.size)
+        )
+
+        with patch("app.api.routes.sessions.settings") as cfg, \
+             patch("app.api.routes.sessions.require_session_owner"):
+            cfg.max_content_text_mb = 5  # 100-byte text is under this cap
+            cfg.max_session_size_mb = 10
+            cfg.storage_root = storage_root
+
+            with pytest.raises(HTTPException) as exc:
+                await upload_content(
+                    session_id,
+                    body=ContentUploadRequest(text="b" * 100),
+                    client=MagicMock(id=client_id),
+                    db=db,
+                )
+
+        assert exc.value.status_code == 413
+        assert exc.value.detail["error"] == "session_size_exceeded"
+        assert exc.value.detail["current_size"] == 10 * mb
+        assert exc.value.detail["upload_size"] == 100
+
+        assert os.path.getsize(content_path) == before, (
+            "a quota-rejected content upload must not append anything"
+        )
+
+    @pytest.mark.asyncio
+    async def test_content_within_caps_is_appended(self, tmp_path):
+        """Under both caps the text appends (append-mode semantics)."""
+        from app.api.routes.sessions import ContentUploadRequest, upload_content
+        from fastapi import HTTPException
+
+        session_id, client_id = "sess-content-ok", "client-content-ok"
+        storage_root = str(tmp_path)
+
+        session_dir = os.path.join(storage_root, session_id)
+        os.makedirs(session_dir, exist_ok=True)
+        content_path = os.path.join(session_dir, "content.txt")
+        with open(content_path, "w", encoding="utf-8") as f:
+            f.write("abc")
+
+        db = self._content_db(
+            _scalar_one_result(self._mock_session_row(session_id, client_id)),
+            _scalar_result(0),  # SUM(resources.size)
+            _scalar_result(0),  # SUM(html_chunks.size)
+        )
+
+        with patch("app.api.routes.sessions.settings") as cfg, \
+             patch("app.api.routes.sessions.require_session_owner"):
+            cfg.max_content_text_mb = 5
+            cfg.max_session_size_mb = 10
+            cfg.storage_root = storage_root
+
+            result = await upload_content(
+                session_id,
+                body=ContentUploadRequest(text="def"),
+                client=MagicMock(id=client_id),
+                db=db,
+            )
+
+        assert result["size"] == 3
+        with open(content_path, encoding="utf-8") as f:
+            assert f.read() == "abcdef"

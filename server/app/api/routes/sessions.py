@@ -7,6 +7,7 @@ import re
 import shutil
 from datetime import datetime, timedelta, timezone
 
+import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
@@ -171,6 +172,15 @@ class SessionStatusResponse(BaseModel):
     output_content_type: str | None = None
     output_size: int | None = None
     error_message: str | None = None
+    # Archive honesty (server-assembly-honesty 1.4, D1): nullable until the
+    # finalize/assembly integrity accounting has been persisted — null means
+    # "not yet known", not zero. Derived from the session options JSON
+    # ``integrity`` object: finalize writes ``discovered_deficit`` /
+    # ``capture_failed``, the assembler writes ``assembly_missing`` /
+    # ``assembly_failed``.
+    resources_missing: int | None = None
+    resources_failed: int | None = None
+    archive_warning: str | None = None
     cloud_status: str | None = None
     cloud_page_id: str | None = None
     cloud_error: str | None = None
@@ -202,6 +212,17 @@ class FinalizeResponse(BaseModel):
     id: str
     status: str
     message: str
+    # Finalize-known integrity counts (server-assembly-honesty 1.5, D1):
+    # additive fields — the 202 semantics are unchanged and the deficit
+    # never blocks finalize (codified in test_finalize_resource_integrity.py).
+    # ``resources_missing`` is the discovered-vs-received deficit clamped ≥ 0
+    # (0 when the client never reported a discovery count); the archive may
+    # still gain further missing/failed counts during assembly — /status is
+    # authoritative for the totals after assembly.
+    resources_discovered: int | None = None
+    resources_received: int = 0
+    resources_missing: int = 0
+    resources_failed: int = 0
     api_version: str = "v1"
 
 
@@ -229,6 +250,44 @@ def _resolve_output_fields(
     if options.get("singleFile"):
         return "html", None, None
     return "zip", None, None
+
+
+def _integrity_fields(options: dict | None) -> tuple[int | None, int | None, str | None]:
+    """Derive (resources_missing, resources_failed, archive_warning) from the
+    session options JSON ``integrity`` object (server-assembly-honesty 1.4, D1).
+
+    Returns ``(None, None, None)`` when no ``integrity`` object exists yet —
+    null means "not yet accounted", not zero. ``resources_missing`` is the
+    discovery deficit (finalize-owned) plus assembly-time skips and late
+    arrivals (assembler-owned); ``resources_failed`` is the capture-time
+    fetch-failure count plus assembly-time write failures. ``archive_warning``
+    is set whenever either total is non-zero: the stored summary string when
+    present, otherwise a synthesized one from the totals.
+    """
+    integrity = (options or {}).get("integrity")
+    if not isinstance(integrity, dict):
+        return None, None, None
+
+    def _count(key: str) -> int:
+        try:
+            return int(integrity.get(key) or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    missing = _count("discovered_deficit") + _count("assembly_missing")
+    failed = _count("capture_failed") + _count("assembly_failed")
+
+    warning: str | None = None
+    if missing or failed:
+        warning = integrity.get("archive_warning")
+        if not warning:
+            parts: list[str] = []
+            if missing:
+                parts.append(f"{missing} resource(s) missing from archive")
+            if failed:
+                parts.append(f"{failed} resource(s) failed to capture or write")
+            warning = "; ".join(parts)
+    return missing, failed, warning
 
 
 def _session_to_response(session: Session) -> SessionResponse:
@@ -456,6 +515,12 @@ async def get_session_status(
         cloud_page_id_val = session.cloud_page_id
         cloud_error_val = session.cloud_error
 
+    # Archive honesty (1.4, D1): derive the persisted integrity totals from
+    # the options JSON — null until finalize/assembly accounting exists.
+    resources_missing, resources_failed, archive_warning = _integrity_fields(
+        session.options
+    )
+
     # Assembly envelope fields (6.1, additive): let clients distinguish an
     # actively progressing assembly from a stalled one by surfacing when
     # finalization happened and how long the assembly has been running.
@@ -488,6 +553,9 @@ async def get_session_status(
         output_content_type=output_content_type,
         output_size=output_size,
         error_message=session.error_message,
+        resources_missing=resources_missing,
+        resources_failed=resources_failed,
+        archive_warning=archive_warning,
         cloud_status=cloud_status_val,
         cloud_page_id=cloud_page_id_val,
         cloud_error=cloud_error_val,
@@ -696,13 +764,74 @@ async def upload_content(
             },
         )
 
-    # Store content text as a file (append mode so linked page text
-    # is added after the main page text rather than overwriting it)
+    # D7 body cap: reject oversized text BEFORE any I/O — when this fires,
+    # nothing has been appended and the existing content.txt is untouched.
+    content_size = len(body.text.encode("utf-8"))
+    max_content_bytes = settings.max_content_text_mb * 1024 * 1024
+    if content_size > max_content_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "error": "content_too_large",
+                "message": (
+                    f"Content text exceeds the "
+                    f"{settings.max_content_text_mb}MB per-request limit"
+                ),
+                "upload_size": content_size,
+                "max_size": max_content_bytes,
+                "api_version": "v1",
+            },
+        )
+
+    # D7 session quota: the appended bytes count against the same
+    # max_session_size_mb budget resources and HTML chunks are measured
+    # against — the aggregate check mirrors resources.py's quota semantics
+    # (SUM(resources.size) + SUM(html_chunks.size)). The existing content.txt
+    # size is included because this endpoint appends: repeated uploads
+    # accumulate, so without it repeated small appends would bypass the
+    # quota. The check runs before the append, so a rejection leaves the
+    # stored content exactly as it was.
+    resource_bytes = (await db.execute(
+        select(func.coalesce(func.sum(Resource.size), 0)).where(
+            Resource.session_id == session_id
+        )
+    )).scalar() or 0
+    chunk_bytes = (await db.execute(
+        select(func.coalesce(func.sum(HtmlChunk.size), 0)).where(
+            HtmlChunk.session_id == session_id
+        )
+    )).scalar() or 0
     session_dir = os.path.join(settings.storage_root, session.id)
     content_path = os.path.join(session_dir, "content.txt")
-    content_size = len(body.text.encode("utf-8"))
-    with open(content_path, "a", encoding="utf-8") as f:
-        f.write(body.text)
+    existing_content_bytes = (
+        os.path.getsize(content_path) if os.path.exists(content_path) else 0
+    )
+    max_session_bytes = settings.max_session_size_mb * 1024 * 1024
+    current_total = int(resource_bytes) + int(chunk_bytes) + existing_content_bytes
+    if current_total + content_size > max_session_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "error": "session_size_exceeded",
+                "message": f"Upload would exceed session size limit ({settings.max_session_size_mb}MB)",
+                "current_size": int(current_total),
+                "upload_size": content_size,
+                "max_size": max_session_bytes,
+                "api_version": "v1",
+            },
+        )
+
+    # D2 commit-before-respond exemption: this endpoint performs NO database
+    # mutation — the file append below is the only state change, and it
+    # completes before the success response is constructed. There is no
+    # transaction whose commit could fail after the client sees the 200, so
+    # no explicit commit applies here (server-session-storage spec: content
+    # upload is the documented exempt endpoint).
+    #
+    # D10 I/O hygiene: the append runs through aiofiles so a slow disk write
+    # cannot stall the single event loop that serves every /status poll.
+    async with aiofiles.open(content_path, "a", encoding="utf-8") as f:
+        await f.write(body.text)
 
     logger.info("Content uploaded for session: id=%s size=%d", session_id, len(body.text))
     return {
@@ -733,9 +862,12 @@ async def finalize_session(
     The same guarded transition UPDATE reconciles the stale-by-design
     ``resources_received`` column to the live resources-table count
     (one write per session lifetime; per-upload counter updates were
-    removed by the documented deadlock fix). A ``resources_discovered``
-    deficit is logged as a structured warning — visibility only, never a
-    refusal; the /status endpoint's live aggregates remain the API truth.
+    removed by the documented deadlock fix) and persists the finalize-owned
+    ``integrity`` counts into the options JSON (``discovered_deficit`` /
+    ``capture_failed``; server-assembly-honesty 1.3, D1) in the same
+    statement and commit. A ``resources_discovered`` deficit is logged as a
+    structured warning — visibility only, never a refusal; the /status
+    endpoint's live aggregates remain the API truth.
     """
     session = await _get_session_or_404(session_id, db)
     require_session_owner(client, session.client_id)
@@ -811,6 +943,27 @@ async def finalize_session(
     # plain local (the guarded UPDATE is Core-level and never touches this
     # ORM object's attributes).
     discovered = session.resources_discovered
+    # Finalize-owned integrity accounting (server-assembly-honesty 1.3, D1):
+    # the discovery deficit (clamped ≥ 0; 0 when the client never reported a
+    # discovery count) and the capture-time failure count stashed by
+    # scrape-complete. Both are persisted into the options JSON ``integrity``
+    # object BY the guarded transition below (same statement, same commit)
+    # and merged with — never clobbering — the assembler-owned fields,
+    # mirroring zip_assembler._merge_integrity_options: the existing
+    # ``integrity`` dict is copied, only the two finalize-owned keys are
+    # updated, and the whole options dict is passed as a new value.
+    discovered_deficit = (
+        max(0, discovered - resource_count) if discovered is not None else 0
+    )
+    existing_options = dict(session.options or {})
+    existing_integrity = existing_options.get("integrity")
+    merged_integrity: dict = (
+        dict(existing_integrity) if isinstance(existing_integrity, dict) else {}
+    )
+    failed_fetches = int(existing_options.get("resourcesFailed") or 0)
+    merged_integrity["discovered_deficit"] = discovered_deficit
+    merged_integrity["capture_failed"] = failed_fetches
+    existing_options["integrity"] = merged_integrity
     if html_chunk_count == 0 and resource_count == 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -833,6 +986,9 @@ async def finalize_session(
     # per session lifetime here, from the authoritative aggregate
     # `resource_count` computed above — zero extra statements, zero new
     # lock scope beyond the row this UPDATE already touches.
+    # The same statement persists the finalize-owned integrity counts
+    # (1.3, D1): ``options`` is part of this single atomic UPDATE, so the
+    # integrity write cannot be separated from the transition commit below.
     now = datetime.now(timezone.utc)
     transition = await db.execute(
         sa_update(Session)
@@ -846,6 +1002,7 @@ async def finalize_session(
             assembly_progress_pct=0,
             finalized_at=now,
             resources_received=resource_count,
+            options=existing_options,
         )
     )
     if transition.rowcount == 0:
@@ -892,8 +1049,9 @@ async def finalize_session(
     # Repeat the capture-time failure visibility: the resourcesFailed count
     # reported at scrape-complete (stashed in the options JSON) is logged
     # again here so the finalize record carries it. Purely informational —
-    # it never affects the 202 outcome or the deficit logic above.
-    failed_fetches = int((session.options or {}).get("resourcesFailed") or 0)
+    # it never affects the 202 outcome or the deficit logic above. Uses the
+    # value captured before the transition (the post-commit ORM object may
+    # be expired depending on the session factory's expire_on_commit).
     if failed_fetches > 0:
         logger.warning(
             "%d resource fetch(es) failed during capture: session_id=%s",
@@ -919,4 +1077,8 @@ async def finalize_session(
         id=session_id,
         status=SessionStatus.ASSEMBLING.value,
         message="Assembly pipeline started",
+        resources_discovered=discovered,
+        resources_received=resource_count,
+        resources_missing=discovered_deficit,
+        resources_failed=failed_fetches,
     )

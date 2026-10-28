@@ -90,6 +90,70 @@ LOCAL_NOTHING_TO_ASSEMBLE_ERROR = (
 
 
 # ---------------------------------------------------------------------------
+# Assembly integrity accounting (server-assembly-honesty D1)
+# ---------------------------------------------------------------------------
+
+
+class AssemblyIntegrity:
+    """Mutable integrity accumulator for one assembly pipeline run (D1).
+
+    Skips and failures are counted at the exact site they happen and the
+    totals are persisted on the session options JSON ``integrity`` object
+    when the session is marked ready (merged — finalize-owned
+    ``discovered_deficit`` / ``capture_failed`` fields are never touched):
+
+    - ``missing`` — resources absent from the artifact: file missing on
+      disk, blank ``local_path`` / sanitized archive path (task 1.1).
+    - ``late`` — post-snapshot late arrivals recorded after the artifact
+      build (task 3.2); folded into the persisted ``assembly_missing``.
+    - ``failed`` — resources whose bytes could not be added to the
+      artifact (``zf.write`` failures, cloud asset read failures).
+    """
+
+    def __init__(self) -> None:
+        self.missing = 0
+        self.failed = 0
+        self.late = 0
+
+    def count_missing(self, n: int = 1) -> None:
+        self.missing += n
+
+    def count_failed(self, n: int = 1) -> None:
+        self.failed += n
+
+    @property
+    def total_missing(self) -> int:
+        """Everything absent from the artifact: skips + late arrivals."""
+        return self.missing + self.late
+
+    def archive_warning(self) -> Optional[str]:
+        """Human-readable summary, or None when nothing is missing/failed."""
+        parts: list[str] = []
+        if self.missing:
+            parts.append(f"{self.missing} resource(s) missing from archive")
+        if self.failed:
+            parts.append(f"{self.failed} resource(s) failed to write")
+        if self.late:
+            parts.append(
+                f"{self.late} resource(s) arrived after assembly started "
+                f"and are not in the archive"
+            )
+        return "; ".join(parts) if parts else None
+
+
+class SiblingConversionError(RuntimeError):
+    """A parallel conversion sibling failed (D8 gather isolation).
+
+    Raised only after a ``return_exceptions=True`` gather has completed, so
+    every sibling has finished and none can flush the shared assembly
+    session anymore. Carries the FIRST sibling failure (each failure is
+    logged with its resource/page identity before raising) and propagates
+    to ``assemble_session``'s mainline handler, which marks the session
+    failed via a fresh database session.
+    """
+
+
+# ---------------------------------------------------------------------------
 # ZipAssemblerService
 # ---------------------------------------------------------------------------
 
@@ -132,6 +196,13 @@ class ZipAssemblerService:
                 # removing the conversion parallelism (the actual CPU-bound
                 # work runs via asyncio.to_thread and is not affected).
                 db_flush_lock = asyncio.Lock()
+
+                # D1: integrity accounting for this pipeline run. The
+                # resource snapshot below defines archive membership (D3);
+                # skips/failures during assembly and post-snapshot late
+                # arrivals are counted here and persisted on the session
+                # options JSON when the session is marked ready (1.2/1.6).
+                integrity = AssemblyIntegrity()
 
                 session = await self._get_session(db, session_id)
                 if session is None:
@@ -187,6 +258,10 @@ class ZipAssemblerService:
                 # Build content-type map from uploaded resources for
                 # extension-aware fallback when filename map misses.
                 all_resources = await self._get_all_resources(db, session_id)
+                # D3: this snapshot defines archive membership. Resources
+                # committing after it are late arrivals — accounted after
+                # the artifact build (3.2).
+                snapshot_count = len(all_resources)
                 content_type_map: dict[str, str] = {
                     r.original_url: r.content_type
                     for r in all_resources
@@ -357,10 +432,42 @@ class ZipAssemblerService:
                                 lock=db_flush_lock,
                             )
 
-                    await asyncio.gather(*[
-                        _convert_linked_page_one(ph, lr)
-                        for ph, lr in linked_results.items()
-                    ])
+                    # D8 (9.5): return_exceptions=True so every sibling runs
+                    # to completion — when failure handling begins below, no
+                    # sibling can still flush the shared session, and every
+                    # exception is retrieved (none abandoned).
+                    lp_outcomes = await asyncio.gather(
+                        *[
+                            _convert_linked_page_one(ph, lr)
+                            for ph, lr in linked_results.items()
+                        ],
+                        return_exceptions=True,
+                    )
+                    lp_failures: list[tuple[str, BaseException]] = [
+                        (page_hash, outcome)
+                        for (page_hash, _lr), outcome in zip(
+                            linked_results.items(), lp_outcomes,
+                        )
+                        if isinstance(outcome, BaseException)
+                    ]
+                    # Log EACH sibling failure with its page identity before
+                    # marshaling the first one into the mainline failure path.
+                    for page_hash, exc in lp_failures:
+                        logger.error(
+                            "Linked-page conversion failed: session=%s "
+                            "page_hash=%s page_url=%s exc=%s",
+                            session_id, page_hash,
+                            getattr(linked_results[page_hash], "page_url", None),
+                            exc,
+                        )
+                    if lp_failures:
+                        first_hash, first_exc = lp_failures[0]
+                        raise SiblingConversionError(
+                            f"linked page conversion failed for page "
+                            f"{first_hash} "
+                            f"({getattr(linked_results[first_hash], 'page_url', None)}): "
+                            f"{first_exc}"
+                        ) from first_exc
 
                 # ---- Phase 3: Converting CSS files (parallel) ----
                 await self._update_progress(db, session, "converting_css", 0)
@@ -386,7 +493,35 @@ class ZipAssemblerService:
                                 lock=db_flush_lock,
                             )
 
-                    await asyncio.gather(*[_convert_css_one(r) for r in css_resources])
+                    # D8 (9.5): same isolation contract as the linked-page
+                    # fan-out — all siblings finish, each exception is
+                    # retrieved and logged with its resource identity, and
+                    # the first failure is marshaled to the mainline path.
+                    css_outcomes = await asyncio.gather(
+                        *[_convert_css_one(r) for r in css_resources],
+                        return_exceptions=True,
+                    )
+                    css_failures: list[tuple[object, BaseException]] = [
+                        (resource, outcome)
+                        for resource, outcome in zip(css_resources, css_outcomes)
+                        if isinstance(outcome, BaseException)
+                    ]
+                    for resource, exc in css_failures:
+                        logger.error(
+                            "CSS conversion failed: session=%s local_path=%s "
+                            "storage=%s exc=%s",
+                            session_id,
+                            getattr(resource, "local_path", None),
+                            getattr(resource, "storage_path", None),
+                            exc,
+                        )
+                    if css_failures:
+                        first_resource, first_exc = css_failures[0]
+                        raise SiblingConversionError(
+                            f"CSS conversion failed for resource "
+                            f"{getattr(first_resource, 'local_path', None)}: "
+                            f"{first_exc}"
+                        ) from first_exc
                 await self._update_progress(db, session, "converting_css", 100)
 
                 # ---- Phase 3b: Inline CSS into HTML for file:// compatibility ----
@@ -491,6 +626,13 @@ class ZipAssemblerService:
                         session.assembly_phase = None
                         session.assembly_progress_pct = None
                         session.zip_path = None
+                        # 1.2/1.6/3.2: a single-file cloud push inlines the
+                        # snapshot's resources — account late arrivals and
+                        # persist the integrity object before marking ready.
+                        await self._account_and_persist_integrity(
+                            db, session, session_id, snapshot_count, integrity,
+                            include_resources=True,
+                        )
                         await db.flush()
                         logger.info(
                             "Cloud single-file assembly complete: session=%s cloud_status=%s",
@@ -510,7 +652,32 @@ class ZipAssemblerService:
                             download_html=download_html,
                             markdown_content=markdown_push,
                             text_content=text_push,
+                            integrity=integrity,
+                            snapshot_resources=all_resources,
                         )
+                        # 1.6/3.2: persist integrity after the push. This
+                        # covers every _assemble_cloud_push outcome (success,
+                        # push failure, and its early pre-flight /
+                        # nothing-to-push returns — each already marked the
+                        # session ready and flushed): the merge below updates
+                        # the options JSON and the flush persists it, without
+                        # touching cloud_status semantics. Whether resources
+                        # are represented at all follows the push shape:
+                        # HTML pushes assets, a gallery push pushes images,
+                        # a text-only push represents no resources by design.
+                        if download_html:
+                            includes_resources = True
+                        elif content_md is None and text_push is None:
+                            includes_resources = bool(self._image_resources(
+                                all_resources, archive_path_by_resource_id,
+                            ))
+                        else:
+                            includes_resources = False
+                        await self._account_and_persist_integrity(
+                            db, session, session_id, snapshot_count, integrity,
+                            include_resources=includes_resources,
+                        )
+                        await db.flush()
                     return
 
                 # ---- Phase 4: Assembling output (non-cloud) ----
@@ -519,6 +686,11 @@ class ZipAssemblerService:
                 # Read content.txt if present
                 content_text = self._read_content_txt(session_id)
 
+                # Does the artifact represent resources at all? Single-file
+                # output inlines them; text-only output (below) excludes
+                # resources by design, so post-snapshot late arrivals are
+                # not "missing" there (3.2).
+                artifact_includes_resources = True
                 if not download_html:
                     # text-native-downloads 3.2: text-only assembly — no
                     # index.html and no HTML-only extras. Applies only when
@@ -537,9 +709,14 @@ class ZipAssemblerService:
                         or content_text is not None
                         or bool(page_md_list)
                     )
+                    # Images-only ZIP represents its image resources;
+                    # text-only output excludes resources by design, so
+                    # post-snapshot late arrivals are not "missing" there.
+                    artifact_includes_resources = False
                     image_resources = (
                         self._image_resources(
                             all_resources, archive_path_by_resource_id,
+                            integrity=integrity,
                         )
                         if not has_text_document
                         else []
@@ -550,6 +727,7 @@ class ZipAssemblerService:
                             main_html=main_html,
                             image_resources=image_resources,
                             archive_paths=archive_path_by_resource_id,
+                            integrity=integrity,
                         )
                     else:
                         output_path = await self._assemble_text_only(
@@ -578,10 +756,19 @@ class ZipAssemblerService:
                         archive_paths=archive_path_by_resource_id,
                         content_md=content_md,
                         page_md_list=page_md_list,
+                        integrity=integrity,
                     )
 
                 if output_path is None:
                     return  # already marked failed
+
+                # 1.2/3.2: account post-snapshot late arrivals and merge the
+                # integrity object into the session options JSON before the
+                # session is marked ready (finalize-owned fields preserved).
+                await self._account_and_persist_integrity(
+                    db, session, session_id, snapshot_count, integrity,
+                    include_resources=artifact_includes_resources,
+                )
 
                 # Mark session as ready
                 session.status = "ready"
@@ -634,6 +821,7 @@ class ZipAssemblerService:
         archive_paths: Optional[dict[str, str]] = None,
         content_md: Optional[str] = None,
         page_md_list: Optional[dict[str, str]] = None,
+        integrity: Optional[AssemblyIntegrity] = None,
     ) -> Optional[str]:
         """Assemble a ZIP archive with the correct directory structure.
 
@@ -658,6 +846,11 @@ class ZipAssemblerService:
         session_dir = os.path.join(self.storage_root, session_id)
         zip_filename = generate_safe_filename(session.url, ".zip")
         zip_path = os.path.join(session_dir, zip_filename)
+
+        # D1 (1.1): every silent skip below is counted, never fatal — a
+        # partial archive stays a valid artifact. Callers that don't pass
+        # an accumulator get a throwaway one so the counting is uniform.
+        integrity = integrity or AssemblyIntegrity()
 
         resources = all_resources if all_resources is not None else await self._get_all_resources(db, session_id)
         total_steps = len(resources) + len(linked_page_htmls) + 2  # +index.html +content.txt
@@ -701,7 +894,9 @@ class ZipAssemblerService:
                 for i, resource in enumerate(resources):
                     local_path = resource.local_path
                     if not local_path:
-                        # Skip resources without a local path
+                        # Skip resources without a local path — counted
+                        # as missing from the archive (D1/1.1).
+                        integrity.count_missing()
                         steps_done += 1
                         continue
 
@@ -712,12 +907,16 @@ class ZipAssemblerService:
                     )
                     safe_path = sanitize_zip_path(preresolved or local_path)
                     if not safe_path:
+                        # Blank/unsafe sanitized path — same missing class.
+                        integrity.count_missing()
                         steps_done += 1
                         continue
 
                     storage_path = resource.storage_path
                     if not os.path.isfile(storage_path):
-                        # Missing resource — skip with warning (6.6)
+                        # Missing resource — skip with warning (6.6),
+                        # counted as missing (D1/1.1).
+                        integrity.count_missing()
                         logger.warning(
                             "Missing resource file skipped: session=%s path=%s storage=%s",
                             session_id, safe_path, storage_path,
@@ -728,6 +927,9 @@ class ZipAssemblerService:
                     try:
                         zf.write(storage_path, safe_path)
                     except Exception as exc:
+                        # Write failure never fails assembly (6.6) —
+                        # counted as failed (D1/1.1).
+                        integrity.count_failed()
                         logger.warning(
                             "Failed to add resource to ZIP: session=%s path=%s exc=%s",
                             session_id, safe_path, exc,
@@ -783,7 +985,11 @@ class ZipAssemblerService:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _image_resources(resources: list, archive_paths: Optional[dict]) -> list:
+    def _image_resources(
+        resources: list,
+        archive_paths: Optional[dict],
+        integrity: Optional[AssemblyIntegrity] = None,
+    ) -> list:
         """Filter a session's image resources (Round 9).
 
         Same predicate as the Round 8 cloud gallery filter: the final
@@ -792,11 +998,15 @@ class ZipAssemblerService:
         final archive path map, so collision-suffixed entries are judged
         by the path that would actually be written to the artifact.
         Resources without a local path or storage path can never be
-        written and are excluded up front.
+        written and are excluded up front — counted as missing from the
+        artifact when an ``integrity`` accumulator is provided (D1/1.1;
+        image-MIME only, since non-images are excluded by design here).
         """
         image_resources: list = []
         for r in resources:
             if not r.local_path or not r.storage_path:
+                if integrity is not None and (r.content_type or "").lower().startswith("image/"):
+                    integrity.count_missing()
                 continue
             archive_name = (
                 (archive_paths or {}).get(getattr(r, "id", ""), None)
@@ -816,6 +1026,7 @@ class ZipAssemblerService:
         main_html: str,
         image_resources: list,
         archive_paths: Optional[dict[str, str]] = None,
+        integrity: Optional[AssemblyIntegrity] = None,
     ) -> Optional[str]:
         """Assemble a local images-only artifact (Round 9).
 
@@ -838,6 +1049,10 @@ class ZipAssemblerService:
         zip_filename = generate_safe_filename(session.url, ".zip")
         zip_path = os.path.join(session_dir, zip_filename)
 
+        # D1 (1.1): same honesty accounting as _assemble_zip — skips are
+        # counted, never fatal.
+        integrity = integrity or AssemblyIntegrity()
+
         # Resolve final archive entries up front so the gallery <img> srcs
         # and the written ZIP entries can never drift apart. Stable
         # ordering: sort by archive path (same rule as the cloud gallery).
@@ -848,8 +1063,10 @@ class ZipAssemblerService:
             )
             safe_path = sanitize_zip_path(preresolved or resource.local_path)
             if not safe_path:
+                integrity.count_missing()
                 continue
             if not os.path.isfile(resource.storage_path):
+                integrity.count_missing()
                 logger.warning(
                     "Missing resource file skipped: session=%s path=%s storage=%s",
                     session_id, safe_path, resource.storage_path,
@@ -884,6 +1101,8 @@ class ZipAssemblerService:
                     try:
                         zf.write(storage_path, safe_path)
                     except Exception as exc:
+                        # Counted, never fatal (D1/1.1).
+                        integrity.count_failed()
                         logger.warning(
                             "Failed to add resource to ZIP: session=%s path=%s exc=%s",
                             session_id, safe_path, exc,
@@ -1085,6 +1304,8 @@ class ZipAssemblerService:
         download_html: bool = True,
         markdown_content: Optional[str] = None,
         text_content: Optional[str] = None,
+        integrity: Optional[AssemblyIntegrity] = None,
+        snapshot_resources: Optional[list] = None,
     ) -> None:
         """Push processed HTML + assets to PagePocket cloud (no local file).
 
@@ -1121,6 +1342,15 @@ class ZipAssemblerService:
         3 × 600 s of deterministic message-size retries. Assets are then
         read in bounded-parallel batches, and the in-flight push is
         surfaced via the existing assembly progress mechanism.
+
+        D1 (1.6): when the caller supplies ``integrity`` +
+        ``snapshot_resources`` (the production path), resources that
+        cannot become pushed assets are counted — blank local/storage
+        path and missing file as ``assembly_missing``, read-phase
+        failures (candidate files minus built assets) as
+        ``assembly_failed`` — without touching ``cloud_status``
+        semantics. The caller persists the totals after this returns,
+        which also covers the early pre-flight returns below.
         """
         from app.services import archive_client as archive_client_mod
         from app.services.archive_client import (
@@ -1130,6 +1360,11 @@ class ZipAssemblerService:
         )
 
         push_plan = plan or getattr(session, "pagepocket_plan", None) or "free"
+
+        # D1 (1.6): callers without an accumulator (unit tests calling this
+        # method directly) get a throwaway one — counting stays uniform and
+        # persistence stays with the caller.
+        integrity = integrity or AssemblyIntegrity()
 
         # text-native-downloads 4.1: HTML off ⇒ text-only push (empty
         # html_content, no assets). The page title comes from the HTML when
@@ -1151,6 +1386,13 @@ class ZipAssemblerService:
         # the archive service rejects deterministically.
         gallery_assets: Optional[list[tuple[str, str, bytes]]] = None
         if not download_html and not markdown_bytes and not text_bytes:
+            # D1 (1.6): stat-level skips among the gallery's image
+            # candidates are counted before the build; the read-phase
+            # delta is derived after it.
+            image_candidates = await self._count_cloud_asset_skips(
+                session_id, snapshot_resources, archive_paths, integrity,
+                images_only=True,
+            )
             try:
                 built_assets = await self._build_cloud_assets(
                     session_id, db, archive_paths,
@@ -1176,6 +1418,13 @@ class ZipAssemblerService:
                 if content_type.lower().startswith("image/")
                 or name.startswith("images/")
             ]
+            # Read-phase failures: image candidates that passed the stat
+            # scan but produced no built asset (vanished between stat and
+            # read). Never negative — late arrivals can only add assets.
+            if snapshot_resources is not None:
+                integrity.count_failed(
+                    max(0, image_candidates - len(image_assets))
+                )
             if not image_assets:
                 logger.error(
                     "Cloud push rejected (nothing to push): session=%s "
@@ -1246,6 +1495,13 @@ class ZipAssemblerService:
             # the gallery <img> srcs reference exactly these filenames.
             assets = gallery_assets
         elif download_html:
+            # D1 (1.6): stat-level skips across ALL asset candidates, then
+            # the read-phase delta after the build (before linked pages
+            # are appended — they are documents, not snapshot assets).
+            asset_candidates = await self._count_cloud_asset_skips(
+                session_id, snapshot_resources, archive_paths, integrity,
+                images_only=False,
+            )
             try:
                 assets = await self._build_cloud_assets(session_id, db, archive_paths)
             except CloudPayloadTooLargeError as exc:
@@ -1261,6 +1517,9 @@ class ZipAssemblerService:
                 session.zip_path = None
                 await db.flush()
                 return
+
+            if snapshot_resources is not None:
+                integrity.count_failed(max(0, asset_candidates - len(assets)))
 
             assets.extend(linked_assets)
         else:
@@ -1327,14 +1586,20 @@ class ZipAssemblerService:
         content_type_map: Optional[dict[str, str]] = None,
         filename_ext_map: Optional[dict[str, str]] = None,
     ) -> None:
-        """Rewrite url() references in a CSS resource file on disk."""
+        """Rewrite url() references in a CSS resource file on disk.
+
+        D10 (9.3): both file reads and the rewrite write run inside
+        ``asyncio.to_thread`` alongside the conversion call — no
+        synchronous disk I/O on the event loop.
+        """
         storage_path = resource.storage_path
         if not os.path.isfile(storage_path):
             return
 
         try:
-            with open(storage_path, "r", encoding="utf-8") as f:
-                css_content = f.read()
+            css_content = await asyncio.to_thread(
+                self._read_storage_text, storage_path,
+            )
 
             converted = await asyncio.to_thread(
                 html_converter_service.convert_css_file,
@@ -1345,8 +1610,9 @@ class ZipAssemblerService:
 
             # Only rewrite if changed
             if converted != css_content:
-                with open(storage_path, "w", encoding="utf-8") as f:
-                    f.write(converted)
+                await asyncio.to_thread(
+                    self._write_storage_text, storage_path, converted,
+                )
                 logger.debug(
                     "CSS file rewritten: session=%s path=%s",
                     session_id, resource.local_path,
@@ -1356,6 +1622,18 @@ class ZipAssemblerService:
                 "Failed to convert CSS file: session=%s path=%s exc=%s",
                 session_id, resource.local_path, exc,
             )
+
+    @staticmethod
+    def _read_storage_text(path: str) -> str:
+        """Read a UTF-8 text file (runs inside ``asyncio.to_thread``)."""
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+
+    @staticmethod
+    def _write_storage_text(path: str, text: str) -> None:
+        """Write a UTF-8 text file (runs inside ``asyncio.to_thread``)."""
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
 
     # ------------------------------------------------------------------
     # Markdown conversion helpers (download-as-markdown)
@@ -1495,6 +1773,128 @@ class ZipAssemblerService:
                     os.remove(session_obj.zip_path)
         except Exception:
             logger.exception("Failed to clean up after cancellation for session %s", session_id)
+
+    # ------------------------------------------------------------------
+    # Integrity accounting helpers (server-assembly-honesty D1/D3)
+    # ------------------------------------------------------------------
+
+    async def _account_and_persist_integrity(
+        self,
+        db,
+        session,
+        session_id: str,
+        snapshot_count: Optional[int],
+        integrity: AssemblyIntegrity,
+        *,
+        include_resources: bool,
+    ) -> None:
+        """Account post-snapshot late arrivals and persist ``integrity`` (1.2/3.2).
+
+        Task 3.2: archive membership was defined by the resource snapshot
+        taken at pipeline start. A fresh live resource list taken AFTER the
+        artifact build therefore reveals late arrivals — rows present in
+        the session's totals but absent from the artifact. They are folded
+        into ``integrity.late`` (persisted as part of
+        ``integrity.assembly_missing``) and the archive warning.
+
+        Skipped for artifacts that represent no resources at all
+        (``include_resources=False`` — text-only output and text-only cloud
+        pushes exclude resources by design, so arrivals are not "missing"
+        there and a complete session still reports zeros).
+
+        Task 1.2: the totals are MERGED into the session options JSON
+        ``integrity`` object — finalize-owned fields
+        (``discovered_deficit`` / ``capture_failed``) are preserved; only
+        the assembly-owned fields are updated. The caller flushes.
+        """
+        if include_resources and snapshot_count is not None:
+            live_resources = await self._get_all_resources(db, session_id)
+            live_count = len(live_resources)
+            if live_count > snapshot_count:
+                integrity.late += live_count - snapshot_count
+                logger.warning(
+                    "%d resource(s) arrived after assembly started and are "
+                    "not in the archive: session_id=%s snapshot=%d live=%d",
+                    live_count - snapshot_count,
+                    session_id, snapshot_count, live_count,
+                )
+        self._merge_integrity_options(session, integrity)
+
+    @staticmethod
+    def _merge_integrity_options(session, integrity: AssemblyIntegrity) -> None:
+        """Merge assembly integrity totals into the session options JSON (1.2).
+
+        Follows the established no-migration options-JSON stash pattern
+        (``resourcesFailed``): the existing ``integrity`` object is read
+        first and only the assembly-owned fields are updated, so counters
+        written by finalize accounting (``discovered_deficit``,
+        ``capture_failed``) are never overwritten. The whole options dict
+        is reassigned because plain JSON columns don't track in-place
+        mutation. ``archive_warning`` is None whenever both counts are 0.
+        """
+        options = dict(session.options or {})
+        existing = options.get("integrity")
+        merged: dict = dict(existing) if isinstance(existing, dict) else {}
+        merged.update({
+            "assembly_missing": integrity.total_missing,
+            "assembly_failed": integrity.failed,
+            "archive_warning": integrity.archive_warning(),
+        })
+        options["integrity"] = merged
+        session.options = options
+
+    async def _count_cloud_asset_skips(
+        self,
+        session_id: str,
+        snapshot_resources: Optional[list],
+        archive_paths: Optional[dict[str, str]],
+        integrity: AssemblyIntegrity,
+        *,
+        images_only: bool,
+    ) -> int:
+        """Count snapshot resources that cannot become pushed assets (1.6).
+
+        Mirrors the ``_cloud_resource_manifest`` skip rules — blank
+        ``local_path``/``storage_path``, file missing on disk — counted as
+        ``assembly_missing``, plus the gallery push's image-only filter
+        (non-images are excluded by design there, not skipped). Returns the
+        number of candidate files that passed the scan so the caller can
+        derive read-phase failures by comparing against the number of built
+        assets. Returns 0 (counting nothing) when the caller supplied no
+        snapshot — direct unit-test calls with stubbed builders.
+
+        The stat scan runs in a thread (one ``isfile`` per candidate) to
+        keep the event loop free.
+        """
+        if snapshot_resources is None:
+            return 0
+
+        def _scan() -> int:
+            candidates = 0
+            for r in snapshot_resources:
+                content_type = (getattr(r, "content_type", None) or "").lower()
+                archive_name = (
+                    (archive_paths or {}).get(getattr(r, "id", ""), None)
+                    or getattr(r, "local_path", None)
+                )
+                if images_only and not (
+                    content_type.startswith("image/")
+                    or (archive_name or "").startswith("images/")
+                ):
+                    continue
+                if (
+                    not getattr(r, "local_path", None)
+                    or not getattr(r, "storage_path", None)
+                ):
+                    integrity.count_missing()
+                    continue
+                if not os.path.isfile(r.storage_path):
+                    integrity.count_missing()
+                    continue
+                candidates += 1
+            return candidates
+
+        return await asyncio.to_thread(_scan)
 
     # ------------------------------------------------------------------
     # Cloud push helpers

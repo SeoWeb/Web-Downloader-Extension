@@ -2,6 +2,7 @@
 
 import logging
 import math
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -16,6 +17,11 @@ from app.models.client import Client
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+# Rate-limited (module-level timestamp, single-process server) warning state
+# for the untrusted-proxy-header signal (D6).
+_UNTRUSTED_PROXY_WARN_INTERVAL_SECONDS: float = 300.0  # once per 5 minutes
+_untrusted_proxy_warned_at: float = 0.0
 
 
 class RegisterRequest(BaseModel):
@@ -58,6 +64,51 @@ def get_client_ip(request: Request) -> str:
     return peer
 
 
+def retry_after_headers(retry_after: float) -> dict[str, str]:
+    """Build the 429 ``Retry-After`` header, capped at
+    ``registration_retry_after_max_seconds`` (D5).
+
+    The honest refill estimate for the per-instance limiter is hours-scale
+    (budget spread over 24h), which is operationally useless as a hint —
+    the client waits ``min(header, 60)`` seconds anyway. The cap turns a
+    hard failure into a delayed success.
+    """
+    capped = min(
+        math.ceil(retry_after), settings.registration_retry_after_max_seconds
+    )
+    return {"Retry-After": str(max(1, capped))}
+
+
+def warn_untrusted_forwarded_header(request: Request) -> None:
+    """Warn (rate-limited to once per 5 min) when a request carries
+    ``X-Forwarded-For`` while ``TRUST_PROXY`` is disabled (D6).
+
+    That combination is the signature of proxy-in-front-but-untrusted:
+    limiter keys fall back to the peer address, so every registrant behind
+    the proxy shares the proxy's single per-IP registration bucket. There
+    is no startup-time detector (the loopback bind is mapped at the host
+    level), so this runtime signal is the honest one.
+    """
+    global _untrusted_proxy_warned_at
+    if settings.trust_proxy:
+        return
+    if not request.headers.get("x-forwarded-for"):
+        return
+    now = time.monotonic()
+    if now - _untrusted_proxy_warned_at < _UNTRUSTED_PROXY_WARN_INTERVAL_SECONDS:
+        return
+    _untrusted_proxy_warned_at = now
+    peer = request.client.host if request.client else "unknown"
+    logger.warning(
+        "TRUST_PROXY is disabled but a request carries X-Forwarded-For "
+        "(peer=%s): a reverse proxy is in front yet untrusted, so "
+        "rate-limiter keys fall back to the peer address — every client "
+        "shares the proxy's single per-IP registration bucket (5/min) and "
+        "registrations 429 together. Set TRUST_PROXY=true behind nginx.",
+        peer,
+    )
+
+
 @router.post(
     "/register",
     response_model=RegisterResponse,
@@ -74,6 +125,7 @@ async def register(
     """Register an extension client and return an API key."""
     # Rate limiting by client IP (proxy-aware per TRUST_PROXY, 7.8)
     client_ip = get_client_ip(request)
+    warn_untrusted_forwarded_header(request)
     allowed, retry_after = registration_limiter.is_allowed(client_ip)
     if not allowed:
         raise HTTPException(
@@ -83,16 +135,35 @@ async def register(
                 "message": "Too many registration requests. Please try again later.",
                 "api_version": "v1",
             },
-            headers={"Retry-After": str(math.ceil(retry_after))},
+            headers=retry_after_headers(retry_after),
         )
 
     body = body or RegisterRequest()
 
-    # Rate limiting per extension instance id (7.8): instance ids are
-    # client-controlled strings; without a per-id bound, a caller can hammer
-    # the dedup lookup with arbitrary ids. Burst == daily limit, refill
-    # spread over 24h, so each id gets at most ~N registrations per day.
+    # If extension_instance_id provided, check if already registered.
+    # The dedup lookup runs BEFORE the per-instance limiter (D5): a
+    # returning instance resolving via `existing` consumes NO instance
+    # budget — the instance limiter is 10/day with refill spread over
+    # 24h, so burning budget on dedup hits turns routine service-worker
+    # restarts into hours-scale 429s. The per-IP limiter above still
+    # consumes per request, keeping the abuse bound for random-id
+    # miss floods.
     if body.client_id:
+        stmt = select(Client).where(Client.extension_instance_id == body.client_id)
+        result = await db.execute(stmt)
+        existing = result.scalar_one_or_none()
+        if existing:
+            return RegisterResponse(
+                api_key=existing.api_key,
+                client_id=existing.id,
+                extension_instance_id=existing.extension_instance_id,
+            )
+
+        # Fresh registration: rate limiting per extension instance id
+        # (7.8). Instance ids are client-controlled strings; without a
+        # per-id bound, a caller can hammer the dedup lookup with
+        # arbitrary ids. Burst == daily limit, refill spread over 24h,
+        # so each id gets at most ~N registrations per day.
         allowed, retry_after = registration_instance_limiter.is_allowed(
             body.client_id
         )
@@ -105,18 +176,7 @@ async def register(
                     "Please try again later.",
                     "api_version": "v1",
                 },
-                headers={"Retry-After": str(math.ceil(retry_after))},
-            )
-
-        # If extension_instance_id provided, check if already registered
-        stmt = select(Client).where(Client.extension_instance_id == body.client_id)
-        result = await db.execute(stmt)
-        existing = result.scalar_one_or_none()
-        if existing:
-            return RegisterResponse(
-                api_key=existing.api_key,
-                client_id=existing.id,
-                extension_instance_id=existing.extension_instance_id,
+                headers=retry_after_headers(retry_after),
             )
 
     # Create new client — API key hash is stored at creation (7.5).

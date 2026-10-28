@@ -95,10 +95,14 @@ class RateLimiter:
 
         Called automatically by ``is_allowed()``; can also be called manually.
 
+        This does NOT advance ``_call_count`` — only ``is_allowed()``
+        increments it — so pruning fires exactly once per
+        ``_CLEANUP_INTERVAL`` ``is_allowed()`` calls (~every 100 calls),
+        not twice as often.
+
         Returns:
             Number of buckets removed.
         """
-        self._call_count += 1
         if self._call_count % self._CLEANUP_INTERVAL != 0:
             return 0
 

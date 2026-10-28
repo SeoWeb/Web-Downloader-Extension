@@ -1160,6 +1160,330 @@ def test_no_stash_token_leakage():
     print("  PASS: test_no_stash_token_leakage")
 
 
+# ---------------------------------------------------------------------------
+# D4 (task 11.6) — Same-index, different-content chunk replacement
+# D9 (task 11.7) — Stale AssemblyJob eviction
+# ---------------------------------------------------------------------------
+#
+# These tests exercise the chunk upload route against a real SQLite database
+# (same pattern as test_session_counters.py) plus the merger service
+# directly.  They are deliberately bite-proof: on pre-D4/D9 code the
+# same-index re-upload inserted a SECOND row referencing the overwritten
+# file (duplicating the chunk in merged output and double-counting size),
+# and idle AssemblyJobs were never evicted.
+#
+# NOTE: these tests are pytest-run only (async + fixtures); they are not
+# callable from the legacy main() runner below.
+
+import asyncio
+import contextlib
+import time
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
+
+import pytest
+import pytest_asyncio
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+from app.models import Base
+from app.models.client import Client
+from app.models.html_chunk import HtmlChunk
+from app.models.session import Session, SessionStatus
+from app.services.assembly_manager import assembly_task_manager
+
+
+REPLACE_SESSION_ID = "sess-replace"
+
+
+@pytest_asyncio.fixture
+async def replace_env(tmp_path):
+    """SQLite DB with a seeded client + scraping session, and an isolated
+    HtmlMergerService on the temp storage root (patched into the route's
+    call-time import so job state stays hermetic)."""
+    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path}/replace.db")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    async with factory() as db:
+        db.add(Client(
+            id="client-1", api_key="key-1",
+            api_key_hash=Client.hash_key("key-1"),
+        ))
+        db.add(Session(
+            id=REPLACE_SESSION_ID, client_id="client-1",
+            url="https://example.com",
+            status=SessionStatus.SCRAPING,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        ))
+        await db.commit()
+
+    merger = HtmlMergerService(storage_root=str(tmp_path))
+    try:
+        yield factory, merger, str(tmp_path)
+    finally:
+        await engine.dispose()
+
+
+async def _upload_chunk(factory, storage_root, merger, *, html, scroll_index,
+                        session_id=REPLACE_SESSION_ID):
+    """Invoke the HTML chunk upload route against the SQLite DB."""
+    from app.api.routes.html import HtmlChunkRequest, upload_html_chunk
+
+    async with factory() as db:
+        with patch("app.api.routes.html.settings") as cfg, \
+             patch("app.services.html_merger.html_merger_service", merger):
+            cfg.max_session_size_mb = 100
+            cfg.max_html_chunk_size_mb = 5
+            cfg.storage_root = str(storage_root)
+            resp = await upload_html_chunk(
+                session_id=session_id,
+                body=HtmlChunkRequest(
+                    html=html,
+                    scrollIndex=scroll_index,
+                    pageType="main",
+                    pageUrl=None,
+                ),
+                client=Client(id="client-1", api_key="key-1"),
+                db=db,
+            )
+        # get_db() commits after the response in production; direct route
+        # invocation commits explicitly (same as test_session_counters.py).
+        await db.commit()
+    return resp
+
+
+@pytest.mark.asyncio
+async def test_same_index_different_content_replaces_atomically(replace_env):
+    """D4: re-uploading DIFFERENT content at an occupied (page, scroll index)
+    atomically replaces the superseded chunk — one row, one file with the new
+    content, html_chunks unchanged, size accounting nets the delta, and the
+    response flags replaced=true."""
+    factory, merger, storage_root = replace_env
+    session_id = REPLACE_SESSION_ID
+
+    skeleton = (
+        "<!DOCTYPE html><html><head><title>Replace</title></head>"
+        "<body><p>SKELETON-MARKER</p></body></html>"
+    )
+    old_chunk = "<html><body><p>OLD-CHUNK-MARKER</p></body></html>"
+    new_chunk = "<html><body><p>NEW-CHUNK-MARKER</p></body></html>"
+    old_size = len(old_chunk.encode("utf-8"))
+    new_size = len(new_chunk.encode("utf-8"))
+
+    resp0 = await _upload_chunk(factory, storage_root, merger,
+                                html=skeleton, scroll_index=0)
+    resp_old = await _upload_chunk(factory, storage_root, merger,
+                                   html=old_chunk, scroll_index=1)
+    resp_new = await _upload_chunk(factory, storage_root, merger,
+                                   html=new_chunk, scroll_index=1)
+
+    # Response contract
+    assert resp0.replaced is False
+    assert resp_old.replaced is False, "first upload at an index is not a replacement"
+    assert resp_old.deduplicated is False
+    assert resp_new.replaced is True, "same-index different-content must replace"
+    assert resp_new.deduplicated is False
+
+    # html_chunks counter NOT incremented by the replacement
+    # (skeleton row + one chunk row = 2, before AND after the replace)
+    assert resp_old.chunk_count == 2
+    assert resp_new.chunk_count == 2
+
+    # total_size nets the delta (new size - superseded size)
+    assert resp_old.total_size == len(skeleton.encode("utf-8")) + old_size
+    assert resp_new.total_size == len(skeleton.encode("utf-8")) + new_size
+
+    # DB: exactly one row remains for (page, scroll index 1) — the NEW one
+    async with factory() as db:
+        rows = (await db.execute(
+            select(HtmlChunk).where(
+                HtmlChunk.session_id == session_id,
+                HtmlChunk.page_url_hash == "main",
+                HtmlChunk.scroll_index == 1,
+            )
+        )).scalars().all()
+        assert len(rows) == 1, "superseded row must be deleted, replacement inserted"
+        assert rows[0].content_hash == HtmlMergerService.compute_content_hash(new_chunk)
+        assert rows[0].size == new_size
+
+        all_rows = (await db.execute(
+            select(HtmlChunk).where(HtmlChunk.session_id == session_id)
+        )).scalars().all()
+        assert len(all_rows) == 2, "no duplicate row may survive the replacement"
+
+        sess = (await db.execute(
+            select(Session).where(Session.id == session_id)
+        )).scalar_one()
+        assert sess.html_chunks == 2, "html_chunks counter unchanged by replacement"
+
+    # Disk: single chunk file at the deterministic path, holding NEW content;
+    # no temp files left behind by the atomic os.replace
+    chunks_dir = os.path.join(storage_root, session_id, "chunks", "main", "main")
+    assert sorted(os.listdir(chunks_dir)) == ["0.html", "1.html"]
+    with open(os.path.join(chunks_dir, "1.html"), "r", encoding="utf-8") as f:
+        assert f.read() == new_chunk
+
+    # Merger registration: dedup key swapped, exactly one path registration,
+    # total_size netted (skeleton + new content)
+    job = merger.get_job(session_id, "main")
+    assert job is not None
+    assert job.chunk_dedup_keys == {
+        f"{HtmlMergerService.compute_content_hash(new_chunk)}:1"
+    }
+    assert job.chunks == [os.path.join(chunks_dir, "1.html")]
+    assert job.total_size == len(skeleton.encode("utf-8")) + new_size
+
+    # Merged HTML contains the chunk exactly once — the NEW content
+    results = merger.merge_session(session_id)
+    result = results["main"]
+    assert result.success, f"merge failed: {result.reason}"
+    assert result.html.count("NEW-CHUNK-MARKER") == 1, (
+        "merged output must contain the replacement content exactly once"
+    )
+    assert "OLD-CHUNK-MARKER" not in result.html, (
+        "superseded content must not survive in merged output"
+    )
+    assert result.html.count("SKELETON-MARKER") == 1
+
+
+@pytest.mark.asyncio
+async def test_replace_chunk_service_semantics(tmp_path):
+    """D4/7.2: replace_chunk swaps the dedup key for the scroll index, keeps
+    exactly one registration of the storage path, and nets total_size by the
+    size delta — merged output contains the new content exactly once."""
+    storage = str(tmp_path)
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "svc-replace"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    skeleton_html = (
+        "<!DOCTYPE html><html><head><title>Replace</title></head>"
+        "<body><p>SKELETON-MARKER</p></body></html>"
+    )
+    service.initialize_skeleton(job, skeleton_html)
+
+    old_html = "<html><body><p>OLD-CHUNK-MARKER</p></body></html>"
+    new_html = "<html><body><p>NEW-CHUNK-MARKER</p></body></html>"
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    path = os.path.join(chunk_dir, "1.html")
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(old_html)
+    old_hash = service.compute_content_hash(old_html)
+    service.register_chunk(job, old_hash, 1, path, len(old_html.encode("utf-8")))
+
+    # The route overwrote the file with the re-captured content (os.replace);
+    # the registration now swaps to the new content.
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(new_html)
+    new_hash = service.compute_content_hash(new_html)
+    size_delta = len(new_html.encode("utf-8")) - len(old_html.encode("utf-8"))
+    service.replace_chunk(job, new_hash, 1, path, size_delta)
+
+    # Dedup key swapped: new content is known at index 1, old is forgotten
+    assert service.is_duplicate_chunk(job, new_hash, 1) is True
+    assert service.is_duplicate_chunk(job, old_hash, 1) is False
+    assert job.chunk_dedup_keys == {f"{new_hash}:1"}
+
+    # Exactly one registration of the (deterministic) storage path
+    assert job.chunks == [path]
+
+    # total_size netted: skeleton + new content
+    assert job.total_size == (
+        len(skeleton_html.encode("utf-8")) + len(new_html.encode("utf-8"))
+    )
+
+    # Merged output: new content once, old content gone
+    results = service.merge_session(session_id)
+    result = results["main"]
+    assert result.success, f"merge failed: {result.reason}"
+    assert result.html.count("NEW-CHUNK-MARKER") == 1
+    assert "OLD-CHUNK-MARKER" not in result.html
+
+
+# ---------------------------------------------------------------------------
+# D9 (task 11.7) — last_activity tracking and stale AssemblyJob eviction
+# ---------------------------------------------------------------------------
+
+
+def test_last_activity_touched_by_get_or_create_and_register_chunk():
+    """D9: AssemblyJob.last_activity is refreshed by get_or_create_job (both
+    create and re-get) and by register_chunk, driving eviction staleness."""
+    service = HtmlMergerService(storage_root=make_test_dir())
+    job = service.get_or_create_job("last-activity-1", "main", page_type="main")
+    assert job.last_activity > 0, "created job must carry a last_activity stamp"
+
+    # Re-getting an existing job refreshes the stamp
+    job.last_activity = 0.0
+    touched = service.get_or_create_job("last-activity-1", "main", page_type="main")
+    assert touched is job
+    assert touched.last_activity > 0, "get_or_create_job must touch last_activity"
+
+    # register_chunk refreshes the stamp too
+    job.last_activity = 0.0
+    service.register_chunk(
+        job, service.compute_content_hash("<p>x</p>"), 1, "/tmp/la.html", 10
+    )
+    assert job.last_activity > 0, "register_chunk must touch last_activity"
+
+
+def test_evict_stale_jobs_removes_only_idle_jobs():
+    """D9/8.1: evict_stale_jobs removes jobs idle beyond max_age_seconds,
+    keeps fresh ones, and returns the eviction count."""
+    service = HtmlMergerService(storage_root=make_test_dir())
+
+    stale = service.get_or_create_job("evict-stale", "main", page_type="main")
+    service.register_chunk(
+        stale, service.compute_content_hash("<p>s</p>"), 1, "/tmp/s.html", 10
+    )
+    fresh = service.get_or_create_job("evict-fresh", "main", page_type="main")
+    fresh.last_activity = time.time()
+
+    # Age the stale job far beyond the cutoff
+    stale.last_activity = time.time() - 10_000
+
+    evicted = service.evict_stale_jobs(600)
+
+    assert evicted == 1, "exactly the idle job must be evicted"
+    assert service.get_job("evict-stale", "main") is None
+    assert service.get_job("evict-fresh", "main") is not None
+
+    # Nothing left to evict on a second pass
+    assert service.evict_stale_jobs(600) == 0
+
+
+@pytest.mark.asyncio
+async def test_evict_stale_jobs_spares_sessions_with_active_assembly_task():
+    """D9/8.3: jobs for sessions with a registered active assembly task are
+    never evicted, even when idle beyond the cutoff."""
+    service = HtmlMergerService(storage_root=make_test_dir())
+
+    idle = service.get_or_create_job("evict-idle", "main", page_type="main")
+    protected = service.get_or_create_job("evict-protected", "main", page_type="main")
+    idle.last_activity = time.time() - 10_000
+    protected.last_activity = time.time() - 10_000
+
+    # Register a fake ACTIVE assembly task for the protected session
+    task = asyncio.ensure_future(asyncio.sleep(3600))
+    assembly_task_manager.register("evict-protected", task)
+    try:
+        evicted = service.evict_stale_jobs(600)
+
+        assert evicted == 1, "only the unguarded idle job may be evicted"
+        assert service.get_job("evict-idle", "main") is None
+        assert service.get_job("evict-protected", "main") is not None, (
+            "a session with an active assembly task must survive eviction"
+        )
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        assembly_task_manager.unregister("evict-protected")
+
+
 def main():
     print("HTML Merge Service Verification (task 4.9)")
     print("=" * 50)

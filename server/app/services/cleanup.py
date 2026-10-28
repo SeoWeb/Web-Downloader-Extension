@@ -34,6 +34,7 @@ from app.models.html_chunk import HtmlChunk
 from app.models.resource import Resource
 from app.models.session import Session, SessionStatus
 from app.services.assembly_manager import assembly_task_manager
+from app.services.html_merger import html_merger_service
 from app.services.session_manager import session_manager
 
 logger = logging.getLogger(__name__)
@@ -187,6 +188,19 @@ class CleanupService:
             result["orphaned_sessions_removed"] = await self._cleanup_orphaned_db_records(db)
 
             await db.flush()
+
+            # Step 5b: Evict idle in-memory HTML merger jobs (D9).  Sessions
+            # that uploaded chunks but never finalized stop leaking their
+            # AssemblyJob state; jobs with an active assembly task survive.
+            # The count is logged (not folded into the result dict, whose
+            # key set is part of the orchestrator's contract).
+            evicted_jobs = html_merger_service.evict_stale_jobs(
+                settings.stale_session_timeout_minutes * 60
+            )
+            if evicted_jobs:
+                logger.info("Evicted %d stale HTML merger job(s)", evicted_jobs)
+            else:
+                logger.debug("No stale HTML merger jobs to evict")
 
             # Step 6: Aggressive cleanup if disk usage exceeds threshold
             disk_after_normal = self._get_disk_usage_pct()

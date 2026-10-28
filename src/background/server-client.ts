@@ -367,8 +367,28 @@ const API_KEY_STORAGE_KEY = "server_api_key";
 const EXTENSION_INSTANCE_ID_KEY = "server_extension_instance_id";
 const MAX_REGISTRATION_ATTEMPTS = 3;
 
+/**
+ * Client-side cap on a server-provided `Retry-After` hint (D11) — bounds the
+ * wait so a hostile/buggy header can't hang the worker, keeping registration
+ * responsive inside a service-worker lifetime. (The server caps its own hint
+ * at 300 s per D5; this is the client's independent bound.)
+ */
+const MAX_RETRY_AFTER_WAIT_SECONDS = 60;
+
 const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes per resource upload
 const CONTROL_CALL_TIMEOUT_MS = 60 * 1000; // 60 seconds for API calls
+
+/**
+ * Parse a `Retry-After` header value expressed in integer seconds (D11).
+ * Returns `null` when the header is absent, negative, or non-numeric —
+ * anything unusable — so the caller keeps its default exponential backoff.
+ */
+function parseRetryAfterSeconds(header: string | null): number | null {
+  if (!header) return null;
+  const parsed = parseInt(header, 10);
+  if (isNaN(parsed) || parsed <= 0) return null;
+  return parsed;
+}
 
 /**
  * Combine an optional user-provided AbortSignal with a timeout.
@@ -1022,6 +1042,12 @@ export class ServerClient {
    * Stores the key in chrome.storage.session for the current browser session.
    * Retries up to MAX_REGISTRATION_ATTEMPTS with exponential backoff.
    *
+   * D11: a 429 carrying a usable `Retry-After` header replaces the default
+   * backoff for that attempt — wait min(hint, 60) seconds before the next
+   * try. The wait does NOT consume an attempt (the budget is spent by real
+   * fetch attempts only), and total attempts stay bounded by
+   * MAX_REGISTRATION_ATTEMPTS.
+   *
    * With `freshInstance`, a new instance id is minted (and persisted) before
    * the attempt loop — a fresh id forces the server to create a new client
    * row + key instead of resolving the doomed identity again.
@@ -1035,6 +1061,10 @@ export class ServerClient {
       : await this.getOrCreateInstanceId();
 
     for (let attempt = 0; attempt < MAX_REGISTRATION_ATTEMPTS; attempt++) {
+      // `Retry-After` hint from a 429 on THIS attempt — captured in the try
+      // (headers are gone once the response is consumed) and consumed in the
+      // catch below instead of the default exponential backoff.
+      let retryAfterSeconds: number | null = null;
       try {
         // (D6 / task 6.1) Control-call timeout — a black-holed server must
         // not hang registration (and therefore START_DOWNLOAD) forever. The
@@ -1048,6 +1078,11 @@ export class ServerClient {
         });
 
         if (!res.ok) {
+          if (res.status === 429) {
+            retryAfterSeconds = parseRetryAfterSeconds(
+              res.headers.get("Retry-After"),
+            );
+          }
           const errorBody = await res.text().catch(() => "");
           throw new Error(`Registration failed: ${res.status} ${errorBody}`);
         }
@@ -1064,7 +1099,15 @@ export class ServerClient {
         lastError = err instanceof Error ? err : new Error(String(err));
 
         if (attempt < MAX_REGISTRATION_ATTEMPTS - 1) {
-          const delay = Math.pow(2, attempt) * 1000; // 1s, 2s
+          // D11: honor the server's Retry-After hint on 429, capped
+          // client-side at 60 s — the server told us when to come back, so
+          // an immediate retry would only 429 again. The wait replaces the
+          // default delay and does not consume an attempt. Without a usable
+          // header, keep the 1s/2s exponential backoff.
+          const delay =
+            retryAfterSeconds !== null
+              ? Math.min(retryAfterSeconds, MAX_RETRY_AFTER_WAIT_SECONDS) * 1000
+              : Math.pow(2, attempt) * 1000; // 1s, 2s
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }

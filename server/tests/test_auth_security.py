@@ -423,3 +423,209 @@ class TestOrphanClientCleanup:
         periodic_src = inspect.getsource(CleanupService.run_periodic_cleanup)
         assert "_cleanup_orphaned_api_keys" in startup_src
         assert "_cleanup_orphaned_api_keys" in periodic_src
+
+
+# ---------------------------------------------------------------------------
+# server-assembly-honesty 11.4 (D5) — dedup'd registrations don't consume
+# instance budget; Retry-After on registration 429s is capped.
+# ---------------------------------------------------------------------------
+
+
+def _instance_sentinel(capacity: int | None = None):
+    """A fresh RateLimiter with the instance limiter's production shape.
+
+    The real ``registration_instance_limiter`` is a module-level singleton;
+    patching a same-shaped sentinel in keeps tests isolated from cross-test
+    bucket state while still exercising real token-bucket math.
+    """
+    from app.api import rate_limiter as rl
+    from app.config import settings
+
+    daily = max(1, settings.registration_per_instance_daily_limit)
+    return rl.RateLimiter(rate=daily / 86400, capacity=capacity or daily)
+
+
+def _retry_after_cap():
+    """The D5 cap. getattr fallback keeps the assertion meaningful against
+    pre-D5 source (which lacks the setting): the header must still respect
+    the documented 300 s bound there, so the test fails on the value
+    comparison instead of erroring on a missing attribute."""
+    from app.config import settings
+
+    return getattr(settings, "registration_retry_after_max_seconds", 300)
+
+
+class TestDedupRegistrationBudget:
+    """D5: a registration resolved by the instance-id dedup lookup consumes
+    NO per-instance budget; fresh registrations still do."""
+
+    DUP_INSTANCE_ID = "dup-budget-inst"
+
+    @pytest.mark.asyncio
+    async def test_fifteen_dedup_registrations_same_key_no_budget(
+        self, sqlite_db
+    ):
+        """15 consecutive registrations of an already-registered instance id
+        all return the SAME key, and the instance limiter bucket is never
+        even created (pre-D5 code burns the 10/day budget and 429s on
+        attempt 11)."""
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        await _seed(factory, Client(
+            id="dup-client",
+            api_key="dup-key",
+            extension_instance_id=self.DUP_INSTANCE_ID,
+        ))
+        sentinel = _instance_sentinel()
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("app.api.routes.auth.registration_limiter.is_allowed",
+                       lambda key: (True, 0))
+            mp.setattr("app.api.routes.auth.registration_instance_limiter",
+                       sentinel)
+
+            for attempt in range(1, 16):
+                async with factory() as db:
+                    response = await register(
+                        _make_request(),
+                        body=RegisterRequest(client_id=self.DUP_INSTANCE_ID),
+                        db=db,
+                    )
+                assert response.api_key == "dup-key", (
+                    f"attempt {attempt}: dedup'd registration did not return "
+                    "the existing key (instance budget burned?)"
+                )
+                assert response.client_id == "dup-client"
+                assert response.extension_instance_id == self.DUP_INSTANCE_ID
+
+        # The bucket for this id is untouched — never even created
+        # (``in`` on a defaultdict does not insert).
+        assert self.DUP_INSTANCE_ID not in sentinel._buckets
+
+    @pytest.mark.asyncio
+    async def test_dedup_hit_skips_instance_limiter(self, sqlite_db):
+        """A re-registration of a known id must not consult the per-instance
+        limiter at all (the lookup-first ordering IS the cheap path)."""
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        sentinel = _instance_sentinel()
+        consulted = []
+        original = sentinel.is_allowed
+
+        def _spy(key, tokens=1):
+            consulted.append(key)
+            return original(key, tokens)
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("app.api.routes.auth.registration_limiter.is_allowed",
+                       lambda key: (True, 0))
+            mp.setattr(sentinel, "is_allowed", _spy)
+            mp.setattr("app.api.routes.auth.registration_instance_limiter",
+                       sentinel)
+
+            async with factory() as db:
+                first = await register(
+                    _make_request(),
+                    body=RegisterRequest(client_id="spy-inst"),
+                    db=db,
+                )
+                await db.commit()  # persist the fresh registration
+
+            async with factory() as db:
+                second = await register(
+                    _make_request(),
+                    body=RegisterRequest(client_id="spy-inst"),
+                    db=db,
+                )
+
+        assert first.api_key == second.api_key
+        # Only the fresh registration consulted the limiter.
+        assert consulted == ["spy-inst"]
+
+    @pytest.mark.asyncio
+    async def test_fresh_registration_still_consumes_budget(self, sqlite_db):
+        """Preservation pin (scenario: fresh registration still consumes
+        budget): once an id's daily bucket is exhausted, a further fresh
+        registration of that (never-registered) id is rejected with 429."""
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        sentinel = _instance_sentinel(capacity=1)
+        # Simulate the day's earlier fresh attempts: the bucket is spent.
+        assert sentinel.is_allowed("exhausted-inst")[0] is True
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("app.api.routes.auth.registration_limiter.is_allowed",
+                       lambda key: (True, 0))
+            mp.setattr("app.api.routes.auth.registration_instance_limiter",
+                       sentinel)
+            async with factory() as db:
+                with pytest.raises(HTTPException) as exc:
+                    await register(
+                        _make_request(),
+                        body=RegisterRequest(client_id="exhausted-inst"),
+                        db=db,
+                    )
+
+        assert exc.value.status_code == 429
+
+    @pytest.mark.asyncio
+    async def test_instance_429_retry_after_is_capped(self, sqlite_db):
+        """D5: the Retry-After emitted on a per-instance 429 is capped at
+        ``registration_retry_after_max_seconds`` — the honest refill
+        estimate is ~8640s at capacity 10, and that is useless as a hint."""
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        sentinel = _instance_sentinel(capacity=1)
+        assert sentinel.is_allowed("cap-inst")[0] is True  # drain the bucket
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("app.api.routes.auth.registration_limiter.is_allowed",
+                       lambda key: (True, 0))
+            mp.setattr("app.api.routes.auth.registration_instance_limiter",
+                       sentinel)
+            async with factory() as db:
+                with pytest.raises(HTTPException) as exc:
+                    await register(
+                        _make_request(),
+                        body=RegisterRequest(client_id="cap-inst"),
+                        db=db,
+                    )
+
+        assert exc.value.status_code == 429
+        cap = _retry_after_cap()
+        retry_after = int(exc.value.headers["Retry-After"])
+        assert 1 <= retry_after <= cap, (
+            f"Retry-After={retry_after} exceeds the {cap}s cap (uncapped "
+            "hours-scale refill estimate leaked into the header?)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_per_ip_429_retry_after_is_capped(self, sqlite_db):
+        """D5: the per-IP 429 site caps Retry-After too (spec: 'per-IP or
+        per-instance')."""
+        from app.api.routes.auth import RegisterRequest, register
+
+        _engine, factory = sqlite_db
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("app.api.routes.auth.registration_limiter.is_allowed",
+                       lambda key: (False, 5000.0))
+            mp.setattr(
+                "app.api.routes.auth.registration_instance_limiter.is_allowed",
+                lambda key: (True, 0),
+            )
+            async with factory() as db:
+                with pytest.raises(HTTPException) as exc:
+                    await register(
+                        _make_request(),
+                        body=RegisterRequest(client_id="ip-cap-inst"),
+                        db=db,
+                    )
+
+        assert exc.value.status_code == 429
+        cap = _retry_after_cap()
+        retry_after = int(exc.value.headers["Retry-After"])
+        assert 1 <= retry_after <= cap

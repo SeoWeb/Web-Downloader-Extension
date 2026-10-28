@@ -73,9 +73,26 @@ class Settings(BaseSettings):
     # Max distinct registration attempts per extension instance id per day
     # and per client IP per day (burst == limit, refill spread over 24h).
     registration_per_instance_daily_limit: int = 10
+    # Upper bound for the Retry-After hint emitted on a registration 429
+    # (D5): the raw refill estimate for the per-instance limiter is
+    # hours-scale, which is useless operationally — the client caps its
+    # wait on this hint instead (D11 caps it further at 60s client-side).
+    registration_retry_after_max_seconds: int = 300
     # Honor X-Forwarded-For for client-IP resolution ONLY when the monolith
     # sits behind a trusted reverse proxy (default: use the peer address).
     trust_proxy: bool = False
+
+    # Upload body caps (D7): unbounded request bodies against the 2 GB
+    # oom_kill_disable single-worker container are a one-request OOM, and
+    # millions of tiny rows bloat MySQL and slow every aggregate read.
+    # Content-text append cap per upload, in MB.
+    max_content_text_mb: int = 5
+    # Filename-map upload caps: serialized JSON byte size and entry count.
+    max_filename_map_bytes: int = 2_000_000
+    max_filename_map_entries: int = 20000
+    # Per-session resource-row count cap — generous above
+    # ``cloud_max_assets`` (which stays cloud-push-only).
+    max_resources_per_session: int = 10000
 
     model_config = {
         "env_file": ".env",
