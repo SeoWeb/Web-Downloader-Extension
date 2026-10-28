@@ -69,6 +69,24 @@ export function initializeDownloadListener() {
           const isCancelled = !error || error === "USER_CANCELED";
 
           if (isCancelled) {
+            // Store cancellation status in chrome.storage for the side panel
+            // to pick up (D4 / task 5.3) — mirrors the downloadComplete
+            // fallback above so a lost push (panel closed) can no longer
+            // strand the UI on a spinner.
+            try {
+              if (chrome.storage && chrome.storage.local) {
+                await chrome.storage.local.set({
+                  downloadCancelled: {
+                    downloadId: delta.id,
+                    tabId: downloadInfo.tabId,
+                    timestamp: Date.now(),
+                  },
+                });
+              }
+            } catch {
+              // ignore
+            }
+
             // Send cancellation message to the side panel (fire-and-forget)
             // Don't await since the side panel might be closed
             sendMessageToPanel(
@@ -79,11 +97,29 @@ export function initializeDownloadListener() {
               false,
               downloadInfo.tabId,
             ).catch(() => {
-              // Side panel might be closed, that's ok
+              // Side panel might be closed, that's ok - storage will handle it
             });
           } else {
             // It's an actual error, not a cancellation
             const errorMessage = error || "Download was interrupted";
+
+            // Store failure status in chrome.storage for the side panel to
+            // pick up (D4 / task 5.3) — mirrors the downloadComplete fallback
+            // above so a lost push (panel closed) can no longer strand the UI.
+            try {
+              if (chrome.storage && chrome.storage.local) {
+                await chrome.storage.local.set({
+                  downloadFailed: {
+                    downloadId: delta.id,
+                    error: errorMessage,
+                    tabId: downloadInfo.tabId,
+                    timestamp: Date.now(),
+                  },
+                });
+              }
+            } catch {
+              // ignore
+            }
 
             // Send failure message to the side panel (fire-and-forget)
             // Don't await since the side panel might be closed
@@ -96,7 +132,7 @@ export function initializeDownloadListener() {
               false,
               downloadInfo.tabId,
             ).catch(() => {
-              // Side panel might be closed, that's ok
+              // Side panel might be closed, that's ok - storage will handle it
             });
           }
 
@@ -146,6 +182,23 @@ export function initializeDownloadListener() {
     const downloadInfo = activeDownloads.get(downloadId);
 
     if (downloadInfo) {
+      // Store cancellation status in chrome.storage for the side panel to pick
+      // up (D4 / task 5.3) — mirrors the downloadComplete fallback so a lost
+      // push (panel closed) can no longer strand the UI on a spinner.
+      try {
+        if (chrome.storage && chrome.storage.local) {
+          await chrome.storage.local.set({
+            downloadCancelled: {
+              downloadId: downloadId,
+              tabId: downloadInfo.tabId,
+              timestamp: Date.now(),
+            },
+          });
+        }
+      } catch {
+        // ignore
+      }
+
       // Send cancellation message to the side panel (fire-and-forget)
       sendMessageToPanel(
         "DOWNLOAD_CANCELLED",
@@ -155,7 +208,7 @@ export function initializeDownloadListener() {
         false,
         downloadInfo.tabId,
       ).catch(() => {
-        // Side panel might be closed, that's ok
+        // Side panel might be closed, that's ok - storage will handle it
       });
 
       // Clean up blob URLs for erased downloads

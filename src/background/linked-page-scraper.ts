@@ -111,6 +111,37 @@ export function normalizeNavigationUrl(raw: string): string {
   }
 }
 
+/**
+ * (design D6 / tasks 6.1–6.2) Fire-and-forget panel push — local twin of
+ * download-core's pushToPanelSafely (importing it directly would create a
+ * module cycle: download-core imports this module).
+ *
+ * The injected `sendMessage` callback returns the panel-delivery promise
+ * (messageWorker's addMessage → sendMessageToPanel), so when the side panel
+ * is closed every push rejects with "Receiving end does not exist". Catch
+ * and log those failures at debug level so a failed push never becomes an
+ * unhandled rejection in the service worker and never affects the scrape
+ * pipeline. A successful push behaves exactly as the bare call did.
+ */
+function pushToPanelSafely(
+  sendMessage: (message: string | { key: string; options?: any }) => unknown,
+  message: string | { key: string; options?: any },
+): void {
+  try {
+    Promise.resolve(sendMessage(message)).catch((err) => {
+      console.debug(
+        "[LinkedPageScraper] panel push failed (ignored):",
+        err instanceof Error ? err.message : err,
+      );
+    });
+  } catch (err) {
+    console.debug(
+      "[LinkedPageScraper] panel push failed (ignored):",
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
+
 export class LinkedPageScraper {
   private internalQueue: LinkedPageJob[] = [];
   private externalQueue: LinkedPageJob[] = [];
@@ -384,20 +415,20 @@ export class LinkedPageScraper {
     for (let i = 0; i < this.internalQueue.length; i++) {
       // Check stop flag
       if (this.isStopped) {
-        sendMessage("Scraping stopped by user");
+        pushToPanelSafely(sendMessage, "Scraping stopped by user");
         break;
       }
 
       // Check pause flag
       if (this.isPaused) {
-        sendMessage({ key: "status.scraperPaused" });
+        pushToPanelSafely(sendMessage, { key: "status.scraperPaused" });
         await this.resumePromise;
         if (this.isStopped) break; // Check again after resume
       }
 
       const job = this.internalQueue[i];
 
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.linkedPageProgress",
         options: {
           current: i + 1,
@@ -467,7 +498,7 @@ export class LinkedPageScraper {
         }
         job.status = "failed";
         this.failCount++;
-        sendMessage(`Failed to scrape: ${job.url}`);
+        pushToPanelSafely(sendMessage, `Failed to scrape: ${job.url}`);
       }
 
       // Add delay between pages to avoid rate limiting
@@ -484,20 +515,20 @@ export class LinkedPageScraper {
       for (let i = 0; i < this.externalQueue.length; i++) {
         // Check stop flag
         if (this.isStopped) {
-          sendMessage("Scraping stopped by user");
+          pushToPanelSafely(sendMessage, "Scraping stopped by user");
           break;
         }
 
         // Check pause flag
         if (this.isPaused) {
-          sendMessage({ key: "status.scraperPaused" });
+          pushToPanelSafely(sendMessage, { key: "status.scraperPaused" });
           await this.resumePromise;
           if (this.isStopped) break;
         }
 
         const job = this.externalQueue[i];
 
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.linkedPageProgress",
           options: {
             current: i + 1,
@@ -560,7 +591,7 @@ export class LinkedPageScraper {
           }
           job.status = "failed";
           this.failCount++;
-          sendMessage(`Failed to scrape: ${job.url}`);
+          pushToPanelSafely(sendMessage, `Failed to scrape: ${job.url}`);
         }
 
         if (
@@ -576,7 +607,7 @@ export class LinkedPageScraper {
     await this.restoreOriginalPage(tabId);
 
     // Send completion message
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.linkedPagesComplete",
       options: { succeeded: this.successCount, failed: this.failCount },
     });

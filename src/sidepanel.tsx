@@ -23,8 +23,19 @@ import {
   upgradeInsecureServerUrl,
 } from "./background/server-client";
 import type { DownloadLiveSnapshot } from "./background/download-state";
-import { isPushForPanel } from "./sidepanel/utils/tabFilter";
 import { decideLivePollStep } from "./sidepanel/utils/livePolling";
+import {
+  classifyDownloadMessage,
+  classifyTerminalRecord,
+  messageClassForPanelKey,
+  type DownloadIdentity,
+} from "./sidepanel/utils/downloadRouting";
+import {
+  shouldArmWatchdog,
+  shouldResetWatchdog,
+  shouldWatchdogFire,
+} from "./sidepanel/utils/downloadWatchdog";
+import { useDownloadWatchdog } from "./sidepanel/hooks/useDownloadWatchdog";
 import {
   ServerModeState,
   initialServerModeState,
@@ -153,6 +164,52 @@ export default function SidePanel() {
     setMessages,
   });
 
+  // (Fix 1 — D1) Pinned download identity: { originTabId, serverSessionId }
+  // captured when a download flow starts. messageWorker and the
+  // chrome.storage fallback route EVERY message against this identity —
+  // never against the live focused tab (useActiveTabInfo re-pins that on
+  // every tabs.onActivated, which used to drop progress and terminal pushes
+  // alike the moment the user switched tabs).
+  const downloadIdentityRef = useRef<DownloadIdentity>({
+    originTabId: 0,
+    serverSessionId: null,
+  });
+  // (Fix 1 + 5.3) Terminal-already-resolved marker: set by the terminal
+  // appliers when a live message resolved the tracked download; the
+  // chrome.storage fallback records (downloadCancelled / downloadFailed)
+  // skip their UI updates when it is set — the same dedup idea as
+  // downloadComplete's actionRef check.
+  const resolvedTerminalRef = useRef<string | null>(null);
+  // (Fix 1 — D1) Render-time mirror of the press-time pinned download tab
+  // (useScrapingDownloader's targetRef) — the authoritative originTabId
+  // once the run's effects have pinned it.
+  const pinnedDownloadTabRef = useRef<number>(0);
+  // (Fix 1 — D1) Render-time mirror of the live tab (actionRef pattern) —
+  // read at click time by the identity pin; equals the value the hook's
+  // Effect 1 snapshots for the same press.
+  const liveTabIdRef = useRef<number>(0);
+  liveTabIdRef.current = tabId;
+  // (Fix 1 — D1) The single identity update point. Called at press time
+  // (onClickStartDownload), when a run reaches its download phase
+  // (onDownloadStarted), when a reopened panel adopts a live download, and
+  // by the resume/restart paths.
+  const pinDownloadIdentity = useCallback((identity: DownloadIdentity) => {
+    downloadIdentityRef.current = identity;
+  }, []);
+
+  // (Fix 2 — 2.3) Render-time mirror of downloadOptions — read by the
+  // DOWNLOAD_INTERRUPTED applier at message time (the handler closes over
+  // refs, not render state).
+  const downloadOptionsRef = useRef(downloadOptions);
+  downloadOptionsRef.current = downloadOptions;
+  // (Fix 2 — D2) Options snapshot captured by the DOWNLOAD_INTERRUPTED
+  // applier BEFORE it clears downloadOptions. The resume-failure fallback
+  // ("full restart") re-reads its restart options here — the design risk
+  // note's "re-reads the options it needs before clearing" — while the
+  // cleared state can no longer re-arm Effect 2's auto-START_DOWNLOAD after
+  // an interrupt.
+  const interruptedOptionsRef = useRef<Options | null>(null);
+
   // Initialize useScrapingDownloader hook early so setDownloadResponse is available
   const {
     downloadResponse,
@@ -161,6 +218,9 @@ export default function SidePanel() {
     stopScraping,
     getPinnedTabId,
     getServerSessionId,
+    // (Fix 2 — D2) Resume single-fire gate — the resume flow never scrapes.
+    beginResume,
+    endResume,
   } = useScrapingDownloader({
     tabId,
     tabUrl,
@@ -180,6 +240,16 @@ export default function SidePanel() {
       downloadSettledRef.current = false;
       confirmPendingRef.current = false;
       setPollSessionId(serverSessionId);
+      // (Fix 1 — D1) The download phase begins: pin THIS run's identity —
+      // origin tab from the hook's Fix A press-time snapshot (now
+      // authoritative), session id from the created/resumed session. This
+      // is the identity update point every flow that reaches a download
+      // phase passes through.
+      pinDownloadIdentity({
+        originTabId: pinnedDownloadTabRef.current || liveTabIdRef.current,
+        serverSessionId,
+      });
+      resolvedTerminalRef.current = null;
     },
     // (Round 9 — Fix B) The START_DOWNLOAD promise settled — the run is
     // terminal-eligible even if no poll observed the session live.
@@ -189,39 +259,229 @@ export default function SidePanel() {
   });
 
   // (Round 9 — Fix 3/4) Mirror the hook's press-time snapshot + session id
-  // into refs every render, so the message filter and the poll loop always
+  // into refs every render, so the identity pin and the poll loop always
   // read the CURRENT values without re-subscribing the message listener.
-  const pinnedDownloadTabRef = useRef<number>(0);
   pinnedDownloadTabRef.current = getPinnedTabId();
   const activeSessionIdRef = useRef<string | null>(null);
   activeSessionIdRef.current = getServerSessionId();
 
-  // (Round 9 — Fix 3) Push acceptance: the focused tab OR the pinned
-  // download tab. See isPushForPanel for the multi-tab semantics.
-  const acceptsTab = useCallback(
-    (senderTabId: number | undefined) =>
-      isPushForPanel(senderTabId, tabId, pinnedDownloadTabRef.current),
-    [tabId],
+  // -----------------------------------------------------------------------
+  // (Fix 1 + 5.3) Terminal state appliers — the DOWNLOAD_COMPLETE /
+  // DOWNLOAD_FAILED / DOWNLOAD_CANCELLED handler bodies, extracted so the
+  // chrome.storage fallback records resolve the UI to EXACTLY the same
+  // state as the live messages (same sets, same order). Each applier also
+  // marks the tracked download as terminal-resolved so the storage
+  // consumer can skip an already-handled outcome.
+  // -----------------------------------------------------------------------
+  const applyDownloadCompleteState = useCallback(
+    (data: { downloadId?: number }) => {
+      resolvedTerminalRef.current = "complete";
+      // Download actually completed - file was saved
+      setMessages((prev) => [...prev, { key: "status.scraped" }]);
+      setAction(messageActions.DOWNLOAD_DONE);
+      // (Fix D.1) The download is no longer live.
+      setLiveSessionId(null);
+      // (Round 9) Stop the liveness poll — terminal via push.
+      setPollSessionId(null);
+      setServerModeState((prev) => (prev ? { ...prev, phase: "ready" } : prev));
+      setMessages((prev) => [...prev, { key: "status.creating" }]);
+      setMessages((prev) => [...prev, { key: "status.complete" }]);
+      // Store download ID for "Show in folder" functionality
+      if (data.downloadId) {
+        chrome.storage.local.set({ lastDownloadId: data.downloadId });
+      }
+      // Reset downloadResponse to allow filter to show again
+      setDownloadResponse(null);
+      // Stop scraping state to show completion UI
+      setIsScraping(false);
+      setIsScrapingLinkedPages(false);
+    },
+    [setDownloadResponse],
   );
+
+  const applyDownloadFailedState = useCallback(
+    (data: { error?: string }) => {
+      resolvedTerminalRef.current = "failed";
+      // Download failed or was interrupted
+      // Reset messages to connected status with error message
+      setMessages([
+        { key: "status.connected" },
+        {
+          key: "status.failedWithError",
+          options: { error: data.error || t("app.unknownError") },
+        },
+      ]);
+      setIsScraping(false);
+      setIsScrapingLinkedPages(false);
+      setAction(null);
+      // (Fix D.1) The download is no longer live.
+      setLiveSessionId(null);
+      // (Round 9) Stop the liveness poll — terminal via push.
+      setPollSessionId(null);
+      // (5.3) A failed download leaves no completion screen — drop the
+      // partial report collected so far.
+      setDownloadReport(initialDownloadReport);
+      // Reset downloadResponse to allow filter to show again
+      setDownloadResponse(null);
+    },
+    [t, setDownloadResponse],
+  );
+
+  const applyDownloadCancelledState = useCallback(() => {
+    resolvedTerminalRef.current = "cancelled";
+    // (5.5) Full cancel — show explicit feedback instead of silently
+    // resetting to the connected state.
+    setMessages([{ key: "status.connected" }, { key: "status.cancelled" }]);
+    setIsScraping(false);
+    setIsScrapingLinkedPages(false);
+    setAction(null);
+    // (Fix D.1) The download is no longer live.
+    setLiveSessionId(null);
+    // (Round 9) Stop the liveness poll — terminal via push.
+    setPollSessionId(null);
+    setDownloadReport(initialDownloadReport);
+    setDownloadResponse(null);
+  }, [setDownloadResponse]);
+
+  // (Fix 3 — 3.2) The DOWNLOAD_INTERRUPTED handler body, extracted so the
+  // dead-worker watchdog (D3) transitions the panel to byte-for-byte the
+  // same interrupted card as the background's push (same sets, same order).
+  const applyDownloadInterruptedState = useCallback(
+    (data: {
+      phase?: string;
+      tabUrl?: string;
+      timestamp?: number;
+      tabId?: number;
+      serverSessionId?: string;
+      resourceUrls?: InterruptData["resourceUrls"];
+    }) => {
+      // (Fix 2 — 2.3) Capture the options BEFORE clearing them (the resume
+      // fallback re-reads the snapshot), so a stale options object cannot
+      // re-arm the auto-START_DOWNLOAD effect after an interrupt.
+      interruptedOptionsRef.current = downloadOptionsRef.current;
+      setDownloadOptions(null);
+      // Service worker was killed during an active download
+      setInterruptData({
+        phase: data.phase || "scraping",
+        tabUrl: data.tabUrl || "",
+        timestamp: data.timestamp || Date.now(),
+        // (Fix 1 — D1) Keep the checkpoint's origin tab so the resume
+        // path can pin the download identity to it.
+        tabId: data.tabId,
+        serverSessionId: data.serverSessionId,
+        resourceUrls: data.resourceUrls,
+      });
+      // (Fix D.1) An interrupted signal means the download is dead.
+      setLiveSessionId(null);
+      // (Round 9) Stop the liveness poll — terminal via push.
+      setPollSessionId(null);
+      setIsScraping(false);
+      setIsScrapingLinkedPages(false);
+      setAction(null);
+      setDownloadResponse(null);
+      setMessages([
+        { key: "status.connected" },
+        {
+          key: "status.downloadInterrupted",
+          options: { phase: data.phase || "scraping" },
+        },
+      ]);
+    },
+    [setDownloadResponse],
+  );
+
+  // -----------------------------------------------------------------------
+  // (Fix 3 — D3) Dead-worker watchdog. Armed while a download is tracked
+  // and the server-mode phase is uploading/assembling — the phases where
+  // the panel is a passive receiver of background pushes and a killed MV3
+  // worker used to freeze the spinner forever. `resetWatchdog` is called
+  // from the message-routing application path (routeAndReset below and the
+  // storage consumer) so ANY message belonging to the tracked download
+  // restarts the 45 s window (3 missed 15 s heartbeats). On timeout the
+  // panel shows the SAME interrupted card as DOWNLOAD_INTERRUPTED.
+  // -----------------------------------------------------------------------
+  const watchdogArmed = shouldArmWatchdog({
+    phase: serverModeState.phase,
+    downloadTracked:
+      // A download is tracked: the reopened live session, the press-run's
+      // poll target, an active scrape, or a resume — and no terminal state
+      // has resolved it (the appliers set resolvedTerminalRef; that also
+      // disarms on any terminal outcome).
+      (liveSessionId !== null ||
+        pollSessionId !== null ||
+        isScraping ||
+        downloadIdentityRef.current.serverSessionId !== null) &&
+      resolvedTerminalRef.current === null,
+  });
+  const { reset: resetWatchdog } = useDownloadWatchdog({
+    armed: watchdogArmed,
+    onTimeout: () => {
+      // (D3) A terminal message that arrived for the tracked download
+      // always wins over a concurrently expiring watchdog.
+      if (
+        !shouldWatchdogFire({
+          armed: true,
+          terminalResolved: resolvedTerminalRef.current !== null,
+        })
+      ) {
+        return;
+      }
+      const identity = downloadIdentityRef.current;
+      applyDownloadInterruptedState({
+        // Phase from the current server-mode state (uploading/assembling —
+        // the only phases that can arm the watchdog).
+        phase: serverModeState.phase || "scraping",
+        tabId: identity.originTabId || undefined,
+        serverSessionId:
+          identity.serverSessionId ??
+          liveSessionId ??
+          pollSessionId ??
+          undefined,
+      });
+    },
+  });
 
   // Memoize messageWorker to stabilize useMessageListener dependency
   const messageWorker = useCallback(
     async (action: MessageAction, data: any): Promise<any> => {
+      // (Fix 3 — D3) Central watchdog reset: every message the routing
+      // accepts FOR the tracked download (progress push, 15 s heartbeat,
+      // assembly progress, terminal) restarts the silence window.
+      // Cross-download traffic must not keep a dead worker alive.
+      const routeAndReset = (
+        msg: { tabId?: number; serverSessionId?: string | null },
+        messageClass: "progress" | "terminal",
+      ) => {
+        const decision = classifyDownloadMessage(
+          downloadIdentityRef.current,
+          msg,
+          messageClass,
+        );
+        if (shouldResetWatchdog(decision)) resetWatchdog();
+        return decision;
+      };
       switch (action) {
         case messageActions.PANEL_PING:
           // Service worker is checking if we're alive
           return "PONG";
 
         case messageActions.PANEL_MESSAGE:
-          // (Round 9 — Fix 3) Accept pushes for the focused tab OR for the
-          // tab of the download this panel started (press-time snapshot).
-          // The old filter compared against the live focused tab only, so
-          // EVERY push from an active download — progress and the terminal
-          // outcome alike — was dropped once the user switched tabs (the
-          // panel froze at "Images progress: 1/353" while the server
-          // received all images). Genuinely unrelated tabs' downloads are
-          // still ignored; a newer press re-pins the snapshot.
-          if (!acceptsTab(data.tabId)) break;
+          // (Fix 1 — D1) Route by download identity, not the live focused
+          // tab. Progress-class keys apply only on identity match;
+          // terminal-class keys are always evaluated and resolve the UI
+          // when they belong to the tracked download — even after a tab
+          // switch, or when they arrive unscoped (resume-path pushes).
+          // Cross-download progress stays filtered.
+          const panelRouting = routeAndReset(
+            {
+              tabId: data.tabId,
+              serverSessionId: data.message?.options?.serverSessionId,
+            },
+            messageClassForPanelKey(data.message?.key),
+          );
+          if (panelRouting === "ignore" || panelRouting === "terminal-ignore") {
+            break;
+          }
           setMessages((prev) => [...prev, data.message]);
           if (data.message?.options?.isPaused !== undefined) {
             setIsPaused(data.message.options.isPaused);
@@ -317,19 +577,29 @@ export default function SidePanel() {
 
         // PagePocket cloud upload message handling
         case messageActions.PAGEPOCKET_UPLOAD_START:
-          if (!acceptsTab(data.tabId)) break;
+          // (Fix 1 — D1) Progress-class: identity match only.
+          if (routeAndReset({ tabId: data.tabId }, "progress") === "ignore")
+            break;
           setCloudUploadState({ status: "uploading", progress: 0 });
           break;
 
         case messageActions.PAGEPOCKET_UPLOAD_PROGRESS:
-          if (!acceptsTab(data.tabId)) break;
+          // (Fix 1 — D1) Progress-class: identity match only.
+          if (routeAndReset({ tabId: data.tabId }, "progress") === "ignore")
+            break;
           setCloudUploadState((prev) =>
             prev ? { ...prev, progress: data.progress ?? prev.progress } : prev,
           );
           break;
 
         case messageActions.PAGEPOCKET_UPLOAD_COMPLETE:
-          if (!acceptsTab(data.tabId)) break;
+          // (Fix 1 — D1) Terminal: always evaluated; resolves the UI when
+          // it belongs to the tracked download.
+          if (
+            routeAndReset({ tabId: data.tabId }, "terminal") ===
+            "terminal-ignore"
+          )
+            break;
           setCloudUploadState({
             status: "success",
             progress: 100,
@@ -346,7 +616,13 @@ export default function SidePanel() {
           break;
 
         case messageActions.PAGEPOCKET_UPLOAD_ERROR:
-          if (!acceptsTab(data.tabId)) break;
+          // (Fix 1 — D1) Terminal: always evaluated; resolves the UI when
+          // it belongs to the tracked download.
+          if (
+            routeAndReset({ tabId: data.tabId }, "terminal") ===
+            "terminal-ignore"
+          )
+            break;
           setCloudUploadState({
             status: "error",
             progress: 0,
@@ -362,98 +638,56 @@ export default function SidePanel() {
           break;
 
         case messageActions.DOWNLOAD_COMPLETE:
-          if (!acceptsTab(data.tabId)) break;
-          // Download actually completed - file was saved
-          setMessages((prev) => [...prev, { key: "status.scraped" }]);
-          setAction(messageActions.DOWNLOAD_DONE);
-          // (Fix D.1) The download is no longer live.
-          setLiveSessionId(null);
-          // (Round 9) Stop the liveness poll — terminal via push.
-          setPollSessionId(null);
-          setServerModeState((prev) =>
-            prev ? { ...prev, phase: "ready" } : prev,
-          );
-          setMessages((prev) => [...prev, { key: "status.creating" }]);
-          setMessages((prev) => [...prev, { key: "status.complete" }]);
-          // Store download ID for "Show in folder" functionality
-          if (data.downloadId) {
-            chrome.storage.local.set({ lastDownloadId: data.downloadId });
-          }
-          // Reset downloadResponse to allow filter to show again
-          setDownloadResponse(null);
-          // Stop scraping state to show completion UI
-          setIsScraping(false);
-          setIsScrapingLinkedPages(false);
+          // (Fix 1 — D1) Terminal: always evaluated — the old live-tab
+          // filter dropped it exactly when the user had switched away from
+          // the download's tab, leaving the spinner up forever.
+          if (
+            routeAndReset({ tabId: data.tabId }, "terminal") ===
+            "terminal-ignore"
+          )
+            break;
+          applyDownloadCompleteState(data);
           break;
 
         case messageActions.DOWNLOAD_FAILED:
-          if (!acceptsTab(data.tabId)) break;
-          // Download failed or was interrupted
-          // Reset messages to connected status with error message
-          setMessages([
-            { key: "status.connected" },
-            {
-              key: "status.failedWithError",
-              options: { error: data.error || t("app.unknownError") },
-            },
-          ]);
-          setIsScraping(false);
-          setIsScrapingLinkedPages(false);
-          setAction(null);
-          // (Fix D.1) The download is no longer live.
-          setLiveSessionId(null);
-          // (Round 9) Stop the liveness poll — terminal via push.
-          setPollSessionId(null);
-          // (5.3) A failed download leaves no completion screen — drop the
-          // partial report collected so far.
-          setDownloadReport(initialDownloadReport);
-          // Reset downloadResponse to allow filter to show again
-          setDownloadResponse(null);
+          // (Fix 1 — D1) Terminal: always evaluated; see DOWNLOAD_COMPLETE.
+          if (
+            routeAndReset({ tabId: data.tabId }, "terminal") ===
+            "terminal-ignore"
+          )
+            break;
+          applyDownloadFailedState(data);
           break;
 
         case messageActions.DOWNLOAD_CANCELLED:
-          if (!acceptsTab(data.tabId)) break;
-          // (5.5) Full cancel — show explicit feedback instead of silently
-          // resetting to the connected state.
-          setMessages([
-            { key: "status.connected" },
-            { key: "status.cancelled" },
-          ]);
-          setIsScraping(false);
-          setIsScrapingLinkedPages(false);
-          setAction(null);
-          // (Fix D.1) The download is no longer live.
-          setLiveSessionId(null);
-          // (Round 9) Stop the liveness poll — terminal via push.
-          setPollSessionId(null);
-          setDownloadReport(initialDownloadReport);
-          setDownloadResponse(null);
+          // (Fix 1 — D1) Terminal: always evaluated; see DOWNLOAD_COMPLETE.
+          if (
+            routeAndReset({ tabId: data.tabId }, "terminal") ===
+            "terminal-ignore"
+          )
+            break;
+          applyDownloadCancelledState();
           break;
 
         case messageActions.DOWNLOAD_INTERRUPTED:
-          // Service worker was killed during an active download
-          setInterruptData({
-            phase: data.phase || "scraping",
-            tabUrl: data.tabUrl || "",
-            timestamp: data.timestamp || Date.now(),
-            serverSessionId: data.serverSessionId,
-            resourceUrls: data.resourceUrls,
-          });
-          // (Fix D.1) An interrupted signal means the download is dead.
-          setLiveSessionId(null);
-          // (Round 9) Stop the liveness poll — terminal via push.
-          setPollSessionId(null);
-          setIsScraping(false);
-          setIsScrapingLinkedPages(false);
-          setAction(null);
-          setDownloadResponse(null);
-          setMessages([
-            { key: "status.connected" },
-            {
-              key: "status.downloadInterrupted",
-              options: { phase: data.phase || "scraping" },
-            },
-          ]);
+          // (Fix 1 — D1) Terminal: always evaluated. Unscoped interrupt
+          // pushes (startup cleanup) and interrupts for the tracked
+          // download resolve the UI; an interrupt that provably belongs to
+          // a different download must not clobber a live card.
+          if (
+            routeAndReset(
+              {
+                tabId: data.tabId,
+                serverSessionId: data.serverSessionId,
+              },
+              "terminal",
+            ) === "terminal-ignore"
+          )
+            break;
+          // Service worker was killed during an active download — the
+          // extracted applier is byte-identical to the pre-extraction
+          // handler body AND to the watchdog's timeout transition (3.2).
+          applyDownloadInterruptedState(data);
           break;
 
         default:
@@ -462,8 +696,15 @@ export default function SidePanel() {
       return null;
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [setDownloadResponse, acceptsTab],
-  ); // Add setDownloadResponse to dependencies
+    [
+      setDownloadResponse,
+      applyDownloadCompleteState,
+      applyDownloadFailedState,
+      applyDownloadCancelledState,
+      applyDownloadInterruptedState,
+      resetWatchdog,
+    ],
+  ); // Add setDownloadResponse + terminal appliers + watchdog reset to dependencies
 
   useMessageListener({ messageWorker });
 
@@ -492,6 +733,14 @@ export default function SidePanel() {
                 // so a terminal outcome that arrives via dropped pushes is
                 // still surfaced.
                 setPollSessionId(result.serverSessionId);
+                // (Fix 1 — D1) Adopt the reopened live download by identity:
+                // origin tab + session from the checkpoint, so its pushes
+                // (stamped with the origin tab) and terminal outcomes route
+                // to this panel even though it never pressed Start here.
+                pinDownloadIdentity({
+                  originTabId: result.tabId ?? 0,
+                  serverSessionId: result.serverSessionId ?? null,
+                });
                 setIsScraping(false);
                 setIsScrapingLinkedPages(false);
                 setMessages([
@@ -508,6 +757,9 @@ export default function SidePanel() {
             phase: result.phase || "scraping",
             tabUrl: result.tabUrl || "",
             timestamp: result.timestamp || Date.now(),
+            // (Fix 1 — D1) Keep the checkpoint's origin tab so the resume
+            // path can pin the download identity to it.
+            tabId: result.tabId,
             serverSessionId: result.serverSessionId,
             resourceUrls: result.resourceUrls,
           });
@@ -653,46 +905,79 @@ export default function SidePanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveSessionId, isScraping, pollSessionId, t]);
 
-  // Listen for download completion via chrome.storage
+  // Listen for terminal download states via chrome.storage (design D4).
+  // COMPLETE keeps its existing fallback record; CANCELLED and FAILED gain
+  // the same treatment (task 5.3). Records are routed by the PINNED
+  // download identity — never the live tab, whose stale-closure comparison
+  // used to drop the completion after a tab switch — applied exactly once,
+  // and removed after consumption. The UI state each record resolves to is
+  // the shared terminal appliers, i.e. byte-for-byte the live message
+  // handlers' outcome.
   useEffect(() => {
     const handleStorageChange = (
       changes: { [key: string]: chrome.storage.StorageChange },
       areaName: string,
     ) => {
-      if (areaName === "local" && changes.downloadComplete) {
-        const downloadComplete = changes.downloadComplete.newValue;
+      if (areaName !== "local") return;
+
+      if (changes.downloadComplete) {
+        const record = changes.downloadComplete.newValue;
         if (
-          downloadComplete &&
-          downloadComplete.tabId !== undefined &&
-          downloadComplete.tabId === tabId
+          record &&
+          classifyTerminalRecord(downloadIdentityRef.current, record) !==
+            "terminal-ignore"
         ) {
+          // (Fix 3 — D3) A record belonging to the tracked download is
+          // liveness traffic too.
+          resetWatchdog();
           // Guard: skip if already handled via DOWNLOAD_COMPLETE message
           if (actionRef.current === messageActions.DOWNLOAD_DONE) {
             chrome.storage.local.remove("downloadComplete");
-            return;
+          } else {
+            applyDownloadCompleteState(record);
+            // Clear the downloadComplete flag
+            chrome.storage.local.remove("downloadComplete");
           }
-          if (downloadComplete.downloadId) {
-            chrome.storage.local.set({
-              lastDownloadId: downloadComplete.downloadId,
-            });
+        }
+      }
+
+      if (changes.downloadCancelled) {
+        const record = changes.downloadCancelled.newValue;
+        if (
+          record &&
+          classifyTerminalRecord(downloadIdentityRef.current, record) !==
+            "terminal-ignore"
+        ) {
+          resetWatchdog();
+          // Guard: skip when a live terminal message already resolved the
+          // tracked download (same dedup pattern as downloadComplete).
+          if (resolvedTerminalRef.current !== null) {
+            chrome.storage.local.remove("downloadCancelled");
+          } else {
+            // Same UI state as the DOWNLOAD_CANCELLED handler.
+            applyDownloadCancelledState();
+            chrome.storage.local.remove("downloadCancelled");
           }
-          setMessages((prev) => [...prev, { key: "status.scraped" }]);
-          setAction(messageActions.DOWNLOAD_DONE);
-          setServerModeState((prev) =>
-            prev ? { ...prev, phase: "ready" } : prev,
-          );
-          setMessages((prev) => [...prev, { key: "status.creating" }]);
-          setMessages((prev) => [...prev, { key: "status.complete" }]);
+        }
+      }
 
-          // Reset downloadResponse to allow filter to show again
-          setDownloadResponse(null);
-
-          // Stop scraping state to show completion UI
-          setIsScraping(false);
-          setIsScrapingLinkedPages(false);
-
-          // Clear the downloadComplete flag
-          chrome.storage.local.remove("downloadComplete");
+      if (changes.downloadFailed) {
+        const record = changes.downloadFailed.newValue;
+        if (
+          record &&
+          classifyTerminalRecord(downloadIdentityRef.current, record) !==
+            "terminal-ignore"
+        ) {
+          resetWatchdog();
+          // Guard: skip when a live terminal message already resolved the
+          // tracked download (same dedup pattern as downloadComplete).
+          if (resolvedTerminalRef.current !== null) {
+            chrome.storage.local.remove("downloadFailed");
+          } else {
+            // Same UI state as the DOWNLOAD_FAILED handler.
+            applyDownloadFailedState(record);
+            chrome.storage.local.remove("downloadFailed");
+          }
         }
       }
     };
@@ -702,7 +987,12 @@ export default function SidePanel() {
     return () => {
       chrome.storage.onChanged.removeListener(handleStorageChange);
     };
-  }, [setMessages, setAction, setDownloadResponse, setIsScraping]);
+  }, [
+    applyDownloadCompleteState,
+    applyDownloadCancelledState,
+    applyDownloadFailedState,
+    resetWatchdog,
+  ]);
 
   // Memoize reset function
   const reset = useCallback(
@@ -716,6 +1006,9 @@ export default function SidePanel() {
       setDownloadResponse(null); // Use setter from hook
       setScrollAttempts(0); // Use setter from hook
       setDownloadOptions(null);
+      // (Fix 2 — 2.3) A new tab context supersedes any interrupted run's
+      // options snapshot.
+      interruptedOptionsRef.current = null;
       setServerModeState(initialServerModeState); // Reset server-mode state
       setCloudUploadState(null); // Reset cloud upload state
       setDownloadReport(initialDownloadReport); // (5.3) Reset download report
@@ -729,6 +1022,18 @@ export default function SidePanel() {
 
   // Memoize onClickStartDownload
   const onClickStartDownload = useCallback(async (options: Options) => {
+    // (Fix 1 — D1) Pin the download identity at press time. The origin tab
+    // is the same press-time snapshot useScrapingDownloader's Effect 1 pins
+    // for this run (both read the same render's tabId); the server session
+    // id is pinned later, once created/resumed (onDownloadStarted).
+    downloadIdentityRef.current = {
+      originTabId: liveTabIdRef.current,
+      serverSessionId: null,
+    };
+    resolvedTerminalRef.current = null;
+    // (Fix 2 — 2.3) A fresh press carries its own options — drop any
+    // interrupted run's snapshot.
+    interruptedOptionsRef.current = null;
     setAction(null);
     setInterruptData(null);
     setCloudUploadState(null);
@@ -777,6 +1082,13 @@ export default function SidePanel() {
       />
       <DownloadStatus
         tabId={tabId}
+        // (Fix 1 — D1) Controls (Pause/Resume — and Stop via the hook's
+        // pinned targetRef) act on the download's OWN tab, not the
+        // currently focused one. 0 = nothing pinned → component falls
+        // back to the live tab.
+        downloadOriginTabId={
+          downloadIdentityRef.current.originTabId || undefined
+        }
         isScraping={isScraping}
         isScrapingLinkedPages={isScrapingLinkedPages}
         isPaused={isPaused}
@@ -880,11 +1192,28 @@ export default function SidePanel() {
           setInterruptData(null);
           // If we have a server session ID, attempt resume
           if (interruptData?.serverSessionId) {
-            setIsScraping(true);
+            // (Fix 2 — D2) Resume NEVER scrapes: no setIsScraping(true), so
+            // Effect 1 never arms scrape() — no new server session, no
+            // scrolling. beginResume() owns the single-fire gate: a rapid
+            // double-click sends at most one RESUME_SERVER_DOWNLOAD, and
+            // Effect 2 can never fire a START_DOWNLOAD for the resume run.
+            if (!beginResume()) return;
+            // (Fix 1 — D1) The resume continues the interrupted run's
+            // session — pin its identity (origin tab from the checkpoint,
+            // falling back to the current view) so resume-path pushes
+            // (unscoped) and origin-tab-stamped terminals route here.
+            pinDownloadIdentity({
+              originTabId: interruptData.tabId ?? liveTabIdRef.current,
+              serverSessionId: interruptData.serverSessionId,
+            });
+            resolvedTerminalRef.current = null;
             setMessages((prev) => [
               ...prev,
               { key: "status.reconnectingServer" },
             ]);
+            // Uploading phase: the resumed download streams resources like a
+            // fresh one — progress pushes arrive via the identity routing
+            // (Fix 1) and the watchdog (Fix 3) covers a dead worker.
             setServerModeState((prev) => ({
               ...prev,
               phase: "uploading",
@@ -904,14 +1233,40 @@ export default function SidePanel() {
                 // Resume failed — fall through to full restart
                 throw new Error(result.error || "Resume failed");
               }
-              // Resume succeeded — update state
-              setIsScraping(false);
-              setAction(messageActions.DOWNLOAD_DONE);
+              // (Fix 2 — D2) Dedicated resume status: the session is live
+              // again — the live-download card plus the CHECK_DOWNLOAD_LIVE
+              // poll track it until a terminal push resolves the run (the
+              // old code flipped DOWNLOAD_DONE here, blanking the status
+              // mid-download).
+              sawLiveRef.current = false;
+              downloadSettledRef.current = false;
+              confirmPendingRef.current = false;
+              setLiveSessionId(interruptData.serverSessionId);
+              setPollSessionId(interruptData.serverSessionId);
+              endResume();
             } catch {
-              // Resume failed — fall back to full restart
-              if (downloadOptions) {
+              endResume();
+              // Resume failed — fall back to a full restart: the ONLY path
+              // from the resume flow into the scrape pipeline. It goes
+              // through the normal single-run gate (the isScraping
+              // false→true transition re-arms Effect 1's Fix A gate for
+              // exactly one scrape run).
+              // (Fix 2 — 2.3) downloadOptions was cleared by the interrupt
+              // applier — re-read the snapshot captured before the clear.
+              const restartOptions =
+                downloadOptions ?? interruptedOptionsRef.current;
+              if (restartOptions) {
+                interruptedOptionsRef.current = null;
+                // (Fix 1 — D1) The restart scrape creates a NEW session on
+                // the current tab — re-pin the identity for it
+                // (onDownloadStarted refines the session id).
+                pinDownloadIdentity({
+                  originTabId: liveTabIdRef.current,
+                  serverSessionId: null,
+                });
+                resolvedTerminalRef.current = null;
                 setIsScraping(true);
-                setDownloadOptions(downloadOptions);
+                setDownloadOptions(restartOptions);
                 setMessages((prev) => [...prev, { key: "status.scraping" }]);
                 setServerModeState((prev) => ({
                   ...prev,
@@ -920,15 +1275,27 @@ export default function SidePanel() {
                 }));
               }
             }
-          } else if (downloadOptions) {
-            setIsScraping(true);
-            setDownloadOptions(downloadOptions);
-            setMessages((prev) => [...prev, { key: "status.scraping" }]);
-            setServerModeState((prev) => ({
-              ...prev,
-              phase: "scraping",
-              serverError: null,
-            }));
+          } else {
+            // (Fix 1 — D1) Full restart without a session — same re-pin and
+            // the same single-run gate (and the same 2.3 options re-read).
+            const restartOptions =
+              downloadOptions ?? interruptedOptionsRef.current;
+            if (restartOptions) {
+              interruptedOptionsRef.current = null;
+              pinDownloadIdentity({
+                originTabId: liveTabIdRef.current,
+                serverSessionId: null,
+              });
+              resolvedTerminalRef.current = null;
+              setIsScraping(true);
+              setDownloadOptions(restartOptions);
+              setMessages((prev) => [...prev, { key: "status.scraping" }]);
+              setServerModeState((prev) => ({
+                ...prev,
+                phase: "scraping",
+                serverError: null,
+              }));
+            }
           }
         }}
         onDismissInterrupt={() => {

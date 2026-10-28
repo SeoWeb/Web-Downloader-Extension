@@ -91,6 +91,33 @@ function recordFailure(
 }
 
 /**
+ * Fire-and-forget a panel push. The send callback resolves/rejects
+ * asynchronously (messageWorker's addMessage → sendMessageToPanel), so when
+ * the side panel is closed every push rejects with "Receiving end does not
+ * exist". Catch and log those failures at debug level so a failed push never
+ * becomes an unhandled rejection in the service worker and never affects the
+ * download pipeline. A successful push behaves exactly as the bare call did.
+ */
+function pushToPanelSafely(
+  sendMessage: SendMessage,
+  message: string | { key: string; options?: any },
+): void {
+  try {
+    Promise.resolve(sendMessage(message)).catch((err) => {
+      console.debug(
+        "[fileHandlers:css] panel push failed (ignored):",
+        err instanceof Error ? err.message : err,
+      );
+    });
+  } catch (err) {
+    console.debug(
+      "[fileHandlers:css] panel push failed (ignored):",
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
+
+/**
  * Download CSS files (and their @import chain) so the server can rewrite
  * url() references during finalization.
  *
@@ -191,7 +218,7 @@ export async function addCssFiles(
     Object.keys(failureCategories).length > 0;
 
   if (hasFailures) {
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.cssSummary",
       options: {
         succeeded: state.successCount,
@@ -251,7 +278,7 @@ async function processCssItem(
 
   if (isTopLevel) {
     state.completedCount++;
-    state.sendMessage({
+    pushToPanelSafely(state.sendMessage, {
       key: "status.cssProgress",
       options: { completed: state.completedCount, total: state.totalCount },
     });
@@ -389,14 +416,15 @@ async function downloadBackgroundImages(
     });
 
     completedCount++;
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.bgImagesProgress",
       options: { completed: completedCount, total: imageUrls.length },
     });
 
     if (!outcome.ok) {
       failCount++;
-      sendMessage(
+      pushToPanelSafely(
+        sendMessage,
         `Background image failed (${toFailureCategory(outcome.error)}): ${imageUrl}`,
       );
       return;
@@ -407,7 +435,8 @@ async function downloadBackgroundImages(
     // Opaque (no-cors) bodies are unreadable — skip with a cors failure.
     if (result.type === "opaque" || result.snapshot.type === "opaque") {
       failCount++;
-      sendMessage(
+      pushToPanelSafely(
+        sendMessage,
         `Background image CORS-blocked (opaque response): ${imageUrl}`,
       );
       return;
@@ -437,7 +466,7 @@ async function downloadBackgroundImages(
   await Promise.allSettled(tasks);
 
   if (failCount > 0 || skippedCount > 0) {
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.bgImagesSummary",
       options: {
         succeeded: successCount,

@@ -62,16 +62,11 @@ type Message = {
   data: any;
 };
 
-let i: any = null;
 export async function sendMessage(
   target: string,
   message: Message,
   force: boolean = true,
 ) {
-  if (i) {
-    clearTimeout(i);
-  }
-
   const fn = async () => {
     return await chrome.runtime.sendMessage({
       target,
@@ -83,8 +78,15 @@ export async function sendMessage(
     return await fn();
   }
 
+  // Per-call debounce (D4 / task 5.1): each non-force call owns its timer in
+  // this closure, so one caller's pending send can never cancel another's and
+  // every returned promise settles. The old shared module-level timer made a
+  // second non-force call within the window silently drop the first caller's
+  // pending send (its promise never settled) — fatal for terminal pushes
+  // (COMPLETE/CANCELLED/FAILED), which are distinct messages that must all be
+  // delivered.
   return new Promise<any>((resolve, reject) => {
-    i = setTimeout(() => {
+    setTimeout(() => {
       fn().then(resolve).catch(reject);
     }, 1000);
   });

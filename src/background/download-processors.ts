@@ -9,6 +9,37 @@ import { DownloadContext } from "./download-state";
 import type { ResourceFailureTally } from "./urlUtils";
 
 /**
+ * (design D6 / tasks 6.1–6.2) Fire-and-forget panel push — local twin of
+ * download-core's pushToPanelSafely (importing it directly would create a
+ * module cycle: download-core imports this module to inject the callback).
+ *
+ * The injected `sendMessage` callback returns the panel-delivery promise
+ * (messageWorker's addMessage → sendMessageToPanel), so when the side panel
+ * is closed every push rejects with "Receiving end does not exist". Catch
+ * and log those failures at debug level so a failed push never becomes an
+ * unhandled rejection in the service worker and never affects the download
+ * pipeline. A successful push behaves exactly as the bare call did.
+ */
+function pushToPanelSafely(
+  sendMessage: (message: string | { key: string; options?: any }) => unknown,
+  message: string | { key: string; options?: any },
+): void {
+  try {
+    Promise.resolve(sendMessage(message)).catch((err) => {
+      console.debug(
+        "[download-processors] panel push failed (ignored):",
+        err instanceof Error ? err.message : err,
+      );
+    });
+  } catch (err) {
+    console.debug(
+      "[download-processors] panel push failed (ignored):",
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
+
+/**
  * Options forwarded to the file handlers (D2 / tasks 1.5 + 3.1).
  *
  * `documentUrl` is the URL of the page the raw URLs were extracted from.
@@ -71,7 +102,7 @@ export async function processAssets(
   let jsMap: Map<string, string> | undefined;
 
   if (data.css?.length) {
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.downloadingCss",
       options: { count: data.css.length },
     });
@@ -83,11 +114,11 @@ export async function processAssets(
       context?.downloadId,
       { documentUrl, failureTally: options?.failureTally },
     );
-    sendMessage({ key: "status.cssDownloaded" });
+    pushToPanelSafely(sendMessage, { key: "status.cssDownloaded" });
   }
 
   if (data.js?.length) {
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.downloadingJs",
       options: { count: data.js.length },
     });
@@ -99,7 +130,7 @@ export async function processAssets(
       context?.downloadId,
       { documentUrl, failureTally: options?.failureTally },
     );
-    sendMessage({ key: "status.jsDownloaded" });
+    pushToPanelSafely(sendMessage, { key: "status.jsDownloaded" });
   }
 
   return mergeFilenameMaps(cssMap, jsMap);
@@ -123,7 +154,7 @@ export async function processDocuments(
 
   const documentUrl = options?.documentUrl ?? tabUrl;
 
-  sendMessage({
+  pushToPanelSafely(sendMessage, {
     key: "status.downloadingDocuments",
     options: { count: documents.length },
   });
@@ -135,7 +166,7 @@ export async function processDocuments(
     context?.downloadId,
     { documentUrl, failureTally: options?.failureTally },
   );
-  sendMessage({ key: "status.documentsDownloaded" });
+  pushToPanelSafely(sendMessage, { key: "status.documentsDownloaded" });
   return mergeFilenameMaps(docMap);
 }
 
@@ -151,7 +182,7 @@ export async function processImages(
 
   const documentUrl = options?.documentUrl ?? tabUrl;
 
-  sendMessage({
+  pushToPanelSafely(sendMessage, {
     key: "status.downloadingImages",
     options: { count: images.length },
   });
@@ -163,6 +194,6 @@ export async function processImages(
     context?.downloadId,
     { documentUrl, failureTally: options?.failureTally },
   );
-  sendMessage({ key: "status.imagesDownloaded" });
+  pushToPanelSafely(sendMessage, { key: "status.imagesDownloaded" });
   return filenameMap;
 }

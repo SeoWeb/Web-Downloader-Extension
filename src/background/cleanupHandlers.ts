@@ -57,6 +57,13 @@ const MEMORY_MONITOR_MINUTES = 1; // alarms clamp sub-minute periods to 1 min
  *  (module import + download.ts). */
 let handlersInitialized = false;
 
+/** (D5 / task 4.1) Guard: performStartupCleanup runs at most once per SW
+ *  lifetime. Module-level `let` = fresh per worker instance (exactly like
+ *  `handlersInitialized` above): it survives re-entrant init calls but resets
+ *  whenever MV3 kills and re-evaluates the worker module, so every new
+ *  instance cleans up again. */
+let startupCleanupRun = false;
+
 /** Last pressure level seen by the monitor — extra cleanup runs only on
  *  real transitions (e.g. HIGH → CRITICAL), not on every alarm tick. */
 let lastMonitoredLevel: MemoryPressureLevel | null = null;
@@ -73,10 +80,14 @@ export function initializeCleanupHandlers(): void {
 
   // Handle service worker startup
   if (typeof self !== "undefined" && "addEventListener" in self) {
-    // Cleanup on service worker startup
+    // Cleanup on service worker startup. (D5 / task 4.1) Kept for
+    // install/update — activate only fires there, and it is no longer
+    // load-bearing: the module-init trigger below covers every wake. It
+    // routes through the same once-per-lifetime guard so a lifetime never
+    // cleans up twice.
     self.addEventListener("activate", (event: Event) => {
       // Type assertion to ExtendableEvent to access waitUntil
-      (event as ExtendableEvent).waitUntil(performStartupCleanup());
+      (event as ExtendableEvent).waitUntil(runStartupCleanupOnce());
     });
 
     // Handle service worker shutdown
@@ -102,6 +113,31 @@ export function initializeCleanupHandlers(): void {
 
   // Clean up per-tab state when a tab is closed
   setupTabLifecycleCleanup();
+
+  // (D5 / tasks 4.1–4.2) Startup cleanup on EVERY worker wake. MV3 `activate`
+  // fires on install/update only, so a warm-killed worker woken by any event
+  // would previously skip interrupted-download handling entirely. Fire-and-
+  // forget with an explicit catch: never throws into init, never keeps the
+  // worker alive. Cheap when nothing was interrupted — one
+  // chrome.storage.local.get.
+  runStartupCleanupOnce().catch(() => {
+    // ignore — startup cleanup is best-effort
+  });
+}
+
+/**
+ * (D5 / task 4.1) Run the startup cleanup at most once per worker lifetime.
+ * Called from the module-init path (every wake, warm or cold) and from the
+ * `activate` listener (install/update — now redundant since module init
+ * always runs first). The body is idempotent: it clears the in-progress flag
+ * and only clears checkpoints that were successfully delivered.
+ */
+function runStartupCleanupOnce(): Promise<void> {
+  if (startupCleanupRun) {
+    return Promise.resolve();
+  }
+  startupCleanupRun = true;
+  return performStartupCleanup();
 }
 
 /**

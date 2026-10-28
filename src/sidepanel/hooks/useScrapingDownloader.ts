@@ -350,6 +350,32 @@ export function useScrapingDownloader({
     setIsScraping(false);
   }, [setIsScraping, setMessages, onPartialSave]);
 
+  // ---------------------------------------------------------------------
+  // (Fix 2 — design D2) Resume single-fire gate.
+  //
+  // A resume click continues the EXISTING server session — it must never
+  // re-enter the scrape pipeline (no new session, no scrolling) and Effect 2
+  // must never fire a START_DOWNLOAD for it. `beginResume` owns its own
+  // started-ref: calling it arms `downloadStartedRef`, so the resume run is
+  // invisible to Effect 2 until a fresh scrape run legitimately re-arms the
+  // gate (Effect 1's run-start branch — i.e. only the resume-failure
+  // fallback, which goes through the normal single-run gate). The gate also
+  // makes rapid double-clicks send at most one RESUME_SERVER_DOWNLOAD.
+  // ---------------------------------------------------------------------
+  const resumeStartedRef = useRef<boolean>(false);
+  /** Begin a resume run. False when a resume is already in flight. */
+  const beginResume = useCallback((): boolean => {
+    if (resumeStartedRef.current) return false;
+    resumeStartedRef.current = true;
+    // A resume run is NOT a scrape run: block Effect 2 for it.
+    downloadStartedRef.current = true;
+    return true;
+  }, []);
+  /** Settle the resume run (success, or fallback decision made). */
+  const endResume = useCallback(() => {
+    resumeStartedRef.current = false;
+  }, []);
+
   // (Round 9 — Fix 3) Press-time pinned download tab — lets the panel accept
   // pushes from the ACTIVE download even after the user switches tabs
   // (consumed by isPushForPanel).
@@ -664,6 +690,9 @@ export function useScrapingDownloader({
     // accept pushes from the ACTIVE download even after the user switches
     // tabs (isPushForPanel).
     getPinnedTabId,
+    // (Fix 2 — D2) Resume single-fire gate — see beginResume above.
+    beginResume,
+    endResume,
     // (Round 9 — Fix B) This run's server session id, once created — the
     // target for the panel's CHECK_DOWNLOAD_LIVE polling.
     getServerSessionId,

@@ -34,6 +34,11 @@ export interface InterruptData {
   phase: string;
   tabUrl: string;
   timestamp: number;
+  /**
+   * (Fix 1 — D1) Origin tab carried by the checkpoint, when it has one —
+   * lets the panel pin the resumed download's identity to its own tab.
+   */
+  tabId?: number;
   serverSessionId?: string;
   resourceUrls?: Array<{
     url: string;
@@ -45,6 +50,15 @@ export interface InterruptData {
 
 interface DownloadStatusProps {
   tabId: number;
+  /**
+   * (Fix 1 — D1) Pinned origin tab of the tracked download. Pause/Resume
+   * MUST target THIS tab — the download's own tab — so a switch to another
+   * tab cannot retarget the controls (SCRAPER_PAUSE/SCRAPER_RESUME carry
+   * this id, never the live `tabId`). Falls back to `tabId` when absent
+   * (nothing pinned). Stop keeps its own pinned targetRef path in the
+   * scraping hook.
+   */
+  downloadOriginTabId?: number;
   isScraping: boolean;
   isScrapingLinkedPages: boolean;
   isPaused: boolean;
@@ -112,6 +126,10 @@ function ScrapingControls({
   setIsPaused,
   onStop,
 }: {
+  /**
+   * (Fix 1 — D1) The tab the pause/resume messages target — the tracked
+   * download's PINNED origin tab, not the panel's focused tab.
+   */
   tabId: number;
   isPaused: boolean;
   setIsPaused: (value: boolean) => void;
@@ -163,6 +181,7 @@ function ScrapingControls({
 
 export function DownloadStatus({
   tabId,
+  downloadOriginTabId,
   isScraping,
   isScrapingLinkedPages,
   isPaused,
@@ -185,6 +204,12 @@ export function DownloadStatus({
   onDownloadLocally,
 }: DownloadStatusProps) {
   const { t } = useTranslation();
+
+  // (Fix 1 — D1) Pause/Resume target the download's PINNED origin tab —
+  // the live `tabId` follows the user across tabs and used to retarget
+  // SCRAPER_PAUSE/SCRAPER_RESUME at whatever page was in view. Stop is
+  // unaffected: it goes through the hook's own press-time targetRef.
+  const controlsTabId = downloadOriginTabId || tabId;
 
   if (!tabId) return null;
 
@@ -292,7 +317,7 @@ export function DownloadStatus({
             onRetry={onRetryCloudUpload}
           />
           <ScrapingControls
-            tabId={tabId}
+            tabId={controlsTabId}
             isPaused={isPaused}
             setIsPaused={setIsPaused}
             onStop={onStopScraping}
@@ -488,7 +513,7 @@ export function DownloadStatus({
 
           {/* Stop button */}
           <ScrapingControls
-            tabId={tabId}
+            tabId={controlsTabId}
             isPaused={isPaused}
             setIsPaused={setIsPaused}
             onStop={onStopScraping}
@@ -538,7 +563,7 @@ export function DownloadStatus({
 
           {/* Stop button */}
           <ScrapingControls
-            tabId={tabId}
+            tabId={controlsTabId}
             isPaused={isPaused}
             setIsPaused={setIsPaused}
             onStop={onStopScraping}
@@ -557,7 +582,7 @@ export function DownloadStatus({
       <div className="pt-8">
         <h3 className="pb-2 font-bold">{t("status.scraping")}</h3>
         <ScrapingControls
-          tabId={tabId}
+          tabId={controlsTabId}
           isPaused={isPaused}
           setIsPaused={setIsPaused}
           onStop={onStopScraping}
@@ -589,7 +614,7 @@ export function DownloadStatus({
           </p>
         )}
         <ScrapingControls
-          tabId={tabId}
+          tabId={controlsTabId}
           isPaused={isPaused}
           setIsPaused={setIsPaused}
           onStop={onStopScraping}

@@ -330,6 +330,36 @@ function isAbortError(err: unknown): boolean {
 }
 
 /**
+ * (design D6 / tasks 6.1–6.2) Fire-and-forget panel push.
+ *
+ * The injected `sendMessage` callback returns the panel-delivery promise
+ * (messageWorker's addMessage → sendMessageToPanel), so when the side panel
+ * is closed every push rejects with "Receiving end does not exist". Catch
+ * and log those failures at debug level — mirroring listenMessage's catch in
+ * src/common/chrome.ts — so a failed push never becomes an unhandled
+ * rejection in the service worker and never affects the download pipeline.
+ * A successful push behaves exactly as the bare call did.
+ */
+function pushToPanelSafely(
+  sendMessage: (message: string | { key: string; options?: any }) => unknown,
+  message: string | { key: string; options?: any },
+): void {
+  try {
+    Promise.resolve(sendMessage(message)).catch((err) => {
+      console.debug(
+        "[download-core] panel push failed (ignored):",
+        err instanceof Error ? err.message : err,
+      );
+    });
+  } catch (err) {
+    console.debug(
+      "[download-core] panel push failed (ignored):",
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
+
+/**
  * (stop-cancel-semantics D1 / tasks 2.4 + 3.4) Terminal salvage report for a
  * user-stopped download: ONE cheap status probe (the `lookupFallbackUrl`
  * pattern). When the server already produced the archive, its URL is
@@ -348,12 +378,12 @@ async function reportCancelledSession(
 ): Promise<void> {
   const downloadUrl = await lookupFallbackUrl(sessionId);
   if (downloadUrl) {
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.serverDownloadReady",
       options: { downloadUrl, serverSessionId: sessionId },
     });
   }
-  sendMessage({
+  pushToPanelSafely(sendMessage, {
     key: "status.cancelled",
     options: {
       serverSessionId: sessionId,
@@ -375,13 +405,13 @@ export async function downloadResources(
   if (!tabUrl) {
     // en.json keeps these under `app.*` (not `error.*`) — emit the keys the
     // UI can actually resolve through t().
-    sendMessage({ key: "app.noUrl" });
+    pushToPanelSafely(sendMessage, { key: "app.noUrl" });
     return;
   }
 
   // Prevent concurrent downloads per-tab
   if (tabId && isTabDownloadInProgress(tabId)) {
-    sendMessage({ key: "app.downloadInProgress" });
+    pushToPanelSafely(sendMessage, { key: "app.downloadInProgress" });
     return;
   }
 
@@ -395,11 +425,11 @@ export async function downloadResources(
     initialMemoryStats.totalMemoryLimit - initialMemoryStats.totalMemoryUsed;
   const availableMemoryMB = availableMemoryBytes / (1024 * 1024);
   if (availableMemoryMB < 100) {
-    sendMessage({ key: "app.memoryPressure" });
+    pushToPanelSafely(sendMessage, { key: "app.memoryPressure" });
     return;
   }
   if (availableMemoryMB < 256) {
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.memoryWarningServerMode",
       options: { availableMB: Math.round(availableMemoryMB) },
     });
@@ -552,7 +582,7 @@ export async function downloadResources(
       userFriendlyMessage = { key: "status.networkError" };
     }
 
-    sendMessage(userFriendlyMessage);
+    pushToPanelSafely(sendMessage, userFriendlyMessage);
 
     if (isMemoryError) {
       // forceCleanup runs the registered cleanup callbacks, which clear the
@@ -562,7 +592,7 @@ export async function downloadResources(
       if (!isOtherDownloadActive(tabId)) {
         await memoryManager.forceCleanup();
       }
-      sendMessage({ key: "status.memoryCleanupPerformed" });
+      pushToPanelSafely(sendMessage, { key: "status.memoryCleanupPerformed" });
     }
   } finally {
     await setTabDownloadComplete(tabId!);
@@ -660,7 +690,7 @@ async function executeDownloadServerMode(
   // (15.1) Wire up upload progress reporting so the UI can show
   // "X/Y resources uploaded" during the server-mode download.
   uploadQueue.onProgress = (progress) => {
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.uploadProgress",
       options: {
         completed: progress.completedCount,
@@ -681,7 +711,7 @@ async function executeDownloadServerMode(
     if (tabId) {
       stopScraping(tabId);
     }
-    sendMessage({ key: "status.sessionSizeLimitReached" });
+    pushToPanelSafely(sendMessage, { key: "status.sessionSizeLimitReached" });
   };
 
   // Track total resources for scrape-complete signal
@@ -724,7 +754,7 @@ async function executeDownloadServerMode(
         sessionId,
         "No downloadable content found — the page may not have finished loading.",
       );
-      sendMessage({ key: "status.noDownloadableContent" });
+      pushToPanelSafely(sendMessage, { key: "status.noDownloadableContent" });
       return;
     }
 
@@ -743,12 +773,12 @@ async function executeDownloadServerMode(
     // session, or a caller that never streams), this chunk-0 upload is
     // what initializes the server skeleton and must run unchanged.
     if (!hasStreamedHtmlChunks(tabId!)) {
-      sendMessage({ key: "status.uploadingHtml" });
+      pushToPanelSafely(sendMessage, { key: "status.uploadingHtml" });
       // Do NOT send tabUrl as pageUrl for main page — the server uses
       // the absence of pageUrl to set page_url_hash="main", which the
       // assembler looks up via merge_results.get("main").
       await serverClient.uploadHtmlChunk(sessionId, html, 0, "main");
-      sendMessage({ key: "status.htmlUploaded" });
+      pushToPanelSafely(sendMessage, { key: "status.htmlUploaded" });
     }
 
     // Start all three asset categories concurrently. Use a single
@@ -882,7 +912,7 @@ async function executeDownloadServerMode(
     // LinkedPageScraper now. (The legacy `downloadLinks` storage key stays
     // reserved but is ignored here.)
     if (downloadOptions.downloadLinksFullScraping && tabId) {
-      sendMessage({ key: "status.scrapingLinkedPages" });
+      pushToPanelSafely(sendMessage, { key: "status.scrapingLinkedPages" });
 
       const assetRegistry = new AssetRegistry();
 
@@ -974,9 +1004,9 @@ async function executeDownloadServerMode(
     // already uploaded above. The linked page text delimiter format
     // (\n--- URL ---\n) is designed to be appended after the main content.
     if (downloadOptions.downloadContentAsText) {
-      sendMessage({ key: "status.downloadingContent" });
+      pushToPanelSafely(sendMessage, { key: "status.downloadingContent" });
       await serverClient.uploadContent(sessionId, data.text);
-      sendMessage({ key: "status.contentDownloaded" });
+      pushToPanelSafely(sendMessage, { key: "status.contentDownloaded" });
     }
 
     // (12.4) Send scrape-complete signal ONCE — after ALL page scrolling
@@ -1006,24 +1036,24 @@ async function executeDownloadServerMode(
       }
     }
 
-    sendMessage({ key: "status.sendingScrapeComplete" });
+    pushToPanelSafely(sendMessage, { key: "status.sendingScrapeComplete" });
     await serverClient.scrapeComplete(
       sessionId,
       totalResourceCount,
       resourcesFailed,
     );
     scrapeCompleteSent = true;
-    sendMessage({ key: "status.scrapeComplete" });
+    pushToPanelSafely(sendMessage, { key: "status.scrapeComplete" });
     updateCheckpointPhase("uploading", sessionId);
 
     // Wait for all resource uploads to complete before finalizing.
     // Finalization requires all resources to be on the server.
-    sendMessage({ key: "status.waitingForUploads" });
+    pushToPanelSafely(sendMessage, { key: "status.waitingForUploads" });
 
     // Heartbeat: send progress every 15s so the UI can detect a dead worker.
     const heartbeatInterval = setInterval(() => {
       const progress = uploadQueue.getProgress();
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.uploadProgress",
         options: {
           completed: progress.completedCount,
@@ -1077,18 +1107,18 @@ async function executeDownloadServerMode(
         "[ServerMode] Session size limit was reached. Proceeding to finalize " +
           "with partial data. Some resources were skipped.",
       );
-      sendMessage({ key: "status.finalizingPartial" });
+      pushToPanelSafely(sendMessage, { key: "status.finalizingPartial" });
     }
 
     // (12.8) Replace ZIP generation with server finalization + polling.
-    sendMessage({ key: "status.finalizingServer" });
+    pushToPanelSafely(sendMessage, { key: "status.finalizingServer" });
     await serverClient.finalizeSession(sessionId);
     updateCheckpointPhase("assembling", sessionId);
 
     // Poll for assembly completion and trigger download
     // (Round 9 — Fix B) Keep the polled snapshot truthful about the phase.
     setSessionPhase(sessionId, "assembling");
-    sendMessage({ key: "status.assemblingServer" });
+    pushToPanelSafely(sendMessage, { key: "status.assemblingServer" });
     const handler = getServerDownloadHandler();
 
     // (12.9) Server failure handling: detect ServerUnavailableError,
@@ -1103,7 +1133,7 @@ async function executeDownloadServerMode(
         // already produced one, so the panel's local-fallback action can
         // use it directly.
         const fallbackUrl = await lookupFallbackUrl(sessionId);
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.serverFallbackOffer",
           options: { reason, errorMessage, fallbackUrl },
         });
@@ -1121,7 +1151,7 @@ async function executeDownloadServerMode(
       // locales. DownloadStatus and Actions render the translated label via
       // the status.assemblyPhase* keys (see en.json).
       (status, phase, progressPct, elapsedSeconds) => {
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.assemblyProgress",
           options: { status, phase, progressPct, elapsedSeconds },
         });
@@ -1140,7 +1170,7 @@ async function executeDownloadServerMode(
     // URL surfaced via the existing serverDownloadReady affordance.
     if (downloadAbort.signal.aborted) {
       if (downloadResult?.downloadUrl) {
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.serverDownloadReady",
           options: {
             downloadUrl: downloadResult.downloadUrl,
@@ -1149,7 +1179,7 @@ async function executeDownloadServerMode(
           },
         });
       }
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.cancelled",
         options: { serverSessionId: sessionId, failedCount: failedUploadCount },
       });
@@ -1158,19 +1188,19 @@ async function executeDownloadServerMode(
 
     // Cloud mode: server pushed to PagePocket, show cloud success
     if (downloadResult?.cloudPageId) {
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.pagepocketUploadComplete",
         options: { pageId: downloadResult.cloudPageId },
       });
       // The session ID rides along so the panel's delete flow can target
       // the session after the finally block clears the active pointer.
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.complete",
         options: { serverSessionId: sessionId, failedCount: failedUploadCount },
       });
     } else if (downloadResult?.cloudError) {
       // Cloud push failed — show specific error
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.pagepocketUploadError",
         options: { error: downloadResult.cloudError },
       });
@@ -1196,7 +1226,7 @@ async function executeDownloadServerMode(
       };
 
       if (downloadResult?.downloadUrl) {
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.serverDownloadReady",
           options: {
             downloadUrl: downloadResult.downloadUrl,
@@ -1206,7 +1236,10 @@ async function executeDownloadServerMode(
         });
       }
 
-      sendMessage({ key: "status.complete", options: serverCompleteOptions });
+      pushToPanelSafely(sendMessage, {
+        key: "status.complete",
+        options: serverCompleteOptions,
+      });
     }
   } catch (error) {
     // Best-effort: ensure scrapeComplete is sent so the server transitions
@@ -1275,7 +1308,7 @@ async function executeDownloadServerMode(
       // (UX contract) A concrete fallback URL is included when the server
       // already produced a download URL for the session.
       const fallbackUrl = await lookupFallbackUrl(sessionId);
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.serverError",
         options: {
           error: errorMessage,
@@ -1293,7 +1326,7 @@ async function executeDownloadServerMode(
       });
     } else {
       // Generic error — send as regular failure message
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.failedWithError",
         options: { error: errorMessage },
       });
@@ -1369,7 +1402,7 @@ async function finalizeAndPollAssembly(
   if (signal?.aborted) {
     throw new DOMException("Download was cancelled", "AbortError");
   }
-  sendMessage({ key: "status.finalizingServer" });
+  pushToPanelSafely(sendMessage, { key: "status.finalizingServer" });
   try {
     await client.finalizeSession(sessionId);
   } catch {
@@ -1378,7 +1411,7 @@ async function finalizeAndPollAssembly(
 
   // (Round 9 — Fix B) Keep the polled snapshot truthful about the phase.
   setSessionPhase(sessionId, "assembling");
-  sendMessage({ key: "status.assemblingServer" });
+  pushToPanelSafely(sendMessage, { key: "status.assemblingServer" });
   const handler = getServerDownloadHandler();
   let downloadResult: Awaited<ReturnType<typeof handler.downloadWithFallback>>;
   try {
@@ -1388,7 +1421,7 @@ async function finalizeAndPollAssembly(
       false,
       async () => false,
       (_status, phase, progressPct, elapsedSeconds) => {
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.assemblyProgress",
           options: { status: "assembling", phase, progressPct, elapsedSeconds },
         });
@@ -1422,7 +1455,7 @@ async function finalizeAndPollAssembly(
   // serverDownloadReady affordance.
   if (signal?.aborted) {
     if (downloadResult?.downloadUrl) {
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.serverDownloadReady",
         options: {
           downloadUrl: downloadResult.downloadUrl,
@@ -1430,7 +1463,7 @@ async function finalizeAndPollAssembly(
         },
       });
     }
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.cancelled",
       options: { serverSessionId: sessionId, failedCount },
     });
@@ -1438,28 +1471,28 @@ async function finalizeAndPollAssembly(
   }
 
   if (downloadResult?.cloudPageId) {
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.pagepocketUploadComplete",
       options: { pageId: downloadResult.cloudPageId },
     });
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.complete",
       options: { serverSessionId: sessionId, failedCount },
     });
   } else if (downloadResult?.cloudError) {
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.pagepocketUploadError",
       options: { error: downloadResult.cloudError },
     });
   } else if (downloadResult?.downloadUrl) {
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.serverDownloadReady",
       options: {
         downloadUrl: downloadResult.downloadUrl,
         serverSessionId: sessionId,
       },
     });
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.complete",
       options: {
         downloadUrl: downloadResult.downloadUrl,
@@ -1530,7 +1563,7 @@ export async function resumeServerDownload(
   const saveAs = filterOptions.alwaysAskWhereToSave ?? true;
 
   try {
-    sendMessage({ key: "status.reconnectingServer" });
+    pushToPanelSafely(sendMessage, { key: "status.reconnectingServer" });
 
     // Query server for current session status
     const status = await serverClient.getSessionStatus(serverSessionId);
@@ -1548,11 +1581,11 @@ export async function resumeServerDownload(
         status.download_url,
         serverClient.baseUrl,
       );
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.serverDownloadReady",
         options: { downloadUrl, serverSessionId },
       });
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.complete",
         options: { downloadUrl, serverSessionId, failedCount: 0 },
       });
@@ -1570,7 +1603,7 @@ export async function resumeServerDownload(
       scrapeCompleteSent = true; // session already past SCRAPING
       // (Round 9 — Fix B) Keep the polled snapshot truthful.
       setSessionPhase(serverSessionId, "assembling");
-      sendMessage({ key: "status.assemblingServer" });
+      pushToPanelSafely(sendMessage, { key: "status.assemblingServer" });
       const handler = getServerDownloadHandler();
       const downloadResult = await handler.downloadWithFallback(
         serverSessionId,
@@ -1578,7 +1611,7 @@ export async function resumeServerDownload(
         false,
         async () => false,
         (_status, phase, progressPct, elapsedSeconds) => {
-          sendMessage({
+          pushToPanelSafely(sendMessage, {
             key: "status.assemblyProgress",
             options: {
               status: "assembling",
@@ -1600,7 +1633,7 @@ export async function resumeServerDownload(
       // status.cancelled (with the produced URL), never status.complete.
       if (resumeAssemblyAbort.signal.aborted) {
         if (downloadResult?.downloadUrl) {
-          sendMessage({
+          pushToPanelSafely(sendMessage, {
             key: "status.serverDownloadReady",
             options: {
               downloadUrl: downloadResult.downloadUrl,
@@ -1608,28 +1641,28 @@ export async function resumeServerDownload(
             },
           });
         }
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.cancelled",
           options: { serverSessionId, failedCount: 0 },
         });
         return;
       }
       if (downloadResult?.cloudPageId) {
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.pagepocketUploadComplete",
           options: { pageId: downloadResult.cloudPageId },
         });
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.complete",
           options: { serverSessionId, failedCount: 0 },
         });
       } else if (downloadResult?.cloudError) {
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.pagepocketUploadError",
           options: { error: downloadResult.cloudError },
         });
       } else if (downloadResult?.downloadUrl) {
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.complete",
           options: {
             downloadUrl: downloadResult.downloadUrl,
@@ -1660,7 +1693,7 @@ export async function resumeServerDownload(
           `[Resume] No checkpoint resource URLs, but server has ${serverReceived} resources. ` +
             `Sending scrapeComplete and proceeding to finalization.`,
         );
-        sendMessage({ key: "status.sendingScrapeComplete" });
+        pushToPanelSafely(sendMessage, { key: "status.sendingScrapeComplete" });
         await serverClient.scrapeComplete(serverSessionId, serverReceived);
         scrapeCompleteSent = true;
 
@@ -1689,11 +1722,11 @@ export async function resumeServerDownload(
     // so the server transitions out of SCRAPING and knows the expected resource
     // count before uploads begin. For UPLOADING status this is idempotent.
     // If this fails, the outer catch block will attempt a best-effort retry.
-    sendMessage({ key: "status.sendingScrapeComplete" });
+    pushToPanelSafely(sendMessage, { key: "status.sendingScrapeComplete" });
     await serverClient.scrapeComplete(serverSessionId, resourceUrls.length);
     scrapeCompleteSent = true;
 
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.resumingUploads",
       options: { count: resourceUrls.length },
     });
@@ -1703,7 +1736,7 @@ export async function resumeServerDownload(
     // (Round 9 — Fix B) Expose the resume queue to CHECK_DOWNLOAD_LIVE.
     setSessionUploadQueue(serverSessionId, uploadQueue);
     uploadQueue.onProgress = (progress) => {
-      sendMessage({
+      pushToPanelSafely(sendMessage, {
         key: "status.uploadProgress",
         options: {
           completed: progress.completedCount,
@@ -1777,7 +1810,7 @@ export async function resumeServerDownload(
     try {
       heartbeatInterval = setInterval(() => {
         const progress = uploadQueue.getProgress();
-        sendMessage({
+        pushToPanelSafely(sendMessage, {
           key: "status.uploadProgress",
           options: {
             completed: progress.completedCount,

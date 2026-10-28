@@ -38,6 +38,33 @@ function enqueueRequest(
   });
 }
 
+/**
+ * Fire-and-forget a panel push. The send callback resolves/rejects
+ * asynchronously (messageWorker's addMessage → sendMessageToPanel), so when
+ * the side panel is closed every push rejects with "Receiving end does not
+ * exist". Catch and log those failures at debug level so a failed push never
+ * becomes an unhandled rejection in the service worker and never affects the
+ * download pipeline. A successful push behaves exactly as the bare call did.
+ */
+function pushToPanelSafely(
+  sendMessage: SendMessage,
+  message: string | { key: string; options?: any },
+): void {
+  try {
+    Promise.resolve(sendMessage(message)).catch((err) => {
+      console.debug(
+        "[fileHandlers:documents] panel push failed (ignored):",
+        err instanceof Error ? err.message : err,
+      );
+    });
+  } catch (err) {
+    console.debug(
+      "[fileHandlers:documents] panel push failed (ignored):",
+      err instanceof Error ? err.message : err,
+    );
+  }
+}
+
 /** Determine the document MIME type from the filename extension. */
 function docContentTypeFromExtension(filename: string): string {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
@@ -134,7 +161,7 @@ export async function addDocumentFiles(
     });
 
     completedCount++;
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.documentsProgress",
       options: { completed: completedCount, total: count },
     });
@@ -153,7 +180,10 @@ export async function addDocumentFiles(
     if (result.type === "opaque" || result.snapshot.type === "opaque") {
       failureCategories.cors = (failureCategories.cors ?? 0) + 1;
       failCount++;
-      sendMessage(`Document CORS-blocked (opaque response): ${document}`);
+      pushToPanelSafely(
+        sendMessage,
+        `Document CORS-blocked (opaque response): ${document}`,
+      );
       return;
     }
 
@@ -188,7 +218,7 @@ export async function addDocumentFiles(
   await Promise.allSettled(tasks);
 
   if (failCount > 0 || skippedCount > 0) {
-    sendMessage({
+    pushToPanelSafely(sendMessage, {
       key: "status.documentsSummary",
       options: {
         succeeded: successCount,
