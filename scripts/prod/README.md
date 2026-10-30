@@ -767,6 +767,48 @@ drift:`DB*USER*_`were never in`.env`, and old containers predated the
 - Note: extension side needs the operator's local `npm run build` +
   reload to exercise the new flags/saver end-to-end (task 7.4).
 
+### Deploy record — 2026-10-30 (api-abuse-hardening monolith rebuild, `7b96e26`)
+
+- Change: PoP registration — re-registering a registered instance ID requires its
+  current API key as `X-API-Key` proof (200 re-unlock / 409 `reauth_required`
+  without proof / 401 `reauth_proof_invalid` with wrong proof); session-create
+  URL validation (400 `url_not_allowed` + `reason`: `scheme_not_allowed` /
+  `private_address_not_allowed` / `invalid_url`; http/https allowlist,
+  private/loopback/link-local IP-literal blocklist, literal-only v1); per-client
+  session quotas (429 `session_limit_exceeded`, 20 active / 200 per rolling 24h,
+  accurate `Retry-After` on the daily cap). No migrations. Extension side
+  (proof header + 409→rotate recovery) ships with the operator's next local
+  build; server is BREAKING for ID-only re-registration by design
+  (operator-only consumers per the 2026-10-16 order).
+- Ship path: fast-forward `4a50228..7b96e26` pushed `main` → `pagepocket`; CI
+  run `40690413261` (server ✓ 8 steps, extension ✓ 13 steps, backend/frontend
+  skipped — path filter); deploy run `40690413278` (ci-gate ✓,
+  extension-artifact ✓, deploy-backend/frontend skipped). Monolith manual §3
+  step 3b: host reset to `7b96e26` → `build app` → `alembic upgrade head`
+  (no-op) → `up -d`. Build survived a coordinator restart (docker layer cache).
+- Post-rebuild verification: §7 confinement re-verified (archive :50052 / auth
+  :50051 OK; search/library/share getaddrinfo FAIL); `/api/v1/health` ok
+  (mysql ok); new code confirmed in container (`reauth_required` ×3 in
+  auth.py; validator probed in-container: `file://` → `scheme_not_allowed`,
+  `169.254.169.254` → `private_address_not_allowed`, `https://example.com` →
+  allowed).
+- **Wire probes over `127.0.0.1:8000`** (probe client
+  `probe-20261030-apiabuse`, left in place — orphaned-key cleanup owns it):
+  fresh register → 201; ID-only replay → 409 `reauth_required` (no key
+  material, body names the `X-API-Key` requirement); proof replay → 200 with
+  the SAME key + same client UUID, client row count still 1
+  (`api_key_hash` populated); wrong proof → 401 `reauth_proof_invalid`;
+  `file:///etc/passwd` → 400 `scheme_not_allowed`;
+  `http://169.254.169.254/…` and `http://127.0.0.1:8000/` → 400
+  `private_address_not_allowed`; control `https://example.com/` → 201 then
+  `DELETE` → 200 (zero residue); unauth `POST /api/v1/cloud/link` → 401
+  (regression intact).
+- Per-IP register bucket observed live at 5/min on loopback (6 spaced probe
+  calls, no spurious 429; `TRUST_PROXY=true` unchanged). External surface:
+  :8000/:33060/:8090 all refuse from outside. Quota caps (429 active/daily)
+  not exercised on prod — covered by the suite (680 tests incl. bite-proofed
+  quota cases); observe defaults (20/200) in production.
+
 ## 15. Extension ID & Google OAuth redirect URI (easier-auth)
 
 The extension ID is pinned by the `key` field in `public/manifest.json`
