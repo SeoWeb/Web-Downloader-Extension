@@ -809,6 +809,41 @@ drift:`DB*USER*_`were never in`.env`, and old containers predated the
   not exercised on prod — covered by the suite (680 tests incl. bite-proofed
   quota cases); observe defaults (20/200) in production.
 
+### Deploy record — 2026-11-02 (archive-warning-and-replace-fixes monolith rebuild, `8a85d9d`)
+
+- Change: merger integrity + quota net-charge (D3/D4/D5): skeleton-source HTML-chunk
+  replacement regenerates the skeleton (recorded source index + per-chunk size map;
+  stale registration/dedup entries dropped, `total_size` recomputed) — fixes the
+  duplicated first scroll on fresh and post-eviction jobs; `_dom_merge` carries
+  chunk-body bare text (text-only chunks no longer silently dropped); replace-mode
+  uploads charged NET growth (conflict query + dedup moved above the size pre-check;
+  413 body = true pre-state `current_size` + net-growth `upload_size`) — near-limit
+  legitimate replaces no longer falsely 413. Extension half (cancelled-phase
+  partial-archive card, `archive_warning` surfacing, 45-locale keys, dead
+  `isPushForPanel` removal) ships with the operator's local rebuild. No migrations.
+- Ship path: `8a85d9d` pushed `main`+`pagepocket` (CI `41450021644`: server ✓,
+  extension ✓, backend/frontend skipped — path filter; deploy `41450021623`:
+  ci-gate ✓, extension-artifact ✓ with `VITE_GOOGLE_CLIENT_ID`, deploy jobs
+  skipped). Monolith manual §3 step 3b: host reset `8a85d9d` → `build app` →
+  alembic (no-op) → `up -d`. One transient SSH drop during deploy day (throttle/
+  flake — resolved by retry with keepalives; no host action needed).
+- Post-rebuild verification: §7 confinement re-verified (archive/auth OK;
+  search/library/share blocked); `/api/v1/health` ok (mysql ok); new code in
+  container (`skeleton_source_scroll_index` in routes + service).
+- **Wire probe (index-0 replace)**: create session → chunk 0 (OLD-FIRST) → chunk 1
+  (SECOND-SCREEN) → re-POST chunk 0 (NEW-FIRST) → `200 replaced=true
+deduplicated=false`; in-container storage audit: **OLD marker in 0 files**
+  (pre-fix the skeleton kept it — the decisive discriminator), NEW in exactly the
+  2 designed places (route's atomically-swapped `0.html` + regenerated skeleton),
+  SECOND in 1; probe session deleted (zero residue).
+- **Wire probe (bare-text merge)**: service-level run against the DEPLOYED image
+  (`_dom_merge` with a text-only chunk) → text survives once, skeleton content
+  kept — D5 live.
+- D4 (net-growth quota) not exercised on prod (needs a near-limit session) —
+  covered by the suite incl. the falsely-413-at-HEAD regression test. External
+  surface: :8000/:33060/:8090 all closed. Probe client row from the 2026-10-30
+  record reused; probe sessions deleted after each check.
+
 ## 15. Extension ID & Google OAuth redirect URI (easier-auth)
 
 The extension ID is pinned by the `key` field in `public/manifest.json`
