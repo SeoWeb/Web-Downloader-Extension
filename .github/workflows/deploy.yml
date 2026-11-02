@@ -46,6 +46,10 @@ jobs:
               - 'tsconfig.json'
               - '*.cjs'
               - 'tests/**'
+              # easier-auth 5.3: workflow-only pushes (e.g. the secret wiring
+              # below) must still rebuild the store artifact, otherwise it
+              # silently drifts from what the deploy workflow can publish.
+              - '.github/workflows/**'
             frontend:
               - 'pagepocket/frontend/**'
             backend:
@@ -121,6 +125,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+        env:
+          # easier-auth 5.3: store artifacts must ship the Google button.
+          # src/common/pagepocket-mode.ts gates it on this build-time var;
+          # .env is gitignored, so CI builds are empty without it. Client ID
+          # is the same public OAuth client the gateway/auth-service use
+          # (not a secret; kept in Actions secrets only to avoid embedding
+          # it in the repo). ci.yml intentionally stays unwired: its
+          # availability-guard test asserts the var is unset.
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
       - uses: actions/upload-artifact@v4
         with:
           name: extension-zip
