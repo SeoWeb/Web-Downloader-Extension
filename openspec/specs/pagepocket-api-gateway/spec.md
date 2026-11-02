@@ -24,7 +24,7 @@ The API Gateway SHALL expose all cloud functionality under `/api/v1/*` as the on
 
 ### Requirement: JWT Authentication Middleware
 
-The API Gateway SHALL require a valid bearer JWT on every route except `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/refresh`, `/api/v1/share/public/{token}`, and `/api/v1/health`.
+The API Gateway SHALL require a valid bearer JWT on every route except `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/refresh`, `/api/v1/auth/google`, `/api/v1/share/public/{token}`, and `/api/v1/health`.
 
 #### Scenario: Valid token
 
@@ -46,6 +46,12 @@ The API Gateway SHALL require a valid bearer JWT on every route except `/api/v1/
 
 - **WHEN** a request to `/api/v1/share/public/{token}` arrives without `Authorization`
 - **THEN** the gateway MUST forward to `ShareService.ValidateToken` without requiring a JWT
+
+#### Scenario: Public Google auth route bypasses auth
+
+- **WHEN** a `POST /api/v1/auth/google` request arrives without `Authorization`
+- **THEN** the gateway MUST forward it to `AuthService.GoogleAuth` without requiring a JWT
+- **AND** the request remains subject to the unauthenticated 20-per-minute per-IP rate-limit class on `/api/v1/auth/*`
 
 ### Requirement: Rate Limiting
 
