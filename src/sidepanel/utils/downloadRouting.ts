@@ -32,7 +32,7 @@
  *   downloads.
  *
  * Pure functions — extracted so the routing decision is unit-testable
- * without React (same pattern as tabFilter / livePolling).
+ * without React (same pattern as livePolling / serverModeState).
  */
 
 /** The download the panel tracks, pinned when a flow starts (D1). */

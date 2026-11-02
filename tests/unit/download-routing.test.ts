@@ -29,10 +29,11 @@
  * (mount effect), and on the resume/restart paths.
  *
  * The "bite" describe replicates the OLD live-tab routing verbatim
- * (HEAD's isPushForPanel guard + the storage fallback's `tabId === tabId`
- * comparison) and pins that the new identity routing decides the defect
- * scenarios the OPPOSITE way. Run against a stub implementing the old
- * rule, those expectations fail (see the change's verification notes).
+ * (HEAD's old push-acceptance guard + the storage fallback's
+ * `tabId === tabId` comparison) and pins that the new identity routing
+ * decides the defect scenarios the OPPOSITE way. Run against a stub
+ * implementing the old rule, those expectations fail (see the change's
+ * verification notes).
  */
 
 import { act } from "react";
@@ -404,10 +405,10 @@ describe("classifyTerminalRecord (storage fallback)", () => {
 // BITE — old live-tab routing vs the identity routing.
 //
 // The old-rule functions below are the pre-fix panel logic VERBATIM:
-//   - isPushForPanel (src/sidepanel/utils/tabFilter.ts) composed as the old
-//     messageWorker guard `acceptsTab(senderTabId)` with the LIVE tab and
-//     the hook's pinned snapshot (0 in a reopened panel — the hook only
-//     pins after a press).
+//   - the old push-acceptance filter (since removed with the identity
+//     routing rework) composed as the old messageWorker guard
+//     `acceptsTab(senderTabId)` with the LIVE tab and the hook's pinned
+//     snapshot (0 in a reopened panel — the hook only pins after a press).
 //   - the storage fallback guard `record.tabId !== undefined &&
 //     record.tabId === tabId` (live tab, stale closure).
 // Each test pins BOTH verdicts: the old rule's (the defect) and the new
@@ -415,7 +416,7 @@ describe("classifyTerminalRecord (storage fallback)", () => {
 // rule" expectation here fails.
 // ---------------------------------------------------------------------------
 
-function isPushForPanelOld(
+function oldLiveTabPushGuard(
   senderTabId: number | undefined,
   focusedTabId: number,
   pinnedDownloadTabId: number | null | undefined,
@@ -428,7 +429,7 @@ describe("bite — old live-tab routing vs identity routing", () => {
   it("terminal after a tab switch, reopened panel: the old guard drops it (pin=0, live=B), the identity routing delivers it", () => {
     // Panel reopened mid-download; hook never pressed → old pin = 0.
     // Terminal push stamped with the download's origin tab A.
-    expect(isPushForPanelOld(9, 5, 0)).toBe(false); // OLD: dropped → frozen spinner
+    expect(oldLiveTabPushGuard(9, 5, 0)).toBe(false); // OLD: dropped → frozen spinner
     expect(classifyDownloadMessage(TRACKED, { tabId: 9 }, "terminal")).toBe(
       "terminal-apply",
     ); // NEW: delivered
@@ -450,7 +451,7 @@ describe("bite — old live-tab routing vs identity routing", () => {
   it("progress from ANOTHER download on the focused tab: the old guard accepted it, the identity routing ignores it", () => {
     // Old semantics let the focused tab's messages through — two
     // concurrent downloads cross-contaminated each other's UI.
-    expect(isPushForPanelOld(5, 5, 9)).toBe(true); // OLD: accepted (wrong)
+    expect(oldLiveTabPushGuard(5, 5, 9)).toBe(true); // OLD: accepted (wrong)
     expect(classifyDownloadMessage(TRACKED, { tabId: 5 }, "progress")).toBe(
       "ignore",
     ); // NEW: filtered

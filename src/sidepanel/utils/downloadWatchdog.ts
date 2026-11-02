@@ -18,6 +18,7 @@
  */
 
 import type { RoutingDecision } from "./downloadRouting";
+import type { ServerModeState } from "../server-mode-state";
 
 /**
  * Silence budget before the panel declares the service worker dead:
@@ -35,15 +36,13 @@ export interface WatchdogArmInput {
   downloadTracked: boolean;
 }
 
-/** The server-mode phases the panel can be in (ServerModeState["phase"]). */
-export type ServerModePhase =
-  | "scraping"
-  | "uploading"
-  | "assembling"
-  | "ready"
-  | "failed"
-  | "timeout"
-  | null;
+/**
+ * The server-mode phases the panel can be in — derived from
+ * ServerModeState["phase"] so the union can never drift (the cancelled
+ * terminal phase is added in archive-warning-and-replace-fixes; the
+ * watchdog arm decision below keeps excluding every non-wait phase).
+ */
+export type ServerModePhase = ServerModeState["phase"];
 
 /**
  * Arm decision: the watchdog exists ONLY for the server-side wait phases,

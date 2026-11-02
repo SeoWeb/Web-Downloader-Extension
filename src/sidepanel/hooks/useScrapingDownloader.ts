@@ -377,8 +377,7 @@ export function useScrapingDownloader({
   }, []);
 
   // (Round 9 — Fix 3) Press-time pinned download tab — lets the panel accept
-  // pushes from the ACTIVE download even after the user switches tabs
-  // (consumed by isPushForPanel).
+  // pushes from the ACTIVE download even after the user switches tabs.
   const getPinnedTabId = useCallback(() => targetRef.current.tabId, []);
   // (Round 9 — Fix B) This run's server session id, once created — the
   // target for the panel's CHECK_DOWNLOAD_LIVE polling.
@@ -688,7 +687,7 @@ export function useScrapingDownloader({
     stopScraping,
     // (Round 9 — Fix 3) Press-time pinned download tab — lets the panel
     // accept pushes from the ACTIVE download even after the user switches
-    // tabs (isPushForPanel).
+    // tabs.
     getPinnedTabId,
     // (Fix 2 — D2) Resume single-fire gate — see beginResume above.
     beginResume,

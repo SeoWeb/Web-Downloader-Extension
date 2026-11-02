@@ -421,6 +421,50 @@ export function DownloadStatus({
   }
 
   // -----------------------------------------------------------------------
+  // (archive-warning-and-replace-fixes 4.4) Stopped download whose partial
+  // archive the server already produced. Terminal cancelled phase + a
+  // salvaged URL is the ONLY gate, so the card never renders mid-run and
+  // never uses the green complete presentation (stop contract: a stop must
+  // not read as success).
+  // -----------------------------------------------------------------------
+  if (
+    serverModeState &&
+    serverModeState.phase === "cancelled" &&
+    serverModeState.serverDownloadUrl &&
+    onDownloadFromServer
+  ) {
+    return (
+      <div className="pt-8 animate-fade-in">
+        <div className="card p-6 bg-gradient-to-b from-amber-50 to-white border-amber-200 space-y-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-8 h-8 text-amber-500 flex-shrink-0" />
+            <div>
+              <h3 className="font-bold text-slate-800">
+                {t("status.stoppedWithArchiveTitle")}
+              </h3>
+              <p className="text-sm text-slate-600 mt-1">
+                {t("status.stoppedWithArchiveSubtitle")}
+              </p>
+            </div>
+          </div>
+
+          {serverModeState.archiveWarning && (
+            <ArchiveWarningBlock message={serverModeState.archiveWarning} />
+          )}
+
+          <button
+            onClick={onDownloadFromServer}
+            className="btn-primary w-full flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            {t("status.downloadFromServer")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // -----------------------------------------------------------------------
   // (15.3) "Download from server" button when ZIP is ready
   // -----------------------------------------------------------------------
   if (
@@ -443,6 +487,12 @@ export function DownloadStatus({
               </p>
             </div>
           </div>
+          {/* (archive-warning-and-replace-fixes D2) Server's archive
+              integrity warning — localized heading, server message as data.
+              Clean sessions render unchanged. */}
+          {serverModeState.archiveWarning && (
+            <ArchiveWarningBlock message={serverModeState.archiveWarning} />
+          )}
           <button
             onClick={onDownloadFromServer}
             className="btn-primary w-full flex items-center justify-center gap-2 cursor-pointer"
@@ -629,6 +679,23 @@ export function DownloadStatus({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * (archive-warning-and-replace-fixes D2) The server's archive integrity
+ * warning — localized heading, the server's message string shown as data
+ * (same treatment as `error_message`; full translation of server strings is
+ * out of scope). Amber warning styling, shared by the ready card and the
+ * stopped-with-partial-archive card.
+ */
+function ArchiveWarningBlock({ message }: { message: string }) {
+  const { t } = useTranslation();
+  return (
+    <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+      <p className="font-semibold">{t("status.archiveWarningHeading")}</p>
+      <p className="mt-1">{message}</p>
+    </div>
+  );
+}
 
 /**
  * Capitalize the first letter of an assembly phase for i18n key lookup.

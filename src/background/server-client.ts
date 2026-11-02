@@ -298,6 +298,15 @@ export interface SessionStatusResponse {
   output_content_type?: string | null;
   output_size: number | null;
   error_message: string | null;
+  /**
+   * Archive honesty (server-assembly-honesty 1.4/D1) — additive nullable
+   * fields the server already reports in /status. Undefined on older
+   * servers and null until finalize/assembly integrity accounting has been
+   * persisted; consumers must treat absent as "no warning".
+   */
+  resources_missing?: number | null;
+  resources_failed?: number | null;
+  archive_warning?: string | null;
   cloud_status?: string | null;
   cloud_page_id?: string | null;
   cloud_error?: string | null;

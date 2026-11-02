@@ -585,6 +585,153 @@ describe("applyServerModeMessage", () => {
   });
 
   // -----------------------------------------------------------------------
+  // D1 — terminal cancelled phase + D2 additive archiveWarning
+  // (archive-warning-and-replace-fixes, download-ux-feedback delta)
+  // -----------------------------------------------------------------------
+
+  it("should transition to cancelled on status.cancelled carrying the salvaged URL", () => {
+    // Stop salvage: the background emits status.serverDownloadReady (the
+    // probe found the archive) then status.cancelled — the URL must
+    // survive into the terminal cancelled phase.
+    const salvaged = applyServerModeMessage(
+      initialServerModeState,
+      "status.serverDownloadReady",
+      {
+        downloadUrl: "https://server.example.com/api/v1/sessions/s1/download",
+        serverSessionId: "sess-s1",
+      },
+    );
+    const next = applyServerModeMessage(salvaged, "status.cancelled", {
+      serverSessionId: "sess-s1",
+    });
+    expect(next.phase).toBe("cancelled");
+    expect(next.serverDownloadUrl).toBe(
+      "https://server.example.com/api/v1/sessions/s1/download",
+    );
+    expect(next.serverSessionId).toBe("sess-s1");
+  });
+
+  it("should transition to cancelled with no URL when the stop happened before the server produced one", () => {
+    const uploading = applyServerModeMessage(
+      initialServerModeState,
+      "status.scrapeComplete",
+    );
+    const next = applyServerModeMessage(uploading, "status.cancelled", {
+      serverSessionId: "sess-s2",
+    });
+    expect(next.phase).toBe("cancelled");
+    expect(next.serverDownloadUrl).toBeNull();
+  });
+
+  it("should never terminate a stop as ready — cancellation is not success", () => {
+    const salvaged = applyServerModeMessage(
+      initialServerModeState,
+      "status.serverDownloadReady",
+      { downloadUrl: "https://server.example.com/dl" },
+    );
+    const next = applyServerModeMessage(salvaged, "status.cancelled", {});
+    expect(next.phase).not.toBe("ready");
+    expect(next.phase).toBe("cancelled");
+  });
+
+  it("should stay cancelled when a late progress push replays after the stop", () => {
+    const cancelled = applyServerModeMessage(
+      initialServerModeState,
+      "status.cancelled",
+      {},
+    );
+    const replayed = applyServerModeMessage(
+      cancelled,
+      "status.uploadProgress",
+      {
+        completed: 5,
+        total: 20,
+      },
+    );
+    expect(replayed.phase).toBe("cancelled");
+  });
+
+  it("should NOT enter a terminal phase when serverDownloadReady arrives mid-run", () => {
+    // The self-healing mid-run URL (assembly still polling) must never
+    // produce the terminal cancelled phase on its own.
+    const assembling = applyServerModeMessage(
+      initialServerModeState,
+      "status.assemblingServer",
+    );
+    const next = applyServerModeMessage(
+      assembling,
+      "status.serverDownloadReady",
+      {
+        downloadUrl: "https://server.example.com/mid",
+        serverSessionId: "sess-m",
+      },
+    );
+    expect(next.phase).toBe("assembling");
+    expect(next.phase).not.toBe("cancelled");
+    expect(next.serverDownloadUrl).toBe("https://server.example.com/mid");
+  });
+
+  it("should store archiveWarning from status.complete", () => {
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.complete",
+      {
+        downloadUrl: "https://server.example.com/dl",
+        failedCount: 0,
+        archiveWarning: "3 resources missing from the archive",
+      },
+    );
+    expect(next.phase).toBe("ready");
+    expect(next.archiveWarning).toBe("3 resources missing from the archive");
+  });
+
+  it("should store archiveWarning from status.serverDownloadReady without changing phase", () => {
+    const assembling = applyServerModeMessage(
+      initialServerModeState,
+      "status.assemblingServer",
+    );
+    const next = applyServerModeMessage(
+      assembling,
+      "status.serverDownloadReady",
+      {
+        downloadUrl: "https://server.example.com/dl",
+        archiveWarning: "integrity warning",
+      },
+    );
+    expect(next.phase).toBe("assembling");
+    expect(next.archiveWarning).toBe("integrity warning");
+  });
+
+  it("should keep the previous archiveWarning when the option is absent", () => {
+    const warned = applyServerModeMessage(
+      initialServerModeState,
+      "status.serverDownloadReady",
+      { downloadUrl: "https://server.example.com/dl", archiveWarning: "kept" },
+    );
+    const next = applyServerModeMessage(warned, "status.complete", {
+      failedCount: 0,
+    });
+    expect(next.archiveWarning).toBe("kept");
+  });
+
+  it("should keep archiveWarning null for a clean session (no warning option ever)", () => {
+    const next = applyServerModeMessage(
+      initialServerModeState,
+      "status.complete",
+      {
+        downloadUrl: "https://server.example.com/dl",
+        failedCount: 0,
+      },
+    );
+    expect(next.phase).toBe("ready");
+    expect(next.archiveWarning).toBeNull();
+  });
+
+  it("should default archiveWarning to null in initial state", () => {
+    expect(initialServerModeState.archiveWarning).toBeNull();
+  });
+
+  // -----------------------------------------------------------------------
   // Unknown message
   // -----------------------------------------------------------------------
 

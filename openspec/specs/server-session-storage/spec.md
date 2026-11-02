@@ -181,7 +181,7 @@ The server SHALL run a cleanup job on startup and at a configurable interval (de
 
 ### Requirement: Session Size Limits
 
-The server SHALL enforce configurable size limits on sessions to prevent abuse. The total session size SHALL be calculated as the sum of all resource sizes plus all HTML chunk sizes for the session.
+The server SHALL enforce configurable size limits on sessions to prevent abuse. The total session size SHALL be calculated as the sum of all resource sizes plus all HTML chunk sizes for the session. A same-index replacement upload (a chunk at an occupied page/scroll index with different content) SHALL be charged only its net growth — the new chunk size minus the superseded chunk size — against the limit; the pre-check SHALL determine replacement before charging so the superseded bytes are not counted twice.
 
 #### Scenario: Default session size limit
 
@@ -212,6 +212,19 @@ The server SHALL enforce configurable size limits on sessions to prevent abuse. 
 - **WHEN** the server checks cumulative session size for either a resource or HTML chunk upload
 - **THEN** the query computes: `(SUM(resources.size) WHERE session_id = :id) + (SUM(html_chunks.size) WHERE session_id = :id)`
 - **AND** uses COALESCE to treat NULL sums as 0
+
+#### Scenario: Replacement within net growth is accepted near the limit
+
+- **GIVEN** a session near `MAX_SESSION_SIZE_MB` holding an HTML chunk of size S at some (page, scroll index)
+- **WHEN** a replacement chunk at the same (page, scroll index) is uploaded whose net growth (new size − S) fits within the remaining budget
+- **THEN** the upload is accepted, even though `current_total + new size` alone would exceed the limit
+
+#### Scenario: Replacement exceeding net growth is rejected
+
+- **GIVEN** a session near `MAX_SESSION_SIZE_MB` holding an HTML chunk of size S at some (page, scroll index)
+- **WHEN** a replacement chunk is uploaded whose net growth (new size − S) would exceed the remaining budget
+- **THEN** the upload is rejected with 413 `session_size_exceeded` before any file is written
+- **AND** the response body reports the pre-state total and the net growth as the upload size
 
 ### Requirement: HTML Chunk Size Column Migration
 

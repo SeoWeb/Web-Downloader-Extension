@@ -615,6 +615,86 @@ describe("ServerClient", () => {
       expect(res.assembly_phase).toBe("converting_urls");
       expect(res.assembly_progress_pct).toBe(45);
     });
+
+    // archive-warning-and-replace-fixes 4.1 — the server sends the archive
+    // integrity fields in /status; the extension consumes them.
+    it("parses the archive integrity fields from /status", async () => {
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/status")) {
+            return mockResponse(200, {
+              id: "sess-1",
+              status: "ready",
+              url: "https://example.com",
+              html_chunks: 5,
+              resources_discovered: 10,
+              resources_received: 7,
+              total_size: 2048,
+              assembly_phase: null,
+              assembly_progress_pct: null,
+              download_url: "https://server.example.com/dl",
+              output_type: "zip",
+              output_size: 2048,
+              error_message: null,
+              resources_missing: 3,
+              resources_failed: 1,
+              archive_warning:
+                "3 resources missing and 1 failed during assembly",
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      const res = await client.getSessionStatus("sess-1");
+      expect(res.resources_missing).toBe(3);
+      expect(res.resources_failed).toBe(1);
+      expect(res.archive_warning).toBe(
+        "3 resources missing and 1 failed during assembly",
+      );
+    });
+
+    it("treats absent integrity fields as undefined (older servers)", async () => {
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/status")) {
+            return mockResponse(200, {
+              id: "sess-1",
+              status: "ready",
+              url: "https://example.com",
+              html_chunks: 5,
+              resources_discovered: 10,
+              resources_received: 10,
+              total_size: 2048,
+              assembly_phase: null,
+              assembly_progress_pct: null,
+              download_url: "https://server.example.com/dl",
+              output_type: "zip",
+              output_size: 2048,
+              error_message: null,
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      const res = await client.getSessionStatus("sess-1");
+      expect(res.resources_missing).toBeUndefined();
+      expect(res.resources_failed).toBeUndefined();
+      expect(res.archive_warning).toBeUndefined();
+    });
   });
 
   // -----------------------------------------------------------------------

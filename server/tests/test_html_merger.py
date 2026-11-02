@@ -1188,12 +1188,13 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.models import Base
 from app.models.client import Client
-from app.models.html_chunk import HtmlChunk
+from app.models.html_chunk import HtmlChunk, PageType
 from app.models.session import Session, SessionStatus
 from app.services.assembly_manager import assembly_task_manager
 
 
 REPLACE_SESSION_ID = "sess-replace"
+QUOTA_MB = 1024 * 1024
 
 
 @pytest_asyncio.fixture
@@ -1227,15 +1228,16 @@ async def replace_env(tmp_path):
 
 
 async def _upload_chunk(factory, storage_root, merger, *, html, scroll_index,
-                        session_id=REPLACE_SESSION_ID):
+                        session_id=REPLACE_SESSION_ID,
+                        max_session_size_mb=100, max_html_chunk_size_mb=5):
     """Invoke the HTML chunk upload route against the SQLite DB."""
     from app.api.routes.html import HtmlChunkRequest, upload_html_chunk
 
     async with factory() as db:
         with patch("app.api.routes.html.settings") as cfg, \
              patch("app.services.html_merger.html_merger_service", merger):
-            cfg.max_session_size_mb = 100
-            cfg.max_html_chunk_size_mb = 5
+            cfg.max_session_size_mb = max_session_size_mb
+            cfg.max_html_chunk_size_mb = max_html_chunk_size_mb
             cfg.storage_root = str(storage_root)
             resp = await upload_html_chunk(
                 session_id=session_id,
@@ -1482,6 +1484,448 @@ async def test_evict_stale_jobs_spares_sessions_with_active_assembly_task():
         with contextlib.suppress(asyncio.CancelledError):
             await task
         assembly_task_manager.unregister("evict-protected")
+
+
+# ---------------------------------------------------------------------------
+# D3 (archive-warning-and-replace-fixes 2.1/2.2/2.4) — skeleton-source
+# replacement regenerates the skeleton; non-source swap unchanged
+# ---------------------------------------------------------------------------
+
+async def _seed_chunk_row(factory, *, scroll_index, size, storage_path,
+                          session_id=REPLACE_SESSION_ID):
+    """Insert an html_chunks row directly.
+
+    Quota scenarios seed a pre-existing large chunk whose FILE need not
+    exist on disk — the session-size query reads only the size column.
+    """
+    async with factory() as db:
+        db.add(HtmlChunk(
+            session_id=session_id,
+            page_type=PageType.MAIN,
+            page_url=None,
+            page_url_hash="main",
+            scroll_index=scroll_index,
+            content_hash=hashlib.sha256(
+                f"seeded-{scroll_index}".encode("utf-8")
+            ).hexdigest(),
+            storage_path=storage_path,
+            size=size,
+        ))
+        await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_skeleton_source_replace_fresh_job_regenerates_skeleton(replace_env):
+    """D3: replacing the chunk the skeleton was initialized from must
+    REGENERATE the skeleton instead of registering the replacement as an
+    appended chunk — merged output contains the new first scroll exactly
+    once and the superseded first scroll is gone."""
+    factory, merger, storage_root = replace_env
+    session_id = REPLACE_SESSION_ID
+
+    old_skeleton = (
+        "<!DOCTYPE html><html><head><title>Src</title></head>"
+        "<body><p>OLD-FIRST-MARKER</p></body></html>"
+    )
+    new_skeleton = (
+        "<!DOCTYPE html><html><head><title>Src</title></head>"
+        "<body><p>NEW-FIRST-MARKER</p></body></html>"
+    )
+    chunk1 = "<html><body><p>SECOND-SCREEN-MARKER</p></body></html>"
+
+    await _upload_chunk(factory, storage_root, merger, html=old_skeleton, scroll_index=0)
+    await _upload_chunk(factory, storage_root, merger, html=chunk1, scroll_index=1)
+    resp = await _upload_chunk(factory, storage_root, merger, html=new_skeleton, scroll_index=0)
+
+    assert resp.replaced is True, "same-index different-content must replace"
+    assert resp.deduplicated is False
+
+    chunks_dir = os.path.join(storage_root, session_id, "chunks", "main", "main")
+    path1 = os.path.join(chunks_dir, "1.html")
+
+    # Merger state: the skeleton-source replacement is NOT appended as a
+    # chunk; only the second scroll stays registered; total_size nets
+    # exactly new-skeleton + registered chunk sizes.
+    job = merger.get_job(session_id, "main")
+    assert job is not None and job.initialized
+    assert job.chunks == [path1], (
+        "the skeleton-source replacement must not be registered as a chunk"
+    )
+    assert job.total_size == (
+        len(new_skeleton.encode("utf-8")) + len(chunk1.encode("utf-8"))
+    )
+
+    # Merged output: new first scroll exactly once, superseded gone
+    results = merger.merge_session(session_id)
+    result = results["main"]
+    assert result.success, f"merge failed: {result.reason}"
+    assert result.html.count("NEW-FIRST-MARKER") == 1, (
+        "the regenerated skeleton's content must appear exactly once"
+    )
+    assert "OLD-FIRST-MARKER" not in result.html, (
+        "superseded skeleton-source content must not survive the merge"
+    )
+    assert result.html.count("SECOND-SCREEN-MARKER") == 1
+
+
+@pytest.mark.asyncio
+async def test_skeleton_source_replace_after_job_reload_regenerates_skeleton(replace_env):
+    """D3: an index-0 replacement after the in-memory job was evicted and
+    reloaded from disk (skeleton-source chunk excluded from the reloaded
+    chunk list) must still regenerate the skeleton — the route-level
+    routing fixes both fresh-job and reloaded-job provenances."""
+    factory, merger, storage_root = replace_env
+    session_id = REPLACE_SESSION_ID
+
+    old_skeleton = (
+        "<!DOCTYPE html><html><head><title>Reload</title></head>"
+        "<body><p>OLD-FIRST-RELOAD-MARKER</p></body></html>"
+    )
+    new_skeleton = (
+        "<!DOCTYPE html><html><head><title>Reload</title></head>"
+        "<body><p>NEW-FIRST-RELOAD-MARKER</p></body></html>"
+    )
+    chunk1 = "<html><body><p>SECOND-SCREEN-RELOAD-MARKER</p></body></html>"
+
+    await _upload_chunk(factory, storage_root, merger, html=old_skeleton, scroll_index=0)
+    await _upload_chunk(factory, storage_root, merger, html=chunk1, scroll_index=1)
+
+    # Evict the in-memory job and reload it from disk
+    merger._jobs.clear()
+    loaded = merger._load_jobs_from_disk(session_id)
+    assert len(loaded) == 1 and loaded[0].initialized, (
+        "reloaded job must be initialized from the skeleton file"
+    )
+    assert loaded[0].chunks, "reloaded job must carry the registered chunk"
+
+    resp = await _upload_chunk(factory, storage_root, merger, html=new_skeleton, scroll_index=0)
+    assert resp.replaced is True
+
+    chunks_dir = os.path.join(storage_root, session_id, "chunks", "main", "main")
+    path1 = os.path.join(chunks_dir, "1.html")
+    job = merger.get_job(session_id, "main")
+    assert job.chunks == [path1], (
+        "the skeleton-source replacement must not be registered as a chunk"
+    )
+    assert job.total_size == (
+        len(new_skeleton.encode("utf-8")) + len(chunk1.encode("utf-8"))
+    )
+
+    results = merger.merge_session(session_id)
+    result = results["main"]
+    assert result.success, f"merge failed: {result.reason}"
+    assert result.html.count("NEW-FIRST-RELOAD-MARKER") == 1, (
+        "the regenerated skeleton's content must appear exactly once"
+    )
+    assert "OLD-FIRST-RELOAD-MARKER" not in result.html, (
+        "superseded skeleton-source content must not survive the merge"
+    )
+    assert result.html.count("SECOND-SCREEN-RELOAD-MARKER") == 1
+
+
+@pytest.mark.asyncio
+async def test_non_source_index_replace_keeps_registration_swap(replace_env):
+    """D3: replacing a NON-skeleton-source index keeps the shipped
+    replace_chunk swap — the skeleton file must stay untouched."""
+    factory, merger, storage_root = replace_env
+    session_id = REPLACE_SESSION_ID
+
+    skeleton = (
+        "<!DOCTYPE html><html><head><title>Swap</title></head>"
+        "<body><p>SKELETON-UNTOUCHED-MARKER</p></body></html>"
+    )
+    old_chunk = "<html><body><p>OLD-IDX1-MARKER</p></body></html>"
+    new_chunk = "<html><body><p>NEW-IDX1-MARKER</p></body></html>"
+
+    await _upload_chunk(factory, storage_root, merger, html=skeleton, scroll_index=0)
+    await _upload_chunk(factory, storage_root, merger, html=old_chunk, scroll_index=1)
+    resp = await _upload_chunk(factory, storage_root, merger, html=new_chunk, scroll_index=1)
+
+    assert resp.replaced is True
+    assert resp.chunk_count == 2
+    assert resp.total_size == (
+        len(skeleton.encode("utf-8")) + len(new_chunk.encode("utf-8"))
+    )
+
+    job = merger.get_job(session_id, "main")
+    with open(job.skeleton_path, "r", encoding="utf-8") as f:
+        assert f.read() == skeleton, (
+            "a non-source-index replacement must not rewrite the skeleton"
+        )
+    chunks_dir = os.path.join(storage_root, session_id, "chunks", "main", "main")
+    assert job.chunks == [os.path.join(chunks_dir, "1.html")]
+
+    results = merger.merge_session(session_id)
+    result = results["main"]
+    assert result.success, f"merge failed: {result.reason}"
+    assert result.html.count("NEW-IDX1-MARKER") == 1
+    assert "OLD-IDX1-MARKER" not in result.html
+    assert result.html.count("SKELETON-UNTOUCHED-MARKER") == 1
+
+
+@pytest.mark.asyncio
+async def test_exact_retransmission_at_skeleton_source_dedupes(replace_env):
+    """Exact retransmission (same content hash + scroll index) stays
+    deduplicated — no replacement, no registration, no duplicate output."""
+    factory, merger, storage_root = replace_env
+    session_id = REPLACE_SESSION_ID
+
+    html = (
+        "<!DOCTYPE html><html><head><title>Dedup</title></head>"
+        "<body><p>ONLY-SCREEN-MARKER</p></body></html>"
+    )
+    resp1 = await _upload_chunk(factory, storage_root, merger, html=html, scroll_index=0)
+    resp2 = await _upload_chunk(factory, storage_root, merger, html=html, scroll_index=0)
+
+    assert resp2.deduplicated is True
+    assert resp2.replaced is False
+    assert resp2.chunk_id == resp1.chunk_id
+
+    job = merger.get_job(session_id, "main")
+    assert job.chunks == [], "dedup must not register the skeleton source as a chunk"
+
+    results = merger.merge_session(session_id)
+    result = results["main"]
+    assert result.success, f"merge failed: {result.reason}"
+    assert result.html.count("ONLY-SCREEN-MARKER") == 1
+
+
+# ---------------------------------------------------------------------------
+# D5 (archive-warning-and-replace-fixes 2.3/2.4) — bare chunk-body text
+# survives the DOM merge
+# ---------------------------------------------------------------------------
+
+def test_dom_merge_text_only_chunk_survives():
+    """D5: a chunk whose body is bare text with no element wrapper must
+    reach the merged output — the DOM append previously dropped it."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-dom-text-only"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    skeleton_html = (
+        "<!DOCTYPE html><html><head><title>Text Only</title></head>"
+        "<body><div id=\"__next\"><p>Main content</p></div></body></html>"
+    )
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    chunk_html = (
+        "<html><head><title>Text Only</title></head>"
+        "<body>Bare text scroll marker without any element</body></html>"
+    )
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    chunk_hash = service.compute_content_hash(chunk_html)
+    service.register_chunk(job, chunk_hash, scroll_index=1, storage_path=chunk_path, size=len(chunk_html))
+
+    with open(job.skeleton_path, "r") as f:
+        stored_skeleton = f.read()
+    result_html = service._dom_merge(job, stored_skeleton)
+
+    count = result_html.count("Bare text scroll marker without any element")
+    assert count == 1, (
+        f"text-only chunk body must survive the DOM merge, found {count} occurrences"
+    )
+    assert result_html.count("Main content") == 1, "skeleton content must be kept"
+
+    print("  PASS: test_dom_merge_text_only_chunk_survives")
+
+
+def test_dom_merge_mixed_text_and_elements_survive():
+    """D5: a chunk body of leading bare text followed by an element — both
+    the text and the element must appear in the merged output."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-dom-mixed"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    skeleton_html = (
+        "<!DOCTYPE html><html><head><title>Mixed</title></head>"
+        "<body><div id=\"__next\"><p>Main content</p></div></body></html>"
+    )
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    chunk_html = (
+        "<html><head><title>Mixed</title></head>"
+        "<body>Leading bare text marker<p>Extra element marker</p></body></html>"
+    )
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    chunk_hash = service.compute_content_hash(chunk_html)
+    service.register_chunk(job, chunk_hash, scroll_index=1, storage_path=chunk_path, size=len(chunk_html))
+
+    with open(job.skeleton_path, "r") as f:
+        stored_skeleton = f.read()
+    result_html = service._dom_merge(job, stored_skeleton)
+
+    assert result_html.count("Leading bare text marker") == 1, (
+        "the chunk's leading bare text must survive the DOM merge"
+    )
+    assert result_html.count("Extra element marker") == 1, (
+        "the chunk's element must still be appended"
+    )
+
+    print("  PASS: test_dom_merge_mixed_text_and_elements_survive")
+
+
+def test_dom_merge_bare_text_already_in_skeleton_not_duplicated():
+    """D5: the string-subset dedup path stays unchanged — bare text already
+    contained in the skeleton body returns the skeleton without duplicating."""
+    storage = make_test_dir()
+    service = HtmlMergerService(storage_root=storage)
+    session_id = "test-session-dom-text-dedup"
+    job = service.get_or_create_job(session_id, "main", page_type="main")
+
+    skeleton_html = (
+        "<!DOCTYPE html><html><head><title>Text Dedup</title></head>"
+        "<body><div id=\"__next\"><p>Main content</p>"
+        "Already known bare text</div></body></html>"
+    )
+    service.initialize_skeleton(job, skeleton_html)
+
+    chunk_dir = os.path.join(storage, session_id, "chunks", "main", "main")
+    os.makedirs(chunk_dir, exist_ok=True)
+    chunk_html = (
+        "<html><head><title>Text Dedup</title></head>"
+        "<body>Already known bare text</body></html>"
+    )
+    chunk_path = os.path.join(chunk_dir, "1.html")
+    with open(chunk_path, "w") as f:
+        f.write(chunk_html)
+    chunk_hash = service.compute_content_hash(chunk_html)
+    service.register_chunk(job, chunk_hash, scroll_index=1, storage_path=chunk_path, size=len(chunk_html))
+
+    with open(job.skeleton_path, "r") as f:
+        stored_skeleton = f.read()
+    result_html = service._dom_merge(job, stored_skeleton)
+
+    count = result_html.count("Already known bare text")
+    assert count == 1, (
+        f"bare text already in the skeleton must not be duplicated, found {count}"
+    )
+
+    print("  PASS: test_dom_merge_bare_text_already_in_skeleton_not_duplicated")
+
+
+# ---------------------------------------------------------------------------
+# D4 (archive-warning-and-replace-fixes 3.1/3.2) — replace-mode uploads are
+# charged their NET GROWTH against the session-size limit
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_replace_net_growth_fits_near_limit_accepted(replace_env):
+    """D4: a replacement whose net growth fits the remaining budget is
+    accepted near the limit — the superseded bytes must not be counted
+    twice (falsely 413 at HEAD)."""
+    factory, merger, storage_root = replace_env
+    session_id = REPLACE_SESSION_ID
+
+    skeleton = "<!DOCTYPE html><html><body><p>Skeleton near limit</p></body></html>"
+    skeleton_size = len(skeleton.encode("utf-8"))
+    await _upload_chunk(factory, storage_root, merger, html=skeleton, scroll_index=0)
+
+    # Pre-existing 90MB chunk at scroll index 1, seeded directly (file not
+    # required — the session-size query reads only the size column).
+    big = 90 * QUOTA_MB
+    chunks_dir = os.path.join(storage_root, session_id, "chunks", "main", "main")
+    await _seed_chunk_row(factory, scroll_index=1, size=big,
+                          storage_path=os.path.join(chunks_dir, "1.html"))
+
+    # 10MB replacement at index 1: full charge skeleton+90MB+10MB > 100MB
+    # (rejected at HEAD); net growth 10MB−90MB < 0 fits easily.
+    new_html = "<html><body><p>" + "x" * (10 * QUOTA_MB) + "</p></body></html>"
+    new_size = len(new_html.encode("utf-8"))
+
+    resp = await _upload_chunk(factory, storage_root, merger, html=new_html,
+                               scroll_index=1, max_html_chunk_size_mb=25)
+
+    assert resp.replaced is True
+    assert resp.total_size == skeleton_size + new_size
+
+    async with factory() as db:
+        rows = (await db.execute(
+            select(HtmlChunk).where(
+                HtmlChunk.session_id == session_id,
+                HtmlChunk.scroll_index == 1,
+            )
+        )).scalars().all()
+        assert len(rows) == 1, "superseded row deleted, replacement inserted"
+        assert rows[0].size == new_size
+
+
+@pytest.mark.asyncio
+async def test_replace_exceeding_net_growth_rejected_with_accurate_body(replace_env):
+    """D4: a replacement whose net growth exceeds the remaining budget is
+    still 413 — with current_size = true pre-state total and upload_size =
+    the NET GROWTH (not the full new chunk)."""
+    factory, merger, storage_root = replace_env
+    session_id = REPLACE_SESSION_ID
+    from fastapi import HTTPException
+
+    skeleton = "<!DOCTYPE html><html><body><p>Skeleton small</p></body></html>"
+    skeleton_size = len(skeleton.encode("utf-8"))
+    await _upload_chunk(factory, storage_root, merger, html=skeleton, scroll_index=0)
+
+    old = 3 * QUOTA_MB
+    chunks_dir = os.path.join(storage_root, session_id, "chunks", "main", "main")
+    await _seed_chunk_row(factory, scroll_index=1, size=old,
+                          storage_path=os.path.join(chunks_dir, "1.html"))
+
+    new_html = "<html><body><p>" + "y" * (10 * QUOTA_MB) + "</p></body></html>"
+    new_size = len(new_html.encode("utf-8"))
+
+    with pytest.raises(HTTPException) as exc:
+        await _upload_chunk(factory, storage_root, merger, html=new_html,
+                            scroll_index=1, max_html_chunk_size_mb=25,
+                            max_session_size_mb=5)
+
+    assert exc.value.status_code == 413
+    detail = exc.value.detail
+    assert detail["error"] == "session_size_exceeded"
+    # current_size = TRUE pre-state total (skeleton + superseded chunk)
+    assert detail["current_size"] == skeleton_size + old
+    # upload_size = NET GROWTH (new − superseded), not the full new chunk
+    assert detail["upload_size"] == new_size - old
+    assert detail["max_size"] == 5 * QUOTA_MB
+    # rejected BEFORE any file write — the index-1 chunk file must not exist
+    assert not os.path.exists(os.path.join(chunks_dir, "1.html")), (
+        "a quota-rejected replacement must not write a chunk file"
+    )
+
+
+@pytest.mark.asyncio
+async def test_non_replace_quota_unchanged(replace_env):
+    """Non-replace uploads keep the shipped quota semantics: the full chunk
+    size is charged and reported as upload_size, current_size is the
+    pre-state total."""
+    factory, merger, storage_root = replace_env
+    session_id = REPLACE_SESSION_ID
+    from fastapi import HTTPException
+
+    skeleton = "<!DOCTYPE html><html><body><p>Skeleton baseline</p></body></html>"
+    skeleton_size = len(skeleton.encode("utf-8"))
+    await _upload_chunk(factory, storage_root, merger, html=skeleton, scroll_index=0)
+
+    fresh_html = "<html><body><p>" + "z" * (10 * QUOTA_MB) + "</p></body></html>"
+    fresh_size = len(fresh_html.encode("utf-8"))
+
+    with pytest.raises(HTTPException) as exc:
+        await _upload_chunk(factory, storage_root, merger, html=fresh_html,
+                            scroll_index=1, max_html_chunk_size_mb=25,
+                            max_session_size_mb=5)
+
+    assert exc.value.status_code == 413
+    detail = exc.value.detail
+    assert detail["error"] == "session_size_exceeded"
+    assert detail["current_size"] == skeleton_size
+    assert detail["upload_size"] == fresh_size
+    assert detail["max_size"] == 5 * QUOTA_MB
 
 
 def main():

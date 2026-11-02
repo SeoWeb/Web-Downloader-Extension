@@ -297,21 +297,46 @@ export async function createSessionWithCloudRetry(
  * Best-effort lookup of a concrete fallback URL for a session that failed
  * during assembly. If the server already produced a download URL, the panel
  * can offer a direct local-fallback action with it (UX contract, task 5.2).
+ *
+ * (archive-warning-and-replace-fixes 4.2) Also returns the server's
+ * archive integrity warning from the same ONE status probe, so the salvage
+ * report can surface it on the stopped-with-archive affordance. Undefined
+ * on probe failure and on clean sessions (absent = no warning).
  */
+interface SessionSalvageInfo {
+  downloadUrl?: string;
+  archiveWarning?: string;
+}
+
 async function lookupFallbackUrl(
   sessionId: string,
-): Promise<string | undefined> {
+): Promise<SessionSalvageInfo> {
   try {
     const status = await serverClient.getSessionStatus(sessionId);
     // Self-heal a same-host http:// scheme (TLS-terminating proxy
     // misconfig — see upgradeInsecureServerUrl) before the URL reaches the
     // panel's local-fallback action.
-    return status?.download_url
-      ? upgradeInsecureServerUrl(status.download_url, serverClient.baseUrl)
-      : undefined;
+    return {
+      downloadUrl: status?.download_url
+        ? upgradeInsecureServerUrl(status.download_url, serverClient.baseUrl)
+        : undefined,
+      archiveWarning: status?.archive_warning ?? undefined,
+    };
   } catch {
-    return undefined;
+    return {};
   }
+}
+
+/**
+ * (archive-warning-and-replace-fixes 4.2) Best-effort lookup of the
+ * server's archive integrity warning for a finalized session — one cheap
+ * status probe in the completion path's pattern. Undefined when the server
+ * doesn't report one (clean session) or the probe fails.
+ */
+async function lookupArchiveWarning(
+  sessionId: string,
+): Promise<string | undefined> {
+  return (await lookupFallbackUrl(sessionId)).archiveWarning;
 }
 
 /**
@@ -376,11 +401,17 @@ async function reportCancelledSession(
   sendMessage: (message: string | { key: string; options?: any }) => void,
   options: { failedCount?: number } = {},
 ): Promise<void> {
-  const downloadUrl = await lookupFallbackUrl(sessionId);
-  if (downloadUrl) {
+  const salvage = await lookupFallbackUrl(sessionId);
+  if (salvage.downloadUrl) {
     pushToPanelSafely(sendMessage, {
       key: "status.serverDownloadReady",
-      options: { downloadUrl, serverSessionId: sessionId },
+      options: {
+        downloadUrl: salvage.downloadUrl,
+        ...(salvage.archiveWarning
+          ? { archiveWarning: salvage.archiveWarning }
+          : {}),
+        serverSessionId: sessionId,
+      },
     });
   }
   pushToPanelSafely(sendMessage, {
@@ -1132,7 +1163,7 @@ async function executeDownloadServerMode(
         // UX contract: include a concrete fallback URL when the server
         // already produced one, so the panel's local-fallback action can
         // use it directly.
-        const fallbackUrl = await lookupFallbackUrl(sessionId);
+        const { downloadUrl: fallbackUrl } = await lookupFallbackUrl(sessionId);
         pushToPanelSafely(sendMessage, {
           key: "status.serverFallbackOffer",
           options: { reason, errorMessage, fallbackUrl },
@@ -1212,6 +1243,10 @@ async function executeDownloadServerMode(
       // available even if serverDownloadReady was missed or reordered.
       // (D3) failedCount is additive: a clean download sends 0, which renders
       // unchanged.
+      // (archive-warning-and-replace-fixes 4.2) The server's archive
+      // integrity warning rides along additively — absent/undefined on a
+      // clean session, which renders unchanged. One cheap status probe.
+      const archiveWarning = await lookupArchiveWarning(sessionId);
       const serverCompleteOptions = {
         ...(downloadResult?.downloadUrl
           ? {
@@ -1223,6 +1258,7 @@ async function executeDownloadServerMode(
         // the session after the finally block clears the active pointer.
         serverSessionId: sessionId,
         failedCount: failedUploadCount,
+        ...(archiveWarning ? { archiveWarning } : {}),
       };
 
       if (downloadResult?.downloadUrl) {
@@ -1232,6 +1268,7 @@ async function executeDownloadServerMode(
             downloadUrl: downloadResult.downloadUrl,
             isSingleFile: downloadOptions.singleFile,
             serverSessionId: sessionId,
+            ...(archiveWarning ? { archiveWarning } : {}),
           },
         });
       }
@@ -1307,7 +1344,7 @@ async function executeDownloadServerMode(
       // The re-scrape warning is shown when the user chooses local fallback.
       // (UX contract) A concrete fallback URL is included when the server
       // already produced a download URL for the session.
-      const fallbackUrl = await lookupFallbackUrl(sessionId);
+      const { downloadUrl: fallbackUrl } = await lookupFallbackUrl(sessionId);
       pushToPanelSafely(sendMessage, {
         key: "status.serverError",
         options: {
@@ -1485,11 +1522,15 @@ async function finalizeAndPollAssembly(
       options: { error: downloadResult.cloudError },
     });
   } else if (downloadResult?.downloadUrl) {
+    // (archive-warning-and-replace-fixes 4.2) Same additive warning probe
+    // as the main path's completion sends.
+    const archiveWarning = await lookupArchiveWarning(sessionId);
     pushToPanelSafely(sendMessage, {
       key: "status.serverDownloadReady",
       options: {
         downloadUrl: downloadResult.downloadUrl,
         serverSessionId: sessionId,
+        ...(archiveWarning ? { archiveWarning } : {}),
       },
     });
     pushToPanelSafely(sendMessage, {
@@ -1498,6 +1539,7 @@ async function finalizeAndPollAssembly(
         downloadUrl: downloadResult.downloadUrl,
         serverSessionId: sessionId,
         failedCount,
+        ...(archiveWarning ? { archiveWarning } : {}),
       },
     });
   }
@@ -1583,11 +1625,24 @@ export async function resumeServerDownload(
       );
       pushToPanelSafely(sendMessage, {
         key: "status.serverDownloadReady",
-        options: { downloadUrl, serverSessionId },
+        options: {
+          downloadUrl,
+          serverSessionId,
+          ...(status.archive_warning
+            ? { archiveWarning: status.archive_warning }
+            : {}),
+        },
       });
       pushToPanelSafely(sendMessage, {
         key: "status.complete",
-        options: { downloadUrl, serverSessionId, failedCount: 0 },
+        options: {
+          downloadUrl,
+          serverSessionId,
+          failedCount: 0,
+          ...(status.archive_warning
+            ? { archiveWarning: status.archive_warning }
+            : {}),
+        },
       });
       return;
     }
@@ -1662,12 +1717,16 @@ export async function resumeServerDownload(
           options: { error: downloadResult.cloudError },
         });
       } else if (downloadResult?.downloadUrl) {
+        // (archive-warning-and-replace-fixes 4.2) Same additive warning
+        // probe as the main path's completion send.
+        const archiveWarning = await lookupArchiveWarning(serverSessionId);
         pushToPanelSafely(sendMessage, {
           key: "status.complete",
           options: {
             downloadUrl: downloadResult.downloadUrl,
             serverSessionId,
             failedCount: 0,
+            ...(archiveWarning ? { archiveWarning } : {}),
           },
         });
       }

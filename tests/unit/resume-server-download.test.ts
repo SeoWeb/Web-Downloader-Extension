@@ -751,8 +751,11 @@ describe("resumeServerDownload", () => {
       expect(messages.some((m: any) => m?.key === "status.cancelled")).toBe(
         false,
       );
-      // A timeout is not a stop — no salvage probe ran.
-      expect(sc("getSessionStatus")).toHaveBeenCalledTimes(1);
+      // A timeout is not a stop — no salvage probe ran: the two /status
+      // calls are the resume's initial status query plus the completion
+      // path's archive-warning probe (archive-warning-and-replace-fixes
+      // 4.2); a salvage stop would surface status.cancelled above.
+      expect(sc("getSessionStatus")).toHaveBeenCalledTimes(2);
       expect(getMockDownloadWithFallback()).toHaveBeenCalledWith(
         "sess-resume-test",
         "https://example.com/page",

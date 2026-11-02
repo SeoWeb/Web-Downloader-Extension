@@ -258,7 +258,10 @@
       "downloadLiveTitle": "Download in progress",
       "downloadLiveMessage": "This download is still running. The panel will update automatically when it finishes.",
       "downloadLive": "Download in progress…",
-      "downloadLiveProgress": "Resources: {{completed}}/{{total}}"
+      "downloadLiveProgress": "Resources: {{completed}}/{{total}}",
+      "stoppedWithArchiveTitle": "Download stopped — partial archive available",
+      "stoppedWithArchiveSubtitle": "The server saved what was captured before the stop. You can download the partial archive.",
+      "archiveWarningHeading": "Archive warning"
     },
     "permissions": {
       "storage": {

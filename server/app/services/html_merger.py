@@ -114,6 +114,15 @@ class AssemblyJob:
     chunk_dir: Optional[str] = None
     chunks: list[str] = field(default_factory=list)  # ordered list of storage paths
     chunk_dedup_keys: set[str] = field(default_factory=set)  # "hash:scrollIndex"
+    # Per-chunk sizes keyed by storage path (D3): fed by register_chunk /
+    # replace_chunk / disk loading so total_size can be recomputed EXACTLY
+    # (new skeleton + registered chunk sizes) after a skeleton-source
+    # replacement instead of relying on accumulated deltas.
+    chunk_sizes: dict[str, int] = field(default_factory=dict)
+    # Scroll index of the chunk the skeleton was initialized from (D3).
+    # Always 0 under the extension protocol; recorded by initialize_skeleton
+    # so route-level replace routing never has to assume.
+    skeleton_source_scroll_index: int = 0
     total_size: int = 0
     initialized: bool = False
     # Monotonic wall-clock timestamp of the last job interaction (D9):
@@ -221,12 +230,21 @@ class HtmlMergerService:
     # 4.2 – Skeleton initialization (first-chunk detection)
     # ------------------------------------------------------------------
 
-    def initialize_skeleton(self, job: AssemblyJob, first_chunk_html: str) -> None:
-        """Initialize the assembly job with the first HTML chunk as skeleton.
+    def initialize_skeleton(
+        self, job: AssemblyJob, first_chunk_html: str, scroll_index: int = 0
+    ) -> None:
+        """Initialize (or regenerate) the assembly job's skeleton.
 
         The skeleton is the document structure with an insertion point at
-        </body>.  The first chunk's body content *is* the initial content
+        </body>.  The source chunk's body content *is* the initial content
         placed before the insertion point.
+
+        Also used to REGENERATE the skeleton when the skeleton-source chunk
+        is replaced (D3): the file is rewritten from the new content
+        regardless of job provenance (fresh or reloaded from disk), any
+        stale registration of the source scroll index is dropped so the
+        merge never emits that scroll twice, and ``total_size`` is
+        recomputed exactly as new-skeleton-size + registered chunk sizes.
         """
         first_chunk_html = self._ensure_doctype(first_chunk_html)
         skeleton = self._ensure_insertion_point(first_chunk_html)
@@ -238,9 +256,24 @@ class HtmlMergerService:
         with open(skeleton_path, "w", encoding="utf-8") as f:
             f.write(skeleton)
 
+        # The chunk at the source scroll index is consumed by the skeleton:
+        # drop any stale registration/dedup entry for it (D3).  Without
+        # this, a replaced skeleton source registered by disk recovery
+        # would be appended on top of the regenerated skeleton.
+        suffix = f":{scroll_index}"
+        for key in [k for k in job.chunk_dedup_keys if k.endswith(suffix)]:
+            job.chunk_dedup_keys.discard(key)
+        if job.chunk_dir:
+            source_path = os.path.join(job.chunk_dir, f"{scroll_index}.html")
+            job.chunks = [p for p in job.chunks if p != source_path]
+            job.chunk_sizes.pop(source_path, None)
+
         job.skeleton_path = skeleton_path
         job.initialized = True
-        job.total_size = len(skeleton.encode("utf-8"))
+        job.skeleton_source_scroll_index = scroll_index
+        job.total_size = len(skeleton.encode("utf-8")) + sum(
+            job.chunk_sizes.values()
+        )
 
         logger.info(
             "Skeleton initialized: session=%s page=%s size=%d",
@@ -277,6 +310,7 @@ class HtmlMergerService:
         dedup_key = f"{content_hash}:{scroll_index}"
         job.chunk_dedup_keys.add(dedup_key)
         job.chunks.append(storage_path)
+        job.chunk_sizes[storage_path] = size
         job.total_size += size
         job.last_activity = time.time()
 
@@ -313,6 +347,11 @@ class HtmlMergerService:
         job.chunks = kept
 
         job.total_size += size_delta
+        # Keep the size map in sync with the netted registration so a later
+        # skeleton regeneration recomputes total_size exactly (D3).
+        job.chunk_sizes[storage_path] = (
+            job.chunk_sizes.get(storage_path, 0) + size_delta
+        )
         job.last_activity = time.time()
 
     # ------------------------------------------------------------------
@@ -574,6 +613,23 @@ class HtmlMergerService:
                 )
                 break
             skeleton_body.append(child)
+
+        # D5: bare chunk-body text must survive the DOM append.  The
+        # string-based strategy (_insert_chunks_before_body_end) concatenated
+        # raw body fragments, so bare text reached the merged output; the DOM
+        # port parses it into body.text (leading text) and element tails.
+        # Element tails travel with their elements on append, but the leading
+        # body .text does not — it was silently dropped.  Re-attach it at the
+        # body insertion position: the tail of the body's last child (or the
+        # body's own .text when the body has no children).
+        chunk_body_text = chunk_body.text
+        if chunk_body_text:
+            body_children = list(skeleton_body)
+            if body_children:
+                last_child = body_children[-1]
+                last_child.tail = (last_child.tail or "") + chunk_body_text
+            else:
+                skeleton_body.text = (skeleton_body.text or "") + chunk_body_text
 
         # etree.tostring drops the skeleton's doctype — re-attach.
         return self._ensure_doctype(
@@ -1071,6 +1127,7 @@ class HtmlMergerService:
                     if dedup_key not in job.chunk_dedup_keys:
                         job.chunk_dedup_keys.add(dedup_key)
                         job.chunks.append(fpath)
+                        job.chunk_sizes[fpath] = size
                         job.total_size += size
 
                 if job.initialized:

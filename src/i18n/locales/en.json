@@ -267,7 +267,10 @@
       "downloadReport": "Download report",
       "partialDownload": "Partial download",
       "partialDownloadNote": "The archive contains what was captured before the download was stopped.",
-      "completedWithFailedUploads": "Completed with {{count}} failed resource upload(s) — some files may be missing from the archive."
+      "completedWithFailedUploads": "Completed with {{count}} failed resource upload(s) — some files may be missing from the archive.",
+      "stoppedWithArchiveTitle": "Download stopped — partial archive available",
+      "stoppedWithArchiveSubtitle": "The server saved what was captured before the stop. You can download the partial archive.",
+      "archiveWarningHeading": "Archive warning"
     },
     "permissions": {
       "storage": {

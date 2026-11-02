@@ -136,33 +136,11 @@ async def upload_html_chunk(
             },
         )
 
-    # Check cumulative session size limit — use aggregate queries to
-    # avoid locking the session row (prevents deadlocks with concurrent
-    # resource uploads). Sum both resources and html_chunks.
-    current_total_result = await db.execute(
-        sa_text(
-            "SELECT "
-            "(SELECT COALESCE(SUM(size), 0) FROM resources WHERE session_id = :sid) "
-            "+ (SELECT COALESCE(SUM(size), 0) FROM html_chunks WHERE session_id = :sid)"
-        ),
-        {"sid": session_id},
-    )
-    current_total = current_total_result.scalar() or 0
-    max_session_bytes = settings.max_session_size_mb * 1024 * 1024
-    if current_total + chunk_size > max_session_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={
-                "error": "session_size_exceeded",
-                "message": f"HTML chunk upload would exceed session size limit ({settings.max_session_size_mb}MB)",
-                "current_size": int(current_total),
-                "upload_size": chunk_size,
-                "max_size": max_session_bytes,
-                "api_version": "v1",
-            },
-        )
-
-    # Compute content hash and page URL hash
+    # Compute content hash and page URL hash.  Positioned BEFORE the
+    # session-size pre-check (D4): the dedup and same-index conflict
+    # lookups must run before charging, so a replacement upload is billed
+    # its net growth and an exact retransmission short-circuits without
+    # any charge.
     content_hash = hashlib.sha256(body.html.encode("utf-8")).hexdigest()
 
     page_type = PageType.MAIN if body.pageType == "main" else PageType.LINKED
@@ -198,7 +176,9 @@ async def upload_html_chunk(
     # of overwriting its file while inserting a second row referencing the
     # same path (the old behavior duplicated the chunk in merged output).
     # Exact retransmissions already returned via the dedup branch above,
-    # so anything found here has a different content hash.
+    # so anything found here has a different content hash.  Runs BEFORE
+    # the session-size pre-check so replacement is determined before
+    # charging (D4).
     conflict_stmt = select(HtmlChunk).where(
         HtmlChunk.session_id == session_id,
         HtmlChunk.page_url_hash == page_url_hash,
@@ -207,6 +187,41 @@ async def upload_html_chunk(
     conflict_result = await db.execute(conflict_stmt)
     superseded_chunks = conflict_result.scalars().all()
     replace_mode = bool(superseded_chunks)
+
+    # Check cumulative session size limit — use aggregate queries to
+    # avoid locking the session row (prevents deadlocks with concurrent
+    # resource uploads). Sum both resources and html_chunks.  A replace
+    # upload is charged its NET GROWTH (new size − superseded size, D4):
+    # the superseded bytes are deleted in this same transaction, so
+    # counting them alongside the full new chunk double-charged the
+    # replacement and falsely rejected legitimate replaces near the limit.
+    current_total_result = await db.execute(
+        sa_text(
+            "SELECT "
+            "(SELECT COALESCE(SUM(size), 0) FROM resources WHERE session_id = :sid) "
+            "+ (SELECT COALESCE(SUM(size), 0) FROM html_chunks WHERE session_id = :sid)"
+        ),
+        {"sid": session_id},
+    )
+    current_total = current_total_result.scalar() or 0
+    max_session_bytes = settings.max_session_size_mb * 1024 * 1024
+    superseded_size = sum(int(c.size) for c in superseded_chunks)
+    charged_size = chunk_size - superseded_size if replace_mode else chunk_size
+    if current_total - superseded_size + chunk_size > max_session_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "error": "session_size_exceeded",
+                "message": f"HTML chunk upload would exceed session size limit ({settings.max_session_size_mb}MB)",
+                # True pre-state total (resources + HTML chunks) — the
+                # superseded bytes are still stored at this point.
+                "current_size": int(current_total),
+                # Net growth in replace mode (D4); full chunk size otherwise.
+                "upload_size": charged_size,
+                "max_size": max_session_bytes,
+                "api_version": "v1",
+            },
+        )
 
     # Store chunk file on disk.  The content is written to a temp file and
     # atomically moved into place with os.replace (D4/D10): readers never
@@ -281,7 +296,12 @@ async def upload_html_chunk(
     # job loading.  The first chunk initializes the skeleton; subsequent
     # chunks are registered as incremental body content.  In replace mode
     # ONLY the new content is registered (7.3): the superseded
-    # registration is swapped by replace_chunk, never double-registered.
+    # registration is swapped by replace_chunk, never double-registered —
+    # except when the replaced index IS the skeleton source (D3): the
+    # first chunk becomes the skeleton and is never registered as a
+    # chunk, so the swap would append it while the skeleton kept the old
+    # content (first scroll emitted twice).  That case REGENERATES the
+    # skeleton instead, for fresh and disk-reloaded jobs alike.
     from app.services.html_merger import html_merger_service
     job = html_merger_service.get_or_create_job(
         session_id=session_id,
@@ -289,8 +309,15 @@ async def upload_html_chunk(
         page_type=body.pageType,
         page_url=body.pageUrl,
     )
-    if not job.initialized:
-        html_merger_service.initialize_skeleton(job, body.html)
+    skeleton_source_replace = (
+        replace_mode
+        and job.initialized
+        and body.scrollIndex == job.skeleton_source_scroll_index
+    )
+    if not job.initialized or skeleton_source_replace:
+        html_merger_service.initialize_skeleton(
+            job, body.html, scroll_index=body.scrollIndex
+        )
     elif replace_mode:
         html_merger_service.replace_chunk(
             job,

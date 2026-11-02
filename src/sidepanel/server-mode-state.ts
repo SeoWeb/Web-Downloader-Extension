@@ -19,6 +19,7 @@ export interface ServerModeState {
     | "ready"
     | "failed"
     | "timeout"
+    | "cancelled"
     | null;
   /** Upload progress: completed count. */
   uploadCompleted: number;
@@ -44,6 +45,14 @@ export interface ServerModeState {
    */
   failedUploads: number;
   /**
+   * (archive-warning-and-replace-fixes D2) The server's archive integrity
+   * warning message (`archive_warning`), null for a clean session. Stored
+   * additively from the `status.complete` / `status.serverDownloadReady`
+   * payloads' `archiveWarning` option — absent option keeps the previous
+   * value (same pattern as `failedUploads`).
+   */
+  archiveWarning: string | null;
+  /**
    * Server session ID carried in the completion payloads so the panel's
    * delete flow can still target the session after the background has
    * cleared its in-memory active-session pointer on completion.
@@ -63,6 +72,7 @@ export const initialServerModeState: ServerModeState = {
   serverDownloadUrl: null,
   isSingleFile: false,
   failedUploads: 0,
+  archiveWarning: null,
   serverSessionId: null,
   serverError: null,
 };
@@ -153,6 +163,9 @@ export function applyServerModeMessage(
     // was missed or processed out of order.
     // (D3) `failedCount` is additive: absent → keep the previous value
     // (0 for a clean download), so completion renders unchanged.
+    // (archive-warning-and-replace-fixes D2) `archiveWarning` is additive
+    // the same way — absent → keep the previous value (null for a clean
+    // session).
     case "status.complete":
       return {
         ...prev,
@@ -163,17 +176,36 @@ export function applyServerModeMessage(
           typeof options?.failedCount === "number"
             ? options.failedCount
             : prev.failedUploads,
+        archiveWarning:
+          typeof options?.archiveWarning === "string"
+            ? options.archiveWarning
+            : prev.archiveWarning,
         serverSessionId: options?.serverSessionId ?? prev.serverSessionId,
       };
 
-    // (15.3) Explicit download-ready signal with URL
+    // (15.3) Explicit download-ready signal with URL.
+    // (archive-warning-and-replace-fixes D2) `archiveWarning` is additive —
+    // absent → keep the previous value.
     case "status.serverDownloadReady":
       return {
         ...prev,
         serverDownloadUrl: options?.downloadUrl ?? prev.serverDownloadUrl,
         isSingleFile: options?.isSingleFile ?? prev.isSingleFile,
+        archiveWarning:
+          typeof options?.archiveWarning === "string"
+            ? options.archiveWarning
+            : prev.archiveWarning,
         serverSessionId: options?.serverSessionId ?? prev.serverSessionId,
       };
+
+    // (archive-warning-and-replace-fixes D1) Terminal cancelled phase — a
+    // user stop resolves the server-mode UI. The salvaged archive URL and
+    // every other field carry over from prev (the salvage probe's
+    // status.serverDownloadReady has usually already stored them), so the
+    // panel can render the stopped-with-partial-archive card. Never
+    // "ready": a stop must not read as success.
+    case "status.cancelled":
+      return { ...prev, phase: "cancelled" };
 
     // (15.7) Scraping phase
     case "status.scraping":
