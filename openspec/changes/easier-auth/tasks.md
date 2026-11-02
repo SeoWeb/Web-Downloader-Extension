@@ -38,7 +38,7 @@
 
 - [x] 5.1 Frontend auth proxy: add `google` to `ALLOWED_PATHS` in `pagepocket/frontend/src/app/api/v1/auth/[...path]/route.ts` so `POST /api/v1/auth/google` forwards through app.pagepocket.app (was 404 "Unknown auth endpoint" — root cause of first user test failure). Commit `410242c`, deployed + E2E-verified through the public URL.
 - [x] 5.2 auth-service: log Google token-endpoint `error`/`error_description` on exchange failure (was status-only, made diagnosis blind). Commit `0d3b498`, deployed.
-- [ ] 5.3 Add `VITE_GOOGLE_CLIENT_ID` as a CI build secret so Web Store artifacts include the Google button (operator's local builds unaffected; button hidden in store builds until then).
+- [x] 5.3 Add `VITE_GOOGLE_CLIENT_ID` as a CI build secret so Web Store artifacts include the Google button (operator's local builds unaffected; button hidden in store builds until then).
 - [x] 5.4 Fix keep-signed-in logout-on-restart: startup restore raced (two concurrent `initializeFromStorage` calls; restore refresh bypassed the mutex → duplicate refresh with the same token → server reuse-detection revoked all tokens → `clearAuth` wiped storage), and `refreshToken()` dropped the rotated token when `authState` was null (SW context), poisoning storage with a revoked token. Commit `85b03fd`: mutex-serialized restore, single-flight init, hydration-before-persist. Task 1.7 retest pending with rebuilt extension.
 
 ## 6. Follow-up — Google sign-in in the web app + Google-first UI order
