@@ -14,6 +14,26 @@ export const AuthResponseSchema = z.object({
   user: UserSchema,
 });
 
+/**
+ * One stored subpage document of a multi-document page (multipage-
+ * download-fixes D7): an entry of the page's `pages` manifest. The bytes
+ * live under `pages/<path>` and are fetched through the sandboxed file
+ * routes; the manifest only labels them.
+ */
+export const PageSummarySchema = z.object({
+  /** Archive-relative path under `pages/` (`about.md`, `docs/notes.txt`). */
+  path: z.string(),
+  /** Stored title — "" when none was captured at assembly time. */
+  title: z.string(),
+  /** Original page URL — "" when none was captured at scrape time. */
+  url: z.string(),
+  /**
+   * Advisory document format (`markdown` | `text`). Drives the viewer
+   * pane's rendering; unknown values degrade to plain text.
+   */
+  content_format: z.string(),
+});
+
 export const PageResponseSchema = z.object({
   id: z.string(),
   user_id: z.string(),
@@ -31,6 +51,14 @@ export const PageResponseSchema = z.object({
    * so a pre-change response still parses and renders as before.
    */
   content_formats: z.array(z.string()).default([]),
+  /**
+   * Per-page document manifest (multipage-download-fixes D7): the page's
+   * subpage documents under `pages/<path>`. Tolerant by contract — a legacy
+   * page (or older backend) omits the field and any malformed value collapses
+   * to undefined, which the viewer treats as "no subpages" and renders as
+   * before.
+   */
+  pages: z.array(PageSummarySchema).optional().catch(undefined),
 });
 
 export const ListPagesResponseSchema = z.object({
@@ -122,6 +150,12 @@ export const ValidateShareResponseSchema = z.object({
    * back to the bare HTML iframe when the field is absent.
    */
   content_formats: z.array(z.string()).default([]),
+  /**
+   * Same tolerant contract as PageResponseSchema.pages (multipage-download-
+   * fixes D7/D8): the share viewer derives its subpage sidebar from it;
+   * absent or malformed → undefined, and the share renders as before.
+   */
+  pages: z.array(PageSummarySchema).optional().catch(undefined),
 });
 
 export const StatusResponseSchema = z.object({
@@ -141,6 +175,7 @@ export const StorageUsageSchema = z.object({
 export type User = z.infer<typeof UserSchema>;
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 export type PageResponse = z.infer<typeof PageResponseSchema>;
+export type PageSummary = z.infer<typeof PageSummarySchema>;
 export type ListPagesResponse = z.infer<typeof ListPagesResponseSchema>;
 export type PageImage = z.infer<typeof PageImageSchema>;
 export type PageImagesResponse = z.infer<typeof PageImagesResponseSchema>;

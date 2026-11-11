@@ -22,6 +22,7 @@ import {
   setTabDownloadComplete,
   removeDownloadsForTab,
 } from "./download-state";
+import { isLivenessFresh } from "./download-liveness";
 import { stopScraping, deleteScraper } from "./scraper-state";
 
 // Type declarations for service worker events
@@ -51,6 +52,15 @@ const MEMORY_MONITOR_ALARM = "pagepocket-memory-monitor";
 
 const PERIODIC_CLEANUP_MINUTES = 10; // every 10 minutes
 const MEMORY_MONITOR_MINUTES = 1; // alarms clamp sub-minute periods to 1 min
+
+/**
+ * (multipage-download-fixes 5.3b) A checkpoint younger than this is NOT
+ * interruption evidence yet — a worker can be woken seconds after a run
+ * started (any event wakes MV3), and declaring an interruption for a
+ * just-created checkpoint would race the live run. Same calculus as the
+ * liveness heartbeat bound (download-liveness.LIVENESS_STALE_MS).
+ */
+export const INTERRUPTED_CHECKPOINT_MIN_AGE_MS = 90_000;
 
 /** Guard: every chrome.* listener below is registered exactly once per SW
  *  lifetime, no matter how many times initializeCleanupHandlers is called
@@ -292,6 +302,40 @@ async function handleInterruptedDownload(): Promise<void> {
 
     if (checkpoints.length > 0) {
       for (const checkpoint of checkpoints) {
+        // (multipage-download-fixes D2 / task 4.4) Paused checkpoints route
+        // to the PARKED path — never the interrupted card. Their snapshot +
+        // checkpoint stay in session storage so the reopened panel can
+        // Resume (SCRAPER_RESUME_FROM_PARK) or Stop (parked salvage) the
+        // download.
+        if (checkpoint.phase === "paused") {
+          console.log(
+            `[Cleanup] Checkpoint for session=${checkpoint.serverSessionId ?? "unknown"} is paused — parked, not interrupted`,
+          );
+          continue;
+        }
+        // (multipage-download-fixes 5.3b) Interruption requires liveness
+        // EVIDENCE of death. This worker cannot probe its predecessor, so
+        // the persisted evidence decides: a checkpoint younger than the
+        // staleness bound, or a download whose persisted liveness heartbeat
+        // is still fresh, is NOT declared interrupted — the checkpoint is
+        // retained for the panel's CHECK_INTERRUPTED_DOWNLOAD discovery,
+        // which probes liveness itself before showing a card.
+        const checkpointAge = Date.now() - (checkpoint.timestamp ?? 0);
+        if (checkpointAge < INTERRUPTED_CHECKPOINT_MIN_AGE_MS) {
+          console.log(
+            `[Cleanup] Checkpoint for session=${checkpoint.serverSessionId ?? "unknown"} is recent (${Math.round(checkpointAge / 1000)}s old) — not interruption evidence yet`,
+          );
+          continue;
+        }
+        const heartbeatFresh = checkpoint.serverSessionId
+          ? await isLivenessFresh(checkpoint.serverSessionId)
+          : false;
+        if (heartbeatFresh) {
+          console.log(
+            `[Cleanup] Fresh liveness heartbeat for session=${checkpoint.serverSessionId} — download proven live, no interruption declared`,
+          );
+          continue;
+        }
         let panelNotified = false;
         try {
           await sendMessageToPanel(

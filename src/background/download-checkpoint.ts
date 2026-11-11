@@ -45,8 +45,61 @@ export interface DownloadCheckpoint {
   tabId?: number;
   tabUrl?: string;
   phase: string;
+  /**
+   * (multipage-download-fixes D2 / task 4.4) Phase the download was in
+   * BEFORE it paused — set by pauseCheckpoint(), restored by
+   * restoreCheckpointPhase(). Present only while a pause is held.
+   */
+  previousPhase?: string;
   timestamp: number;
   resourceUrls?: ResourceUrlEntry[];
+}
+
+/**
+ * (multipage-download-fixes D2 / task 4.4) Checkpoint phase used while a
+ * pause is held. A `paused` checkpoint is NOT an interrupted download:
+ * worker-wake detection must route it to the parked path (Paused card with
+ * Resume/Stop), never to the interrupted card.
+ */
+export const PAUSED_CHECKPOINT_PHASE = "paused";
+
+/**
+ * (multipage-download-fixes D2 / task 4.4) Flip the checkpoint for
+ * `serverSessionId` to the `paused` phase while a pause is held, recording
+ * the prior phase so resume can restore it. No-op if no checkpoint exists
+ * (non-server downloads never park) or the checkpoint is already paused.
+ */
+export async function pauseCheckpoint(serverSessionId?: string): Promise<void> {
+  const key = checkpointKey(serverSessionId);
+  const existing = await readCheckpointByKey(key);
+  if (existing && existing.phase !== PAUSED_CHECKPOINT_PHASE) {
+    existing.previousPhase = existing.phase;
+    existing.phase = PAUSED_CHECKPOINT_PHASE;
+    await chrome.storage?.session?.set({ [key]: existing });
+    console.log(
+      `[Checkpoint] Paused (previous phase=${existing.previousPhase ?? "unknown"})`,
+    );
+  }
+}
+
+/**
+ * (multipage-download-fixes D2 / task 4.4) Restore the checkpoint phase the
+ * download had before the pause (upstream transitions to
+ * uploading/assembling keep working on resume). No-op if no checkpoint.
+ */
+export async function restoreCheckpointPhase(
+  serverSessionId?: string,
+): Promise<void> {
+  const key = checkpointKey(serverSessionId);
+  const existing = await readCheckpointByKey(key);
+  if (existing && existing.phase === PAUSED_CHECKPOINT_PHASE) {
+    existing.phase = existing.previousPhase ?? "scraping";
+    delete existing.previousPhase;
+    await chrome.storage?.session?.set({ [key]: existing });
+    console.log(
+      `[Checkpoint] Pause lifted — phase restored: ${existing.phase}`,
+    );
+  }
 }
 
 /** Persist a checkpoint to session storage, keyed by server session id. */

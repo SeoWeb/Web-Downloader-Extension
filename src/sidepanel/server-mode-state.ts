@@ -16,6 +16,7 @@ export interface ServerModeState {
     | "scraping"
     | "uploading"
     | "assembling"
+    | "paused"
     | "ready"
     | "failed"
     | "timeout"
@@ -25,6 +26,17 @@ export interface ServerModeState {
   uploadCompleted: number;
   /** Upload progress: total count. */
   uploadTotal: number;
+  /**
+   * (multipage-download-fixes 5.5) Per-page linked-scrape progress —
+   * first-class state lifted from the `status.linkedPageProgress` pushes so
+   * the scraping card can render a prominent "Page X of Y" counter (not
+   * just a scrolling message-feed line). Null = no linked scrape in progress
+   * → no counter renders.
+   */
+  linkedPageCurrent: number | null;
+  linkedPageTotal: number | null;
+  /** Which queue the linked loop is walking ("internal" | "external"). */
+  linkedPagePhase: string | null;
   /** Assembly phase label from server. */
   assemblyPhase: string | null;
   /** Assembly progress percentage (0-100). */
@@ -34,6 +46,14 @@ export interface ServerModeState {
    * task 6.1). Null when the server doesn't report it (older servers).
    */
   assemblyElapsedSeconds: number | null;
+  /**
+   * (multipage-download-fixes 5.7) True when the session options have
+   * `downloadHtml=false` — the `merging_html` subtitle then explains the
+   * merge prepares the text/markdown conversion instead of implying an
+   * unexpected HTML download. Additive: absent flag keeps the previous
+   * value (false for runs that never reported it — HTML wording).
+   */
+  assemblyForTextConversion: boolean;
   /** Server download URL when ZIP is ready. */
   serverDownloadUrl: string | null;
   /** Whether the download is a single-file HTML. */
@@ -66,9 +86,13 @@ export const initialServerModeState: ServerModeState = {
   phase: null,
   uploadCompleted: 0,
   uploadTotal: 0,
+  linkedPageCurrent: null,
+  linkedPageTotal: null,
+  linkedPagePhase: null,
   assemblyPhase: null,
   assemblyProgressPct: null,
   assemblyElapsedSeconds: null,
+  assemblyForTextConversion: false,
   serverDownloadUrl: null,
   isSingleFile: false,
   failedUploads: 0,
@@ -96,6 +120,45 @@ export function applyServerModeMessage(
   options?: Record<string, any> | null,
 ): ServerModeState {
   switch (msgKey) {
+    // (multipage-download-fixes 5.6 / D2) TRUE pause held — the scraper
+    // blocked between pages. A dedicated `paused` phase renders the Paused
+    // card (Resume + Stop); interrupted wording is never used for it.
+    case "status.scraperPaused":
+      return { ...prev, phase: "paused" };
+
+    // (multipage-download-fixes 5.6) A park-resume re-spawns the scraper
+    // and pushes this key — the phase returns to scraping (the Paused card
+    // is replaced by the progress state, counter included).
+    case "status.scrapingLinkedPages":
+      return { ...prev, phase: "scraping" };
+
+    // (multipage-download-fixes 5.5) Per-page counter — first-class state,
+    // not just the message-feed subtitle.
+    case "status.linkedPageProgress":
+      return {
+        ...prev,
+        phase: "scraping",
+        linkedPageCurrent:
+          typeof options?.current === "number" ? options.current : null,
+        linkedPageTotal:
+          typeof options?.total === "number" ? options.total : null,
+        linkedPagePhase:
+          typeof options?.phase === "string"
+            ? options.phase
+            : prev.linkedPagePhase,
+      };
+
+    // (multipage-download-fixes 5.5) The linked phase ended — clear the
+    // counter so no stale "Page X of Y" survives into the upload card.
+    case "status.linkedPagesComplete":
+    case "status.creatingPackage":
+      return {
+        ...prev,
+        linkedPageCurrent: null,
+        linkedPageTotal: null,
+        linkedPagePhase: null,
+      };
+
     // (15.7) Scraping → uploading transition
     case "status.sendingScrapeComplete":
     case "status.scrapeComplete":
@@ -109,6 +172,9 @@ export function applyServerModeMessage(
 
     // (15.2) Assembly progress updates. `elapsedSeconds` is additive
     // (task 6.1) — undefined-safe against servers that don't send it.
+    // (multipage-download-fixes 5.7) `downloadHtml` is additive too: the
+    // honest merge wording flag, threaded from the run's press-time
+    // options snapshot. Absent → keep the previous value.
     case "status.assemblyProgress":
       return {
         ...prev,
@@ -119,6 +185,10 @@ export function applyServerModeMessage(
           typeof options?.elapsedSeconds === "number"
             ? options.elapsedSeconds
             : prev.assemblyElapsedSeconds,
+        assemblyForTextConversion:
+          typeof options?.downloadHtml === "boolean"
+            ? !options.downloadHtml
+            : prev.assemblyForTextConversion,
       };
 
     // (15.1) Upload progress
@@ -170,6 +240,10 @@ export function applyServerModeMessage(
       return {
         ...prev,
         phase: "ready",
+        // (multipage-download-fixes 5.5) Terminal — no counter survives.
+        linkedPageCurrent: null,
+        linkedPageTotal: null,
+        linkedPagePhase: null,
         serverDownloadUrl: options?.downloadUrl ?? prev.serverDownloadUrl,
         isSingleFile: options?.isSingleFile ?? prev.isSingleFile,
         failedUploads:
@@ -205,7 +279,14 @@ export function applyServerModeMessage(
     // panel can render the stopped-with-partial-archive card. Never
     // "ready": a stop must not read as success.
     case "status.cancelled":
-      return { ...prev, phase: "cancelled" };
+      return {
+        ...prev,
+        phase: "cancelled",
+        // (multipage-download-fixes 5.5) Terminal — no counter survives.
+        linkedPageCurrent: null,
+        linkedPageTotal: null,
+        linkedPagePhase: null,
+      };
 
     // (15.7) Scraping phase
     case "status.scraping":

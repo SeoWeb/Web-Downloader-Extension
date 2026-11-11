@@ -25,6 +25,7 @@ vi.mock("../../src/background/server-client", () => {
     "scrapeComplete",
     "uploadResource",
     "uploadContent",
+    "uploadPageContent",
     "finalizeSession",
     "getSessionStatus",
     "checkHealth",

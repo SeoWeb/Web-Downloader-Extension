@@ -105,12 +105,15 @@ async def revoke_share_link(request: Request, token: str):
         handle_grpc_error(e)
 
 
-async def _page_content_formats(page_id: str, owner_user_id: str) -> list[str]:
-    """Stored content formats for a shared page (text-native-downloads,
-    share-viewer parity): resolved via the same archive page-read the
+async def _page_view_meta(page_id: str, owner_user_id: str) -> dict:
+    """Viewer metadata for a shared page (share-viewer parity): the stored
+    content formats (text-native-downloads) plus the per-page document
+    manifest (multipage-download-fixes D7/D8) that drives the public
+    viewer's subpage sidebar. Resolved via the same archive page-read the
     authenticated get-page route uses — with the OWNER's identity, since
     this route is public (no caller JWT). Strictly best-effort: any archive
-    failure degrades to [] and never fails the validation response."""
+    failure degrades to empty values and never fails the validation
+    response (legacy shares render exactly as before)."""
     try:
         page = await run_in_threadpool(
             archive_stub().GetPage,
@@ -120,9 +123,20 @@ async def _page_content_formats(page_id: str, owner_user_id: str) -> list[str]:
             ),
             timeout=30,
         )
-        return list(page.content_formats)
+        return {
+            "content_formats": list(page.content_formats),
+            "pages": [
+                {
+                    "path": entry.path,
+                    "title": entry.title,
+                    "url": entry.url,
+                    "content_format": entry.content_format,
+                }
+                for entry in page.pages
+            ],
+        }
     except grpc.RpcError:
-        return []
+        return {"content_formats": [], "pages": []}
 
 
 @router.get("/public/{token}")
@@ -140,12 +154,17 @@ async def validate_share_link(token: str):
         # D4: page reference metadata only — the presigned `url` field is
         # removed from the contract (no GetPageContent round trip, no R2
         # presigning); delivery is via the sandboxed public /f/* proxy routes.
+        view_meta = await _page_view_meta(resp.page_id, resp.owner_user_id)
         return {
             "page_id": resp.page_id,
             # Text-native downloads (share-viewer parity): the stored formats
             # drive the public viewer's HTML/Markdown/Text switcher. An archive
             # hiccup degrades to [] (legacy HTML-only iframe), never an error.
-            "content_formats": await _page_content_formats(resp.page_id, resp.owner_user_id),
+            "content_formats": view_meta["content_formats"],
+            # Multipage downloads (share-viewer parity, D7/D8): the per-page
+            # document manifest for the subpage sidebar; [] on legacy pages
+            # or archive failure — same best-effort degradation.
+            "pages": view_meta["pages"],
         }
     except HTTPException:
         raise

@@ -89,3 +89,39 @@ export function shouldWatchdogFire({
 }: WatchdogTimeoutInput): boolean {
   return armed && !terminalResolved;
 }
+
+// ---------------------------------------------------------------------------
+// (multipage-download-fixes 5.3a / design D3) Interrupted declarations
+// require liveness proof.
+//
+// DEFECT AT HEAD: the watchdog timeout applied the interrupted state from
+// silence alone — a long silent server merge matched the silence pattern
+// and produced the false "service was restarted" card.
+//
+// NEW CONTRACT: before declaring, the panel probes liveness
+// (CHECK_DOWNLOAD_LIVE — the background's live flag AND the persisted
+// heartbeat's freshness). A probe that answers live resets the watchdog
+// instead of declaring; only a probe that answers dead — or fails outright
+// (null, fail-safe so a genuinely dead worker can't freeze the card
+// forever) — declares.
+// ---------------------------------------------------------------------------
+
+/** The liveness probe the watchdog consults before declaring. */
+export interface WatchdogLivenessProbe {
+  /** The background reports the session live (in-memory Set). */
+  live: boolean;
+  /** The persisted chrome.storage.session heartbeat is within bounds. */
+  heartbeatFresh: boolean;
+}
+
+/**
+ * Declare decision: interrupted ONLY when the probe proves dead — no live
+ * signal AND no fresh heartbeat. A null/failed probe declares (fail-safe:
+ * silence plus an unanswerable probe is the genuinely-dead pattern).
+ */
+export function shouldWatchdogDeclareInterrupted(
+  probe: WatchdogLivenessProbe | null | undefined,
+): boolean {
+  if (!probe) return true;
+  return !probe.live && !probe.heartbeatFresh;
+}

@@ -272,6 +272,7 @@ def push_to_archive(
     plan: str = "free",
     markdown_content: Optional[bytes] = None,
     text_content: Optional[bytes] = None,
+    pages: Optional[list[tuple[str, str, str, str, bytes]]] = None,
 ) -> CloudPushResult:
     """Push a finalized page to the archive service.
 
@@ -289,6 +290,12 @@ def push_to_archive(
             4.1), pushed as a "markdown" ContentDocument when set.
         text_content: Uploaded extracted text (text-native-downloads 4.1),
             pushed as a "text" ContentDocument when set.
+        pages: Per-page content documents (multipage-download-fixes 7.1/
+            design D7) — one (path, title, url, content_format, data) tuple
+            per linked page (markdown at pages/<slug>.md and/or stored text
+            at pages/<slug>.txt). Built into PageDocument messages; counted
+            toward the payload size pre-flight but NEVER toward the
+            asset-count cap (documents, not assets).
 
     Returns:
         CloudPushResult with page_id on success or error details on failure.
@@ -305,12 +312,17 @@ def push_to_archive(
     # append RPC exists), so an oversize session can never succeed — fail
     # immediately with a precise quota-style error instead of burning the
     # 3 × 600 s retry budget on deterministic channel rejections. Text
-    # documents count toward the payload (text-native-downloads 4.1).
+    # documents count toward the payload (text-native-downloads 4.1), and
+    # per-page PageDocuments do too (multipage-download-fixes 7.1).
     total_bytes = (
         len(html_content)
         + sum(len(data) for _fn, _ct, data in assets)
         + (len(markdown_content) if markdown_content else 0)
         + (len(text_content) if text_content else 0)
+        + sum(
+            len(page_data)
+            for _path, _page_title, _page_url, _fmt, page_data in (pages or [])
+        )
     )
     if total_bytes > CLOUD_PUSH_MAX_PAYLOAD_BYTES:
         logger.error(
@@ -327,6 +339,8 @@ def push_to_archive(
     # deterministic 400-class error; pushing 201+ assets would only burn the
     # 3 × 600 s retry budget on a rejection that can never succeed. The count
     # is known before anything is built — stat-only, no gRPC traffic.
+    # Per-page PageDocuments (multipage-download-fixes 7.1) are documents,
+    # not assets — never counted toward this cap.
     asset_cap = settings.cloud_max_assets
     if len(assets) > asset_cap:
         logger.error(
@@ -379,6 +393,31 @@ def push_to_archive(
                 "Cloud push: installed archive proto lacks ContentDocument — "
                 "pushing without text documents (legacy backend): session=%s",
                 session_id,
+            )
+
+    # multipage-download-fixes 7.1/7.2 (D7): per-page documents travel as
+    # additive PageDocument entries (path/title/url/content_format + data).
+    # Same degradation posture as ContentDocument above: against a backend
+    # whose generated stubs predate PageDocument the page documents are
+    # dropped with a warning — the main page itself is still stored.
+    if pages:
+        if hasattr(archive_pb2, "PageDocument"):
+            request_kwargs["pages"] = [
+                archive_pb2.PageDocument(
+                    path=page_path,
+                    title=page_title,
+                    url=page_url,
+                    content_format=content_format,
+                    data=page_data,
+                )
+                for page_path, page_title, page_url, content_format, page_data in pages
+            ]
+        else:
+            logger.warning(
+                "Cloud push: installed archive proto lacks PageDocument — "
+                "pushing without per-page documents (legacy backend): "
+                "session=%s (%d documents dropped)",
+                session_id, len(pages),
             )
 
     request = archive_pb2.IngestPageRequest(**request_kwargs)

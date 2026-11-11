@@ -22,7 +22,10 @@ import {
   serverClient,
   upgradeInsecureServerUrl,
 } from "./background/server-client";
-import type { DownloadLiveSnapshot } from "./background/download-state";
+import type {
+  DownloadLiveEvidence,
+  DownloadLiveSnapshot,
+} from "./background/download-state";
 import { decideLivePollStep } from "./sidepanel/utils/livePolling";
 import {
   classifyDownloadMessage,
@@ -41,6 +44,13 @@ import {
   initialServerModeState,
   applyServerModeMessage,
 } from "./sidepanel/server-mode-state";
+import type { PausedDownload } from "./sidepanel/components/DownloadStatus";
+import { interruptedPresentation } from "./sidepanel/utils/interruptedRouting";
+import { choosePausedResumeAction } from "./sidepanel/utils/pausedRouting";
+import {
+  shouldWatchdogDeclareInterrupted,
+  type WatchdogLivenessProbe,
+} from "./sidepanel/utils/downloadWatchdog";
 import { usePagePocket } from "./hooks/usePagePocket";
 import { CloudUploadState } from "./components/CloudUploadStatus";
 import { PagePocketAnnouncement } from "./components/PagePocketAnnouncement";
@@ -115,6 +125,12 @@ export default function SidePanel() {
   );
   // Interrupt state: shown when the service worker was killed during a download
   const [interruptData, setInterruptData] = useState<InterruptData | null>(
+    null,
+  );
+  // (multipage-download-fixes 5.6) A paused download — held (worker alive)
+  // or parked (worker died while paused, phase-`paused` checkpoint found).
+  // Renders the Paused card with Resume + Stop; never the interrupted card.
+  const [pausedDownload, setPausedDownload] = useState<PausedDownload | null>(
     null,
   );
   // (Fix D.1) Server session id of a download that is CURRENTLY LIVE.
@@ -355,6 +371,21 @@ export default function SidePanel() {
       serverSessionId?: string;
       resourceUrls?: InterruptData["resourceUrls"];
     }) => {
+      // (multipage-download-fixes 5.3c / D2) A `paused` phase is a PARKED
+      // pause, not an interruption — route to the Paused card instead. This
+      // guard covers every caller: the background's push (should never carry
+      // paused after 5.3b, kept as defense), the dead-worker watchdog, and
+      // any future interrupt path.
+      if (interruptedPresentation(data) === "paused") {
+        setPausedDownload({
+          serverSessionId: data.serverSessionId,
+          tabId: data.tabId,
+          tabUrl: data.tabUrl,
+          parked: true,
+        });
+        setIsPaused(true);
+        return;
+      }
       // (Fix 2 — 2.3) Capture the options BEFORE clearing them (the resume
       // fallback re-reads the snapshot), so a stale options object cannot
       // re-arm the auto-START_DOWNLOAD effect after an interrupt.
@@ -415,7 +446,7 @@ export default function SidePanel() {
   });
   const { reset: resetWatchdog } = useDownloadWatchdog({
     armed: watchdogArmed,
-    onTimeout: () => {
+    onTimeout: async () => {
       // (D3) A terminal message that arrived for the tracked download
       // always wins over a concurrently expiring watchdog.
       if (
@@ -427,6 +458,27 @@ export default function SidePanel() {
         return;
       }
       const identity = downloadIdentityRef.current;
+      const watchdogSessionId =
+        identity.serverSessionId ?? liveSessionId ?? pollSessionId ?? undefined;
+      // (multipage-download-fixes 5.3a) PROVE liveness before declaring:
+      // the probe reads the background's live flag AND the persisted
+      // heartbeat's freshness (the CHECK_DOWNLOAD_LIVE evidence fields).
+      // A probe answering live resets the watchdog instead of declaring —
+      // a long silent server merge is not worker death. A failed probe
+      // (null) declares — genuinely dead workers must still surface.
+      let probe: WatchdogLivenessProbe | null = null;
+      try {
+        probe = (await sendMessageToBackground(
+          messageActions.CHECK_DOWNLOAD_LIVE,
+          watchdogSessionId ? { sessionId: watchdogSessionId } : {},
+        )) as WatchdogLivenessProbe | null;
+      } catch {
+        probe = null;
+      }
+      if (!shouldWatchdogDeclareInterrupted(probe)) {
+        resetWatchdog();
+        return;
+      }
       applyDownloadInterruptedState({
         // Phase from the current server-mode state (uploading/assembling —
         // the only phases that can arm the watchdog).
@@ -717,6 +769,21 @@ export default function SidePanel() {
           {},
         );
         if (result && result.downloadInterrupted) {
+          // (multipage-download-fixes 5.6 / 5.3c) A `paused` phase is a
+          // PARKED pause (worker died while the pause was held) — render the
+          // Paused card (Resume/Stop), never the interrupted card, and
+          // never probe it as "live".
+          if (interruptedPresentation(result) === "paused") {
+            setPausedDownload({
+              serverSessionId: result.serverSessionId,
+              tabId: result.tabId,
+              tabUrl: result.tabUrl,
+              parked: true,
+            });
+            setIsPaused(true);
+            setMessages([{ key: "status.connected" }]);
+            return;
+          }
           // (Fix D.1 — liveness) A checkpoint exists for the WHOLE run, so a
           // checkpoint alone doesn't mean "interrupted". When the background
           // reports the session as LIVE, show the in-progress state instead
@@ -852,7 +919,11 @@ export default function SidePanel() {
 
     const pollOnce = async () => {
       try {
-        const snapshot: DownloadLiveSnapshot | null =
+        // (multipage-download-fixes 5.1 + 5.2) The poll answer carries the
+        // liveness evidence (heartbeatFresh + serverStatus) the decision
+        // needs — the background builds it from the persisted record and a
+        // throttled terminal-status probe.
+        const snapshot: DownloadLiveEvidence | null =
           await sendMessageToBackground(
             messageActions.CHECK_DOWNLOAD_LIVE,
             snapshotSessionId ? { sessionId: snapshotSessionId } : {},
@@ -1009,6 +1080,9 @@ export default function SidePanel() {
       // (Fix 2 — 2.3) A new tab context supersedes any interrupted run's
       // options snapshot.
       interruptedOptionsRef.current = null;
+      // (multipage-download-fixes 5.6) A new tab context supersedes any
+      // paused/parked download card too.
+      setPausedDownload(null);
       setServerModeState(initialServerModeState); // Reset server-mode state
       setCloudUploadState(null); // Reset cloud upload state
       setDownloadReport(initialDownloadReport); // (5.3) Reset download report
@@ -1036,6 +1110,9 @@ export default function SidePanel() {
     interruptedOptionsRef.current = null;
     setAction(null);
     setInterruptData(null);
+    // (multipage-download-fixes 5.6) A fresh press supersedes any
+    // paused/parked download card.
+    setPausedDownload(null);
     setCloudUploadState(null);
     setIsScraping(true);
     setDownloadOptions(options);
@@ -1054,6 +1131,115 @@ export default function SidePanel() {
     setError(null);
     reset(tabUrl);
   }, [reset, tabUrl]);
+
+  // -----------------------------------------------------------------------
+  // (multipage-download-fixes 5.6 / design D2) Paused-card actions.
+  //
+  // Resume: a HELD pause goes through the live SCRAPER_RESUME path (§4 —
+  // the scraper lifts its wait and continues); a PARKED pause goes through
+  // SCRAPER_RESUME_FROM_PARK (§4 — the scraper re-spawns from the snapshot
+  // onto the same unfinalized session). A definitive resume failure falls
+  // back to the full-restart offer when this panel knows the run's options,
+  // else surfaces the failure with Stop still available (session-expiry
+  // semantics; the download can always be delivered as partial).
+  // Stop: SCRAPER_STOP with the parked context when parked — the
+  // background's stop case finalizes the partial via the salvage path.
+  // -----------------------------------------------------------------------
+  const onResumePaused = useCallback(async () => {
+    const paused = pausedDownload;
+    const sessionId =
+      paused?.serverSessionId ??
+      downloadIdentityRef.current.serverSessionId ??
+      undefined;
+    const tabId = paused?.tabId ?? downloadIdentityRef.current.originTabId;
+    const action = choosePausedResumeAction(paused?.parked ?? false);
+    setIsPaused(false);
+    setPausedDownload(null);
+    setServerModeState((prev) => ({ ...prev, phase: "scraping" }));
+
+    if (action === "resumeFromPark" && sessionId) {
+      // Park-resume: pin the identity and poll the session — the re-spawned
+      // scraper's pushes and the poll carry the run to its terminal state.
+      pinDownloadIdentity({
+        originTabId: tabId || liveTabIdRef.current,
+        serverSessionId: sessionId,
+      });
+      resolvedTerminalRef.current = null;
+      sawLiveRef.current = false;
+      downloadSettledRef.current = false;
+      confirmPendingRef.current = false;
+      setMessages((prev) => [...prev, { key: "status.reconnectingServer" }]);
+      try {
+        const result = await sendMessageToBackground(
+          messageActions.SCRAPER_RESUME_FROM_PARK,
+          { serverSessionId: sessionId, tabId },
+        );
+        if (result?.fallback) {
+          throw new Error(result.error || "Park resume failed");
+        }
+        setPollSessionId(sessionId);
+      } catch {
+        const restartOptions = downloadOptions ?? interruptedOptionsRef.current;
+        if (restartOptions) {
+          // (D2 spec) Definitive resume failure — full restart with a new
+          // download, consistent with the session-expiry semantics.
+          interruptedOptionsRef.current = null;
+          pinDownloadIdentity({
+            originTabId: liveTabIdRef.current,
+            serverSessionId: null,
+          });
+          resolvedTerminalRef.current = null;
+          setIsScraping(true);
+          setDownloadOptions(restartOptions);
+          setMessages((prev) => [...prev, { key: "status.scraping" }]);
+          setServerModeState((prev) => ({
+            ...prev,
+            phase: "scraping",
+            serverError: null,
+          }));
+        } else {
+          // No options known to this panel (reopened after a restart) —
+          // surface the failure and restore the card so Stop stays available.
+          setPausedDownload({
+            serverSessionId: sessionId,
+            tabId,
+            parked: true,
+          });
+          setMessages((prev) => [
+            ...prev,
+            { key: "status.pausedResumeFailed" },
+          ]);
+        }
+      }
+      return;
+    }
+
+    // Held pause: the live scraper lifts its wait (scraper-state §4 path).
+    if (sessionId) setPollSessionId((prev) => prev ?? sessionId);
+    await sendMessageToBackground(messageActions.SCRAPER_RESUME, { tabId });
+  }, [pausedDownload, downloadOptions, pinDownloadIdentity]);
+
+  const onStopPausedDownload = useCallback(async () => {
+    const paused = pausedDownload;
+    setIsPaused(false);
+    setPausedDownload(null);
+    setIsScraping(false);
+    setIsScrapingLinkedPages(false);
+    setServerModeState((prev) =>
+      prev && prev.phase === "paused" ? { ...prev, phase: null } : prev,
+    );
+    if (paused?.parked && paused.serverSessionId) {
+      // Parked stop — the background's SCRAPER_STOP case detects no live
+      // scraper and finalizes the partial via the salvage path (§4).
+      await sendMessageToBackground(messageActions.SCRAPER_STOP, {
+        tabId: paused.tabId ?? downloadIdentityRef.current.originTabId,
+        serverSessionId: paused.serverSessionId,
+      });
+      return;
+    }
+    // Held pause — the hook's stop path (pinned tab; live scraper handles).
+    await stopScraping();
+  }, [pausedDownload, stopScraping]);
 
   if (error) {
     return (
@@ -1094,7 +1280,11 @@ export default function SidePanel() {
         isPaused={isPaused}
         action={action}
         downloadResponse={downloadResponse}
-        onStopScraping={stopScraping}
+        onStopScraping={
+          pausedDownload || serverModeState.phase === "paused"
+            ? onStopPausedDownload
+            : stopScraping
+        }
         setIsPaused={setIsPaused}
         serverModeState={serverModeState}
         onRetryServer={() => {
@@ -1183,6 +1373,9 @@ export default function SidePanel() {
           }
         }}
         interruptData={interruptData}
+        // (multipage-download-fixes 5.6) Paused card — held or parked.
+        pausedDownload={pausedDownload}
+        onResumePaused={onResumePaused}
         // (Fix D.1) A live download shows "in progress" instead of the
         // Resume/Restart card.
         liveDownload={liveSessionId !== null}

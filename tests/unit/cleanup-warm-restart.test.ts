@@ -103,6 +103,10 @@ vi.mock("../../src/background/download-checkpoint", () => ({
   readCheckpoint: vi.fn().mockResolvedValue(null),
   readAllCheckpoints: registry.readAllCheckpoints,
   clearCheckpoint: registry.clearCheckpoint,
+  // (multipage-download-fixes D2 / task 4.4) Paused-phase helpers the
+  // linked-page scraper calls while a pause is held / lifted.
+  pauseCheckpoint: vi.fn(async () => {}),
+  restoreCheckpointPhase: vi.fn(async () => {}),
 }));
 
 vi.mock("../../src/background/download-state", () => ({
@@ -231,6 +235,37 @@ describe("warm-restart startup cleanup (D5 / tasks 4.1–4.4)", () => {
     // Not delivered → kept for the panel-open CHECK_INTERRUPTED_DOWNLOAD
     // discovery.
     expect(registry.clearCheckpoint).not.toHaveBeenCalled();
+  });
+
+  it("a paused checkpoint PARKS: no interrupted push, park state retained (multipage-download-fixes D2 / task 4.4)", async () => {
+    const parkedCheckpoint = {
+      ...CHECKPOINT,
+      serverSessionId: "sess-parked-x",
+      phase: "paused",
+      previousPhase: "scraping",
+    };
+    registry.readAllCheckpoints.mockResolvedValue([parkedCheckpoint]);
+
+    await freshWorkerLifetime();
+
+    await settle();
+
+    // Never surfaced as an interrupted download
+    expect(registry.sendMessageToPanel).not.toHaveBeenCalledWith(
+      messageActions.DOWNLOAD_INTERRUPTED,
+      parkedCheckpoint,
+    );
+    // The park stays discoverable: snapshot + checkpoint survive for
+    // SCRAPER_RESUME_FROM_PARK / parked Stop
+    expect(registry.clearCheckpoint).not.toHaveBeenCalledWith("sess-parked-x");
+    expect(registry.clearCheckpoint).not.toHaveBeenCalledWith(
+      undefined,
+      expect.anything(),
+    );
+    // The isDownloadInProgress flag is still reset (startup hygiene)
+    expect(registry.storageLocalSet).toHaveBeenCalledWith({
+      isDownloadInProgress: false,
+    });
   });
 
   it("runs at most once per worker lifetime (re-fired init and extra lifecycle events do not re-run it)", async () => {

@@ -559,6 +559,21 @@ class ZipAssemblerService:
                     text_push = (
                         self._read_content_txt(session_id) if text_on else None
                     )
+                    # multipage-download-fixes 7.1: per-page texts stored by
+                    # the POST /content/pages endpoint, keyed by
+                    # page_url_hash (literal "main" = main page). The main
+                    # entry folds into text_push exactly like the local
+                    # branch folds it into content_text — the per-page store
+                    # wins when a mixed-version session holds both — so the
+                    # main text document survives the extension's switch to
+                    # per-page streaming (§3). The remaining linked-page
+                    # entries are pushed as PageDocuments.
+                    cloud_page_texts: dict[str, str] = {}
+                    if text_on:
+                        cloud_page_texts = self._read_content_pages(session_id)
+                        main_page_text = cloud_page_texts.pop("main", None)
+                        if main_page_text is not None:
+                            text_push = main_page_text
 
                     if is_single_file and download_html:
                         # Single-file cloud: produce inlined HTML, push without assets
@@ -654,6 +669,9 @@ class ZipAssemblerService:
                             text_content=text_push,
                             integrity=integrity,
                             snapshot_resources=all_resources,
+                            page_md_list=page_md_list,
+                            page_text_list=cloud_page_texts,
+                            linked_results=linked_results,
                         )
                         # 1.6/3.2: persist integrity after the push. This
                         # covers every _assemble_cloud_push outcome (success,
@@ -667,7 +685,16 @@ class ZipAssemblerService:
                         # a text-only push represents no resources by design.
                         if download_html:
                             includes_resources = True
-                        elif content_md is None and text_push is None:
+                        elif (
+                            content_md is None
+                            and text_push is None
+                            and not page_md_list
+                            and not cloud_page_texts
+                        ):
+                            # No document at all → the images-only/gallery
+                            # shape represents its image resources. A push
+                            # carrying per-page documents (7.1) is a
+                            # text/markdown push: no resources by design.
                             includes_resources = bool(self._image_resources(
                                 all_resources, archive_path_by_resource_id,
                             ))
@@ -685,6 +712,23 @@ class ZipAssemblerService:
 
                 # Read content.txt if present
                 content_text = self._read_content_txt(session_id)
+
+                # multipage-download-fixes 2.2: per-page texts stored by the
+                # POST /content/pages endpoint, keyed by page_url_hash
+                # ("main" = main page). Loaded only when text output is on —
+                # HTML-mode artifacts are unchanged by this feature.
+                page_text_list: dict[str, str] = {}
+                if text_on:
+                    page_text_list = self._read_content_pages(session_id)
+                    # The main page's text lives under the "main" key and is
+                    # the same document the legacy append endpoint stored as
+                    # content.txt — fold it into content_text so the raw
+                    # single-file delivery and downstream consumers see one
+                    # main-text value. Prefer the per-page store when a
+                    # mixed-version session somehow holds both.
+                    main_page_text = page_text_list.pop("main", None)
+                    if main_page_text is not None:
+                        content_text = main_page_text
 
                 # Does the artifact represent resources at all? Single-file
                 # output inlines them; text-only output (below) excludes
@@ -708,6 +752,7 @@ class ZipAssemblerService:
                         content_md is not None
                         or content_text is not None
                         or bool(page_md_list)
+                        or bool(page_text_list)
                     )
                     # Images-only ZIP represents its image resources;
                     # text-only output excludes resources by design, so
@@ -736,6 +781,7 @@ class ZipAssemblerService:
                             content_text=content_text,
                             page_md_list=page_md_list,
                             page_hash_to_filename=page_hash_to_filename,
+                            page_text_list=page_text_list,
                         )
                 elif is_single_file:
                     # v1 (download-as-markdown D7): single-file output does not
@@ -1141,15 +1187,25 @@ class ZipAssemblerService:
         content_text: Optional[str],
         page_md_list: dict[str, str],
         page_hash_to_filename: dict[str, str],
+        page_text_list: Optional[dict[str, str]] = None,
     ) -> Optional[str]:
         """Assemble a text-only artifact — no index.html, no HTML-only extras.
 
         ``downloadHtml=false`` (text-native-downloads): the artifact contains
         one file per produced text document — ``content.md`` (markdown
-        option), ``content.txt`` (uploaded extracted text), and a
+        option), ``content.txt`` (uploaded extracted text), a
         ``pages/<name>.md`` sibling per linked page whose markdown conversion
-        succeeded. Images/styles/scripts are HTML-rendering extras and are
-        excluded, as are the linked pages' HTML documents.
+        succeeded, and — multipage-download-fixes 2.4 (D6) — a
+        ``pages/<name>.txt`` per linked page with stored per-page text, plus
+        the main page's text as ``index.txt`` once linked-page texts exist
+        (legacy runs without per-page texts keep the ``content.txt`` name).
+        ``pages/<name>.txt`` reuses the collision-resolved filename the
+        linked-page HTML loop produced for the page (``text_zip_path_for``
+        extension swap), so ``pages/about.html`` / ``pages/about.md`` /
+        ``pages/about-c3d4.txt`` share the slug base; a page with no captured
+        URL falls back to ``pages/<page_url_hash>.txt``. Images/styles/
+        scripts are HTML-rendering extras and are excluded, as are the linked
+        pages' HTML documents.
 
         Output shape (design D3): exactly one document → raw file on disk
         (plus ``outputFilename`` / ``outputContentType`` recorded on the
@@ -1159,16 +1215,26 @@ class ZipAssemblerService:
         failed per D6 and nothing was uploaded) fails with a clear error —
         delivering an empty artifact would be silently wrong.
         """
+        page_text_list = page_text_list or {}
         files: list[tuple[str, str]] = []
         if content_md is not None:
             files.append(("content.md", content_md))
         if content_text is not None:
-            files.append(("content.txt", content_text))
+            # D6: with linked-page texts present, the main page's text ships
+            # as ``index.txt`` (one file per page model). Sessions without
+            # per-page texts — every legacy run — keep ``content.txt``.
+            main_name = "index.txt" if page_text_list else "content.txt"
+            files.append((main_name, content_text))
         for page_hash, page_md in page_md_list.items():
             page_filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
             md_path = markdown_zip_path_for(f"pages/{page_filename}")
             if md_path:
                 files.append((md_path, page_md))
+        for page_hash, page_text in page_text_list.items():
+            page_filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
+            txt_path = text_zip_path_for(f"pages/{page_filename}")
+            if txt_path:
+                files.append((txt_path, page_text))
 
         if not files:
             # Round 9: with the images-only branch handled by the caller's
@@ -1306,6 +1372,9 @@ class ZipAssemblerService:
         text_content: Optional[str] = None,
         integrity: Optional[AssemblyIntegrity] = None,
         snapshot_resources: Optional[list] = None,
+        page_md_list: Optional[dict[str, str]] = None,
+        page_text_list: Optional[dict[str, str]] = None,
+        linked_results: Optional[dict] = None,
     ) -> None:
         """Push processed HTML + assets to PagePocket cloud (no local file).
 
@@ -1351,6 +1420,19 @@ class ZipAssemblerService:
         ``assembly_failed`` — without touching ``cloud_status``
         semantics. The caller persists the totals after this returns,
         which also covers the early pre-flight returns below.
+
+        multipage-download-fixes 7.1 (D7): ``page_md_list`` (linked-page
+        markdown keyed by page_url_hash) and ``page_text_list`` (per-page
+        texts from the POST /content/pages store) travel as per-page
+        ``PageDocument`` entries — path/title/url/content_format/data —
+        in EVERY mode where they exist, including ``download_html=False``
+        runs whose push previously carried no subpage content at all.
+        Pages are DOCUMENTS, not assets: the ``CLOUD_MAX_ASSETS`` count
+        and its pre-flight rejection are unaffected, while their bytes
+        DO count toward the payload-size pre-flight. ``linked_results``
+        (the merge results) supply each page's original URL and merged
+        HTML — the HTML is the manifest title source (7.2), falling back
+        to the page's slug base name.
         """
         from app.services import archive_client as archive_client_mod
         from app.services.archive_client import (
@@ -1377,15 +1459,32 @@ class ZipAssemblerService:
         markdown_bytes = markdown_content.encode("utf-8") if markdown_content else None
         text_bytes = text_content.encode("utf-8") if text_content else None
 
+        # multipage-download-fixes 7.1: build the per-page document set.
+        # Linked-page markdown maps to pages/<slug>.md and per-page texts
+        # to pages/<slug>.txt over the collision-resolved HTML filenames —
+        # the same slug bases as the local zip layouts. Built in every
+        # mode where the documents exist (when HTML is on they accompany
+        # the html assets).
+        page_documents = self._build_cloud_page_documents(
+            page_md_list, page_text_list, page_hash_to_filename,
+            linked_results,
+        )
+
         # Zero-document guard (Round 8): with no HTML/markdown/text document
         # the archive data model has nothing to store — UNLESS the session
         # captured image resources, in which case a self-contained gallery
         # page is pushed instead (push-only: the cloud branch never builds
-        # a local ZIP). With neither documents nor images, fail here with a
-        # precise error instead of burning the retry budget on an ingest
-        # the archive service rejects deterministically.
+        # a local ZIP), or per-page documents exist (7.1 — subpage content
+        # alone is a valid push). With neither documents nor images, fail
+        # here with a precise error instead of burning the retry budget on
+        # an ingest the archive service rejects deterministically.
         gallery_assets: Optional[list[tuple[str, str, bytes]]] = None
-        if not download_html and not markdown_bytes and not text_bytes:
+        if (
+            not download_html
+            and not markdown_bytes
+            and not text_bytes
+            and not page_documents
+        ):
             # D1 (1.6): stat-level skips among the gallery's image
             # candidates are counted before the build; the read-phase
             # delta is derived after it.
@@ -1459,20 +1558,22 @@ class ZipAssemblerService:
                 linked_assets.append((f"pages/{filename}", "text/html", page_html.encode("utf-8")))
         limit = archive_client_mod.CLOUD_PUSH_MAX_PAYLOAD_BYTES
 
-        # Pre-flight layer 1: HTML + linked pages + text documents (all
-        # already in RAM) are checked before any disk reads or asset
-        # building.
+        # Pre-flight layer 1: HTML + linked pages + text documents +
+        # per-page documents (all already in RAM) are checked before any
+        # disk reads or asset building. Page document bytes count here
+        # (7.1) even though they never count as assets.
         known_bytes = (
             len(html_bytes)
             + sum(len(data) for _n, _ct, data in linked_assets)
             + (len(markdown_bytes) if markdown_bytes else 0)
             + (len(text_bytes) if text_bytes else 0)
+            + sum(len(doc_data) for *_doc_head, doc_data in page_documents)
         )
         if known_bytes > limit:
             error = archive_client_mod.cloud_size_error(known_bytes, limit)
             logger.error(
-                "Cloud push pre-flight rejected (HTML/linked pages): "
-                "session=%s payload=%s limit=%s",
+                "Cloud push pre-flight rejected (HTML/linked pages/page "
+                "documents): session=%s payload=%s limit=%s",
                 session_id, format_mb(known_bytes), format_mb(limit),
             )
             session.cloud_status = "failed"
@@ -1546,6 +1647,7 @@ class ZipAssemblerService:
                 plan=push_plan,
                 markdown_content=markdown_bytes,
                 text_content=text_bytes,
+                pages=page_documents or None,
             )
             if result.page_id:
                 session.cloud_status = "success"
@@ -1925,6 +2027,89 @@ class ZipAssemblerService:
         return m.group(1).strip()[:500] if m else ""
 
     @staticmethod
+    def _linked_page_title(linked_html: Optional[str], fallback: str) -> str:
+        """Title for a cloud per-page document (multipage-download-fixes 7.2).
+
+        Extracts ``<title>`` from the linked page's MERGED HTML — the merge
+        runs unconditionally, so the document exists in every output mode.
+        Failure-isolated per page: any extraction error simply falls back
+        to ``fallback`` (the page's slug base name — the collision-resolved
+        archive filename without its extension); a per-page manifest entry
+        is never worth failing the push over.
+        """
+        try:
+            if linked_html:
+                title = ZipAssemblerService._extract_title(
+                    linked_html.encode("utf-8"),
+                )
+                if title:
+                    return title
+        except Exception:
+            pass
+        return fallback
+
+    def _build_cloud_page_documents(
+        self,
+        page_md_list: Optional[dict[str, str]],
+        page_text_list: Optional[dict[str, str]],
+        page_hash_to_filename: dict[str, str],
+        linked_results: Optional[dict] = None,
+    ) -> list[tuple[str, str, str, str, bytes]]:
+        """Build the cloud push's per-page ``PageDocument`` payloads (7.1).
+
+        One ``(path, title, url, content_format, data)`` tuple per linked
+        page whose markdown/text exists: linked-page markdown maps to
+        ``pages/<slug>.md`` (content_format "markdown") via
+        :func:`markdown_zip_path_for`, per-page text to
+        ``pages/<slug>.txt`` (content_format "text") via
+        :func:`text_zip_path_for` — both over the SAME collision-resolved
+        slug bases the linked-page HTML loop produced, so one page's
+        ``.html``/``.md``/``.txt`` files share the slug base (naming
+        invariant D5). A page without a captured URL falls back to its
+        ``<page_url_hash>`` name, mirroring the local layouts. Titles come
+        from the merged linked HTML ``<title>`` (7.2), falling back to the
+        slug base name; ``url`` is the page's original URL ("" when none
+        was captured). These are DOCUMENTS, not assets: the result never
+        enters the ``CLOUD_MAX_ASSETS`` count or the pre-flight asset
+        rejection — only the payload-size pre-flight.
+        """
+        documents: list[tuple[str, str, str, str, bytes]] = []
+        merges = linked_results or {}
+        for page_hash, page_md in (page_md_list or {}).items():
+            filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
+            md_path = markdown_zip_path_for(f"pages/{filename}")
+            if not md_path:
+                continue
+            lp_result = merges.get(page_hash)
+            documents.append((
+                md_path,
+                self._linked_page_title(
+                    getattr(lp_result, "html", None),
+                    filename.rsplit(".", 1)[0],
+                ),
+                getattr(lp_result, "page_url", None) or "",
+                "markdown",
+                page_md.encode("utf-8"),
+            ))
+        for page_hash, page_text in (page_text_list or {}).items():
+            filename = page_hash_to_filename.get(page_hash, f"{page_hash}.html")
+            txt_path = text_zip_path_for(f"pages/{filename}")
+            if not txt_path:
+                continue
+            lp_result = merges.get(page_hash)
+            documents.append((
+                txt_path,
+                self._linked_page_title(
+                    getattr(lp_result, "html", None),
+                    filename.rsplit(".", 1)[0],
+                ),
+                getattr(lp_result, "page_url", None) or "",
+                "text",
+                page_text.encode("utf-8"),
+            ))
+        return documents
+
+    @staticmethod
     def _gallery_title(main_html: str, url: str) -> str:
         """Title for an images-only gallery push (Round 8).
 
@@ -2133,6 +2318,52 @@ class ZipAssemblerService:
                     session_id, exc,
                 )
         return None
+
+    def _read_content_pages(self, session_id: str) -> dict[str, str]:
+        """Read the session's per-page texts stored by the
+        ``POST /content/pages`` endpoint (multipage-download-fixes 2.2).
+
+        Returns a mapping keyed by ``page_url_hash`` — the SAME hash space
+        the HTML chunk route derives from ``sha256(page_url)[:16]``, plus the
+        literal ``"main"`` key for the main page — so the assembler joins
+        hash → page URL through the linked merge results (the
+        ``page_hash_to_filename`` loop reads ``lp_result.page_url`` from the
+        same derivation) and slug naming has the URL available.
+
+        A missing ``content_pages`` directory (legacy sessions that never
+        used the endpoint, or HTML-mode sessions) yields an empty dict —
+        assembly is unchanged for those.
+        """
+        pages_dir = os.path.join(self.storage_root, session_id, "content_pages")
+        if not os.path.isdir(pages_dir):
+            return {}
+        texts: dict[str, str] = {}
+        try:
+            entries = sorted(os.listdir(pages_dir))
+        except OSError as exc:
+            logger.warning(
+                "Failed to list content_pages: session=%s exc=%s",
+                session_id, exc,
+            )
+            return {}
+        for entry in entries:
+            if not entry.endswith(".txt"):
+                continue
+            page_path = os.path.join(pages_dir, entry)
+            if not os.path.isfile(page_path):
+                continue
+            try:
+                with open(page_path, "r", encoding="utf-8") as f:
+                    texts[entry[: -len(".txt")]] = f.read()
+            except OSError as exc:
+                # Failure isolation: a single unreadable page text only
+                # omits that document — assembly never fails because of it
+                # (same posture as _read_content_txt).
+                logger.warning(
+                    "Failed to read content page %s: session=%s exc=%s",
+                    entry, session_id, exc,
+                )
+        return texts
 
     def _embed_content_txt(self, html_path: str, content_text: str) -> None:
         """Embed content.txt into an existing single-file HTML on disk.
@@ -2406,6 +2637,23 @@ def markdown_zip_path_for(html_zip_path: str) -> Optional[str]:
     """
     if html_zip_path.endswith(".html"):
         return html_zip_path[: -len(".html")] + ".md"
+    return None
+
+
+def text_zip_path_for(html_zip_path: str) -> Optional[str]:
+    """Map an HTML archive path to its per-page text sibling path
+    (multipage-download-fixes 2.3, design D5).
+
+    ``pages/<name>.html`` → ``pages/<name>.txt`` — the same pure extension
+    swap as :func:`markdown_zip_path_for`, so a page's ``.html``/``.md``/
+    ``.txt`` files share the slug base produced by ``generate_page_filename``
+    including the deterministic 4-hex collision suffix (naming invariant D5).
+    Returns ``None`` for paths without an ``.html`` suffix — those have no
+    defined text sibling (hash-fallback callers already normalize to
+    ``<page_url_hash>.html`` before calling).
+    """
+    if html_zip_path.endswith(".html"):
+        return html_zip_path[: -len(".html")] + ".txt"
     return None
 
 

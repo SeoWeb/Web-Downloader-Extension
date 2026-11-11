@@ -1,14 +1,23 @@
 /**
- * Tests for linked page content text extraction (linked-page-scraping-parity task 5.3).
+ * Tests for linked page content text extraction — per-page streaming
+ * (multipage-download-fixes D4 / task 3.3; supersedes the former
+ * accumulate-with-delimiters tests from linked-page-scraping-parity 5.3).
  *
  * Verifies:
  * - ScrapedPageData includes a `text` field populated from getResources().text
- * - processQueue() accumulates text with page-URL delimiters
- * - Text accumulation is guarded by extractText flag (downloadContentAsText)
+ * - processQueue() uploads EACH page's text immediately after its scrape via
+ *   serverClient.uploadPageContent (pageUrl set, scrape order preserved)
+ * - there is NO whole-run text accumulation and no page-URL delimiters —
+ *   the legacy append endpoint (uploadContent) is never used
+ * - text uploading is guarded by the extractText flag (downloadContentAsText)
  */
 
-import { LinkedPageScraper, ScrapedPageData } from "../../src/background/linked-page-scraper";
+import {
+  LinkedPageScraper,
+  ScrapedPageData,
+} from "../../src/background/linked-page-scraper";
 import { AssetRegistry } from "../../src/background/asset-registry";
+import { serverClient } from "../../src/background/server-client";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -43,6 +52,13 @@ vi.mock("../../src/background/server-client", () => ({
     uploadHtmlChunk: vi.fn(),
     uploadFilenameMap: vi.fn(),
     uploadContent: vi.fn(),
+    uploadPageContent: vi.fn(async () => ({
+      message: "stored",
+      page_url_hash: "abc123",
+      replaced: false,
+      size: 10,
+      api_version: "v1",
+    })),
   },
   ServerUnavailableError: class extends Error {},
   AuthenticationError: class extends Error {},
@@ -57,7 +73,8 @@ vi.mock("../../src/background/resources", () => ({
 
 // Mock other dependencies
 vi.mock("../../src/background/htmlUtils", () => ({
-  convertHtml: (_html: string, _url: string, _prefix: string, _map: any) => _html,
+  convertHtml: (_html: string, _url: string, _prefix: string, _map: any) =>
+    _html,
 }));
 
 vi.mock("../../src/background/fileHandlers", () => ({
@@ -86,6 +103,7 @@ describe("LinkedPageScraper text extraction", () => {
       maxPages: 5,
       delayBetweenPages: 0,
       pageTimeout: 5000,
+      serverSessionId: "test-session",
     });
 
     mockStorage = {
@@ -99,7 +117,10 @@ describe("LinkedPageScraper text extraction", () => {
       const calls = mockChromeTabsOnUpdated.addListener.mock.calls;
       const listener = calls[calls.length - 1]?.[0];
       if (listener) {
-        setTimeout(() => listener(1, { status: "complete" }, { url: opts.url }), 0);
+        setTimeout(
+          () => listener(1, { status: "complete" }, { url: opts.url }),
+          0,
+        );
       }
       return Promise.resolve();
     });
@@ -111,12 +132,14 @@ describe("LinkedPageScraper text extraction", () => {
         return Promise.resolve([{ result: null }]);
       }
       // For DOM capture function (no args), return skeleton + bodyChildren
-      return Promise.resolve([{
-        result: {
-          skeleton: "<html><head></head><body></body></html>",
-          bodyChildren: ["<div>Test</div>"],
+      return Promise.resolve([
+        {
+          result: {
+            skeleton: "<html><head></head><body></body></html>",
+            bodyChildren: ["<div>Test</div>"],
+          },
         },
-      }]);
+      ]);
     });
   });
 
@@ -134,8 +157,8 @@ describe("LinkedPageScraper text extraction", () => {
     });
   });
 
-  describe("ScrapedPageData text field", () => {
-    it("should include text field from getResources()", async () => {
+  describe("per-page text uploads (multipage-download-fixes D4)", () => {
+    it("uploads a page's text immediately after its scrape, with the page URL", async () => {
       mockGetResources.mockReturnValue({
         css: [],
         js: [],
@@ -152,12 +175,19 @@ describe("LinkedPageScraper text extraction", () => {
         status: "queued",
       });
 
-      const result = await scraper.processQueue(1, mockStorage, vi.fn());
+      await scraper.processQueue(1, mockStorage, vi.fn());
 
-      expect(result).toContain("About page body text content");
+      expect(vi.mocked(serverClient.uploadPageContent)).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(vi.mocked(serverClient.uploadPageContent)).toHaveBeenCalledWith(
+        "test-session",
+        "https://example.com/about",
+        "About page body text content",
+      );
     });
 
-    it("should accumulate text from multiple pages with delimiters", async () => {
+    it("uploads each page's text separately in scrape order — no accumulation, no delimiters", async () => {
       let callCount = 0;
       mockGetResources.mockImplementation(() => {
         callCount++;
@@ -180,7 +210,10 @@ describe("LinkedPageScraper text extraction", () => {
         const listener = calls[calls.length - 1]?.[0];
         if (listener) {
           const finalUrl = opts.url || `https://example.com/page${navCount}`;
-          setTimeout(() => listener(1, { status: "complete" }, { url: finalUrl }), 0);
+          setTimeout(
+            () => listener(1, { status: "complete" }, { url: finalUrl }),
+            0,
+          );
         }
         return Promise.resolve();
       });
@@ -198,18 +231,57 @@ describe("LinkedPageScraper text extraction", () => {
         status: "queued",
       });
 
+      await scraper.processQueue(1, mockStorage, vi.fn());
+
+      // ONE upload per scraped page, in scrape order — each page's text goes
+      // up on its own; nothing is concatenated with page-URL delimiters.
+      expect(vi.mocked(serverClient.uploadPageContent)).toHaveBeenCalledTimes(
+        2,
+      );
+      expect(vi.mocked(serverClient.uploadPageContent)).toHaveBeenNthCalledWith(
+        1,
+        "test-session",
+        "https://example.com/about",
+        "Page 1 text",
+      );
+      expect(vi.mocked(serverClient.uploadPageContent)).toHaveBeenNthCalledWith(
+        2,
+        "test-session",
+        "https://example.com/contact",
+        "Page 2 text",
+      );
+
+      // The legacy whole-run append endpoint is NOT used by the current
+      // extension flow (it stays for older clients only).
+      expect(vi.mocked(serverClient.uploadContent)).not.toHaveBeenCalled();
+    });
+
+    it("resolves with nothing — there is no whole-run text accumulator to return", async () => {
+      mockGetResources.mockReturnValue({
+        css: [],
+        js: [],
+        images: [],
+        documents: [],
+        links: [],
+        text: "Some text content",
+      });
+
+      await scraper.addToQueue({
+        url: "https://example.com/about",
+        depth: 1,
+        parentUrl: "https://example.com",
+        status: "queued",
+      });
+
       const result = await scraper.processQueue(1, mockStorage, vi.fn());
 
-      // Should contain both pages' text with delimiters
-      expect(result).toContain("Page 1 text");
-      expect(result).toContain("Page 2 text");
-      expect(result).toContain("--- https://example.com/");
-      expect(result).toContain("---");
+      // The former accumulated blob is gone: processQueue hands nothing back.
+      expect(result).toBeUndefined();
     });
   });
 
   describe("extractText guard", () => {
-    it("should return empty string when extractText is false", async () => {
+    it("performs zero content uploads when extractText is false", async () => {
       mockGetResources.mockReturnValue({
         css: [],
         js: [],
@@ -230,10 +302,14 @@ describe("LinkedPageScraper text extraction", () => {
 
       const result = await scraper.processQueue(1, mockStorage, vi.fn());
 
-      expect(result).toBe("");
+      expect(result).toBeUndefined();
+      expect(vi.mocked(serverClient.uploadPageContent)).not.toHaveBeenCalled();
+      expect(vi.mocked(serverClient.uploadContent)).not.toHaveBeenCalled();
+      // The page itself was still scraped and stored.
+      expect(vi.mocked(serverClient.uploadHtmlChunk)).toHaveBeenCalledTimes(1);
     });
 
-    it("should return accumulated text when extractText is true (default)", async () => {
+    it("uploads per page when extractText is true (default)", async () => {
       mockGetResources.mockReturnValue({
         css: [],
         js: [],
@@ -250,9 +326,16 @@ describe("LinkedPageScraper text extraction", () => {
         status: "queued",
       });
 
-      const result = await scraper.processQueue(1, mockStorage, vi.fn());
+      await scraper.processQueue(1, mockStorage, vi.fn());
 
-      expect(result).toContain("Default enabled text");
+      expect(vi.mocked(serverClient.uploadPageContent)).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(vi.mocked(serverClient.uploadPageContent)).toHaveBeenCalledWith(
+        "test-session",
+        "https://example.com/about",
+        "Default enabled text",
+      );
     });
   });
 
@@ -283,22 +366,25 @@ describe("LinkedPageScraper text extraction", () => {
       const bigChild = "<div>" + "x".repeat(600 * 1024) + "</div>";
       mockChromeScriptingExecuteScript.mockImplementation((opts: any) => {
         if (opts.args) return Promise.resolve([{ result: null }]); // scroll
-        return Promise.resolve([{
-          result: {
-            skeleton: "<html><head></head><body></body></html>",
-            bodyChildren: [bigChild, bigChild, bigChild],
+        return Promise.resolve([
+          {
+            result: {
+              skeleton: "<html><head></head><body></body></html>",
+              bodyChildren: [bigChild, bigChild, bigChild],
+            },
           },
-        }]);
+        ]);
       });
 
-      const { serverClient } = await import("../../src/background/server-client");
-      const uploadSpy = vi.mocked(serverClient.uploadHtmlChunk).mockResolvedValue({
-        chunk_id: "ch-1",
-        chunk_count: 1,
-        total_size: 100,
-        deduplicated: false,
-        api_version: "v1",
-      });
+      const uploadSpy = vi
+        .mocked(serverClient.uploadHtmlChunk)
+        .mockResolvedValue({
+          chunk_id: "ch-1",
+          chunk_count: 1,
+          total_size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        });
       vi.mocked(serverClient.uploadFilenameMap).mockResolvedValue({
         filename_map_id: "fm-1",
         entries: 0,
@@ -343,22 +429,25 @@ describe("LinkedPageScraper text extraction", () => {
       // Small body child → single chunk
       mockChromeScriptingExecuteScript.mockImplementation((opts: any) => {
         if (opts.args) return Promise.resolve([{ result: null }]); // scroll
-        return Promise.resolve([{
-          result: {
-            skeleton: "<html><head></head><body></body></html>",
-            bodyChildren: ["<p>Small</p>"],
+        return Promise.resolve([
+          {
+            result: {
+              skeleton: "<html><head></head><body></body></html>",
+              bodyChildren: ["<p>Small</p>"],
+            },
           },
-        }]);
+        ]);
       });
 
-      const { serverClient } = await import("../../src/background/server-client");
-      const uploadSpy = vi.mocked(serverClient.uploadHtmlChunk).mockResolvedValue({
-        chunk_id: "ch-1",
-        chunk_count: 1,
-        total_size: 100,
-        deduplicated: false,
-        api_version: "v1",
-      });
+      const uploadSpy = vi
+        .mocked(serverClient.uploadHtmlChunk)
+        .mockResolvedValue({
+          chunk_id: "ch-1",
+          chunk_count: 1,
+          total_size: 100,
+          deduplicated: false,
+          api_version: "v1",
+        });
 
       await serverScraper.addToQueue({
         url: "https://example.com/small",
@@ -388,16 +477,17 @@ describe("LinkedPageScraper text extraction", () => {
       const bigChild = "<div>" + "y".repeat(600 * 1024) + "</div>";
       mockChromeScriptingExecuteScript.mockImplementation((opts: any) => {
         if (opts.args) return Promise.resolve([{ result: null }]); // scroll
-        return Promise.resolve([{
-          result: {
-            skeleton: "<html><head></head><body></body></html>",
-            bodyChildren: [bigChild, bigChild],
+        return Promise.resolve([
+          {
+            result: {
+              skeleton: "<html><head></head><body></body></html>",
+              bodyChildren: [bigChild, bigChild],
+            },
           },
-        }]);
+        ]);
       });
 
       const callOrder: number[] = [];
-      const { serverClient } = await import("../../src/background/server-client");
 
       // Make each upload take some time and record when it starts
       vi.mocked(serverClient.uploadHtmlChunk).mockImplementation(
@@ -435,32 +525,6 @@ describe("LinkedPageScraper text extraction", () => {
       // All calls initiated before any resolved → they ran concurrently
       expect(callOrder).toContain(0);
       expect(callOrder).toContain(1);
-    });
-  });
-
-  describe("text delimiter format", () => {
-    it("should use \\n--- URL ---\\n format", async () => {
-      mockGetResources.mockReturnValue({
-        css: [],
-        js: [],
-        images: [],
-        documents: [],
-        links: [],
-        text: "Body content",
-      });
-
-      await scraper.addToQueue({
-        url: "https://example.com/about",
-        depth: 1,
-        parentUrl: "https://example.com",
-        status: "queued",
-      });
-
-      const result = await scraper.processQueue(1, mockStorage, vi.fn());
-
-      // Verify the delimiter format
-      expect(result).toMatch(/\n--- .*? ---\n/);
-      expect(result).toContain("Body content");
     });
   });
 });

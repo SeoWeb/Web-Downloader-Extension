@@ -27,12 +27,20 @@ export interface DownloadReport {
   partial: boolean;
   /** Cancelled outright by the user. */
   cancelled: boolean;
+  /**
+   * (multipage-download-fixes 5.8) The linked-page loop exited via the 413
+   * session-full early exit: pages captured vs queue total, pushed by the
+   * scraper as `status.sessionFullPagesCaptured`. Null = the queue was
+   * fully walked → no note renders.
+   */
+  pagesPartial: { captured: number; total: number } | null;
 }
 
 export const initialDownloadReport: DownloadReport = {
   entries: [],
   partial: false,
   cancelled: false,
+  pagesPartial: null,
 };
 
 /**
@@ -100,6 +108,19 @@ export function applyDownloadReportMessage(
     // (5.5) Server finalized with partial content (session size limit hit).
     case "status.finalizingPartial":
       return { ...prev, partial: true };
+    // (multipage-download-fixes 5.8) 413 session-full early exit — the
+    // linked-page loop captured only part of the queue. Keep the counts
+    // for the completed card's partial note.
+    case "status.sessionFullPagesCaptured": {
+      const captured =
+        typeof options?.captured === "number" ? options.captured : 0;
+      const total = typeof options?.total === "number" ? options.total : 0;
+      return {
+        ...prev,
+        partial: true,
+        pagesPartial: { captured, total },
+      };
+    }
     default:
       return prev;
   }

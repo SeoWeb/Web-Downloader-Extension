@@ -15,6 +15,8 @@ vi.mock("next/navigation", () => ({
     replace: vi.fn(),
     back: vi.fn(),
   }),
+  usePathname: () => "/app/pages/test-page-id",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // Mock share dialog to avoid pulling in React Query provider

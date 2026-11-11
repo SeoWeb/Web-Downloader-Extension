@@ -11,6 +11,7 @@ Verifies:
 
 import asyncio
 import os
+import sys
 import threading
 import time
 import types
@@ -20,6 +21,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.zip_assembler import ZipAssemblerService
+
+# ---------------------------------------------------------------------------
+# Proto stubs: make archive_pb2 importable the same way test_cloud_delete.py
+# and test_text_native_outputs.py do, so the push_to_archive tests run for
+# real (not skipped) in isolation.
+# ---------------------------------------------------------------------------
+
+_PROTO_DIR = os.path.normpath(os.path.join(
+    os.path.dirname(__file__), "..", "..", "pagepocket", "shared", "proto_generated",
+))
+if os.path.isdir(_PROTO_DIR) and _PROTO_DIR not in sys.path:
+    sys.path.insert(0, _PROTO_DIR)
 
 
 # ---------------------------------------------------------------------------
@@ -1479,3 +1492,559 @@ class TestParallelCloudAssetBuild:
 
         assert assets[0][0] == "images/img-00-1a2b3c4d.png"
         assert assets[1][0] == "images/img-01.png"
+
+
+# ---------------------------------------------------------------------------
+# multipage-download-fixes 7.1–7.3 – cloud push per-page PageDocuments
+# ---------------------------------------------------------------------------
+
+
+def _lp_result(page_url=None, html=""):
+    """Minimal stand-in for a successful linked-page MergeResult."""
+    return types.SimpleNamespace(
+        success=True, html=html, page_url=page_url, reason=None,
+    )
+
+
+class TestCloudPushPageDocuments:
+    """_assemble_cloud_push carries per-page PageDocument payloads (7.1/7.2).
+
+    Linked-page markdown and per-page texts travel as (path, title, url,
+    content_format, data) tuples in every mode where they exist —
+    including download_html=False runs, whose push previously carried NO
+    subpage content at all. Pages are documents, not assets.
+    """
+
+    @staticmethod
+    def _run_cloud_push(
+        assembler, session, main_html, *,
+        linked=None, page_hash_to_filename=None, download_html=True,
+        markdown_content=None, text_content=None,
+        page_md_list=None, page_text_list=None, linked_results=None,
+        build_assets=None, push_result=None,
+    ):
+        """Run _assemble_cloud_push with collaborators stubbed; capture kwargs."""
+        captured = {}
+        push_result = push_result or types.SimpleNamespace(
+            page_id="page-ok", error=None,
+        )
+
+        async def _mock_build(sid, db, archive_paths=None):
+            return list(build_assets or [])
+
+        async def _no_progress(db, sess, phase, pct, **kwargs):
+            pass
+
+        assembler._build_cloud_assets = _mock_build
+        assembler._update_progress = _no_progress
+
+        def _capture_push(**kwargs):
+            captured.update(kwargs)
+            return push_result
+
+        with patch(
+            "app.services.archive_client.push_to_archive",
+            side_effect=_capture_push,
+        ):
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    assembler._assemble_cloud_push(
+                        session.id, MockDB(), session,
+                        main_html, linked or {}, page_hash_to_filename or {},
+                        download_html=download_html,
+                        markdown_content=markdown_content,
+                        text_content=text_content,
+                        page_md_list=page_md_list,
+                        page_text_list=page_text_list,
+                        linked_results=linked_results,
+                    )
+                )
+            finally:
+                loop.close()
+        return captured
+
+    def test_markdown_mode_multi_page_push_carries_page_documents(
+        self, assembler,
+    ):
+        """HTML off + markdown on → one markdown PageDocument per page."""
+        session = _make_session("mp-md-1", pagepocket_user_id="u-mp-1")
+        main_html = "<html><head><title>Main</title></head><body>x</body></html>"
+        linked_results = {
+            "h1": _lp_result(
+                page_url="https://example.com/about",
+                html="<html><head><title>About Us</title></head></html>",
+            ),
+            "h2": _lp_result(
+                page_url="https://example.com/about/team",
+                html="<html><head><title>Our Team</title></head></html>",
+            ),
+        }
+        page_md_list = {"h1": "# About\n\nbody", "h2": "# Team\n\nbody"}
+        page_hash_to_filename = {
+            "h1": "about.html",
+            "h2": "about-c3d4.html",  # collision-resolved slug
+        }
+
+        captured = self._run_cloud_push(
+            assembler, session, main_html,
+            download_html=False,
+            markdown_content="# Main\n\nmain body",
+            page_md_list=page_md_list,
+            page_hash_to_filename=page_hash_to_filename,
+            linked_results=linked_results,
+        )
+
+        pages = captured["pages"]
+        assert [p[0] for p in pages] == [
+            "pages/about.md", "pages/about-c3d4.md",
+        ]
+        assert [p[1] for p in pages] == ["About Us", "Our Team"]
+        assert [p[2] for p in pages] == [
+            "https://example.com/about",
+            "https://example.com/about/team",
+        ]
+        assert all(p[3] == "markdown" for p in pages)
+        assert pages[0][4] == "# About\n\nbody".encode("utf-8")
+        assert pages[1][4] == "# Team\n\nbody".encode("utf-8")
+        # Text-only push shape unchanged: empty HTML, no assets, and the
+        # MAIN page's markdown still travels as the ContentDocument.
+        assert captured["html_content"] == b""
+        assert captured["markdown_content"] == "# Main\n\nmain body".encode("utf-8")
+        assert captured["text_content"] is None
+        assert captured["assets"] == []
+        assert session.cloud_status == "success"
+
+    def test_text_mode_multi_page_push_carries_text_page_documents(
+        self, assembler,
+    ):
+        """HTML off + text on → one text PageDocument per stored page text."""
+        session = _make_session("mp-txt-1", pagepocket_user_id="u-mp-2")
+        linked_results = {
+            "h1": _lp_result(
+                page_url="https://example.com/about",
+                html="<html><head><title>About</title></head></html>",
+            ),
+            # A page whose chunks never recorded a page URL: hash-name
+            # fallback path (same as the local layouts).
+            "h2": _lp_result(
+                page_url=None,
+                html="<html><body>no url captured</body></html>",
+            ),
+        }
+        page_text_list = {"h1": "About text body", "h2": "Orphan page text"}
+        page_hash_to_filename = {"h1": "about.html", "h2": "abc123def4.html"}
+
+        captured = self._run_cloud_push(
+            assembler, session, "<html><body>ignored</body></html>",
+            download_html=False,
+            text_content="Main page text",
+            page_text_list=page_text_list,
+            page_hash_to_filename=page_hash_to_filename,
+            linked_results=linked_results,
+        )
+
+        pages = captured["pages"]
+        assert [p[0] for p in pages] == [
+            "pages/about.txt", "pages/abc123def4.txt",
+        ]
+        assert pages[0][1] == "About"  # from merged <title>
+        assert pages[0][2] == "https://example.com/about"
+        assert pages[0][3] == "text"
+        assert pages[0][4] == b"About text body"
+        # No captured URL → empty url, slug-base title fallback (no <title>)
+        assert pages[1][1] == "abc123def4"
+        assert pages[1][2] == ""
+        assert pages[1][3] == "text"
+        assert pages[1][4] == b"Orphan page text"
+        assert captured["html_content"] == b""
+        assert captured["text_content"] == b"Main page text"
+        assert captured["assets"] == []
+
+    def test_both_modes_push_carries_both_document_sets(self, assembler):
+        """Markdown + text both on → both document sets in one push."""
+        session = _make_session("mp-both-1", pagepocket_user_id="u-mp-3")
+        linked_results = {
+            "h1": _lp_result(
+                page_url="https://example.com/about",
+                html="<html><head><title>About</title></head></html>",
+            ),
+        }
+
+        captured = self._run_cloud_push(
+            assembler, session, "<html><body>ignored</body></html>",
+            download_html=False,
+            markdown_content="# Main",
+            text_content="Main text",
+            page_md_list={"h1": "# About md"},
+            page_text_list={"h1": "About text"},
+            page_hash_to_filename={"h1": "about.html"},
+            linked_results=linked_results,
+        )
+
+        pages = captured["pages"]
+        assert [(p[0], p[3]) for p in pages] == [
+            ("pages/about.md", "markdown"),
+            ("pages/about.txt", "text"),
+        ]
+        assert pages[0][4] == b"# About md"
+        assert pages[1][4] == b"About text"
+
+    def test_html_mode_pages_accompany_html_assets(self, assembler):
+        """HTML on → linked pages/*.html assets unchanged AND page docs."""
+        session = _make_session("mp-html-1", pagepocket_user_id="u-mp-4")
+        main_html = "<html><head><title>Main</title></head><body>x</body></html>"
+        linked_htmls = {"h1": "<html><body><p>Linked</p></body></html>"}
+        linked_results = {
+            "h1": _lp_result(
+                page_url="https://example.com/about",
+                html="<html><head><title>About</title></head></html>",
+            ),
+        }
+
+        captured = self._run_cloud_push(
+            assembler, session, main_html,
+            download_html=True,
+            linked=linked_htmls,
+            page_hash_to_filename={"h1": "about.html"},
+            page_md_list={"h1": "# About md"},
+            linked_results=linked_results,
+            build_assets=[("images/a.png", "image/png", b"png")],
+        )
+
+        # HTML-mode assets unchanged.
+        assert captured["html_content"] == main_html.encode("utf-8")
+        assert [a[0] for a in captured["assets"]] == [
+            "images/a.png", "pages/about.html",
+        ]
+        # Page documents accompany the assets.
+        assert [(p[0], p[3]) for p in captured["pages"]] == [
+            ("pages/about.md", "markdown"),
+        ]
+        # Pages are documents: no pages/ md path leaked into the assets.
+        assert "pages/about.md" not in [a[0] for a in captured["assets"]]
+
+    def test_legacy_single_page_push_has_no_pages(self, assembler):
+        """No per-page documents → the push carries no pages payload."""
+        session = _make_session("mp-legacy-1", pagepocket_user_id="u-mp-5")
+        main_html = "<html><head><title>Legacy</title></head><body>x</body></html>"
+
+        captured = self._run_cloud_push(
+            assembler, session, main_html,
+            download_html=True,
+            build_assets=[("images/a.png", "image/png", b"png")],
+        )
+
+        assert not captured.get("pages")
+        assert captured["title"] == "Legacy"
+        assert session.cloud_status == "success"
+
+    def test_subpage_only_push_is_not_nothing_to_push(self, assembler):
+        """The fixed defect: HTML off, no main document, subpage docs exist
+        → the push happens instead of the nothing-to-push rejection."""
+        session = _make_session("mp-subpage-only", pagepocket_user_id="u-mp-6")
+        linked_results = {
+            "h1": _lp_result(
+                page_url="https://example.com/about",
+                html="<html><head><title>About</title></head></html>",
+            ),
+        }
+
+        captured = self._run_cloud_push(
+            assembler, session, "<html><body>ignored</body></html>",
+            download_html=False,
+            page_text_list={"h1": "About text"},
+            page_hash_to_filename={"h1": "about.html"},
+            linked_results=linked_results,
+            build_assets=[],
+        )
+
+        assert captured["pages"][0][0] == "pages/about.txt"
+        assert captured["html_content"] == b""
+        assert session.cloud_status == "success"
+        assert session.cloud_error is None
+
+    def test_page_documents_count_toward_known_bytes_preflight(
+        self, assembler, monkeypatch,
+    ):
+        """Page document bytes count toward the payload-size pre-flight."""
+        from app.services import archive_client as archive_client_mod
+
+        monkeypatch.setattr(
+            archive_client_mod, "CLOUD_PUSH_MAX_PAYLOAD_BYTES", 32,
+        )
+        session = _make_session("mp-preflight-1", pagepocket_user_id="u-mp-7")
+
+        captured = self._run_cloud_push(
+            assembler, session, "<html><body>ignored</body></html>",
+            download_html=False,
+            page_text_list={"h1": "x" * 128},
+            page_hash_to_filename={"h1": "about.html"},
+        )
+
+        assert captured == {}  # failed in pre-flight, push never ran
+        assert session.cloud_status == "failed"
+        assert "cloud limit" in session.cloud_error
+        assert session.status == "ready"
+
+    def test_title_falls_back_to_slug_base_without_title_tag(self, assembler):
+        """No <title> in the merged HTML → slug base name without extension."""
+        session = _make_session("mp-title-1", pagepocket_user_id="u-mp-8")
+        linked_results = {
+            "h1": _lp_result(
+                page_url="https://example.com/about",
+                html="<html><body>no title element</body></html>",
+            ),
+            "h2": _lp_result(
+                page_url="https://example.com/about/team",
+                html="<html><head><title></title></head></html>",  # empty
+            ),
+        }
+
+        captured = self._run_cloud_push(
+            assembler, session, "<html><body>ignored</body></html>",
+            download_html=False,
+            page_md_list={"h1": "# Md", "h2": "# Md2"},
+            page_hash_to_filename={"h1": "about.html", "h2": "about-c3d4.html"},
+            linked_results=linked_results,
+        )
+
+        pages = captured["pages"]
+        assert [p[1] for p in pages] == ["about", "about-c3d4"]
+
+
+class TestPushToArchivePageDocuments:
+    """push_to_archive builds PageDocument messages for per-page content."""
+
+    def _patch_stub(self, monkeypatch, stub):
+        from app.services import archive_client
+
+        monkeypatch.setattr(archive_client, "_get_stub", lambda: stub)
+        return archive_client
+
+    def test_request_carries_page_documents(self, monkeypatch):
+        """The IngestPageRequest carries N PageDocuments field-by-field."""
+        pytest.importorskip("archive_pb2", reason="proto stubs not available")
+        import archive_pb2
+
+        captured = {}
+
+        def _capture(request, timeout=None):
+            captured["request"] = request
+            return types.SimpleNamespace(success=True, page_id="page-pages")
+
+        stub = types.SimpleNamespace(IngestPage=_capture)
+        archive_client = self._patch_stub(monkeypatch, stub)
+
+        result = archive_client.push_to_archive(
+            user_id="u",
+            session_id="s-pages",
+            url="https://example.com",
+            title="T",
+            html_content=b"",
+            assets=[],
+            pages=[
+                (
+                    "pages/about.md", "About", "https://example.com/about",
+                    "markdown", b"# About",
+                ),
+                (
+                    "pages/about.txt", "About", "https://example.com/about",
+                    "text", b"About text",
+                ),
+            ],
+        )
+
+        assert result.page_id == "page-pages"
+        request = captured["request"]
+        assert len(request.pages) == 2
+        first = request.pages[0]
+        assert isinstance(first, archive_pb2.PageDocument)
+        assert first.path == "pages/about.md"
+        assert first.title == "About"
+        assert first.url == "https://example.com/about"
+        assert first.content_format == "markdown"
+        assert first.data == b"# About"
+        second = request.pages[1]
+        assert second.path == "pages/about.txt"
+        assert second.content_format == "text"
+        assert second.data == b"About text"
+        request.SerializeToString()  # wire-serializable
+
+    def test_pages_bytes_count_toward_preflight_cap(self, monkeypatch):
+        """Oversize page documents fail fast before any RPC traffic."""
+        from app.services import archive_client
+
+        monkeypatch.setattr(archive_client, "CLOUD_PUSH_MAX_PAYLOAD_BYTES", 32)
+        stub = types.SimpleNamespace()
+        self._patch_stub(monkeypatch, stub)
+
+        result = archive_client.push_to_archive(
+            user_id="u",
+            session_id="s-pages-cap",
+            url="https://example.com",
+            title="T",
+            html_content=b"x" * 20,
+            assets=[],
+            pages=[
+                (
+                    "pages/big.txt", "Big", "https://example.com/big",
+                    "text", b"y" * 128,
+                ),
+            ],
+        )
+
+        assert result.page_id is None
+        assert "cloud limit" in result.error
+
+    def test_over_cap_assets_rejected_even_with_pages(self, monkeypatch):
+        """The asset cap still trips deterministically when pages exist —
+        page documents neither rescue an over-cap session nor change the
+        error."""
+        pytest.importorskip("archive_pb2", reason="proto stubs not available")
+        from app.config import settings
+        from app.services import archive_client
+
+        monkeypatch.setattr(settings, "cloud_max_assets", 3)
+        stub = types.SimpleNamespace()
+        self._patch_stub(monkeypatch, stub)
+
+        result = archive_client.push_to_archive(
+            user_id="u",
+            session_id="s-cap-pages",
+            url="https://example.com",
+            title="T",
+            html_content=b"x",
+            assets=[(f"a{i}.png", "image/png", b"x") for i in range(4)],
+            pages=[
+                (
+                    f"pages/p{i}.txt", "P", "https://example.com/p",
+                    "text", b"t",
+                )
+                for i in range(5)
+            ],
+        )
+
+        assert result.page_id is None
+        assert "asset limit" in result.error
+        assert "4 assets" in result.error
+        assert "max 3" in result.error
+
+    def test_pages_never_counted_toward_asset_cap(self, monkeypatch):
+        """Many page documents + few assets → push succeeds (documents,
+        not assets: the CLOUD_MAX_ASSETS count is unaffected)."""
+        pytest.importorskip("archive_pb2", reason="proto stubs not available")
+        from app.config import settings
+        from app.services import archive_client
+
+        monkeypatch.setattr(settings, "cloud_max_assets", 3)
+        stub = MagicMock()
+        stub.IngestPage.return_value = types.SimpleNamespace(
+            success=True, page_id="page-pages-ok",
+        )
+        self._patch_stub(monkeypatch, stub)
+
+        result = archive_client.push_to_archive(
+            user_id="u",
+            session_id="s-pages-uncounted",
+            url="https://example.com",
+            title="T",
+            html_content=b"x",
+            assets=[("a.png", "image/png", b"x")],
+            pages=[
+                (
+                    f"pages/p{i}.txt", "P", "https://example.com/p",
+                    "text", b"t",
+                )
+                for i in range(10)
+            ],
+        )
+
+        assert result.page_id == "page-pages-ok"
+        assert result.error is None
+        assert stub.IngestPage.call_count == 1
+        assert len(stub.IngestPage.call_args.args[0].pages) == 10
+
+    def test_legacy_push_without_pages_has_empty_pages_field(self, monkeypatch):
+        """A push without page documents leaves the proto field empty."""
+        pytest.importorskip("archive_pb2", reason="proto stubs not available")
+        import archive_pb2
+
+        from app.services import archive_client
+
+        captured = {}
+
+        def _capture(request, timeout=None):
+            captured["request"] = request
+            return types.SimpleNamespace(success=True, page_id="page-legacy")
+
+        stub = types.SimpleNamespace(IngestPage=_capture)
+        self._patch_stub(monkeypatch, stub)
+
+        result = archive_client.push_to_archive(
+            user_id="u",
+            session_id="s-legacy-pages",
+            url="https://example.com",
+            title="T",
+            html_content=b"<html></html>",
+            assets=[("a.png", "image/png", b"d")],
+        )
+
+        assert result.page_id == "page-legacy"
+        request = captured["request"]
+        assert isinstance(request, archive_pb2.IngestPageRequest)
+        assert list(request.pages) == []
+        assert request.assets[0].filename == "a.png"
+
+    def test_proto_without_page_document_degrades_gracefully(self, monkeypatch):
+        """Legacy stubs (D8 parity with ContentDocument): page documents
+        are dropped with a warning, the main page is still pushed."""
+        import sys
+
+        from app.services import archive_client
+
+        class _FakeAsset:
+            def __init__(self, filename="", content_type="", data=b""):
+                self.filename = filename
+                self.content_type = content_type
+                self.data = data
+
+        class _FakeIngestPageRequest:
+            def __init__(self, **kwargs):
+                for key, value in kwargs.items():
+                    setattr(self, key, value)
+
+        class _FakeProto:
+            Asset = _FakeAsset
+            IngestPageRequest = _FakeIngestPageRequest
+            # PageDocument intentionally absent (legacy backend)
+
+        monkeypatch.setitem(sys.modules, "archive_pb2", _FakeProto)
+
+        captured = {}
+
+        def _capture(request, timeout=None):
+            captured["request"] = request
+            return types.SimpleNamespace(success=True, page_id="page-degrade")
+
+        stub = types.SimpleNamespace(IngestPage=_capture)
+        self._patch_stub(monkeypatch, stub)
+
+        result = archive_client.push_to_archive(
+            user_id="u",
+            session_id="s-pages-degrade",
+            url="https://example.com",
+            title="T",
+            html_content=b"<html></html>",
+            assets=[],
+            pages=[
+                (
+                    "pages/about.txt", "About", "https://example.com/about",
+                    "text", b"t",
+                ),
+            ],
+        )
+
+        assert result.page_id == "page-degrade"
+        assert not getattr(captured["request"], "pages", [])
+        assert captured["request"].html_content == b"<html></html>"

@@ -3,12 +3,15 @@ import { setKeepaliveDisconnectHook } from "./download-state";
 
 const scrapers = new Map<number, LinkedPageScraper>();
 
-// (D2 — paused-scraper liveness / task 2.1) When a tab's keepalive port
-// disconnects, the side panel is gone: nobody can send SCRAPER_RESUME or
-// SCRAPER_STOP anymore. Resolve that tab's paused scraper wait with STOP
-// semantics (safe default — finalize the download rather than hang).
-// Idempotent: a no-op when the scraper is not paused (panel reopened and
-// resumed before the event, or already stopped).
+// (multipage-download-fixes D2 / task 4.1) When a tab's keepalive port
+// disconnects, the side panel is gone — that alone no longer stops a paused
+// scraper. While the worker lives, a reopened panel re-attaches a fresh port
+// and its Resume/Stop commands still reach the scraper here (the map is
+// keyed by the ORIGINAL tab id, which pause/resume messages carry). If the
+// worker itself dies while the pause is held, the download parks (checkpoint
+// phase `paused` + queue snapshot) and the parked path (SCRAPER_RESUME_FROM_PARK
+// / parked Stop) takes over. The hook is a logged no-op, kept so the
+// disconnect plumbing stays observable.
 setKeepaliveDisconnectHook((tabId) => {
   scrapers.get(tabId)?.handleKeepaliveDisconnect();
 });

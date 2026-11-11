@@ -5,9 +5,12 @@
  * - restoreOriginalPage does NOT clobber user navigation: the tab is only
  *   navigated back when it is still on scraper-controlled URLs.
  *
- * Plus (download-hang-elimination, tasks 2.1/2.4/2.5, 4.1/4.2, 5.1/5.2):
- * - paused-scraper liveness: keepalive-port disconnect resolves the pause
- *   wait with stop semantics; a bounded watchdog stops a stuck pause,
+ * Plus:
+ * - true pause (multipage-download-fixes D2 / task 4.1 — REVERSES the old
+ *   bounded-watchdog contract): a pause holds indefinitely past the old 60 s
+ *   bound, a keepalive-port disconnect while paused parks (no stop, no
+ *   finalize), and stop-while-paused still resolves the wait so the loop
+ *   exits,
  * - navigation completion matching: the wait resolves only on a completion
  *   belonging to the requested navigation,
  * - DOM capture timer hygiene: race timers are cleared on settlement.
@@ -19,7 +22,6 @@ import {
   clampMaxPages,
   MIN_MAX_PAGES,
   MAX_MAX_PAGES,
-  PAUSED_WATCHDOG_MS,
   normalizeNavigationUrl,
 } from "../../src/background/linked-page-scraper";
 import { AssetRegistry } from "../../src/background/asset-registry";
@@ -64,6 +66,7 @@ vi.mock("../../src/background/server-client", () => ({
     uploadHtmlChunk: vi.fn().mockResolvedValue({}),
     uploadFilenameMap: vi.fn().mockResolvedValue({}),
     uploadContent: vi.fn(),
+    uploadPageContent: vi.fn().mockResolvedValue({}),
   },
   HttpError: class HttpError extends Error {
     constructor(
@@ -106,14 +109,16 @@ function createScraper(): LinkedPageScraper {
   });
 }
 
-/** Make navigation complete immediately with the target URL. */
+/** Make navigation complete immediately with the target URL. The completion
+ * carries the tab id the navigation targeted (the scraper ignores completions
+ * for other tabs). */
 function mockImmediateNavigation() {
-  mockChromeTabsUpdate.mockImplementation((_tabId: any, opts: any) => {
+  mockChromeTabsUpdate.mockImplementation((tabId: any, opts: any) => {
     const calls = mockChromeTabsOnUpdated.addListener.mock.calls;
     const listener = calls[calls.length - 1]?.[0];
     if (listener) {
       setTimeout(
-        () => listener(1, { status: "complete" }, { url: opts.url }),
+        () => listener(tabId, { status: "complete" }, { url: opts.url }),
         0,
       );
     }
@@ -291,7 +296,9 @@ describe("restoreOriginalPage guard (task 4.7)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Paused-scraper liveness — keepalive-port disconnect (tasks 2.1, 2.4)
+// Paused-scraper liveness — keepalive-port disconnect (multipage-download-fixes
+// D2 / task 4.1 — REVERSES the old auto-stop contract: a disconnect parks,
+// it does not stop)
 // ---------------------------------------------------------------------------
 
 /** Build a fake chrome.runtime.Port as createKeepalivePort would receive. */
@@ -314,8 +321,8 @@ function lastOnUpdatedListener() {
   ) => void;
 }
 
-describe("keepalive-port disconnect resolves a paused scraper (tasks 2.1, 2.4)", () => {
-  it("stops the paused scraper when the panel's keepalive port disconnects; loop exits", async () => {
+describe("keepalive-port disconnect while paused parks instead of stopping (multipage-download-fixes D2 / task 4.1)", () => {
+  it("disconnect while paused does NOT stop the scraper — the pause holds and resume still works", async () => {
     vi.useFakeTimers();
     const port = makeFakePort();
     mockChromeRuntimeConnect.mockReturnValue(port);
@@ -349,47 +356,53 @@ describe("keepalive-port disconnect resolves a paused scraper (tasks 2.1, 2.4)",
     await vi.advanceTimersByTimeAsync(1);
     expect(settled).toBe(false); // paused and waiting
 
-    // Simulated panel close → SW-side port onDisconnect
+    // Simulated panel close → SW-side port onDisconnect. OLD behavior
+    // stopped the scraper here; NEW behavior: the pause persists.
     fireDisconnect();
     await vi.advanceTimersByTimeAsync(10);
+    expect(settled).toBe(false);
+    expect(scraper["isStopped"]).toBe(false);
 
-    // Pause wait resolved well before the watchdog bound — the loop exited
-    expect(settled).toBe(true);
-    expect(scraper["isStopped"]).toBe(true);
-    expect(vi.getTimerCount()).toBe(0); // watchdog cleared, no leak
-    // The queued page was never scraped — no capture ran
-    expect(mockChromeScriptingExecuteScript).not.toHaveBeenCalled();
-    // Dead port forgotten — a reopened panel creates a fresh one
+    // The dead port is still forgotten — a reopened panel creates a fresh one
     expect(getKeepalivePort(4210)).toBeNull();
 
-    // No indefinitely-pending processQueue
-    await expect(done).resolves.toBe("");
+    // Reopened panel resumes → the loop exits normally with the page scraped
+    scraper.resume();
+    await vi.advanceTimersByTimeAsync(5_000);
+    await done;
+    expect(scraper["isStopped"]).toBe(false);
+    expect(scraper["successCount"]).toBe(1); // the queued page was scraped
   });
 
-  it("handleKeepaliveDisconnect is idempotent (not paused / already stopped)", () => {
+  it("handleKeepaliveDisconnect is a no-op (not paused / paused / already stopped)", () => {
     const scraper = createScraper();
     // No pause in flight — disconnect must be a no-op (panel reopened race)
     expect(() => scraper.handleKeepaliveDisconnect()).not.toThrow();
     expect(scraper["isStopped"]).toBe(false);
 
-    // Paused → disconnect stops; a second disconnect is still a no-op
+    // Paused → disconnect is STILL a no-op (parks on worker death instead)
     scraper.pause();
-    scraper.handleKeepaliveDisconnect();
+    expect(() => scraper.handleKeepaliveDisconnect()).not.toThrow();
+    expect(scraper["isStopped"]).toBe(false);
+    expect(scraper["isPaused"]).toBe(true);
+
+    // After an explicit stop, a disconnect remains a no-op
+    scraper.stop();
     expect(scraper["isStopped"]).toBe(true);
     expect(() => scraper.handleKeepaliveDisconnect()).not.toThrow();
-
-    // resume() after a disconnect-stop is an idempotent no-op
-    expect(() => scraper.resume()).not.toThrow();
-    expect(scraper["isStopped"]).toBe(true);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Paused-state watchdog (task 2.5)
+// True pause (multipage-download-fixes D2 / task 4.1 — the bounded watchdog
+// was REMOVED: a pause holds for resume/stop instead of self-stopping)
 // ---------------------------------------------------------------------------
 
-describe("paused-state watchdog (task 2.5)", () => {
-  it("stops the scraper when the pause outlives the watchdog bound", async () => {
+/** The old bounded-watchdog period, kept only as a test threshold. */
+const OLD_PAUSED_WATCHDOG_MS = 60_000;
+
+describe("true pause holds indefinitely (multipage-download-fixes D2 / task 4.1)", () => {
+  it("does NOT self-stop when the pause outlives the old watchdog bound", async () => {
     vi.useFakeTimers();
     mockChromeTabsGet.mockResolvedValue({ url: ORIGINAL_URL });
 
@@ -409,17 +422,21 @@ describe("paused-state watchdog (task 2.5)", () => {
       settled = true;
     });
 
-    await vi.advanceTimersByTimeAsync(PAUSED_WATCHDOG_MS - 1);
-    expect(settled).toBe(false); // still paused just before the bound
+    await vi.advanceTimersByTimeAsync(OLD_PAUSED_WATCHDOG_MS - 1);
+    expect(settled).toBe(false); // still paused just before the old bound
 
-    await vi.advanceTimersByTimeAsync(1);
-    expect(settled).toBe(true); // watchdog stopped it; loop exited
-    expect(scraper["isStopped"]).toBe(true);
-    expect(vi.getTimerCount()).toBe(0); // watchdog consumed, nothing leaked
-    await expect(done).resolves.toBe("");
+    // Advance well past the old bound — the pause HOLDS
+    await vi.advanceTimersByTimeAsync(OLD_PAUSED_WATCHDOG_MS + 10_000);
+    expect(settled).toBe(false);
+    expect(scraper["isStopped"]).toBe(false);
+
+    scraper.resume();
+    await vi.advanceTimersByTimeAsync(5_000);
+    await done;
+    expect(scraper["successCount"]).toBe(1); // the queued page was scraped
   });
 
-  it("continues normally when resumed before the bound (watchdog cleared)", async () => {
+  it("continues normally when resumed after a long pause (no watchdog state to clear)", async () => {
     vi.useFakeTimers();
     mockChromeTabsGet.mockResolvedValue({ url: ORIGINAL_URL });
 
@@ -435,19 +452,19 @@ describe("paused-state watchdog (task 2.5)", () => {
     const done = scraper.processQueue(1, { addFile: vi.fn() } as any, vi.fn());
     await vi.advanceTimersByTimeAsync(1_000);
 
-    // Reopened panel resumes in time
+    // Reopened panel resumes
     scraper.resume();
 
-    // Advance far past the ORIGINAL watchdog deadline — must not stop us
-    await vi.advanceTimersByTimeAsync(PAUSED_WATCHDOG_MS + 10_000);
+    // Advance far past the OLD watchdog deadline — must not stop us
+    await vi.advanceTimersByTimeAsync(OLD_PAUSED_WATCHDOG_MS + 10_000);
 
-    const text = await done;
+    await done;
     expect(scraper["isStopped"]).toBe(false);
-    expect(text).toContain("page text"); // the queued page was scraped
-    expect(vi.getTimerCount()).toBe(0); // no stray watchdog left behind
+    expect(scraper["successCount"]).toBe(1); // the queued page was scraped
+    expect(vi.getTimerCount()).toBe(0); // no stray timers left behind
   });
 
-  it("bounds a pause in the external phase too (shared mechanism)", async () => {
+  it("holds a pause in the external phase too (shared mechanism, no self-stop)", async () => {
     vi.useFakeTimers();
     mockChromeTabsGet.mockResolvedValue({ url: ORIGINAL_URL });
 
@@ -466,10 +483,44 @@ describe("paused-state watchdog (task 2.5)", () => {
 
     scraper.pause();
     const done = scraper.processQueue(1, { addFile: vi.fn() } as any, vi.fn());
-    await vi.advanceTimersByTimeAsync(PAUSED_WATCHDOG_MS + 10);
+    await vi.advanceTimersByTimeAsync(OLD_PAUSED_WATCHDOG_MS + 10);
 
+    expect(scraper["isStopped"]).toBe(false); // holds — no self-stop
+    scraper.resume();
+    await vi.advanceTimersByTimeAsync(5_000);
+    await done;
+    expect(scraper["successCount"]).toBe(1); // the queued page was scraped
+  });
+
+  it("stop while paused resolves the wait so the loop exits (keep that mechanism)", async () => {
+    vi.useFakeTimers();
+    mockChromeTabsGet.mockResolvedValue({ url: ORIGINAL_URL });
+
+    const scraper = createScraper();
+    await scraper.addToQueue({
+      url: "https://example.com/about",
+      depth: 1,
+      parentUrl: ORIGINAL_URL,
+      status: "queued",
+    });
+
+    scraper.pause();
+    const done = scraper.processQueue(1, { addFile: vi.fn() } as any, vi.fn());
+    let settled = false;
+    void done.then(() => {
+      settled = true;
+    });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(settled).toBe(false);
+
+    // Stop while paused → resume-the-wait mechanism → loop exits
+    scraper.stop();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(settled).toBe(true);
     expect(scraper["isStopped"]).toBe(true);
-    await expect(done).resolves.toBe("");
+    await done;
+    expect(scraper["successCount"]).toBe(0); // nothing was scraped
+    expect(vi.getTimerCount()).toBe(0); // nothing leaked
   });
 });
 

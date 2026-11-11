@@ -1,6 +1,12 @@
 export const downloadId = `download-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 import type { UploadQueue } from "./upload-queue";
+import {
+  clearLivenessRecord,
+  isLivenessFresh,
+  probeServerSessionStatus,
+  writeLivenessHeartbeat,
+} from "./download-liveness";
 
 /**
  * Per-download context (D7 / task 4.1).
@@ -120,10 +126,14 @@ export const setKeepalivePort = (
 };
 
 /**
- * Liveness hook invoked when a keepalive port disconnects (D2 / task 2.1).
- * scraper-state registers a handler that resolves the affected tab's paused
- * scraper wait with STOP semantics — when the port dies, the side panel is
- * gone and no context can deliver a resume anymore. Kept as a registered
+ * Liveness hook invoked when a keepalive port disconnects.
+ *
+ * (multipage-download-fixes D2 / task 4.1 — REVERSES the old contract) A
+ * disconnect only means the side panel is gone; a paused scraper now HOLDS
+ * (no auto-stop) and stays controllable by a reopened panel. scraper-state
+ * registers a logged no-op here. If the service worker dies while the pause
+ * is held, the download parks via the persisted snapshot/checkpoint instead
+ * — see scraper-snapshot.ts and resumeFromParkedScrape. Kept as a registered
  * hook (rather than a direct import) so download-state stays independent of
  * the scraper module graph.
  */
@@ -146,11 +156,12 @@ export function createKeepalivePort(tabId: number): void {
         port.postMessage({ type: "keepalive-pong" });
       }
     });
-    // (D2 / task 2.1) The panel side dying fires onDisconnect HERE — the
-    // observable signal that no UI remains to resume a paused scraper.
-    // Forget the dead port (a reopened panel creates a fresh one) and run
-    // the liveness hook; the hook is a no-op when nothing is paused, so
-    // panel-reopen races are tolerated idempotently.
+    // (multipage-download-fixes D2 / task 4.1) The panel side dying fires
+    // onDisconnect HERE. This no longer stops a paused scraper — the pause
+    // holds and a reopened panel (fresh port) still controls it. Forget the
+    // dead port (a reopened panel creates a fresh one) and run the liveness
+    // hook, which only logs; worker death while paused parks the download
+    // via the persisted snapshot instead.
     port.onDisconnect.addListener(() => {
       if (keepalivePorts.get(tabId) === port) {
         keepalivePorts.delete(tabId);
@@ -266,6 +277,10 @@ export function markSessionLive(
   });
   // A (re)started run must not inherit the previous run's failure.
   lastErrorBySession.delete(sessionId);
+  // (multipage-download-fixes 5.1) Persist the liveness record — the
+  // in-memory Set dies with the service worker; the record must not.
+  // Fire-and-forget: a storage failure must never break the flow.
+  void writeLivenessHeartbeat(sessionId);
 }
 
 /** Mark a server session as no longer live (completion, failure, abort). */
@@ -275,6 +290,9 @@ export function markSessionNotLive(sessionId: string): void {
   // KEEP the terminal error — the panel performs one final poll after the
   // download stops and must still be able to tell "failed" from "completed".
   liveSessionStates.delete(sessionId);
+  // (multipage-download-fixes 5.1) A finished run leaves no liveness record
+  // behind — the poll's evidence path must not see a stale "live" record.
+  void clearLivenessRecord(sessionId);
 }
 
 /** True when the given server session currently has a running download. */
@@ -375,4 +393,52 @@ export function getSessionDownloadSnapshot(
     serverSessionId: sessionId ?? null,
     ...(lastError !== undefined ? { lastError } : {}),
   };
+}
+
+// ---------------------------------------------------------------------------
+// (multipage-download-fixes 5.1 + 5.2) The CHECK_DOWNLOAD_LIVE answer with
+// liveness EVIDENCE. The panel's poll decisions read these fields — never
+// the in-memory Set alone:
+//   - heartbeatFresh: the persisted chrome.storage.session record is inside
+//     the staleness bound (download-liveness.LIVENESS_STALE_MS). A live
+//     session refreshes the record on every poll-ack (below).
+//   - serverStatus: the server session's own status, probed only when the
+//     session is not live in this worker (post-completion or worker
+//     restart). A terminal status (ready/failed/expired/cancelled) is
+//     authoritative evidence; null means UNKNOWN.
+// ---------------------------------------------------------------------------
+
+/** DownloadLiveSnapshot extended with the evidence fields (5.1/5.2). */
+export type DownloadLiveEvidence = DownloadLiveSnapshot & {
+  heartbeatFresh: boolean;
+  serverStatus: string | null;
+};
+
+/**
+ * Build the CHECK_DOWNLOAD_LIVE answer for a session, with evidence.
+ * Async: a live session refreshes the persisted heartbeat (poll-ack), a
+ * non-live session reads the record's freshness and probes the server
+ * status (throttled inside download-liveness).
+ */
+export async function buildLiveSnapshot(
+  sessionId?: string,
+): Promise<DownloadLiveEvidence> {
+  const snapshot = getSessionDownloadSnapshot(sessionId);
+
+  if (!sessionId) {
+    return { ...snapshot, heartbeatFresh: false, serverStatus: null };
+  }
+
+  if (snapshot.live) {
+    // Poll-ack: this worker just proved the session is live — refresh the
+    // persisted record so the panel's decisions can trust it.
+    await writeLivenessHeartbeat(sessionId);
+    return { ...snapshot, heartbeatFresh: true, serverStatus: null };
+  }
+
+  // Not live in THIS worker: consult the persisted record (it may have been
+  // written by a previous worker instance) and probe the server status.
+  const heartbeatFresh = await isLivenessFresh(sessionId);
+  const serverStatus = await probeServerSessionStatus(sessionId);
+  return { ...snapshot, heartbeatFresh, serverStatus };
 }

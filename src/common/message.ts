@@ -12,6 +12,9 @@ export type MessageAction =
   | "SCRAPER_PAUSE"
   | "SCRAPER_RESUME"
   | "SCRAPER_STOP"
+  // (multipage-download-fixes D2 / task 4.5) Resume a PARKED download —
+  // re-spawn the linked-page scraper from the persisted pause snapshot.
+  | "SCRAPER_RESUME_FROM_PARK"
   | "PANEL_PING"
   // Server-mode message actions (task 13.1)
   | "SERVER_CREATE_SESSION"
@@ -49,6 +52,8 @@ export const messageActions: Record<MessageAction, MessageAction> = {
   SCRAPER_PAUSE: "SCRAPER_PAUSE",
   SCRAPER_RESUME: "SCRAPER_RESUME",
   SCRAPER_STOP: "SCRAPER_STOP",
+  // (multipage-download-fixes D2 / task 4.5)
+  SCRAPER_RESUME_FROM_PARK: "SCRAPER_RESUME_FROM_PARK",
   PANEL_PING: "PANEL_PING",
   // Server-mode message actions (task 13.1)
   SERVER_CREATE_SESSION: "SERVER_CREATE_SESSION",

@@ -124,6 +124,7 @@ vi.mock("../../src/background/server-client", () => {
       uploadHtmlChunk: vi.fn(async () => {}),
       uploadFilenameMap: vi.fn(async () => {}),
       uploadContent: vi.fn(async () => {}),
+      uploadPageContent: vi.fn(async () => ({})),
       scrapeComplete: vi.fn(async () => {}),
       finalizeSession: vi.fn(async () => {}),
       getSessionStatus: vi.fn(async () => ({ status: "uploading" })),
@@ -152,6 +153,10 @@ vi.mock("../../src/background/download-checkpoint", () => ({
   updateCheckpointPhase: vi.fn(),
   updateCheckpointResourceUrls: vi.fn(async () => {}),
   clearCheckpoint: vi.fn(async () => {}),
+  // (multipage-download-fixes D2 / task 4.4) Paused-phase helpers the
+  // linked-page scraper calls while a pause is held / lifted.
+  pauseCheckpoint: vi.fn(async () => {}),
+  restoreCheckpointPhase: vi.fn(async () => {}),
 }));
 vi.mock("../../src/background/download-utils", () => ({
   performInitialCleanup: vi.fn(async () => {}),
@@ -762,9 +767,7 @@ describe("push rejection hygiene — linked page scraper", () => {
       status: "queued",
     });
 
-    await expect(
-      scraper.processQueue(1, { addFile: vi.fn() } as any, rejectingSend),
-    ).resolves.toBe("");
+    await scraper.processQueue(1, { addFile: vi.fn() } as any, rejectingSend);
 
     await flushUnhandledRejections();
     expect(unhandled.reasons).toEqual([]);
@@ -792,9 +795,7 @@ describe("push rejection hygiene — linked page scraper", () => {
     });
     const send = vi.fn(); // resolves — panel connected
 
-    await expect(
-      scraper.processQueue(1, { addFile: vi.fn() } as any, send),
-    ).resolves.toBe("");
+    await scraper.processQueue(1, { addFile: vi.fn() } as any, send);
 
     expect(send.mock.calls.map((call) => call[0])).toEqual([
       {
@@ -820,9 +821,7 @@ describe("push rejection hygiene — linked page scraper", () => {
     });
     scraper.stop();
 
-    await expect(
-      scraper.processQueue(1, { addFile: vi.fn() } as any, rejectingSend),
-    ).resolves.toBe("");
+    await scraper.processQueue(1, { addFile: vi.fn() } as any, rejectingSend);
 
     await flushUnhandledRejections();
     expect(unhandled.reasons).toEqual([]);
@@ -860,7 +859,7 @@ describe("push rejection hygiene — linked page scraper", () => {
         { timeout: 1000 },
       );
       scraper.stop(); // resolves the paused wait with stop semantics
-      await expect(flow).resolves.toBe("");
+      await flow;
     } finally {
       scraper.stop(); // clears the paused watchdog even on assertion failure
     }
@@ -886,9 +885,7 @@ describe("push rejection hygiene — linked page scraper", () => {
       status: "queued",
     });
 
-    await expect(
-      scraper.processQueue(1, { addFile: vi.fn() } as any, rejectingSend),
-    ).resolves.toBe("");
+    await scraper.processQueue(1, { addFile: vi.fn() } as any, rejectingSend);
 
     await flushUnhandledRejections();
     expect(unhandled.reasons).toEqual([]);

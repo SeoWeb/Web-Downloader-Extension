@@ -97,9 +97,24 @@ describe("decideLivePollStep (Round 9 Fix B)", () => {
     });
   });
 
-  it("finalizes as COMPLETE only when the download was seen live", () => {
+  it("KEEPS WAITING instead of completing when no evidence exists, even seen live (5.2: closes the SW-restart false 'Done!')", () => {
+    // Old contract (the defect): sawLive + confirmPending → finalizeComplete.
+    // A service-worker restart wipes the in-memory liveness Set, so this
+    // combination fired the false "Done!" headline. Without terminal server
+    // status the poll now waits.
     const decision = decideLivePollStep(
       input({ sawLive: true, confirmPending: true }),
+    );
+    expect(decision).toEqual({ action: "wait" });
+  });
+
+  it("completes from EVIDENCE: seen live + terminal `ready` status", () => {
+    const decision = decideLivePollStep(
+      input({
+        sawLive: true,
+        confirmPending: true,
+        snapshot: snapshot({ serverStatus: "ready" }),
+      }),
     );
     expect(decision).toEqual({ action: "finalizeComplete" });
   });

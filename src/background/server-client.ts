@@ -259,6 +259,20 @@ export interface UploadContentResponse {
   api_version: string;
 }
 
+/**
+ * (multipage-download-fixes D4 / task 3.1) Response of the per-page content
+ * endpoint `POST /sessions/{id}/content/pages`. The server stores the text
+ * at `content_pages/<page_url_hash>.txt` with replace-on-rewrite semantics;
+ * `page_url_hash` is "main" for the main page (null page_url).
+ */
+export interface UploadPageContentResponse {
+  message: string;
+  page_url_hash: string;
+  replaced: boolean;
+  size: number;
+  api_version: string;
+}
+
 export interface FinalizeResponse {
   id: string;
   status: string;
@@ -772,6 +786,42 @@ export class ServerClient {
       }
 
       return (await res.json()) as UploadContentResponse;
+    });
+  }
+
+  /** (multipage-download-fixes D4 / task 3.1) Upload ONE page's text to the
+   * per-page content endpoint.
+   *
+   * `pageUrl` null identifies the MAIN page (the server stores it under
+   * page_url_hash "main"); a linked page sends its final URL, which the
+   * server hashes to page_url_hash. Storage is replace-on-rewrite, so a
+   * retry or resume-from-park re-upload replaces instead of duplicating.
+   *
+   * Same bounded-retry/backoff policy as every other control-plane call:
+   * transient network/5xx failures retry, 4xx (e.g. 413 content_too_large /
+   * session_size_exceeded) throw immediately via throwForStatus — surfaced
+   * to the caller, never silent. */
+  async uploadPageContent(
+    sessionId: string,
+    pageUrl: string | null,
+    text: string,
+  ): Promise<UploadPageContentResponse> {
+    this.assertConfigured();
+    return this.withRetry(async () => {
+      const res = await this.authenticatedFetch(
+        `/api/v1/sessions/${sessionId}/content/pages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ page_url: pageUrl, text }),
+        },
+      );
+
+      if (!res.ok) {
+        await this.throwForStatus(res, "uploadPageContent");
+      }
+
+      return (await res.json()) as UploadPageContentResponse;
     });
   }
 

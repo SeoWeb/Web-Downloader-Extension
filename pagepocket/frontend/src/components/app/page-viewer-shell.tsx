@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Download,
   ExternalLink,
+  Menu,
   Share2,
   Trash2,
 } from "lucide-react";
@@ -16,9 +17,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ShareDialog } from "@/components/app/share-dialog";
 import { GalleryView } from "@/components/app/gallery-view";
 import {
+  DocumentPane,
   IFRAME_SANDBOX,
   PageFormatViewer,
 } from "@/components/app/page-format-viewer";
+import {
+  hostPathLine,
+  SubpageSidebar,
+  type ViewerDocumentEntry,
+} from "@/components/app/subpage-sidebar";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { useGalleryContent } from "@/hooks/use-gallery-images";
 import {
@@ -78,6 +85,8 @@ function GalleryLoadingPlaceholder() {
 
 export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [shareOpen, setShareOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   // Format switcher (text-native-downloads D6): derive tabs from the page's
@@ -89,6 +98,38 @@ export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
     markdown: `/api/pp/archive/pages/${pageId}/f/${CONTENT_FILE_NAMES.markdown}`,
     text: `/api/pp/archive/pages/${pageId}/f/${CONTENT_FILE_NAMES.text}`,
   };
+
+  // Subpage navigation (multipage-download-fixes 8.3/D8). The active
+  // document is URL state, mirroring the format switcher's ?format pattern:
+  // the viewer segment remounts on back/forward, so the selection must be
+  // derivable from ?page= alone. An absent param (or one naming no stored
+  // path) selects the sidebar's first entry — the page's own documents.
+  const subpages = pageMeta?.pages ?? [];
+  const multiDoc = subpages.length > 1;
+  const requestedPage = searchParams.get("page");
+  const activeSubpage =
+    requestedPage && subpages.some((page) => page.path === requestedPage)
+      ? (subpages.find((page) => page.path === requestedPage) ?? null)
+      : null;
+  const [subpagesOpen, setSubpagesOpen] = useState(false);
+
+  // Mirror a selection into the URL with replace (no history entry, no
+  // scroll), preserving every other param (?format= co-exists). "" selects
+  // the page's own documents and clears the param. The sidebar closes on
+  // any selection.
+  function handleSelectSubpage(path: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (path) {
+      params.set("page", path);
+    } else {
+      params.delete("page");
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+    setSubpagesOpen(false);
+  }
 
   // Image gallery (image gallery feature): only pages the downloader titled
   // as image galleries probe the listing — normal pages never fetch. A
@@ -150,7 +191,16 @@ export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
       : [
           {
             key: "Escape",
-            handler: () => handleBack(),
+            handler: () => {
+              // Subpage sidebar (multipage 8.3): Escape closes it first —
+              // back-to-library only fires with no sidebar open (the Sheet
+              // closes itself on Escape too; both paths stay back-nav free).
+              if (subpagesOpen) {
+                setSubpagesOpen(false);
+                return;
+              }
+              handleBack();
+            },
           },
           {
             key: "d",
@@ -177,6 +227,19 @@ export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
   const sourceUrl = pageMeta?.url;
   const archivedAt = pageMeta?.archived_at;
 
+  // Sidebar listing (multipage 8.3): the page's own documents first (the
+  // scraped first page — selecting it clears ?page=), then every stored
+  // subpage document with title + host/path (the stored path when no URL
+  // was captured).
+  const sidebarEntries: ViewerDocumentEntry[] = [
+    { path: "", title, secondary: hostPathLine(sourceUrl) },
+    ...subpages.map((page) => ({
+      path: page.path,
+      title: page.title || page.path,
+      secondary: hostPathLine(page.url) || page.path,
+    })),
+  ];
+
   return (
     <>
       <div className="flex h-[calc(100dvh-3rem)] flex-col">
@@ -190,6 +253,18 @@ export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
             >
               <ArrowLeft className="size-4" />
             </Button>
+            {multiDoc && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setSubpagesOpen(true)}
+                aria-label="Pages"
+                aria-haspopup="dialog"
+                title="Pages"
+              >
+                <Menu className="size-4" />
+              </Button>
+            )}
             <span className="truncate text-sm font-medium">{title}</span>
             {sourceUrl && (
               <a
@@ -247,6 +322,15 @@ export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
           />
         ) : gallery.status === "loading" ? (
           <GalleryLoadingPlaceholder />
+        ) : activeSubpage ? (
+          // Subpage document (multipage 8.3/D8): the selected subpage swaps
+          // the main pane in place — fetched from its stored pages/<path>
+          // through the same sandboxed file route with the same no-store
+          // pattern as the format tabs; the pane owns loading/error/retry.
+          <DocumentPane
+            format={activeSubpage.content_format}
+            fileUrl={`/api/pp/archive/pages/${pageId}/f/pages/${activeSubpage.path}`}
+          />
         ) : isLegacyHtmlOnly(knownFormats) ? (
           <iframe
             src={fileUrls.html}
@@ -258,6 +342,14 @@ export function PageViewerShell({ pageId, pageMeta }: PageViewerShellProps) {
           <PageFormatViewer formats={knownFormats} fileUrls={fileUrls} />
         )}
       </div>
+
+      <SubpageSidebar
+        open={subpagesOpen}
+        onOpenChange={setSubpagesOpen}
+        entries={sidebarEntries}
+        activePath={activeSubpage?.path ?? ""}
+        onSelect={handleSelectSubpage}
+      />
 
       <ShareDialog
         pageId={pageId}

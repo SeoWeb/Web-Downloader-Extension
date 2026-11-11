@@ -77,10 +77,16 @@ export default function Actions({ messages }: { messages: Message[] }) {
       typeof options.phase === "string"
     ) {
       const raw = options.phase as string;
-      options.phase = t(
-        `status.assemblyPhase${raw.charAt(0).toUpperCase()}${raw.slice(1)}`,
-        raw,
-      );
+      // (multipage-download-fixes 5.7) Honest merge wording for text-only
+      // runs — the downloadHtml flag rides on the assemblyProgress payload.
+      if (raw === "merging_html" && options.downloadHtml === false) {
+        options.phase = t("status.assemblyPhaseMerging_html_text", raw);
+      } else {
+        options.phase = t(
+          `status.assemblyPhase${raw.charAt(0).toUpperCase()}${raw.slice(1)}`,
+          raw,
+        );
+      }
     }
     const translated = t(lastMessage.key, options) as string;
     if (translated !== lastMessage.key) {

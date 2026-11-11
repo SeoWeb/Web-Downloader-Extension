@@ -177,6 +177,21 @@ export function DownloadComplete({
           </div>
         )}
 
+        {/* (multipage-download-fixes 5.8) 413 session-full early exit — the
+            linked-page queue was truncated by the server's size limit. An
+            honest small note instead of an unqualified "Done". */}
+        {downloadReport?.pagesPartial && (
+          <div className="w-full bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3 text-left">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <span className="text-sm text-amber-800">
+              {t("status.sessionFullPagesCaptured", {
+                captured: downloadReport.pagesPartial.captured,
+                total: downloadReport.pagesPartial.total,
+              })}
+            </span>
+          </div>
+        )}
+
         {/* (15.4) Server download URL with copy button */}
         {serverDownloadUrl && !cloudUploadState && (
           <div className="w-full bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-4 space-y-2">

@@ -197,9 +197,19 @@ def _page_to_dict(p):
 def _dict_to_page_response(d):
     # Filter to the message's real fields: cache entries written before the
     # r2_key removal (5.1) still carry the key and must degrade gracefully
-    # instead of raising on an unknown keyword.
+    # instead of raising on an unknown keyword. Pages manifest entries are
+    # plain dicts in the JSON cache (D7) — converted to PageSummary here; a
+    # cache entry written before pages existed has no key and yields an
+    # empty list (legacy pages read as before).
     fields = archive_pb2.PageResponse.DESCRIPTOR.fields_by_name
-    return archive_pb2.PageResponse(**{k: v for k, v in d.items() if k in fields})
+    kwargs = {k: v for k, v in d.items() if k in fields}
+    if kwargs.get("pages"):
+        kwargs["pages"] = [
+            entry if isinstance(entry, archive_pb2.PageSummary)
+            else archive_pb2.PageSummary(**entry)
+            for entry in kwargs["pages"]
+        ]
+    return archive_pb2.PageResponse(**kwargs)
 
 
 def _collect_content_documents(request, context):
@@ -238,12 +248,93 @@ def _collect_content_documents(request, context):
     return documents
 
 
+def _collect_page_documents(request, context):
+    """Validate the additive ``pages`` field (multipage-download-fixes D7).
+
+    Returns a list of normalized ``archive_pb2.PageDocument`` entries, or
+    None (after setting INVALID_ARGUMENT) when any path fails the shared
+    archive-path hardening (_normalize_archive_rel_path — empty, absolute,
+    or traversal paths are rejected exactly like GetArchiveFile input; the
+    same "Archive file path hardening" rules apply). Entries with an empty
+    payload are skipped (nothing to store, nothing to count); a repeated
+    normalized path keeps the LAST payload — mirroring the R2 overwrite the
+    duplicate upload would produce — with a single manifest entry.
+    """
+    by_path: dict[str, archive_pb2.PageDocument] = {}
+    for page_doc in request.pages:
+        normalized = _normalize_archive_rel_path(page_doc.path)
+        if normalized is None:
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details(
+                "pages path must be a non-empty page-relative path without "
+                "a leading '/' or '..' segments"
+            )
+            return None
+        if not page_doc.data:
+            continue  # empty payload — nothing new to store
+        by_path[normalized] = archive_pb2.PageDocument(
+            path=normalized,
+            title=page_doc.title,
+            url=page_doc.url,
+            content_format=page_doc.content_format,
+            data=page_doc.data,
+        )
+    return list(by_path.values())
+
+
 def _text_document_extract(data: bytes) -> tuple[str, str]:
     """Preview + body text for pages without HTML (D4): the text document
     itself. Search/preview quality mirrors the HTML extraction path (preview
     is the first 500 characters of the body text)."""
     body_text = data.decode("utf-8", errors="replace")
     return body_text[:500], body_text
+
+
+def _content_formats_from_meta(meta: dict | None, r2_key: str) -> list[str]:
+    """Stored formats for one page (text-native-downloads D1/D4).
+
+    Canonical order html → markdown → text, unknown entries dropped. Falls
+    back to the page's primary object name when meta.json is missing/
+    unreadable/pre-format — every page stored before text-native downloads is
+    an HTML page, and a text-only page's r2_key points at its text object.
+    """
+    stored = (meta or {}).get("content_formats") or []
+    formats = [fmt for fmt in _CONTENT_FORMATS if fmt in stored]
+    if formats:
+        return formats
+    primary = (r2_key or "").rsplit("/", 1)[-1]
+    for fmt, (object_name, _content_type) in _CONTENT_OBJECTS.items():
+        if primary == object_name:
+            return [fmt]
+    return ["html"]
+
+
+def _pages_manifest_from_meta(meta: dict | None) -> list[dict]:
+    """Pages manifest entries for one page (multipage-download-fixes D7).
+
+    Returns plain dicts (path/title/url/content_format): the JSON cache
+    stores them as-is and _dict_to_page_response converts them to PageSummary.
+    Tolerant by design — a legacy page has no manifest (empty list), and
+    malformed entries or paths failing the shared hardening are skipped
+    rather than failing the page read.
+    """
+    entries = (meta or {}).get("pages") or []
+    if not isinstance(entries, list):
+        return []
+    summaries: list[dict] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        path = _normalize_archive_rel_path(str(entry.get("path") or ""))
+        if path is None:
+            continue  # unsafe/empty path in a stored manifest — never surface
+        summaries.append({
+            "path": path,
+            "title": str(entry.get("title") or ""),
+            "url": str(entry.get("url") or ""),
+            "content_format": str(entry.get("content_format") or ""),
+        })
+    return summaries
 
 
 class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
@@ -380,6 +471,13 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
         if documents is None:
             return archive_pb2.IngestPageResponse()
 
+        # Multipage downloads (D7): optional per-page documents, validated
+        # with the same archive-path hardening as every read-side path,
+        # before anything is reserved or uploaded.
+        pages = _collect_page_documents(request, context)
+        if pages is None:
+            return archive_pb2.IngestPageResponse()
+
         html_data = next((data for fmt, data in documents if fmt == "html"), None)
 
         # Determine title (unchanged fallback chain: caller title → HTML
@@ -394,10 +492,12 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             title = request.url
 
         # Build asset map and calculate size. D9 (size/meter honesty): every
-        # stored content document and every asset counts toward size_bytes.
+        # stored content document and every asset counts toward size_bytes —
+        # and every per-page document too (D7 quota honesty).
         page_id = str(uuid.uuid4())
         asset_map = {}
         total_size = sum(len(data) for _fmt, data in documents)
+        total_size += sum(len(p.data) for p in pages)
 
         for asset in request.assets:
             asset_map[asset.filename] = f"assets/{asset.filename}"
@@ -461,8 +561,24 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
                     return f"{asset.filename}: {exc}"
                 return None
 
+            # Per-page documents (D7): stored verbatim at pages/<path> under
+            # the page prefix — never sanitized, never asset-rewritten. The
+            # content type is pinned from the path extension (the same shared
+            # serving map the /f/{path} routes use when delivering the file).
+            def _upload_page(page_doc):
+                try:
+                    self.r2.upload(
+                        f"{prefix}/pages/{page_doc.path}",
+                        page_doc.data,
+                        content_type_for_path(page_doc.path),
+                    )
+                except Exception as exc:
+                    return f"pages/{page_doc.path}: {exc}"
+                return None
+
             with ThreadPoolExecutor(max_workers=8) as pool:
                 futures = {pool.submit(_upload_asset, a): a for a in request.assets}
+                futures.update({pool.submit(_upload_page, p): p for p in pages})
                 for future in as_completed(futures):
                     err = future.result()
                     if err:
@@ -485,14 +601,27 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             r2_key = f"{prefix}/{_CONTENT_OBJECTS[documents[0][0]][0]}"
 
             # Upload meta.json — gains content_formats (D1): html first when
-            # present, then markdown, then text.
-            meta = json.dumps({
+            # present, then markdown, then text. D7: pushes carrying per-page
+            # documents also record the pages manifest (path/title/url/
+            # content_format); a legacy ingest writes exactly the keys above.
+            meta_payload = {
                 "title": title,
                 "url": request.url,
                 "archived_at": datetime.now(UTC).isoformat(),
                 "size_bytes": total_size,
                 "content_formats": content_formats,
-            })
+            }
+            if pages:
+                meta_payload["pages"] = [
+                    {
+                        "path": p.path,
+                        "title": p.title,
+                        "url": p.url,
+                        "content_format": p.content_format,
+                    }
+                    for p in pages
+                ]
+            meta = json.dumps(meta_payload)
             self.r2.upload(f"{prefix}/meta.json", meta.encode(), "application/json")
         except Exception:
             # Failed ingest after partial R2 upload (2.14): release the
@@ -577,37 +706,24 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             success=True, page_id=page_id, content_formats=content_formats,
         )
 
-    def _resolve_content_formats(
-        self, user_id: str, page_id: str, r2_key: str,
-    ) -> list[str]:
-        """Stored formats for one page (text-native-downloads D1/D4).
+    def _read_page_meta(self, user_id: str, page_id: str) -> dict | None:
+        """Best-effort meta.json read for the page-read path (GetPage).
 
-        Reads meta.json (canonical order html → markdown → text, unknown
-        entries dropped). Falls back to the page's primary object name when
-        meta.json is missing/unreadable/pre-format — every page stored before
-        text-native downloads is an HTML page, and a text-only page's r2_key
-        points at its text object. Best-effort: a storage failure must never
-        fail the page read.
+        Returns the parsed meta dict, or None when the object is missing,
+        unreadable, or not valid JSON (pre-format pages) — a storage failure
+        must never fail the page read. One read serves both the content
+        formats (text-native-downloads D4) and the pages manifest (D7).
         """
         try:
             response = self.r2.client.get_object(
                 Bucket=self.r2.bucket, Key=f"{user_id}/{page_id}/meta.json"
             )
-            meta = json.loads(response["Body"].read().decode("utf-8"))
-            stored = meta.get("content_formats") or []
-            formats = [fmt for fmt in _CONTENT_FORMATS if fmt in stored]
-            if formats:
-                return formats
+            return json.loads(response["Body"].read().decode("utf-8"))
         except Exception as exc:
             logger.warning(
-                "Could not read content_formats from meta.json for page %s: %s",
-                page_id, exc,
+                "Could not read meta.json for page %s: %s", page_id, exc,
             )
-        primary = (r2_key or "").rsplit("/", 1)[-1]
-        for fmt, (object_name, _content_type) in _CONTENT_OBJECTS.items():
-            if primary == object_name:
-                return [fmt]
-        return ["html"]
+            return None
 
     def GetPage(self, request, context):
         ck = key_page(request.page_id)
@@ -628,9 +744,11 @@ class ArchiveServicer(archive_pb2_grpc.ArchiveServiceServicer):
             data = _page_to_dict(page)
             # Text-native downloads (D4): the page read reports the stored
             # formats (from meta.json); list responses leave the field empty.
-            data["content_formats"] = self._resolve_content_formats(
-                page.user_id, page.id, page.r2_key
-            )
+            # Multipage downloads (D7): the read also reports the pages
+            # manifest (empty for legacy pages) — one meta.json read for both.
+            meta = self._read_page_meta(page.user_id, page.id)
+            data["content_formats"] = _content_formats_from_meta(meta, page.r2_key)
+            data["pages"] = _pages_manifest_from_meta(meta)
             cache_set(ck, data, TTL_MEDIUM)
             return _dict_to_page_response(data)
 

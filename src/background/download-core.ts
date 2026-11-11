@@ -26,6 +26,7 @@ import {
   updateCheckpointResourceUrls,
   clearCheckpoint,
 } from "./download-checkpoint";
+import { writeLivenessHeartbeat } from "./download-liveness";
 import { performInitialCleanup } from "./download-utils";
 
 class PanelUnavailableError extends Error {
@@ -67,6 +68,7 @@ import {
   hasStreamedHtmlChunks,
 } from "./message";
 import { loadFilterOptions } from "../common/storage/filterStorage";
+import type { LinkedScraperSnapshot } from "./scraper-snapshot";
 import {
   PAGEPOCKET_CLOUD_ENABLED_KEY,
   PAGEPOCKET_AUTH_STORAGE_KEY,
@@ -352,6 +354,52 @@ function isAbortError(err: unknown): boolean {
     (err instanceof DOMException && err.name === "AbortError") ||
     (err instanceof Error && err.name === "AbortError")
   );
+}
+
+// ---------------------------------------------------------------------------
+// (multipage-download-fixes 5.4 / design D3) Assembly heartbeat.
+//
+// During the assembly-status poll the only panel pushes used to be the
+// server's phase-change callbacks — a long silent merge
+// (zip_assembler's merging phase) produced NO pushes for minutes, and the
+// panel's 45 s watchdog read that silence as worker death. The heartbeat
+// below pushes a lightweight `status.assemblyProgress` tick at a fixed
+// cadence (reusing the existing message: server-mode-state keeps the last
+// known phase/percentage, the message feed reads the same subtitle), and
+// each tick ALSO refreshes the persisted liveness record (5.1) — a closed
+// panel means no poll-acks, so during a long merge this is the only thing
+// keeping the heartbeat fresh.
+// ---------------------------------------------------------------------------
+
+const ASSEMBLY_HEARTBEAT_MS = 15_000;
+
+/**
+ * Start the assembly heartbeat. Returns the interval handle — callers MUST
+ * clearInterval it when the assembly poll settles (finally block).
+ */
+function startAssemblyHeartbeat(
+  sendMessage: (message: string | { key: string; options?: any }) => unknown,
+  sessionId: string,
+  downloadHtml: boolean,
+  getLastPhase: () => string | null,
+  getLastPct: () => number,
+): ReturnType<typeof setInterval> {
+  return setInterval(() => {
+    // (5.1) Persisted-liveness refresh — survives worker restarts, unlike
+    // the in-memory Set.
+    void writeLivenessHeartbeat(sessionId);
+    pushToPanelSafely(sendMessage, {
+      key: "status.assemblyProgress",
+      options: {
+        status: "waiting",
+        phase: getLastPhase() ?? "merging_html",
+        progressPct: getLastPct(),
+        // (5.7) Honest merge wording — the panel picks the subtitle from
+        // this flag when the phase is merging_html.
+        downloadHtml,
+      },
+    });
+  }, ASSEMBLY_HEARTBEAT_MS);
 }
 
 /**
@@ -937,6 +985,31 @@ async function executeDownloadServerMode(
       );
     }
 
+    // (multipage-download-fixes D4 / task 3.2) Per-page text streaming —
+    // the MAIN page's text is uploaded FIRST (pageUrl null marks it as the
+    // main page server-side), before the linked-page phase opens, so the
+    // artifact reading order is main-first. Placed after the main
+    // resource/filename-map phase and the progressive checkpoint save: if
+    // the SW dies during linked-page scraping, the checkpoint above still
+    // recovers the session. A failure is surfaced as an upload failure but
+    // never aborts the run — finalization includes whatever arrived.
+    if (downloadOptions.downloadContentAsText && data.text) {
+      pushToPanelSafely(sendMessage, { key: "status.downloadingContent" });
+      try {
+        await serverClient.uploadPageContent(sessionId, null, data.text);
+        pushToPanelSafely(sendMessage, { key: "status.contentDownloaded" });
+      } catch (error) {
+        console.warn(
+          "[ServerMode] Main page text upload failed (continuing):",
+          error instanceof Error ? error.message : error,
+        );
+        pushToPanelSafely(
+          sendMessage,
+          "Failed to upload page text (main page)",
+        );
+      }
+    }
+
     // (12.5 + 12.10 + 12.11) Process linked pages with server-mode support.
     // The legacy simple-fetch mode ("downloadLinks" without full scraping)
     // was removed — crawling linked pages ALWAYS runs the in-tab
@@ -983,6 +1056,12 @@ async function executeDownloadServerMode(
         includeExternal: downloadOptions.linkedPagesIncludeExternal,
         pageTimeout: downloadOptions.linkedPagesTimeout,
         serverSessionId: sessionId,
+        // (multipage-download-fixes D1 / task 1.1) Press-time asset gates:
+        // linked pages obey the same per-category snapshot as the main page
+        // above — the snapshot is frozen at press time, never re-read live.
+        downloadImages: downloadOptions.downloadImages,
+        downloadAssets: downloadOptions.downloadAssets,
+        downloadDocuments: downloadOptions.downloadDocuments,
       });
 
       // Guard text extraction with downloadContentAsText check
@@ -1004,40 +1083,21 @@ async function executeDownloadServerMode(
         }
       }
 
-      // Process the queue — in server mode this uploads HTML chunks
-      // with pageType: "linked" and pageUrl, and uploads incremental
-      // filename maps after each linked page (tasks 12.10, 12.11).
-      // The per-download context carries the shared image filename map
-      // (replaces the module-global map — task 4.1).
+      // (multipage-download-fixes D4 / task 3.2) The scraper streams each
+      // linked page's text itself, immediately after that page's scrape
+      // (gated on the extractText flag set above) — nothing is accumulated
+      // here and processQueue hands nothing back. The main page's text was
+      // already uploaded FIRST, before this phase opened.
       try {
-        const linkedPageText = await linkedPageScraper.processQueue(
+        await linkedPageScraper.processQueue(
           tabId,
           storage,
           sendMessage,
           context,
         );
-        // Upload linked page text content to the server.
-        // ORDERING: This must happen BEFORE the main page text upload below
-        // (line ~818) because the server's uploadContent endpoint appends to
-        // content.txt in file order — the linked page text delimiter format
-        // assumes it follows the main page's content.
-        if (linkedPageText && downloadOptions.downloadContentAsText) {
-          await serverClient.uploadContent(sessionId, linkedPageText);
-        }
       } finally {
         setCurrentScraper(tabId, null);
       }
-    }
-
-    // (12.7) Upload content text via uploadContent (awaited before finalization).
-    // ORDERING: The server's uploadContent endpoint opens content.txt in append
-    // mode, so this call adds the main page text after any linked page text
-    // already uploaded above. The linked page text delimiter format
-    // (\n--- URL ---\n) is designed to be appended after the main content.
-    if (downloadOptions.downloadContentAsText) {
-      pushToPanelSafely(sendMessage, { key: "status.downloadingContent" });
-      await serverClient.uploadContent(sessionId, data.text);
-      pushToPanelSafely(sendMessage, { key: "status.contentDownloaded" });
     }
 
     // (12.4) Send scrape-complete signal ONCE — after ALL page scrolling
@@ -1082,7 +1142,10 @@ async function executeDownloadServerMode(
     pushToPanelSafely(sendMessage, { key: "status.waitingForUploads" });
 
     // Heartbeat: send progress every 15s so the UI can detect a dead worker.
+    // (multipage-download-fixes 5.1) Each beat also refreshes the persisted
+    // liveness record so the panel's evidence-based decisions stay truthful.
     const heartbeatInterval = setInterval(() => {
+      void writeLivenessHeartbeat(sessionId);
       const progress = uploadQueue.getProgress();
       pushToPanelSafely(sendMessage, {
         key: "status.uploadProgress",
@@ -1154,44 +1217,73 @@ async function executeDownloadServerMode(
 
     // (12.9) Server failure handling: detect ServerUnavailableError,
     // AssemblyTimeoutError, AssemblyFailedError, and offer local fallback.
-    const downloadResult = await handler.downloadWithFallback(
+    // (multipage-download-fixes 5.4) A fixed-cadence heartbeat runs for the
+    // WHOLE poll — long silent merges no longer read as worker death.
+    let lastAssemblyPhase: string | null = null;
+    let lastAssemblyPct = 0;
+    const assemblyHeartbeat = startAssemblyHeartbeat(
+      sendMessage,
       sessionId,
-      tabUrl,
-      downloadOptions.singleFile,
-      // Fallback callback — returns true if user chose an alternative (currently unused)
-      async (reason, errorMessage) => {
-        // UX contract: include a concrete fallback URL when the server
-        // already produced one, so the panel's local-fallback action can
-        // use it directly.
-        const { downloadUrl: fallbackUrl } = await lookupFallbackUrl(sessionId);
-        pushToPanelSafely(sendMessage, {
-          key: "status.serverFallbackOffer",
-          options: { reason, errorMessage, fallbackUrl },
-        });
-        // The UI layer (task 15.5) will show a dialog. For now, we
-        // send the message and return false (don't fall back automatically).
-        return false;
-      },
-      // Assembly status callback — forward to UI for progress display.
-      // (2f) The raw phase id travels in options.phase ON PURPOSE: the UI
-      // translates it. server-mode-state.ts keys its assembling state
-      // machine off this message key, and the service worker's i18n backend
-      // loads locales asynchronously — right after an MV3 restart t() can
-      // still return the key, and a pre-translated phase would also break
-      // DownloadStatus's status.assemblyPhase* key lookup for non-English
-      // locales. DownloadStatus and Actions render the translated label via
-      // the status.assemblyPhase* keys (see en.json).
-      (status, phase, progressPct, elapsedSeconds) => {
-        pushToPanelSafely(sendMessage, {
-          key: "status.assemblyProgress",
-          options: { status, phase, progressPct, elapsedSeconds },
-        });
-      },
-      tabId,
-      downloadOptions.alwaysAskWhereToSave ?? true,
-      // Per-download polling signal (task 4.2) — no shared controller.
-      context.assemblyAbortController.signal,
+      !!downloadOptions.downloadHTML,
+      () => lastAssemblyPhase,
+      () => lastAssemblyPct,
     );
+    let downloadResult: Awaited<
+      ReturnType<typeof handler.downloadWithFallback>
+    >;
+    try {
+      downloadResult = await handler.downloadWithFallback(
+        sessionId,
+        tabUrl,
+        downloadOptions.singleFile,
+        // Fallback callback — returns true if user chose an alternative (currently unused)
+        async (reason, errorMessage) => {
+          // UX contract: include a concrete fallback URL when the server
+          // already produced one, so the panel's local-fallback action can
+          // use it directly.
+          const { downloadUrl: fallbackUrl } =
+            await lookupFallbackUrl(sessionId);
+          pushToPanelSafely(sendMessage, {
+            key: "status.serverFallbackOffer",
+            options: { reason, errorMessage, fallbackUrl },
+          });
+          // The UI layer (task 15.5) will show a dialog. For now, we
+          // send the message and return false (don't fall back automatically).
+          return false;
+        },
+        // Assembly status callback — forward to UI for progress display.
+        // (2f) The raw phase id travels in options.phase ON PURPOSE: the UI
+        // translates it. server-mode-state.ts keys its assembling state
+        // machine off this message key, and the service worker's i18n backend
+        // loads locales asynchronously — right after an MV3 restart t() can
+        // still return the key, and a pre-translated phase would also break
+        // DownloadStatus's status.assemblyPhase* key lookup for non-English
+        // locales. DownloadStatus and Actions render the translated label via
+        // the status.assemblyPhase* keys (see en.json).
+        // (multipage-download-fixes 5.7) downloadHtml rides along so the
+        // panel can pick the honest merge subtitle for text-only runs.
+        (status, phase, progressPct, elapsedSeconds) => {
+          lastAssemblyPhase = phase;
+          if (typeof progressPct === "number") lastAssemblyPct = progressPct;
+          pushToPanelSafely(sendMessage, {
+            key: "status.assemblyProgress",
+            options: {
+              status,
+              phase,
+              progressPct,
+              elapsedSeconds,
+              downloadHtml: !!downloadOptions.downloadHTML,
+            },
+          });
+        },
+        tabId,
+        downloadOptions.alwaysAskWhereToSave ?? true,
+        // Per-download polling signal (task 4.2) — no shared controller.
+        context.assemblyAbortController.signal,
+      );
+    } finally {
+      clearInterval(assemblyHeartbeat);
+    }
 
     // (stop-cancel-semantics D1 / task 2.1) A user stop NEVER terminates as
     // status.complete. This branch only covers the tiny race where the stop
@@ -1432,6 +1524,7 @@ async function finalizeAndPollAssembly(
   sendMessage: (message: string | { key: string; options?: any }) => void,
   failedCount = 0,
   signal?: AbortSignal,
+  downloadHtml = true,
 ): Promise<void> {
   // (stop-cancel-semantics / task 3.3) An already-stopped resume never
   // starts polling — surface the stop as AbortError so the caller's catch
@@ -1450,6 +1543,17 @@ async function finalizeAndPollAssembly(
   setSessionPhase(sessionId, "assembling");
   pushToPanelSafely(sendMessage, { key: "status.assemblingServer" });
   const handler = getServerDownloadHandler();
+  // (multipage-download-fixes 5.4) Fixed-cadence heartbeat for the WHOLE
+  // poll — the resume/park paths' silent merges are covered too.
+  let lastAssemblyPhase: string | null = null;
+  let lastAssemblyPct = 0;
+  const assemblyHeartbeat = startAssemblyHeartbeat(
+    sendMessage,
+    sessionId,
+    downloadHtml,
+    () => lastAssemblyPhase,
+    () => lastAssemblyPct,
+  );
   let downloadResult: Awaited<ReturnType<typeof handler.downloadWithFallback>>;
   try {
     downloadResult = await handler.downloadWithFallback(
@@ -1458,9 +1562,17 @@ async function finalizeAndPollAssembly(
       false,
       async () => false,
       (_status, phase, progressPct, elapsedSeconds) => {
+        lastAssemblyPhase = phase;
+        if (typeof progressPct === "number") lastAssemblyPct = progressPct;
         pushToPanelSafely(sendMessage, {
           key: "status.assemblyProgress",
-          options: { status: "assembling", phase, progressPct, elapsedSeconds },
+          options: {
+            status: "assembling",
+            phase,
+            progressPct,
+            elapsedSeconds,
+            downloadHtml,
+          },
         });
       },
       tabId,
@@ -1480,6 +1592,8 @@ async function finalizeAndPollAssembly(
       return;
     }
     throw error;
+  } finally {
+    clearInterval(assemblyHeartbeat);
   }
 
   // (stop-cancel-semantics D1 / task 2.1 parity) A user stop NEVER
@@ -1767,6 +1881,8 @@ export async function resumeServerDownload(
           0,
           // Assembly-poll signal (stop-cancel-semantics D2 / task 1.3).
           resumeAssemblyAbort.signal,
+          // (5.7) Session options snapshot for the honest merge wording.
+          filterOptions.downloadHTML,
         );
         return; // Done — skip the normal upload path below
       }
@@ -1868,6 +1984,9 @@ export async function resumeServerDownload(
     let heartbeatInterval: ReturnType<typeof setInterval> | undefined;
     try {
       heartbeatInterval = setInterval(() => {
+        // (multipage-download-fixes 5.1) Refresh the persisted liveness
+        // record alongside the progress push.
+        void writeLivenessHeartbeat(serverSessionId);
         const progress = uploadQueue.getProgress();
         pushToPanelSafely(sendMessage, {
           key: "status.uploadProgress",
@@ -1918,6 +2037,8 @@ export async function resumeServerDownload(
       // aborted signal short-circuits at the entry check and the catch
       // below runs the salvage (tasks 3.2 + 3.4).
       resumeAssemblyAbort.signal,
+      // (5.7) Session options snapshot for the honest merge wording.
+      filterOptions.downloadHTML,
     );
   } catch (error) {
     // Best-effort scrapeComplete so the server transitions out of SCRAPING.
@@ -1971,6 +2092,278 @@ export async function resumeServerDownload(
     // (stop-cancel-semantics D2 / task 1.5) Teardown: no poll may outlive
     // this resume — abort the assembly signal (no-op when already aborted).
     resumeAssemblyAbort.abort();
+    if (tabId) {
+      disconnectKeepalivePort(tabId);
+      setDownloadAbortController(null, tabId);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Parked downloads (multipage-download-fixes D2 / tasks 4.4–4.5)
+//
+// A download whose pause outlived its service worker is PARKED: a checkpoint
+// with phase `paused` plus a frozen queue snapshot remain in
+// chrome.storage.session. The reopened panel offers Resume (re-spawn the
+// scraper from the snapshot against the same unfinalized server session) or
+// Stop (finalize the partial). A held or parked pause is never surfaced as
+// an interrupted download.
+// ---------------------------------------------------------------------------
+
+/**
+ * (D2 / task 4.5) Resume a PARKED download: re-spawn LinkedPageScraper
+ * seeded from the snapshot — same options, same unfinalized server session,
+ * remaining queues, visited pages skipped — re-establish the keepalive port
+ * and per-tab stop wiring, and continue the scrape loop through the normal
+ * tail (asset uploads drain → scrapeComplete → finalize → assembly poll).
+ *
+ * Throws for a definitively unrecoverable park (expired/failed session, no
+ * session id in the snapshot) so the message layer can fall back cleanly.
+ * A user stop mid-scrape surfaces as AbortError and is salvaged here:
+ * best-effort finalize of the partial + status.cancelled.
+ */
+export async function resumeFromParkedScrape(
+  snapshot: LinkedScraperSnapshot,
+  sendMessage: (message: string | { key: string; options?: any }) => void,
+): Promise<void> {
+  const serverSessionId = snapshot.serverSessionId;
+  if (!serverSessionId) {
+    throw new Error("No server session ID in parked snapshot");
+  }
+  const tabId = snapshot.tabId;
+
+  // A resumed download is a live download (Fix D.1 pattern).
+  markSessionLive(serverSessionId, { tabId, phase: "scraping" });
+
+  // Per-park stop wiring (mirrors resumeServerDownload): keepalive port +
+  // per-tab abort controller; the abort listener cancels asset uploads.
+  const parkAbort = new AbortController();
+  if (tabId) {
+    createKeepalivePort(tabId);
+    setDownloadAbortController(parkAbort, tabId);
+  }
+
+  try {
+    pushToPanelSafely(sendMessage, { key: "status.reconnectingServer" });
+    const status = await serverClient.getSessionStatus(serverSessionId);
+    console.log(
+      `[ParkResume] Server session ${serverSessionId} status: ${status.status}`,
+    );
+
+    // If failed or expired, the park can never continue — definitive error.
+    if (status.status === "failed" || status.status === "expired") {
+      throw new Error(
+        `Server session is ${status.status} and cannot be resumed`,
+      );
+    }
+
+    const storage = new ServerStorageAdapter(serverClient);
+    storage.setSessionId(serverSessionId);
+    const uploadQueue = storage.getUploadQueue();
+    // (Round 9 — Fix B) Expose the resumed queue to CHECK_DOWNLOAD_LIVE.
+    setSessionUploadQueue(serverSessionId, uploadQueue);
+    // A user stop cancels in-flight asset uploads (the scrape loop itself is
+    // stopped via stopScraping on the registered scraper).
+    parkAbort.signal.addEventListener("abort", () => uploadQueue.cancel(), {
+      once: true,
+    });
+
+    const context = createDownloadContext({
+      tabId,
+      tabUrl: snapshot.tabUrl ?? "",
+      serverSessionId,
+      abortController: parkAbort,
+      uploadQueue,
+    });
+
+    const assetRegistry = new AssetRegistry();
+    // Re-spawn seeded from the snapshot — same session, same options,
+    // remaining queues, visited pages skipped (task 4.5 / 4.6).
+    const linkedPageScraper = LinkedPageScraper.fromSnapshot(
+      snapshot,
+      assetRegistry,
+    );
+
+    // (D2 / task 4.2) Re-acquire a tab before scraping continues — the
+    // original may have been closed while the download was parked; recreate
+    // it in the background rather than navigating a dead tab id.
+    let scrapeTabId = tabId;
+    if (scrapeTabId !== undefined) {
+      scrapeTabId = await linkedPageScraper.reacquireTab(scrapeTabId);
+    }
+
+    pushToPanelSafely(sendMessage, { key: "status.scrapingLinkedPages" });
+    if (tabId) {
+      setCurrentScraper(tabId, linkedPageScraper);
+    }
+    try {
+      if (scrapeTabId !== undefined) {
+        // (multipage-download-fixes D4 / task 3.2) Pages scraped after the
+        // park upload their text individually inside processQueue — same
+        // extractText gate, seeded from the frozen snapshot (never re-read
+        // live, design D1). No end-of-run tail append exists any more.
+        await linkedPageScraper.processQueue(
+          scrapeTabId,
+          storage,
+          sendMessage,
+          context,
+        );
+      }
+    } finally {
+      if (tabId) {
+        setCurrentScraper(tabId, null);
+      }
+    }
+
+    // Drain asset uploads started during the resumed scrape, then the
+    // normal tail: scrapeComplete → finalize → assembly poll.
+    const progress = uploadQueue.getProgress();
+    const uploadTimeoutMs = Math.min(
+      Math.max(progress.totalCount, 1) * 30 * 1000,
+      30 * 60 * 1000,
+    );
+    try {
+      await uploadQueue.waitForAll(uploadTimeoutMs);
+    } catch (err) {
+      // Finalize with whatever arrived (mirrors the main path).
+      console.warn(
+        "[ParkResume] Upload wait failed — finalizing partial:",
+        err,
+      );
+    }
+
+    pushToPanelSafely(sendMessage, { key: "status.sendingScrapeComplete" });
+    await serverClient.scrapeComplete(
+      serverSessionId,
+      uploadQueue.getResourceCount(),
+    );
+    const filterOptions = await loadFilterOptions();
+    await finalizeAndPollAssembly(
+      serverClient,
+      serverSessionId,
+      snapshot.tabUrl ?? "",
+      tabId,
+      filterOptions.alwaysAskWhereToSave ?? true,
+      sendMessage,
+      uploadQueue.getProgress().failedCount,
+      parkAbort.signal,
+      // (5.7) Session options snapshot for the honest merge wording.
+      filterOptions.downloadHTML,
+    );
+  } catch (error) {
+    if (isAbortError(error)) {
+      // (stop-cancel-semantics parity) A stop during the parked resume is
+      // user intent — salvage the partial archive and report cancellation.
+      console.log(
+        "[ParkResume] Download cancelled by user — salvaging partial archive",
+      );
+      try {
+        await serverClient.finalizeSession(serverSessionId);
+      } catch {
+        // Already finalized/assembling/failed — the probe below reports.
+      }
+      await reportCancelledSession(serverSessionId, sendMessage);
+      return;
+    }
+    // (Round 9 — Fix B) Record the terminal error for the panel's liveness
+    // poll, then let the message layer decide checkpoint retention.
+    setSessionLastError(
+      serverSessionId,
+      error instanceof Error ? error.message : "Unknown park-resume error",
+    );
+    throw error;
+  } finally {
+    markSessionNotLive(serverSessionId);
+    if (tabId) {
+      disconnectKeepalivePort(tabId);
+      setDownloadAbortController(null, tabId);
+    }
+  }
+}
+
+/**
+ * (D2 / task 4.5) Stop-from-park: finalize the PARTIAL download. The parked
+ * session was never scrapeComplete'd, so the salvage tail is: best-effort
+ * scrape-complete (with the server's received-resource count), finalize,
+ * and poll/deliver whatever the server assembles. Also used for a Stop on a
+ * TRUNCATED park — the partial is still delivered.
+ */
+export async function finalizeParkedDownload(
+  params: {
+    serverSessionId: string;
+    tabId?: number;
+    tabUrl?: string;
+  },
+  sendMessage: (message: string | { key: string; options?: any }) => void,
+): Promise<void> {
+  const { serverSessionId, tabId, tabUrl } = params;
+
+  markSessionLive(serverSessionId, { tabId, phase: "uploading" });
+  const stopAbort = new AbortController();
+  if (tabId) {
+    createKeepalivePort(tabId);
+    setDownloadAbortController(stopAbort, tabId);
+  }
+
+  try {
+    let received = 0;
+    try {
+      const status = await serverClient.getSessionStatus(serverSessionId);
+      if (status.status === "ready" && status.download_url) {
+        // Already assembled — deliver it.
+        const downloadUrl = upgradeInsecureServerUrl(
+          status.download_url,
+          serverClient.baseUrl,
+        );
+        pushToPanelSafely(sendMessage, {
+          key: "status.serverDownloadReady",
+          options: { downloadUrl, serverSessionId },
+        });
+        pushToPanelSafely(sendMessage, {
+          key: "status.complete",
+          options: { downloadUrl, serverSessionId, failedCount: 0 },
+        });
+        return;
+      }
+      if (status.status === "failed" || status.status === "expired") {
+        throw new Error(
+          `Server session is ${status.status} and cannot be finalized`,
+        );
+      }
+      received = status.resources_received ?? 0;
+    } catch (err) {
+      // A status probe failure must not prevent the finalize attempt below
+      // (only the failed/expired definitive errors rethrow above).
+      if (err instanceof Error && /cannot be finalized/.test(err.message)) {
+        throw err;
+      }
+      console.warn("[ParkStop] Status probe failed — finalizing anyway:", err);
+    }
+
+    // Best-effort scrape-complete so the server transitions out of SCRAPING
+    // (idempotent when the session is already in UPLOADING).
+    try {
+      await serverClient.scrapeComplete(serverSessionId, received);
+    } catch {
+      // Already transitioned — proceed to finalize.
+    }
+
+    pushToPanelSafely(sendMessage, { key: "status.finalizingPartial" });
+    const filterOptions = await loadFilterOptions();
+    await finalizeAndPollAssembly(
+      serverClient,
+      serverSessionId,
+      tabUrl ?? "",
+      tabId,
+      filterOptions.alwaysAskWhereToSave ?? true,
+      sendMessage,
+      0,
+      stopAbort.signal,
+      // (5.7) Session options snapshot for the honest merge wording.
+      filterOptions.downloadHTML,
+    );
+  } finally {
+    markSessionNotLive(serverSessionId);
     if (tabId) {
       disconnectKeepalivePort(tabId);
       setDownloadAbortController(null, tabId);

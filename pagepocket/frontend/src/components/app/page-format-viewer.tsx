@@ -216,6 +216,28 @@ function FormatPane({
 }
 
 /**
+ * One stored document rendered by its content format (multipage-download-
+ * fixes 8.3/D8): a subpage document fetched from `pages/<path>` renders
+ * through the same panes the format switcher uses — stored markdown gets
+ * the markdown pane (rendered + Raw toggle), everything else (text, empty,
+ * unknown) the plain-text pane. Same no-store fetch pattern as the tabs;
+ * the pane owns loading/error/retry. Callers pick the URL; the format only
+ * picks the pane.
+ */
+export function DocumentPane({
+  format,
+  fileUrl,
+}: {
+  format: string;
+  fileUrl: string;
+}) {
+  if (format === "markdown") {
+    return <MarkdownPane fileUrl={fileUrl} />;
+  }
+  return <TextPane fileUrl={fileUrl} />;
+}
+
+/**
  * Content area for pages with at least one non-HTML format (D6):
  * - exactly one known format → rendered directly, no switcher chrome;
  * - several → the HTML | Markdown | Text segmented control, defaulting to

@@ -29,6 +29,10 @@ vi.mock("../../src/background/download-checkpoint", () => ({
   writeCheckpoint: vi.fn(),
   updateCheckpointPhase: vi.fn(),
   updateCheckpointResourceUrls: vi.fn(),
+  // (multipage-download-fixes D2 / task 4.4) Paused-phase helpers the
+  // linked-page scraper calls while a pause is held / lifted.
+  pauseCheckpoint: vi.fn(async () => {}),
+  restoreCheckpointPhase: vi.fn(async () => {}),
 }));
 
 vi.mock("../../src/background/jobs", () => ({
@@ -59,6 +63,7 @@ vi.mock("../../src/background/server-client", () => ({
     scrapeComplete: vi.fn(),
     uploadResource: vi.fn(),
     uploadContent: vi.fn(),
+    uploadPageContent: vi.fn(),
     finalizeSession: vi.fn(),
     getSessionStatus: vi.fn(),
     checkHealth: vi.fn(),

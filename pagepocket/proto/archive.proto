@@ -48,6 +48,20 @@ message ContentDocument {
   bytes data = 2;
 }
 
+// Additive (multipage-download-fixes 6.1/D7): one per-page content document
+// (a linked page's markdown/text/html). path is the page-relative archive
+// path under the page's pages/ prefix (e.g. "about.md", nested subdirectories
+// allowed); title/url/content_format feed the page's manifest so the viewer
+// can list and label subpages; data holds the raw document bytes. Stored at
+// {user_id}/{page_id}/pages/<path> — never sanitized, never asset-rewritten.
+message PageDocument {
+  string path = 1;
+  string title = 2;
+  string url = 3;
+  string content_format = 4;
+  bytes data = 5;
+}
+
 message IngestPageRequest {
   string user_id = 1;
   string url = 2;
@@ -62,8 +76,15 @@ message IngestPageRequest {
   string plan = 7 [deprecated = true]; // historically "free", "pro", or "team"
   // Additive (text-native-downloads 1.1/D1): additional content documents
   // stored beside index.html. Every request must carry at least one content
-  // document overall (html_content or entries here).
+  // document overall (html_content or entries here) — pages below does NOT
+  // count toward that rule.
   repeated ContentDocument content_documents = 8;
+  // Additive (multipage-download-fixes 6.1/D7): per-page content documents,
+  // each stored under the page's pages/ prefix (one per linked page). Strictly
+  // additive evolution: older archive-services ignore this unknown field
+  // (proto3), and an ingest without pages behaves exactly as before. Empty on
+  // legacy pushes.
+  repeated PageDocument pages = 9;
 }
 
 message IngestPageResponse {
@@ -97,6 +118,21 @@ message PageResponse {
   // the page's meta.json), canonical order html → markdown → text. Populated
   // by the page-read path (GetPage); list responses leave it empty.
   repeated string content_formats = 10;
+  // Additive (multipage-download-fixes 6.1/D7): the page's per-page document
+  // manifest (read from meta.json by the page-read path, GetPage); list
+  // responses leave it empty. Empty for pages stored before per-page
+  // documents existed — older readers decode the response unchanged.
+  repeated PageSummary pages = 11;
+}
+
+// Additive (multipage-download-fixes 6.1/D7): manifest entry for one stored
+// per-page document — no payload; the bytes are read via GetArchiveFile with
+// file_path = "pages/<path>". Mirrors PageDocument minus its data field.
+message PageSummary {
+  string path = 1;
+  string title = 2;
+  string url = 3;
+  string content_format = 4;
 }
 
 message ListPagesRequest {

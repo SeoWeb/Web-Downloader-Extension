@@ -256,7 +256,17 @@
       "downloadLiveProgress": "Resources: {{completed}}/{{total}}",
       "stoppedWithArchiveTitle": "Download stopped — partial archive available",
       "stoppedWithArchiveSubtitle": "The server saved what was captured before the stop. You can download the partial archive.",
-      "archiveWarningHeading": "Archive warning"
+      "archiveWarningHeading": "Archive warning",
+      "pageCounter": "Page {{current}} of {{total}}",
+      "linkedPagePhase": {
+        "internal": "Internal pages",
+        "external": "External pages"
+      },
+      "pausedTitle": "Download paused",
+      "pausedMessage": "The download is paused. Resume to continue scraping, or stop to keep what was captured.",
+      "pausedResumeFailed": "Couldn't resume the paused download — you can stop to deliver the partial archive, or start a new download.",
+      "assemblyPhaseMerging_html_text": "Preparing text conversion (merging captured HTML)",
+      "sessionFullPagesCaptured": "Session size limit reached — {{captured}} of {{total}} pages were captured."
     },
     "permissions": {
       "storage": {

@@ -4,10 +4,24 @@ import { scrollDownAndScrape, startDownload } from "./jobs";
 import { pauseScraping, resumeScraping, stopScraping } from "./scraper-state";
 import {
   abortActiveDownload,
-  getSessionDownloadSnapshot,
+  buildLiveSnapshot,
+  isSessionLive,
 } from "./download-state";
-import { readCheckpoint, clearCheckpoint } from "./download-checkpoint";
-import { resumeServerDownload } from "./download-core";
+import {
+  readCheckpoint,
+  readAllCheckpoints,
+  clearCheckpoint,
+} from "./download-checkpoint";
+import {
+  readScraperSnapshot,
+  readAllScraperSnapshots,
+  clearScraperSnapshot,
+} from "./scraper-snapshot";
+import {
+  resumeServerDownload,
+  resumeFromParkedScrape,
+  finalizeParkedDownload,
+} from "./download-core";
 import {
   serverClient,
   ServerUnavailableError,
@@ -161,6 +175,82 @@ function isAbortError(err: unknown): boolean {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Parked downloads (multipage-download-fixes D2 / tasks 4.4–4.5)
+// ---------------------------------------------------------------------------
+
+/** A parked download's recovery state: the frozen scrape snapshot plus the
+ *  phase-`paused` checkpoint (for tab/tabUrl context). */
+interface ParkedContext {
+  snapshot: NonNullable<Awaited<ReturnType<typeof readScraperSnapshot>>>;
+  checkpoint: Awaited<ReturnType<typeof readCheckpoint>>;
+}
+
+/**
+ * Resolve a parked download's state. Precedence: explicit serverSessionId,
+ * then the checkpoint/snapshot matching the given tab id. Deliberately
+ * session- or tab-scoped — a lookup that matches NEITHER returns null so one
+ * tab's Stop can never finalize another tab's parked download. Returns null
+ * when nothing is parked (or the snapshot is missing/corrupt — callers fall
+ * back cleanly to an offer of Stop).
+ */
+async function findParkedContext(
+  serverSessionId?: string,
+  tabId?: number,
+): Promise<ParkedContext | null> {
+  // 1. Explicit session id → read that download's snapshot directly.
+  if (serverSessionId) {
+    const snapshot = await readScraperSnapshot(serverSessionId);
+    if (snapshot) {
+      return { snapshot, checkpoint: await readCheckpoint(serverSessionId) };
+    }
+    return null;
+  }
+  if (tabId === undefined) {
+    return null;
+  }
+
+  // 2. Tab-scoped match — the panel's paused card carries the checkpoint's
+  //    tabId; the snapshot is keyed by the same session that checkpoint
+  //    names.
+  const snapshots = await readAllScraperSnapshots();
+  if (snapshots.length === 0) return null;
+
+  const snapshotForTab = snapshots.find((s) => s.tabId === tabId);
+  if (snapshotForTab) {
+    return {
+      snapshot: snapshotForTab,
+      checkpoint: snapshotForTab.serverSessionId
+        ? await readCheckpoint(snapshotForTab.serverSessionId)
+        : null,
+    };
+  }
+
+  // Fallback: a paused checkpoint names this tab but the snapshot lookup by
+  // its session id is the authoritative pairing.
+  const checkpoints = await readAllCheckpoints();
+  const byTab = checkpoints.find(
+    (c) => c.phase === "paused" && c.tabId === tabId && c.serverSessionId,
+  );
+  if (byTab?.serverSessionId) {
+    const snapshot = await readScraperSnapshot(byTab.serverSessionId);
+    if (snapshot) {
+      return { snapshot, checkpoint: byTab };
+    }
+  }
+  return null;
+}
+
+/**
+ * Clear a parked download's recovery state (snapshot + checkpoint). Used on
+ * successful park-resume, deliberate park-stop, and definitive failure —
+ * mirroring the RESUME_SERVER_DOWNLOAD retention rules.
+ */
+async function clearParkedState(serverSessionId: string): Promise<void> {
+  await clearScraperSnapshot(serverSessionId);
+  await clearCheckpoint(serverSessionId);
+}
+
 export async function messageWorker(
   action: MessageAction,
   data: any,
@@ -310,7 +400,13 @@ export async function messageWorker(
       // ~2.5s while a download is tracked, because pushed PANEL_MESSAGEs
       // are dropped when the focused tab changes; lastError lets the final
       // poll surface a failure that its push could not deliver.
-      return getSessionDownloadSnapshot(data?.sessionId);
+      // (multipage-download-fixes 5.1 + 5.2) The answer now carries
+      // EVIDENCE: heartbeatFresh from the persisted chrome.storage.session
+      // record (refreshed on this poll-ack when live) and serverStatus (a
+      // throttled terminal-status probe when not live). The panel's
+      // completion/interruption decisions read the evidence, never the
+      // in-memory Set alone — the Set dies with the service worker.
+      return await buildLiveSnapshot(data?.sessionId);
 
     case messageActions.RESUME_SERVER_DOWNLOAD: {
       // (D10 / task 4.6) Read the checkpoint but DO NOT clear it before the
@@ -399,10 +495,135 @@ export async function messageWorker(
       resumeScraping(data.tabId);
       return true;
 
+    // ------------------------------------------------------------------
+    // (multipage-download-fixes D2 / task 4.5) Resume-from-park: re-spawn
+    // LinkedPageScraper seeded from the persisted snapshot against the same
+    // unfinalized server session. Stop-from-park needs no new flow — the
+    // SCRAPER_STOP case below detects a parked download when no live
+    // scraper exists and finalizes the partial via the salvage path.
+    // ------------------------------------------------------------------
+    case messageActions.SCRAPER_RESUME_FROM_PARK: {
+      const parked = await findParkedContext(
+        data?.serverSessionId,
+        data?.tabId,
+      );
+      if (!parked || !parked.snapshot.serverSessionId) {
+        // Missing/corrupt snapshot — fall back cleanly: report and offer
+        // Stop (the parked Stop path only needs the checkpoint). Never
+        // crash the worker.
+        const sessionId =
+          data?.serverSessionId ?? parked?.checkpoint?.serverSessionId;
+        console.warn(
+          `[ParkResume] No usable snapshot for session=${sessionId ?? "unknown"}`,
+        );
+        addMessage({
+          action: messageActions.PANEL_MESSAGE,
+          data: {
+            message:
+              "Could not restore the paused download state — the queued-page snapshot is missing or unreadable. You can still Stop to deliver the partial download.",
+          },
+        });
+        return { success: false, fallback: true, error: "No parked snapshot" };
+      }
+
+      const snapshotSessionId = parked.snapshot.serverSessionId!;
+      try {
+        await resumeFromParkedScrape(parked.snapshot, (message) => {
+          addMessage({
+            action: messageActions.PANEL_MESSAGE,
+            data: { message },
+          });
+        });
+        // Success — the park is consumed (mirrors RESUME_SERVER_DOWNLOAD's
+        // clear-on-success retention rule).
+        await clearParkedState(snapshotSessionId);
+        return { success: true };
+      } catch (err) {
+        if (isAbortError(err)) {
+          // User pressed Stop mid-resume — the salvage already reported the
+          // cancellation; clear the park so it never resurfaces.
+          await clearParkedState(snapshotSessionId);
+          addMessage({
+            action: messageActions.PANEL_MESSAGE,
+            data: {
+              message: {
+                key: "status.cancelled",
+                options: { serverSessionId: snapshotSessionId },
+              },
+            },
+          });
+          return { success: true };
+        }
+        // Definitive failure (expired/invalid session) — the park can never
+        // be used again; clear it so the panel offers Restart.
+        if (isDefinitiveResumeFailure(err)) {
+          await clearParkedState(snapshotSessionId);
+        }
+        // Transient failure — snapshot+checkpoint stay for a Retry.
+        return {
+          success: false,
+          fallback: true,
+          error: err instanceof Error ? err.message : "Park resume failed",
+        };
+      }
+    }
+
     case messageActions.SCRAPER_STOP:
       stopScraping(data.tabId);
       // Also abort the active server-mode download (uploads + download flow)
       abortActiveDownload(data.tabId);
+      // ----------------------------------------------------------------
+      // (multipage-download-fixes D2 / task 4.5) Stop-from-park: when no
+      // live scraper/download exists for this session but a parked
+      // snapshot+checkpoint do (the worker died while paused), finalize the
+      // partial via the salvage path and clear the park. A live download's
+      // stop is fully handled by the two calls above — the parked fallback
+      // only engages when the session is NOT live.
+      // ----------------------------------------------------------------
+      {
+        const parked = await findParkedContext(
+          data?.serverSessionId,
+          data?.tabId,
+        );
+        const parkedSessionId = parked?.snapshot.serverSessionId;
+        if (parked && parkedSessionId && !isSessionLive(parkedSessionId)) {
+          try {
+            await finalizeParkedDownload(
+              {
+                serverSessionId: parkedSessionId,
+                tabId: parked.checkpoint?.tabId ?? data?.tabId,
+                tabUrl: parked.checkpoint?.tabUrl,
+              },
+              (message) => {
+                addMessage({
+                  action: messageActions.PANEL_MESSAGE,
+                  data: { message },
+                });
+              },
+            );
+            await clearParkedState(parkedSessionId);
+          } catch (err) {
+            // Finalize failed (e.g. server unreachable) — keep the park so
+            // the user can retry the Stop; report the error.
+            console.warn("[ParkStop] Finalize failed:", err);
+            addMessage({
+              action: messageActions.PANEL_MESSAGE,
+              data: {
+                message: {
+                  key: "status.failedWithError",
+                  options: {
+                    error: err instanceof Error ? err.message : "Unknown error",
+                  },
+                },
+              },
+            });
+            return {
+              success: false,
+              error: err instanceof Error ? err.message : "Park stop failed",
+            };
+          }
+        }
+      }
       return true;
 
     // ------------------------------------------------------------------

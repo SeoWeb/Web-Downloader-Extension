@@ -24,6 +24,7 @@ vi.mock("../../src/background/server-client", () => {
     "scrapeComplete",
     "uploadResource",
     "uploadContent",
+    "uploadPageContent",
     "uploadFilenameMap",
     "finalizeSession",
     "getSessionStatus",
@@ -176,6 +177,10 @@ vi.mock("../../src/background/download-checkpoint", () => ({
   writeCheckpoint: vi.fn(async () => {}),
   updateCheckpointPhase: vi.fn(),
   updateCheckpointResourceUrls: vi.fn(async () => {}),
+  // (multipage-download-fixes D2 / task 4.4) Paused-phase helpers the
+  // linked-page scraper calls while a pause is held / lifted.
+  pauseCheckpoint: vi.fn(async () => {}),
+  restoreCheckpointPhase: vi.fn(async () => {}),
 }));
 
 import { messageWorker } from "../../src/background/message";
@@ -234,6 +239,9 @@ describe("CHECK_DOWNLOAD_LIVE (Fix D.1 liveness)", () => {
       { sessionId: "sess-live" },
       addMessage,
     );
+    // (multipage-download-fixes 5.1 + 5.2) The answer carries liveness
+    // EVIDENCE: heartbeat freshness from the persisted record and a
+    // terminal-status probe (throttled) when not live.
     expect(result).toEqual({
       live: false,
       phase: null,
@@ -241,6 +249,8 @@ describe("CHECK_DOWNLOAD_LIVE (Fix D.1 liveness)", () => {
       total: null,
       tabId: null,
       serverSessionId: "sess-live",
+      heartbeatFresh: false,
+      serverStatus: null,
     });
   });
 
@@ -260,6 +270,8 @@ describe("CHECK_DOWNLOAD_LIVE (Fix D.1 liveness)", () => {
       total: null,
       tabId: null,
       serverSessionId: "sess-live",
+      heartbeatFresh: true,
+      serverStatus: null,
     });
   });
 
@@ -279,6 +291,8 @@ describe("CHECK_DOWNLOAD_LIVE (Fix D.1 liveness)", () => {
       total: null,
       tabId: null,
       serverSessionId: "sess-live",
+      heartbeatFresh: false,
+      serverStatus: null,
     });
   });
 
@@ -295,6 +309,8 @@ describe("CHECK_DOWNLOAD_LIVE (Fix D.1 liveness)", () => {
       total: null,
       tabId: null,
       serverSessionId: null,
+      heartbeatFresh: false,
+      serverStatus: null,
     });
   });
 
@@ -352,6 +368,8 @@ describe("CHECK_DOWNLOAD_LIVE extended snapshot (Round 9 Fix B)", () => {
       total: 12,
       tabId: 7,
       serverSessionId: "sess-r9",
+      heartbeatFresh: true,
+      serverStatus: null,
     });
   });
 
@@ -712,18 +730,19 @@ describe("allSettledWithBound (D7 helper unit)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// (D2 / task 2.6) Paused scraper with a disconnected panel reaches
-// finalization. The pause wait hangs inside the REAL LinkedPageScraper,
-// driven through executeDownloadServerMode's linked-pages gate. When the
-// side panel closes, its keepalive port disconnects; the real scraper-state
-// hook (wired into download-state via setKeepaliveDisconnectHook at module
-// load) must stop the paused scraper so the download settles and the port
-// is released — instead of the download hanging forever.
+// (multipage-download-fixes D2 / task 4.1 — REVERSES the old task 2.6
+// contract) Paused scraper with a disconnected panel HOLDS: the disconnect
+// only means the panel is gone, so the pause persists (no stop, no
+// finalize) and the dead port is still released. A reopened panel's Resume
+// reaches the scraper through the real scraper-state map and settles the
+// download normally. If the worker dies instead, the download parks (not
+// covered here — scraper-pause-park.test.ts covers the snapshot side).
 //
-// Path under test: the port onDisconnect event (the 60s watchdog variant
-// with no disconnect event is covered in
-// linked-page-scraper-guards.test.ts). scraper-state is loaded ACTUAL so
-// the real wiring runs; the file-level mock's functions delegate to it.
+// Path under test: the port onDisconnect event + the resume path through
+// the real scraper-state hook (wired into download-state via
+// setKeepaliveDisconnectHook at module load). scraper-state is loaded
+// ACTUAL so the real wiring runs; the file-level mock's functions delegate
+// to it.
 // ---------------------------------------------------------------------------
 
 /** Poll with real timer slices until the condition holds. */
@@ -736,7 +755,7 @@ async function waitFor(cond: () => boolean, what: string): Promise<void> {
   }
 }
 
-describe("paused scraper with disconnected panel reaches finalization (D2 / task 2.6)", () => {
+describe("paused scraper with disconnected panel holds until Resume (multipage-download-fixes D2 / task 4.1)", () => {
   const TAB_PAUSED = 9201;
   type RealScraperState = typeof import("../../src/background/scraper-state");
   let realScraperState: RealScraperState;
@@ -809,7 +828,7 @@ describe("paused scraper with disconnected panel reaches finalization (D2 / task
     };
   });
 
-  it("settles the download and releases the keepalive port when the panel's port disconnects mid-pause", async () => {
+  it("disconnect mid-pause holds the pause (no finalize); a later Resume settles the download and releases the port", async () => {
     mockResources({ links: ["https://fixture.test/page2"] });
     vi.mocked(serverClient.createSession).mockResolvedValue("sess-pause");
     vi.mocked(processImages).mockResolvedValue(new Map());
@@ -817,6 +836,7 @@ describe("paused scraper with disconnected panel reaches finalization (D2 / task
     vi.mocked(processDocuments).mockResolvedValue(new Map());
 
     const sendMessage = vi.fn();
+    let settled = false;
     const done = downloadResources(
       "<html><body>page</body></html>",
       "https://fixture.test/page.html",
@@ -824,6 +844,13 @@ describe("paused scraper with disconnected panel reaches finalization (D2 / task
       sendMessage,
       undefined,
       TAB_PAUSED,
+    ).then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
     );
 
     // Wait until the scraper is parked on its pause wait…
@@ -838,8 +865,18 @@ describe("paused scraper with disconnected panel reaches finalization (D2 / task
     // …then the side panel closes: the keepalive port disconnects.
     keepalive.fireDisconnect();
 
-    // The download promise must SETTLE (here: the success path — stop is a
-    // controlled finalization, not a hang).
+    // NEW contract (task 4.1): the disconnect must NOT settle the download —
+    // the pause persists, nothing is finalized.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(settled).toBe(false);
+    expect(serverClient.finalizeSession).not.toHaveBeenCalled();
+
+    // The dead port is STILL released — nothing holds the service worker alive.
+    expect(getKeepalivePort(TAB_PAUSED)).toBeNull();
+
+    // A reopened panel's Resume reaches the scraper through the real
+    // scraper-state map — the download settles on the success path.
+    realScraperState.resumeScraping(TAB_PAUSED);
     await done;
 
     const keys = sendMessage.mock.calls.map(
@@ -850,7 +887,5 @@ describe("paused scraper with disconnected panel reaches finalization (D2 / task
     expect(keys).toContain("status.linkedPagesComplete");
     expect(keys).toContain("status.complete");
     expect(serverClient.finalizeSession).toHaveBeenCalledTimes(1);
-    // The dead port is released — nothing holds the service worker alive.
-    expect(getKeepalivePort(TAB_PAUSED)).toBeNull();
   });
 });

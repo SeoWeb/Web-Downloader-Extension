@@ -20,6 +20,19 @@ import {
 import { serverClient, HttpError } from "./server-client";
 import type { DownloadContext } from "./download-state";
 import { mergeFilenameMaps, type HandlerOptions } from "./download-processors";
+import {
+  writeScraperSnapshot,
+  clearScraperSnapshot,
+  truncateSnapshotQueues,
+  SCRAPER_SNAPSHOT_VERSION,
+  type LinkedScraperSnapshot,
+  type ScraperSnapshotJob,
+} from "./scraper-snapshot";
+import {
+  pauseCheckpoint,
+  restoreCheckpointPhase,
+  readCheckpoint,
+} from "./download-checkpoint";
 
 export interface LinkedPageJob {
   url: string;
@@ -45,7 +58,8 @@ export interface ScrapedPageData {
    * archive path). Used to build incremental filename map uploads. */
   localFilenameMap: Map<string, string>;
   /** Body text extracted from the page via getResources().text.
-   * Used to accumulate content text across all linked pages. */
+   * Uploaded per page via uploadPageContent right after the scrape
+   * (multipage-download-fixes D4 — no whole-run accumulation). */
   text: string;
   assets: {
     images: string[];
@@ -66,6 +80,17 @@ export interface LinkedPageScraperOptions {
   /** Server session ID — linked page HTML chunks are uploaded
    * to the server with pageType: "linked" and pageUrl metadata. */
   serverSessionId?: string;
+  /**
+   * Press-time download options snapshot (multipage-download-fixes D1).
+   * Per-category asset gates for linked pages, mirroring the main page's
+   * gates in download-core (images on downloadImages, css/js on
+   * downloadAssets, documents on downloadDocuments). The snapshot is frozen
+   * when the download starts — never re-read live mid-run. Defaults true so
+   * existing constructions without the fields keep current behavior.
+   */
+  downloadImages?: boolean; // Default: true
+  downloadAssets?: boolean; // Default: true
+  downloadDocuments?: boolean; // Default: true
 }
 
 /** Hard bounds for the maxPages option (task 4.7). */
@@ -82,17 +107,15 @@ export function clampMaxPages(value: number | undefined): number {
 }
 
 /**
- * Bounded watchdog for a paused scraper (D2.2): if a pause outlives this
- * period the scraper stops itself so the download finalizes instead of
- * hanging forever (safe default per D2 — the UI that could resume is gone).
- *
- * Sized on the order of the scraper's pageTimeout (default 30s) but twice as
- * generous: comfortably above the worst-case single-page processing time
- * (pageTimeout navigation + scroll budget + DOM capture ≈ 57s at defaults),
- * so a pause issued while the current page is still legitimately finishing
- * is not cut off — while still bounding finalization to about a minute.
+ * (multipage-download-fixes D2 / task 4.1) Pause is TRUE and indefinite.
+ * The former bounded watchdog (PAUSED_WATCHDOG_MS = 60 s) that self-stopped
+ * a paused scraper has been REMOVED: a paused scraper blocks between-page
+ * advancement indefinitely at the existing check sites and only an explicit
+ * resume() or stop() lifts it. If the service worker dies while the pause is
+ * held, the download parks (checkpoint phase `paused` + queue snapshot in
+ * chrome.storage.session) instead of stopping — see persistPauseSnapshot and
+ * resumeFromParkedScrape (download-core).
  */
-export const PAUSED_WATCHDOG_MS = 60_000;
 
 /**
  * Normalize a URL for navigation-completion matching (D4 / task 4.1):
@@ -160,10 +183,12 @@ export class LinkedPageScraper {
   private isStopped: boolean = false;
   private resumePromise: Promise<void> | null = null;
   private resumeResolve: (() => void) | null = null;
-  /** Watchdog timer while paused (D2.2) — stops the scraper when the pause
-   *  outlives PAUSED_WATCHDOG_MS. Cleared on resume()/stop(). */
-  private pausedWatchdog: ReturnType<typeof setTimeout> | null = null;
-  /** When true, extract and accumulate body text from linked pages. */
+  /** (D2 / task 4.4) Checkpoint phase observed when the pause took effect —
+   *  restored on resume/stop so upstream uploading/assembling transitions
+   *  keep working. Null while no pause is held. */
+  private prePauseCheckpointPhase: string | null = null;
+  /** When true, extract and upload body text from linked pages
+   *  (per-page streaming — multipage-download-fixes D4). */
   private extractText: boolean = true;
   /** Every URL this scraper intended to navigate to (dedup'd scrape set). */
   private scrapeUrls: Set<string> = new Set();
@@ -181,23 +206,97 @@ export class LinkedPageScraper {
       includeExternal: options.includeExternal ?? false,
       pageTimeout: options.pageTimeout ?? 30000,
       serverSessionId: options.serverSessionId,
+      // Asset-category gates default true (D1) — pre-existing constructions
+      // without the fields keep the ungated behavior.
+      downloadImages: options.downloadImages ?? true,
+      downloadAssets: options.downloadAssets ?? true,
+      downloadDocuments: options.downloadDocuments ?? true,
     };
   }
 
+  /**
+   * (multipage-download-fixes D2 / task 4.5) Re-spawn a scraper from a
+   * persisted pause snapshot (resume-from-park). The returned scraper is
+   * seeded with the same options, the same (never finalized) server session
+   * id, the REMAINING queues, and the visited set — pages already processed
+   * before the park are skipped, not re-scraped.
+   *
+   * Note the in-memory AssetRegistry from the pre-park run is gone (worker
+   * death); asset dedup after a park falls back to the server's url_hash
+   * dedup at storage time (design D2).
+   */
+  static fromSnapshot(
+    snapshot: LinkedScraperSnapshot,
+    assetRegistry: AssetRegistry,
+  ): LinkedPageScraper {
+    const o = snapshot.options;
+    const scraper = new LinkedPageScraper(assetRegistry, {
+      maxPages: o.maxPages,
+      delayBetweenPages: o.delayBetweenPages,
+      includeExternal: o.includeExternal,
+      pageTimeout: o.pageTimeout,
+      serverSessionId: snapshot.serverSessionId,
+      downloadImages: o.downloadImages,
+      downloadAssets: o.downloadAssets,
+      downloadDocuments: o.downloadDocuments,
+    });
+    scraper.restoreFromSnapshot(snapshot);
+    return scraper;
+  }
+
+  /**
+   * Seed this scraper from a pause snapshot (see fromSnapshot). Restores the
+   * remaining internal/external queues, the visited/processed set, the
+   * counters, text-extraction mode, and the pre-pause checkpoint phase.
+   */
+  restoreFromSnapshot(snapshot: LinkedScraperSnapshot): void {
+    for (const job of snapshot.internalQueue) {
+      this.internalQueue.push({ ...job, status: "queued" });
+      this.scrapeUrls.add(job.url);
+    }
+    for (const job of snapshot.externalQueue) {
+      this.externalQueue.push({ ...job, status: "queued" });
+      this.scrapeUrls.add(job.url);
+    }
+    // Visited (completed or failed) pages: added to the dedup scrape set so
+    // they are never re-scraped and restoreOriginalPage's guard stays intact.
+    for (const url of snapshot.visitedUrls) {
+      this.scrapeUrls.add(url);
+    }
+    this.successCount = snapshot.successCount;
+    this.failCount = snapshot.failCount;
+    this.prePauseCheckpointPhase =
+      snapshot.previousCheckpointPhase ?? "scraping";
+    // (multipage-download-fixes D4 / task 3.2) The frozen press-time
+    // extractText gate governs the resumed per-page text uploads too —
+    // never re-read live (D1).
+    this.extractText = snapshot.options.extractText;
+    // Preserve the original tab URL so end-of-run restore + pause release
+    // still know where the tab belongs.
+    if (snapshot.tabUrl) {
+      this.originalTabUrl = snapshot.tabUrl;
+    }
+  }
+
+  /**
+   * (multipage-download-fixes D2 / task 4.1) Pause the scraper. The pause
+   * holds INDEFINITELY: the loop blocks at its between-page advancement
+   * check until resume() or stop() is called — no watchdog self-stops it.
+   * The state work (tab release, snapshot persistence) happens at the check
+   * site, i.e. after the current page completes.
+   */
   pause() {
     if (!this.isPaused) {
       this.isPaused = true;
       this.resumePromise = new Promise((resolve) => {
         this.resumeResolve = resolve;
       });
-      this.armPausedWatchdog();
     }
   }
 
   resume() {
     if (this.isPaused && this.resumeResolve) {
       this.isPaused = false;
-      this.clearPausedWatchdog();
       this.resumeResolve();
       this.resumePromise = null;
       this.resumeResolve = null;
@@ -206,7 +305,6 @@ export class LinkedPageScraper {
 
   stop() {
     this.isStopped = true;
-    this.clearPausedWatchdog();
     // If paused, resume so loop can exit
     if (this.isPaused) {
       this.resume();
@@ -214,43 +312,25 @@ export class LinkedPageScraper {
   }
 
   /**
-   * Keepalive-port disconnect hook (D2.1 / task 2.1).
+   * Keepalive-port disconnect hook (multipage-download-fixes D2 / task 4.1
+   * — REVERSES the old auto-stop behavior).
    *
-   * The side panel is the only sender of SCRAPER_RESUME/SCRAPER_STOP; when
-   * its keepalive port disconnects, no UI remains that could resume a paused
-   * wait. Safe default: stop the scraper so the download finalizes instead
-   * of hanging. Idempotent by construction: when not paused (panel reopened
-   * and resumed before the event, or already stopped) this is a no-op, and
-   * resume() after a disconnect-stop is a no-op as well.
+   * A keepalive-port disconnect only means the side panel is gone. While the
+   * service worker lives, the paused state stays controllable by a reopened
+   * panel (a fresh panel reconnects a new port and its commands still reach
+   * the scraper), so a disconnect while paused must NOT stop the scraper or
+   * finalize the download. If the worker itself dies while the pause is
+   * held, the download parks instead (checkpoint phase `paused` + queue
+   * snapshot) — the parked path offers Resume/Stop.
+   *
+   * Kept as a logged no-op so the download-state disconnect plumbing (and
+   * its tests) stay wired; the method is intentionally side-effect free.
    */
   handleKeepaliveDisconnect() {
     if (this.isPaused && !this.isStopped) {
       console.log(
-        "[LinkedPageScraper] Keepalive port disconnected while paused — stopping scraper",
+        "[LinkedPageScraper] Keepalive port disconnected while paused — pause persists (parks on worker death), no auto-stop",
       );
-      this.stop();
-    }
-  }
-
-  /** Arm the bounded paused-state watchdog (D2.2). Shared by both queue
-   *  phases because pause() is the single arming point. */
-  private armPausedWatchdog() {
-    this.clearPausedWatchdog();
-    this.pausedWatchdog = setTimeout(() => {
-      this.pausedWatchdog = null;
-      if (this.isPaused && !this.isStopped) {
-        console.log(
-          "[LinkedPageScraper] Paused watchdog expired — stopping scraper",
-        );
-        this.stop();
-      }
-    }, PAUSED_WATCHDOG_MS);
-  }
-
-  private clearPausedWatchdog() {
-    if (this.pausedWatchdog !== null) {
-      clearTimeout(this.pausedWatchdog);
-      this.pausedWatchdog = null;
     }
   }
 
@@ -380,7 +460,11 @@ export class LinkedPageScraper {
 
   /**
    * Process all queued pages sequentially.
-   * Returns accumulated body text from all linked pages, with page-URL delimiters.
+   *
+   * (multipage-download-fixes D4 / task 3.2) Each page's body text is
+   * uploaded IMMEDIATELY after its scrape via
+   * `serverClient.uploadPageContent` (gated on extractText) — nothing is
+   * accumulated and nothing is returned: the method resolves with no value.
    *
    * `context` (task 4.1) carries the per-download image filename map that
    * replaces the former module-global map — concurrent downloads in other
@@ -391,18 +475,16 @@ export class LinkedPageScraper {
     storage: IStorageAdapter,
     sendMessage: (message: string | { key: string; options?: any }) => void,
     context?: DownloadContext,
-  ): Promise<string> {
+  ): Promise<void> {
     const totalInternal = this.internalQueue.length;
     const totalExternal = this.externalQueue.length;
     if (totalInternal === 0 && totalExternal === 0) {
-      return "";
+      return;
     }
 
     // Per-download shared map (main page + linked pages of THIS download)
     const sharedImageFilenameMap =
       context?.imageFilenameMap ?? new Map<string, string>();
-
-    let accumulatedText = "";
 
     try {
       const tab = await chrome.tabs.get(tabId);
@@ -419,11 +501,16 @@ export class LinkedPageScraper {
         break;
       }
 
-      // Check pause flag
+      // Check pause flag — (multipage-download-fixes D2 / tasks 4.1–4.4)
+      // TRUE pause: freeze the queue snapshot, release the tab, then wait
+      // INDEFINITELY for resume or stop. No watchdog exists any more.
       if (this.isPaused) {
         pushToPanelSafely(sendMessage, { key: "status.scraperPaused" });
-        await this.resumePromise;
+        await this.enterPausedWait(tabId, "internal");
         if (this.isStopped) break; // Check again after resume
+        // (D2 / task 4.2) Re-acquire a tab before continuing — the original
+        // may be gone after a long pause; never assume the old id is alive.
+        tabId = await this.reacquireTab(tabId);
       }
 
       const job = this.internalQueue[i];
@@ -481,9 +568,29 @@ export class LinkedPageScraper {
         job.status = "completed";
         this.successCount++;
 
-        // Accumulate linked page text with page-URL delimiters
+        // (multipage-download-fixes D4 / task 3.2) Stream this page's text
+        // NOW — immediately after its scrape — instead of accumulating it
+        // for an end-of-run append. A failure here is surfaced in the
+        // failure counts but never fails the page (its HTML chunks and
+        // delta map are already stored) and never stops the loop.
         if (this.extractText && scrapedData.text) {
-          accumulatedText += `\n--- ${scrapedData.finalUrl} ---\n${scrapedData.text}`;
+          try {
+            await serverClient.uploadPageContent(
+              sessionId,
+              scrapedData.finalUrl,
+              scrapedData.text,
+            );
+          } catch (textError) {
+            this.failCount++;
+            console.warn(
+              `[LinkedPageScraper] Text upload failed for ${job.url}:`,
+              textError instanceof Error ? textError.message : textError,
+            );
+            pushToPanelSafely(
+              sendMessage,
+              `Failed to upload page text: ${job.url}`,
+            );
+          }
         }
       } catch (error) {
         // If this is a 413 session-full error, stop the scraper loop
@@ -494,6 +601,16 @@ export class LinkedPageScraper {
           job.status = "failed";
           this.failCount++;
           this.isStopped = true;
+          // (multipage-download-fixes 5.8) The completion state must
+          // communicate partial capture — pages captured vs queue total —
+          // instead of an unqualified "Done".
+          pushToPanelSafely(sendMessage, {
+            key: "status.sessionFullPagesCaptured",
+            options: {
+              captured: this.successCount,
+              total: totalInternal + totalExternal,
+            },
+          });
           break;
         }
         job.status = "failed";
@@ -519,11 +636,13 @@ export class LinkedPageScraper {
           break;
         }
 
-        // Check pause flag
+        // Check pause flag — (multipage-download-fixes D2 / tasks 4.1–4.4)
+        // Same true-pause hold as the internal phase (shared mechanism).
         if (this.isPaused) {
           pushToPanelSafely(sendMessage, { key: "status.scraperPaused" });
-          await this.resumePromise;
+          await this.enterPausedWait(tabId, "external");
           if (this.isStopped) break;
+          tabId = await this.reacquireTab(tabId);
         }
 
         const job = this.externalQueue[i];
@@ -577,8 +696,26 @@ export class LinkedPageScraper {
           job.status = "completed";
           this.successCount++;
 
+          // (multipage-download-fixes D4 / task 3.2) External phase — same
+          // per-page text streaming as the internal phase above.
           if (this.extractText && scrapedData.text) {
-            accumulatedText += `\n--- ${scrapedData.finalUrl} ---\n${scrapedData.text}`;
+            try {
+              await serverClient.uploadPageContent(
+                sessionId,
+                scrapedData.finalUrl,
+                scrapedData.text,
+              );
+            } catch (textError) {
+              this.failCount++;
+              console.warn(
+                `[LinkedPageScraper] Text upload failed for ${job.url}:`,
+                textError instanceof Error ? textError.message : textError,
+              );
+              pushToPanelSafely(
+                sendMessage,
+                `Failed to upload page text: ${job.url}`,
+              );
+            }
           }
         } catch (error) {
           const isSessionFull =
@@ -587,6 +724,15 @@ export class LinkedPageScraper {
             job.status = "failed";
             this.failCount++;
             this.isStopped = true;
+            // (multipage-download-fixes 5.8) Same partial-capture note as
+            // the internal phase's 413 exit.
+            pushToPanelSafely(sendMessage, {
+              key: "status.sessionFullPagesCaptured",
+              options: {
+                captured: this.successCount,
+                total: totalInternal + totalExternal,
+              },
+            });
             break;
           }
           job.status = "failed";
@@ -606,13 +752,191 @@ export class LinkedPageScraper {
     // Restore original page
     await this.restoreOriginalPage(tabId);
 
+    // (D2 / task 4.3) Completion also clears the snapshot — a finished
+    // download must never leave a parkable snapshot behind. (No-op unless a
+    // pause wrote one; the session-scoped clear cannot touch other
+    // downloads' snapshots.)
+    if (this.options.serverSessionId) {
+      try {
+        await clearScraperSnapshot(this.options.serverSessionId);
+      } catch {
+        // Non-critical
+      }
+      this.prePauseCheckpointPhase = null;
+    }
+
     // Send completion message
     pushToPanelSafely(sendMessage, {
       key: "status.linkedPagesComplete",
       options: { succeeded: this.successCount, failed: this.failCount },
     });
+  }
 
-    return accumulatedText;
+  /**
+   * (multipage-download-fixes D2 / tasks 4.1–4.4) The pause hold itself —
+   * runs once per pause, after the current page completes:
+   *
+   * 1. Freeze the queue snapshot to `chrome.storage.session` (task 4.3) and
+   *    flip the checkpoint phase to `paused` (task 4.4). The snapshot is
+   *    frozen at THIS moment — pages completed while the pause is held don't
+   *    exist because scraping is paused.
+   * 2. Release the tab: restore the original page so no scraped page is
+   *    held hostage for the duration of the pause (task 4.2).
+   * 3. Await the resume promise — blocks indefinitely (no watchdog; task
+   *    4.1). stop() resolves the same promise so the loop can exit.
+   * 4. On lift (resume OR stop): clear the snapshot and restore the prior
+   *    checkpoint phase (task 4.4).
+   */
+  private async enterPausedWait(
+    tabId: number,
+    phase: "internal" | "external",
+  ): Promise<void> {
+    await this.persistPauseSnapshot(tabId, phase);
+    // (D2 / task 4.2) Tab release on pause — restoreOriginalPage only
+    // navigates when the tab is still on scraper-controlled URLs, so a
+    // user-navigated tab is left untouched.
+    await this.restoreOriginalPage(tabId);
+    await this.resumePromise;
+    await this.onPauseLifted();
+  }
+
+  /**
+   * (D2 / tasks 4.3 + 4.4) Persist the frozen pause snapshot and flip the
+   * checkpoint to the `paused` phase. Server-session scrapers only —
+   * snapshot failures are logged, never fatal to the pause.
+   */
+  private async persistPauseSnapshot(
+    tabId: number,
+    phase: "internal" | "external",
+  ): Promise<void> {
+    const sessionId = this.options.serverSessionId;
+    if (!sessionId) {
+      // Without a server session there is nothing to park/resume against.
+      return;
+    }
+    try {
+      const checkpoint = await readCheckpoint(sessionId);
+      this.prePauseCheckpointPhase = checkpoint?.phase ?? "scraping";
+
+      const toSnapshotJob = (j: LinkedPageJob): ScraperSnapshotJob => ({
+        url: j.url,
+        depth: j.depth,
+        parentUrl: j.parentUrl,
+      });
+      const remainingInternal = this.internalQueue
+        .filter((j) => j.status === "queued")
+        .map(toSnapshotJob);
+      const remainingExternal = this.externalQueue
+        .filter((j) => j.status === "queued")
+        .map(toSnapshotJob);
+      // Visited/processed = every job no longer queued (completed, failed,
+      // or mid-processing at write time). Resume-from-park skips these.
+      const visitedUrls = [...this.internalQueue, ...this.externalQueue]
+        .filter((j) => j.status !== "queued")
+        .map((j) => j.url);
+
+      const { internalQueue, externalQueue, truncated } =
+        truncateSnapshotQueues(remainingInternal, remainingExternal);
+
+      const snapshot: LinkedScraperSnapshot = {
+        version: SCRAPER_SNAPSHOT_VERSION,
+        serverSessionId: sessionId,
+        tabId,
+        tabUrl: this.originalTabUrl || undefined,
+        phase,
+        internalQueue,
+        externalQueue,
+        visitedUrls,
+        successCount: this.successCount,
+        failCount: this.failCount,
+        options: {
+          maxPages: this.options.maxPages,
+          delayBetweenPages: this.options.delayBetweenPages,
+          includeExternal: this.options.includeExternal,
+          pageTimeout: this.options.pageTimeout,
+          downloadImages: this.options.downloadImages,
+          downloadAssets: this.options.downloadAssets,
+          downloadDocuments: this.options.downloadDocuments,
+          extractText: this.extractText,
+        },
+        previousCheckpointPhase: this.prePauseCheckpointPhase,
+        ...(truncated ? { truncated: true } : {}),
+        timestamp: Date.now(),
+      };
+      await writeScraperSnapshot(snapshot);
+      // (D2 / task 4.4) Checkpoint phase `paused` while the pause is held —
+      // worker-wake detection routes paused checkpoints to the parked path.
+      await pauseCheckpoint(sessionId);
+      if (truncated) {
+        console.log(
+          "[LinkedPageScraper] Pause snapshot truncated (>5,000 queued URLs) — Stop from this park finalizes the partial",
+        );
+      }
+    } catch (err) {
+      // A snapshot failure must never break the pause itself.
+      console.warn(
+        "[LinkedPageScraper] Failed to persist pause snapshot:",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
+  /**
+   * (D2 / tasks 4.3 + 4.4) The pause was lifted (resume OR stop — the park
+   * is consumed either way): clear the frozen snapshot and restore the
+   * pre-pause checkpoint phase so upstream uploading/assembling transitions
+   * keep working.
+   */
+  private async onPauseLifted(): Promise<void> {
+    const sessionId = this.options.serverSessionId;
+    if (!sessionId) return;
+    try {
+      await clearScraperSnapshot(sessionId);
+      await restoreCheckpointPhase(sessionId);
+    } catch (err) {
+      console.warn(
+        "[LinkedPageScraper] Failed to clear pause state:",
+        err instanceof Error ? err.message : err,
+      );
+    }
+    this.prePauseCheckpointPhase = null;
+  }
+
+  /**
+   * (D2 / task 4.2) Re-acquire a scraping tab after a pause: reuse the
+   * original tab when it still exists, otherwise create a background tab.
+   * The scraper never assumes the old tabId is alive — callers reassign
+   * their navigation target from the returned id. Public so
+   * resumeFromParkedScrape can re-acquire on behalf of a respawned scraper
+   * (the tab may have been closed while the download was parked).
+   */
+  async reacquireTab(previousTabId: number): Promise<number> {
+    try {
+      const tab = await chrome.tabs.get(previousTabId);
+      if (tab && typeof tab.id === "number") {
+        return tab.id;
+      }
+    } catch {
+      // Original tab gone (closed while paused) — recreate below.
+    }
+    try {
+      const created = await chrome.tabs.create({
+        url: this.originalTabUrl || undefined,
+        active: false,
+      });
+      if (typeof created.id === "number") {
+        console.log(
+          `[LinkedPageScraper] Original tab gone after pause — recreated background tab ${created.id}`,
+        );
+        return created.id;
+      }
+    } catch (err) {
+      console.warn(
+        "[LinkedPageScraper] Failed to recreate a background tab after pause:",
+        err instanceof Error ? err.message : err,
+      );
+    }
+    return previousTabId;
   }
 
   /**
@@ -1022,8 +1346,14 @@ export class LinkedPageScraper {
 
     // Download new assets — each handler returns its filename map
     // (raw reference AND absolute URL → archive path; fix G).
+    // Per-category gates (multipage-download-fixes D1): mirror the main
+    // page's gates in download-core — images on downloadImages, css/js on
+    // downloadAssets, documents on downloadDocuments — so a text/markdown-
+    // only run fetches no assets at all while images-only and documents-
+    // only modes stay intact. The gates use the press-time snapshot passed
+    // via the constructor options (never re-read live mid-run).
     const cssMap =
-      newCss.length > 0
+      this.options.downloadAssets && newCss.length > 0
         ? await addCssFiles(
             newCss,
             storage,
@@ -1035,7 +1365,7 @@ export class LinkedPageScraper {
         : undefined;
 
     const jsMap =
-      newJs.length > 0
+      this.options.downloadAssets && newJs.length > 0
         ? await addJsFiles(
             newJs,
             storage,
@@ -1047,7 +1377,7 @@ export class LinkedPageScraper {
         : undefined;
 
     const downloadedMap =
-      newImages.length > 0
+      this.options.downloadImages && newImages.length > 0
         ? await addImageFiles(
             newImages,
             storage,
@@ -1059,7 +1389,7 @@ export class LinkedPageScraper {
         : undefined;
 
     const docsMap =
-      newDocuments.length > 0
+      this.options.downloadDocuments && newDocuments.length > 0
         ? await addDocumentFiles(
             newDocuments,
             storage,

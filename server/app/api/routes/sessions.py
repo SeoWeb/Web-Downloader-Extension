@@ -1,10 +1,12 @@
 """Session routes: CRUD, status, scrape-complete, content upload, and finalize."""
 
 import asyncio
+import hashlib
 import logging
 import os
 import re
 import shutil
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import aiofiles
@@ -205,6 +207,23 @@ class ContentUploadRequest(BaseModel):
     """Request body for text content upload."""
 
     text: str = Field(..., description="Text content for content.txt inclusion in ZIP")
+
+
+class PageContentUploadRequest(BaseModel):
+    """Request body for per-page text content upload (multipage-download-fixes 2.1).
+
+    ``page_url`` is the full URL of the page the text was extracted from;
+    ``null`` / absent means the main page. The server derives the storage
+    key from it exactly like the HTML chunk route derives ``page_url_hash``
+    (sha256[:16], or the literal ``"main"``).
+    """
+
+    page_url: str | None = Field(
+        None,
+        description="Full URL of the page the text belongs to "
+        "(null/absent = main page)",
+    )
+    text: str = Field(..., description="Extracted text content for the page")
 
 
 class FinalizeResponse(BaseModel):
@@ -928,6 +947,175 @@ async def upload_content(
     return {
         "message": "Content text stored",
         "size": len(body.text),
+        "api_version": "v1",
+    }
+
+
+@router.post(
+    "/{session_id}/content/pages",
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload per-page text content",
+)
+async def upload_page_content(
+    session_id: str,
+    body: PageContentUploadRequest,
+    client: Client = Depends(get_current_client),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> dict:
+    """Store one page's extracted text for per-page assembly (2.1, design D4).
+
+    ``page_url=null`` stores the main page's text under the literal key
+    ``"main"``; a URL stores under ``sha256(page_url)[:16]`` — the same hash
+    space the HTML chunk route uses for ``page_url_hash`` (html.py), so the
+    assembler can join texts to pages without a lookup table.
+
+    Storage: ``<session_dir>/content_pages/<page_url_hash>.txt`` with
+    REPLACE-ON-REWRITE semantics (atomic ``os.replace``, mirroring the HTML
+    chunk replace pattern) — a re-POST of the same page (resume/retry)
+    idempotently replaces the file instead of appending. The legacy
+    ``POST /{session_id}/content`` append endpoint is untouched.
+    """
+    session = await _get_session_or_404(session_id, db)
+    require_session_owner(client, session.client_id)
+
+    if session.status not in (SessionStatus.SCRAPING, SessionStatus.UPLOADING):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "invalid_status",
+                "message": f"Cannot upload page content when session is in '{session.status.value}' status",
+                "api_version": "v1",
+            },
+        )
+
+    # Per-request cap: inherited from the content-text append route
+    # (max_content_text_mb, config.py). Rejected BEFORE any I/O so a
+    # rejected upload leaves any previously stored page text untouched.
+    text_size = len(body.text.encode("utf-8"))
+    max_content_bytes = settings.max_content_text_mb * 1024 * 1024
+    if text_size > max_content_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "error": "content_too_large",
+                "message": (
+                    f"Page text exceeds the "
+                    f"{settings.max_content_text_mb}MB per-request limit"
+                ),
+                "upload_size": text_size,
+                "max_size": max_content_bytes,
+                "api_version": "v1",
+            },
+        )
+
+    # Storage key — same derivation as the HTML chunk route (html.py:146-150):
+    # sha256(page_url)[:16] when a page URL was captured, literal "main" for
+    # the main page (empty string is treated like null, same as ``if
+    # body.pageUrl`` there).
+    if body.page_url:
+        page_url_hash = hashlib.sha256(body.page_url.encode("utf-8")).hexdigest()[:16]
+    else:
+        page_url_hash = "main"
+
+    # Session quota — the same aggregate the content append route checks,
+    # extended with the bytes already stored under content_pages/ (they are
+    # session size just like content.txt). A replace is charged its NET
+    # GROWTH (new size − replaced size), mirroring the HTML chunk replace
+    # semantics: without it, a resume re-POST near the quota would be
+    # falsely rejected even though total stored bytes stay flat. The check
+    # runs before the write, so a rejection leaves stored texts untouched.
+    resource_bytes = (await db.execute(
+        select(func.coalesce(func.sum(Resource.size), 0)).where(
+            Resource.session_id == session_id
+        )
+    )).scalar() or 0
+    chunk_bytes = (await db.execute(
+        select(func.coalesce(func.sum(HtmlChunk.size), 0)).where(
+            HtmlChunk.session_id == session_id
+        )
+    )).scalar() or 0
+    session_dir = os.path.join(settings.storage_root, session.id)
+    content_path = os.path.join(session_dir, "content.txt")
+    existing_content_bytes = (
+        os.path.getsize(content_path) if os.path.exists(content_path) else 0
+    )
+    content_pages_dir = os.path.join(session_dir, "content_pages")
+    existing_pages_bytes = 0
+    if os.path.isdir(content_pages_dir):
+        for entry in os.listdir(content_pages_dir):
+            entry_path = os.path.join(content_pages_dir, entry)
+            if os.path.isfile(entry_path):
+                existing_pages_bytes += os.path.getsize(entry_path)
+    storage_path = os.path.join(content_pages_dir, f"{page_url_hash}.txt")
+    replaced_bytes = (
+        os.path.getsize(storage_path) if os.path.exists(storage_path) else 0
+    )
+    max_session_bytes = settings.max_session_size_mb * 1024 * 1024
+    current_total = (
+        int(resource_bytes) + int(chunk_bytes)
+        + existing_content_bytes + existing_pages_bytes
+    )
+    charged_size = text_size - replaced_bytes
+    if current_total + charged_size > max_session_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "error": "session_size_exceeded",
+                "message": f"Upload would exceed session size limit ({settings.max_session_size_mb}MB)",
+                "current_size": int(current_total),
+                "upload_size": charged_size,
+                "max_size": max_session_bytes,
+                "api_version": "v1",
+            },
+        )
+
+    # Replace-on-rewrite, atomic (same pattern as the HTML chunk storage):
+    # write a temp file then os.replace it into place, so readers (the
+    # assembler) never observe a missing or partially written page text.
+    # aiofiles keeps the write off the event loop (D10 I/O hygiene).
+    os.makedirs(content_pages_dir, exist_ok=True)
+    temp_path = f"{storage_path}.tmp-{uuid.uuid4().hex[:12]}"
+    try:
+        async with aiofiles.open(temp_path, "w", encoding="utf-8") as f:
+            await f.write(body.text)
+        await asyncio.to_thread(os.replace, temp_path, storage_path)
+    except OSError:
+        # Best-effort temp cleanup; the final path either still holds the
+        # previously stored text or never existed.
+        try:
+            os.remove(temp_path)
+        except OSError:
+            pass
+        raise
+
+    # Touch the session modification timestamp. This endpoint's only other
+    # state change is the file write above, which completes before this
+    # statement; a Core UPDATE keeps it off any ORM attribute locking.
+    await db.execute(
+        sa_update(Session)
+        .where(Session.id == session_id)
+        .values(updated_at=datetime.now(timezone.utc))
+    )
+
+    # D2 commit-before-respond: the timestamp UPDATE is a real database
+    # mutation, so it must commit before the success response is
+    # constructed (get_db()'s teardown commit runs after the response has
+    # been sent) — a failed commit here must yield a 5xx, not a false 201.
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    logger.info(
+        "Page content uploaded for session: id=%s page_hash=%s size=%d replaced=%s",
+        session_id, page_url_hash, text_size, bool(replaced_bytes),
+    )
+    return {
+        "message": "Page text stored",
+        "page_url_hash": page_url_hash,
+        "replaced": bool(replaced_bytes),
+        "size": text_size,
         "api_version": "v1",
     }
 

@@ -168,7 +168,7 @@ class TestShareRouterOwnership(unittest.TestCase):
         )
 
         resp = _run(share_routes.validate_share_link("tok"))
-        self.assertEqual(resp, {"page_id": "p1", "content_formats": []})
+        self.assertEqual(resp, {"page_id": "p1", "content_formats": [], "pages": []})
         self.assertNotIn("url", resp)
         self.assertNotIn("signed_url", resp)
         self.archive_stub.GetPageContent.assert_not_called()
@@ -213,6 +213,9 @@ class TestShareRouterOwnership(unittest.TestCase):
         self.assertEqual(resp, {
             "page_id": "p1",
             "content_formats": ["html", "markdown", "text"],
+            # multipage-download-fixes 8.1 (share parity): manifest rides
+            # along with the formats from the same owner-scoped page-read.
+            "pages": [],
         })
         sent = self.archive_stub.GetPage.call_args.args[0]
         self.assertEqual(sent.page_id, "p1")
@@ -233,7 +236,9 @@ class TestShareRouterOwnership(unittest.TestCase):
         ):
             self.archive_stub.GetPage.side_effect = failure
             resp = _run(share_routes.validate_share_link("tok"))
-            self.assertEqual(resp, {"page_id": "p1", "content_formats": []}, failure)
+            self.assertEqual(
+                resp, {"page_id": "p1", "content_formats": [], "pages": []}, failure,
+            )
 
     # -- Public file route uses the resolved owner (2.3) --
 
@@ -370,6 +375,9 @@ class TestGetPageRoute(unittest.TestCase):
             # text-native-downloads 2.1/D1: page detail carries the stored
             # formats (empty for a stub/legacy-shaped response).
             "content_formats": [],
+            # multipage-download-fixes 8.1/D7: per-page document manifest
+            # (empty for a stub/legacy-shaped response).
+            "pages": [],
         })
         # Caller identity, never empty; explicit deadline (D11).
         sent = self.stub.GetPage.call_args.args[0]

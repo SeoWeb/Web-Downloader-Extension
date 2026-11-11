@@ -148,6 +148,20 @@ async def get_page(request: Request, page_id: str):
         "archived_at": resp.archived_at,
         # Text-native downloads (D1): stored formats for the viewer switcher.
         "content_formats": list(resp.content_formats),
+        # Multipage downloads (D7): the page's per-page document manifest,
+        # passed through from GetPage untouched (no gateway-side synthesis) —
+        # each entry carries path/title/url/content_format. Tolerant by
+        # contract: empty for legacy pages, whose GetPage simply has no
+        # manifest to report.
+        "pages": [
+            {
+                "path": entry.path,
+                "title": entry.title,
+                "url": entry.url,
+                "content_format": entry.content_format,
+            }
+            for entry in resp.pages
+        ],
     }
 
 

@@ -13,8 +13,10 @@ Additional coverage:
 """
 
 import asyncio
+import hashlib
 import os
 import tempfile
+import types
 import zipfile
 
 import pytest
@@ -26,6 +28,7 @@ from app.services.zip_assembler import (
     generate_safe_filename,
     markdown_zip_path_for,
     sanitize_zip_path,
+    text_zip_path_for,
 )
 
 
@@ -2912,3 +2915,524 @@ class TestGatherSiblingIsolationLinkedPages:
 
         # No sibling touched the shared session after failure handling began.
         assert _d8_shared_touches_after_failure(events) == []
+
+
+# ---------------------------------------------------------------------------
+# multipage-download-fixes — per-page text storage + assembly (2.2–2.4, D5/D6)
+# ---------------------------------------------------------------------------
+
+
+def _page_url_hash(url: str) -> str:
+    """Same page_url_hash derivation as the HTML chunk route (html.py:146-150)."""
+    return hashlib.sha256(url.encode("utf-8")).hexdigest()[:16]
+
+
+def _write_content_page(storage_root, session_id, key, text):
+    """Store one per-page text exactly where POST /content/pages puts it."""
+    pages_dir = os.path.join(storage_root, session_id, "content_pages")
+    os.makedirs(pages_dir, exist_ok=True)
+    with open(os.path.join(pages_dir, f"{key}.txt"), "w", encoding="utf-8") as f:
+        f.write(text)
+
+
+class TestTextZipPathFor:
+    """2.3 — pure extension swap, sibling of markdown_zip_path_for."""
+
+    def test_maps_html_to_txt(self):
+        assert text_zip_path_for("pages/about.html") == "pages/about.txt"
+        assert text_zip_path_for("pages/about-c3d4.html") == "pages/about-c3d4.txt"
+
+    def test_non_html_returns_none(self):
+        assert text_zip_path_for("pages/noext") is None
+        assert text_zip_path_for("content.txt") is None
+
+    def test_slug_base_shared_with_markdown_sibling(self):
+        """Naming invariant D5: html/md/txt share the slug base."""
+        for html_path in ("pages/about.html", "pages/about-c3d4.html"):
+            md = markdown_zip_path_for(html_path)
+            txt = text_zip_path_for(html_path)
+            assert md is not None and txt is not None
+            assert md[: -len(".md")] == txt[: -len(".txt")] == html_path[: -len(".html")]
+
+
+class TestReadContentPages:
+    """2.2 — assembler read access keyed by the html route's hash space."""
+
+    def test_absent_dir_yields_empty_map(self, assembler):
+        """Legacy sessions (no content_pages) assemble unchanged — empty map."""
+        assert assembler._read_content_pages("legacy-sess") == {}
+
+    def test_reads_texts_keyed_by_page_url_hash(self, assembler, storage_root):
+        session_id = "cp-read"
+        os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+        main_key = _page_url_hash("https://example.com")  # via URL is also legal
+        _write_content_page(storage_root, session_id, "main", "Main text")
+        _write_content_page(storage_root, session_id, main_key, "About text")
+        texts = assembler._read_content_pages(session_id)
+        assert texts == {"main": "Main text", main_key: "About text"}
+
+    def test_skips_non_txt_entries(self, assembler, storage_root):
+        session_id = "cp-foreign"
+        os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+        _write_content_page(storage_root, session_id, "main", "Main text")
+        stray = os.path.join(storage_root, session_id, "content_pages", "notes.json")
+        with open(stray, "w", encoding="utf-8") as f:
+            f.write("{}")
+        assert assembler._read_content_pages(session_id) == {"main": "Main text"}
+
+
+# Full-pipeline harness (mirrors test_text_native_outputs.py's
+# _run_assemble_session): the REAL assemble_session runs with only the heavy
+# external surfaces stubbed (merger, HTML conversion, resources). Markdown
+# conversion, the collision loop, content_pages loading, and every branch
+# decision run for real.
+
+
+class _PipelineResult:
+    def __init__(self, value):
+        self._value = value
+
+    def scalar_one_or_none(self):
+        return self._value
+
+
+class _PipelineDB:
+    """Minimal async DB double: _get_session resolves to ``session``."""
+
+    def __init__(self, session):
+        self._session = session
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def execute(self, _stmt):
+        return _PipelineResult(self._session)
+
+    async def flush(self):
+        pass
+
+
+def _make_pipeline_session(session_id, url="https://example.com/page", options=None):
+    return types.SimpleNamespace(
+        id=session_id,
+        url=url,
+        status="assembling",
+        assembly_phase="assembling_zip",
+        assembly_progress_pct=0,
+        options=options if options is not None else {},
+        pagepocket_user_id=None,
+        pagepocket_plan="free",
+        cloud_status=None,
+        cloud_page_id=None,
+        cloud_error=None,
+        zip_path=None,
+        error_message=None,
+        filename_map={},
+    )
+
+
+def _run_text_only_pipeline(assembler, session, main_html, *, linked=None,
+                            spy=None, resources=None, fail_images_only=False):
+    """Run the REAL assemble_session for a text-only session.
+
+    ``linked`` maps page_hash → (page_html, page_url | None), matching the
+    merge results the HtmlMergerService produces (page_url_hash keys).
+    ``spy`` optionally wraps _assemble_text_only (signature capture).
+    ``resources`` overrides the (default empty) resource list;
+    ``fail_images_only`` swaps in an images-only builder that raises, so a
+    test can prove the text-only branch — not the gallery branch — ran.
+    """
+    from app.services import zip_assembler as za_module
+    from app.services.html_converter import html_converter_service
+    from app.services.html_merger import MergeResult
+
+    merge_results = {"main": MergeResult(success=True, html=main_html)}
+    for page_hash, (page_html, page_url) in (linked or {}).items():
+        merge_results[page_hash] = MergeResult(
+            success=True, html=page_html, page_url=page_url,
+        )
+
+    async def _no_resources(db, sid):
+        return []
+
+    async def _given_resources(db, sid):
+        return resources
+
+    async def _no_prefix(db, sid, prefix):
+        return []
+
+    async def _no_progress(db, sess, phase, pct, **kwargs):
+        pass
+
+    async def _no_assets(sid, db, archive_paths=None):
+        return []
+
+    async def _no_images_only(*a, **k):
+        raise AssertionError("images-only branch must not run")
+
+    def _identity(html, *args, **kwargs):
+        return html
+
+    def _factory():
+        return _PipelineDB(session)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(za_module.html_merger_service, "merge_session",
+                   lambda sid: merge_results)
+        mp.setattr(
+            assembler, "_get_all_resources",
+            _given_resources if resources else _no_resources,
+        )
+        mp.setattr(assembler, "_get_resources_by_prefix", _no_prefix)
+        mp.setattr(assembler, "_update_progress", _no_progress)
+        mp.setattr(assembler, "_build_cloud_assets", _no_assets)
+        mp.setattr(html_converter_service, "convert_html", _identity)
+        mp.setattr(html_converter_service, "convert_linked_page_html", _identity)
+        mp.setattr(html_converter_service, "inline_css_into_html", _identity)
+        if fail_images_only:
+            mp.setattr(assembler, "_assemble_images_only_zip", _no_images_only)
+        if spy is not None:
+            mp.setattr(assembler, "_assemble_text_only", spy)
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(
+                assembler.assemble_session(session.id, _factory)
+            )
+        finally:
+            loop.close()
+
+
+TEXT_ONLY_OPTIONS = {"downloadHtml": False, "downloadContentAsText": True}
+
+
+class TestMultipageTextOnlyAssembly:
+    """2.4 — text-only multi-page runs zip index.txt + pages/<slug>.txt."""
+
+    MAIN_HTML = "<!DOCTYPE html><html><head><title>Test Page</title></head></html>"
+
+    def test_multi_page_text_zip_layout(self, assembler, storage_root):
+        """Text-only + linked texts → zip: index.txt + pages/<slug>.txt (D6)."""
+        session_id = "mp-txt-zip"
+        os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+        about_hash = _page_url_hash("https://example.com/about")
+        team_hash = _page_url_hash("https://example.com/team")
+        _write_content_page(storage_root, session_id, "main", "Main page text")
+        _write_content_page(storage_root, session_id, about_hash, "About page text")
+        _write_content_page(storage_root, session_id, team_hash, "Team page text")
+        session = _make_pipeline_session(session_id, options=dict(TEXT_ONLY_OPTIONS))
+
+        _run_text_only_pipeline(
+            assembler, session, self.MAIN_HTML,
+            linked={
+                about_hash: ("<html>About</html>", "https://example.com/about"),
+                team_hash: ("<html>Team</html>", "https://example.com/team"),
+            },
+        )
+
+        assert session.status == "ready"
+        out_path = session.zip_path
+        assert zipfile.is_zipfile(out_path)
+        with zipfile.ZipFile(out_path) as zf:
+            names = set(zf.namelist())
+            assert names == {"index.txt", "pages/about.txt", "pages/team.txt"}
+            assert zf.read("index.txt").decode("utf-8") == "Main page text"
+            assert zf.read("pages/about.txt").decode("utf-8") == "About page text"
+            assert zf.read("pages/team.txt").decode("utf-8") == "Team page text"
+        # Multi-file → zip: no raw-delivery metadata recorded.
+        assert "outputFilename" not in session.options
+
+    def test_multi_page_text_zip_with_markdown_siblings(
+        self, assembler, storage_root,
+    ):
+        """Markdown also on → pages/<slug>.md siblings ride along."""
+        session_id = "mp-txt-md"
+        os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+        about_hash = _page_url_hash("https://example.com/about")
+        _write_content_page(storage_root, session_id, "main", "Main page text")
+        _write_content_page(storage_root, session_id, about_hash, "About page text")
+        session = _make_pipeline_session(session_id, options={
+            "downloadHtml": False,
+            "downloadContentAsText": True,
+            "downloadContentAsMarkdown": True,
+        })
+
+        _run_text_only_pipeline(
+            assembler, session, self.MAIN_HTML,
+            linked={
+                about_hash: (
+                    "<html><head><title>About</title></head>"
+                    "<body><p>About body</p></body></html>",
+                    "https://example.com/about",
+                ),
+            },
+        )
+
+        assert session.status == "ready"
+        with zipfile.ZipFile(session.zip_path) as zf:
+            names = set(zf.namelist())
+            # .txt and .md share the slug base (naming invariant D5).
+            assert "pages/about.txt" in names
+            assert "pages/about.md" in names
+            assert "index.txt" in names
+            assert "content.md" in names
+            # No HTML anywhere in a text-only artifact.
+            assert not any(n.endswith(".html") for n in names)
+
+    def test_slug_collision_deterministic_txt_names(
+        self, assembler, storage_root,
+    ):
+        """Colliding slugs → about.txt / about-<hash4>.txt, stable across
+        assemblies (spec: collision suffix is deterministic)."""
+        colliding_urls = (
+            "https://example.com/team-a/about",
+            "https://example.com/team-b/about",
+        )
+        zip_names_per_run = []
+        for session_id in ("mp-collision-1", "mp-collision-2"):
+            os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+            h1 = _page_url_hash(colliding_urls[0])
+            h2 = _page_url_hash(colliding_urls[1])
+            assert h1 != h2
+            _write_content_page(storage_root, session_id, "main", "Main text")
+            _write_content_page(storage_root, session_id, h1, "First about text")
+            _write_content_page(storage_root, session_id, h2, "Second about text")
+            session = _make_pipeline_session(
+                session_id, options=dict(TEXT_ONLY_OPTIONS),
+            )
+            _run_text_only_pipeline(
+                assembler, session, self.MAIN_HTML,
+                linked={
+                    h1: ("<html>A</html>", colliding_urls[0]),
+                    h2: ("<html>B</html>", colliding_urls[1]),
+                },
+            )
+            assert session.status == "ready"
+            with zipfile.ZipFile(session.zip_path) as zf:
+                zip_names_per_run.append(sorted(zf.namelist()))
+
+        first, second = zip_names_per_run
+        # First page keeps the clean slug; the colliding twin carries the
+        # deterministic 4-hex suffix of ITS page hash — same rule as .html.
+        # (Sorted: "-" < ".", so the suffixed name sorts before about.txt.)
+        assert first == ["index.txt", f"pages/about-{h2[:4]}.txt", "pages/about.txt"]
+        # Deterministic: identical names across both assemblies.
+        assert first == second
+
+    def test_no_url_page_falls_back_to_hash_name(self, assembler, storage_root):
+        """A stored linked text with no captured URL → pages/<hash>.txt."""
+        session_id = "mp-nourl"
+        os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+        page_hash = "abc123def4567890"  # merge result hash, no page_url
+        _write_content_page(storage_root, session_id, "main", "Main page text")
+        _write_content_page(storage_root, session_id, page_hash, "Orphan page text")
+        session = _make_pipeline_session(session_id, options=dict(TEXT_ONLY_OPTIONS))
+
+        _run_text_only_pipeline(
+            assembler, session, self.MAIN_HTML,
+            linked={page_hash: ("<html>?</html>", None)},
+        )
+
+        assert session.status == "ready"
+        with zipfile.ZipFile(session.zip_path) as zf:
+            assert set(zf.namelist()) == {
+                "index.txt", f"pages/{page_hash}.txt",
+            }
+
+    def test_single_page_text_raw_content_txt_regression(
+        self, assembler, storage_root,
+    ):
+        """Single-page text run (legacy content.txt, no content_pages) →
+        raw content.txt delivered, shape unchanged (regression)."""
+        session_id = "mp-single-legacy"
+        os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+        with open(
+            os.path.join(storage_root, session_id, "content.txt"), "w",
+            encoding="utf-8",
+        ) as f:
+            f.write("Extracted page text.")
+        session = _make_pipeline_session(session_id, options=dict(TEXT_ONLY_OPTIONS))
+
+        _run_text_only_pipeline(assembler, session, self.MAIN_HTML)
+
+        assert session.status == "ready"
+        out_path = session.zip_path
+        assert os.path.basename(out_path) == "content.txt"
+        assert not zipfile.is_zipfile(out_path)
+        with open(out_path, encoding="utf-8") as f:
+            assert f.read() == "Extracted page text."
+        assert session.options["outputFilename"] == "content.txt"
+        assert session.options["outputContentType"] == "text/plain; charset=utf-8"
+
+    def test_main_text_via_new_endpoint_single_page_still_raw_content_txt(
+        self, assembler, storage_root,
+    ):
+        """Main text stored under content_pages/main.txt (new endpoint, no
+        linked pages) → raw content.txt delivery, exactly like legacy."""
+        session_id = "mp-single-new"
+        os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+        _write_content_page(storage_root, session_id, "main", "Main page text")
+        session = _make_pipeline_session(session_id, options=dict(TEXT_ONLY_OPTIONS))
+
+        _run_text_only_pipeline(assembler, session, self.MAIN_HTML)
+
+        assert session.status == "ready"
+        out_path = session.zip_path
+        assert os.path.basename(out_path) == "content.txt"
+        assert not zipfile.is_zipfile(out_path)
+        with open(out_path, encoding="utf-8") as f:
+            assert f.read() == "Main page text"
+
+    def test_legacy_session_without_content_pages_unchanged(
+        self, assembler, storage_root,
+    ):
+        """Legacy multi-format session (no content_pages) → identical names
+        to the pre-change behavior: content.md + content.txt + pages/*.md,
+        no index.txt anywhere."""
+        session_id = "mp-legacy"
+        os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+        with open(
+            os.path.join(storage_root, session_id, "content.txt"), "w",
+            encoding="utf-8",
+        ) as f:
+            f.write("Uploaded text.")
+        session = _make_pipeline_session(session_id, options={
+            "downloadHtml": False,
+            "downloadContentAsText": True,
+            "downloadContentAsMarkdown": True,
+        })
+
+        _run_text_only_pipeline(
+            assembler, session, self.MAIN_HTML,
+            linked={
+                "h1page": (
+                    "<html><head><title>Linked</title></head>"
+                    "<body><p>Linked body</p></body></html>",
+                    "https://example.com/linked",
+                ),
+            },
+        )
+
+        assert session.status == "ready"
+        with zipfile.ZipFile(session.zip_path) as zf:
+            names = set(zf.namelist())
+            assert names == {
+                "content.md", "content.txt", "pages/linked.md",
+            }
+            assert "index.txt" not in names
+            assert not any(n.endswith(".txt") and n.startswith("pages/")
+                           for n in names)
+
+    def test_page_texts_route_to_text_only_not_images_only(
+        self, assembler, storage_root,
+    ):
+        """A session whose only documents are per-page texts must reach
+        text-only assembly with them — never the images-only gallery —
+        even when image resources were captured."""
+        session_id = "mp-pages-only"
+        os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+        h1 = _page_url_hash("https://example.com/about")
+        _write_content_page(storage_root, session_id, h1, "About page text")
+        session = _make_pipeline_session(session_id, options=dict(TEXT_ONLY_OPTIONS))
+
+        image_resource = types.SimpleNamespace(
+            id="r-img",
+            original_url="https://example.com/a.jpg",
+            local_path="images/example.com/a.jpg",
+            storage_path=os.path.join(
+                storage_root, session_id, "resources", "img.jpg",
+            ),
+            content_type="image/jpeg",
+            size=32,
+        )
+        os.makedirs(
+            os.path.dirname(image_resource.storage_path), exist_ok=True,
+        )
+        with open(image_resource.storage_path, "wb") as f:
+            f.write(b"\xff\xd8\xff\xe0" + b"\x00" * 16)
+
+        captured: dict[str, object] = {}
+        original_text_only = assembler._assemble_text_only
+
+        async def _spy(*args, **kwargs):
+            captured["kwargs"] = kwargs
+            return await original_text_only(*args, **kwargs)
+
+        _run_text_only_pipeline(
+            assembler, session, self.MAIN_HTML,
+            linked={h1: ("<html>About</html>", "https://example.com/about")},
+            spy=_spy,
+            resources=[image_resource],
+            fail_images_only=True,
+        )
+
+        assert session.status == "ready"
+        assert captured["kwargs"]["page_text_list"] == {h1: "About page text"}
+        # The lone page text is the only document → raw flattened delivery.
+        assert os.path.basename(session.zip_path) == "about.txt"
+
+
+class TestMultipageTextOnlyDirect:
+    """Direct _assemble_text_only coverage of the file-matrix shapes."""
+
+    def test_md_txt_linked_matrix_shares_slug_base(self, assembler, storage_root):
+        """md + txt for one linked page → same slug base (spec scenario)."""
+        session_id = "mp-matrix"
+        os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+        session = _make_pipeline_session(session_id, options={
+            "downloadHtml": False,
+            "downloadContentAsText": True,
+            "downloadContentAsMarkdown": True,
+        })
+
+        loop = asyncio.new_event_loop()
+        try:
+            out_path = loop.run_until_complete(assembler._assemble_text_only(
+                session_id, _PipelineDB(session), session,
+                content_md="# Main",
+                content_text="Main text.",
+                page_md_list={"h1": "# Linked"},
+                page_hash_to_filename={"h1": "linked.html"},
+                page_text_list={"h1": "Linked text."},
+            ))
+        finally:
+            loop.close()
+
+        with zipfile.ZipFile(out_path) as zf:
+            names = set(zf.namelist())
+            assert names == {
+                "content.md", "index.txt", "pages/linked.md", "pages/linked.txt",
+            }
+            assert zf.read("index.txt").decode("utf-8") == "Main text."
+            assert zf.read("pages/linked.txt").decode("utf-8") == "Linked text."
+
+    def test_collision_resolved_txt_follows_html_twin(self, assembler, storage_root):
+        """pages/about-c3d4.html twin → pages/about-c3d4.txt (same base)."""
+        session_id = "mp-collision-twin"
+        os.makedirs(os.path.join(storage_root, session_id), exist_ok=True)
+        session = _make_pipeline_session(
+            session_id, options=dict(TEXT_ONLY_OPTIONS),
+        )
+
+        loop = asyncio.new_event_loop()
+        try:
+            out_path = loop.run_until_complete(assembler._assemble_text_only(
+                session_id, _PipelineDB(session), session,
+                content_md=None,
+                content_text="Main text.",
+                page_md_list={},
+                page_hash_to_filename={
+                    "h1": "about.html",
+                    "h2": "about-c3d4.html",
+                },
+                page_text_list={"h1": "First.", "h2": "Second."},
+            ))
+        finally:
+            loop.close()
+
+        with zipfile.ZipFile(out_path) as zf:
+            assert set(zf.namelist()) == {
+                "index.txt", "pages/about.txt", "pages/about-c3d4.txt",
+            }

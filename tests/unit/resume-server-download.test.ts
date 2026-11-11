@@ -51,6 +51,7 @@ vi.mock("../../src/background/server-client", () => ({
     scrapeComplete: vi.fn().mockResolvedValue(undefined),
     finalizeSession: vi.fn().mockResolvedValue(undefined),
     uploadResource: vi.fn().mockResolvedValue(undefined),
+    uploadPageContent: vi.fn(async () => ({ api_version: "v1" })),
   },
   // pagepocket-client (loaded transitively via download-core → cloud-binding)
   // imports this at module load
@@ -119,6 +120,10 @@ vi.mock("../../src/background/download-checkpoint", () => ({
   updateCheckpointResourceUrls: vi.fn(),
   clearCheckpoint: vi.fn(),
   readCheckpoint: vi.fn().mockResolvedValue(null),
+  // (multipage-download-fixes D2 / task 4.4) Paused-phase helpers the
+  // linked-page scraper calls while a pause is held / lifted.
+  pauseCheckpoint: vi.fn(async () => {}),
+  restoreCheckpointPhase: vi.fn(async () => {}),
 }));
 
 vi.mock("../../src/background/scraper-state", () => ({

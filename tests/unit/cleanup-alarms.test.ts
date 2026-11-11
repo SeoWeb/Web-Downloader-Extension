@@ -65,6 +65,10 @@ vi.mock("../../src/background/download-checkpoint", () => ({
   readCheckpoint: vi.fn().mockResolvedValue(null),
   readAllCheckpoints: vi.fn().mockResolvedValue([]),
   clearCheckpoint: vi.fn(),
+  // (multipage-download-fixes D2 / task 4.4) Paused-phase helpers the
+  // linked-page scraper calls while a pause is held / lifted.
+  pauseCheckpoint: vi.fn(async () => {}),
+  restoreCheckpointPhase: vi.fn(async () => {}),
 }));
 
 vi.mock("../../src/background/download-state", () => ({

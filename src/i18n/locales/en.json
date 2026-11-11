@@ -208,9 +208,17 @@
       "downloadingWebsiteContent": "Downloading website content ...",
       "scrapingLinkedPages": "Scraping linked pages...",
       "linkedPageProgress": "Scraping page {{current}} of {{total}}",
+      "pageCounter": "Page {{current}} of {{total}}",
+      "linkedPagePhase": {
+        "internal": "Internal pages",
+        "external": "External pages"
+      },
       "linkedPagesComplete": "Linked pages scraping completed: {{succeeded}} succeeded, {{failed}} failed",
       "linkedPagesFailed": "{{count}} pages failed to scrape",
       "scraperPaused": "Scraping paused",
+      "pausedTitle": "Download paused",
+      "pausedMessage": "The download is paused. Resume to continue scraping, or stop to keep what was captured.",
+      "pausedResumeFailed": "Couldn't resume the paused download — you can stop to deliver the partial archive, or start a new download.",
       "uploadProgress": "Uploading resources: {{completed}}/{{total}}",
       "uploadingResources": "Uploading resources to server...",
       "sendingScrapeComplete": "Finalizing scrape...",
@@ -224,6 +232,7 @@
       "assemblyPhaseZipping": "Creating ZIP",
       "assemblyPhaseInlining": "Inlining resources",
       "assemblyPhaseMerging_html": "Merging HTML",
+      "assemblyPhaseMerging_html_text": "Preparing text conversion (merging captured HTML)",
       "assemblyPhaseConverting_urls": "Converting URLs",
       "assemblyPhaseConverting_css": "Converting CSS",
       "assemblyPhaseInlining_css": "Inlining CSS",
@@ -268,6 +277,7 @@
       "partialDownload": "Partial download",
       "partialDownloadNote": "The archive contains what was captured before the download was stopped.",
       "completedWithFailedUploads": "Completed with {{count}} failed resource upload(s) — some files may be missing from the archive.",
+      "sessionFullPagesCaptured": "Session size limit reached — {{captured}} of {{total}} pages were captured.",
       "stoppedWithArchiveTitle": "Download stopped — partial archive available",
       "stoppedWithArchiveSubtitle": "The server saved what was captured before the stop. You can download the partial archive.",
       "archiveWarningHeading": "Archive warning"

@@ -12,6 +12,8 @@ import {
   Download,
   Loader2,
   Clock,
+  PauseCircle,
+  Play,
 } from "lucide-react";
 import {
   CloudUploadStatus,
@@ -48,6 +50,20 @@ export interface InterruptData {
   }>;
 }
 
+/**
+ * (multipage-download-fixes 5.6 / design D2) A pause surfaced in the panel.
+ * `parked: true` = the worker died while the pause was held (phase-`paused`
+ * checkpoint + snapshot survived); Resume goes through
+ * SCRAPER_RESUME_FROM_PARK. `parked: false` = a held pause (worker alive);
+ * Resume goes through the live SCRAPER_RESUME path.
+ */
+export interface PausedDownload {
+  serverSessionId?: string;
+  tabId?: number;
+  tabUrl?: string;
+  parked: boolean;
+}
+
 interface DownloadStatusProps {
   tabId: number;
   /**
@@ -74,6 +90,14 @@ interface DownloadStatusProps {
   onDownloadFromServer?: () => void;
   /** Interrupt data: non-null when a download was interrupted by SW restart. */
   interruptData?: InterruptData | null;
+  /**
+   * (multipage-download-fixes 5.6) A paused download — held (worker alive)
+   * or parked (worker died while paused). Non-null renders the localized
+   * Paused card with Resume + Stop; interrupted wording is never used.
+   */
+  pausedDownload?: PausedDownload | null;
+  /** (multipage-download-fixes 5.6) Resume the paused download. */
+  onResumePaused?: () => void;
   /**
    * (Fix D.1) True when the background reports the download for the found
    * checkpoint as STILL RUNNING — renders a "download in progress" card
@@ -197,6 +221,8 @@ export function DownloadStatus({
   liveProgress,
   onRestartDownload,
   onDismissInterrupt,
+  pausedDownload,
+  onResumePaused,
   cloudUploadState,
   onRetryCloudUpload,
   fallbackUrl,
@@ -218,6 +244,53 @@ export function DownloadStatus({
   // from rendering on top of the completion state.
   if (action === messageActions.DOWNLOAD_DONE) {
     return null;
+  }
+
+  // -----------------------------------------------------------------------
+  // (multipage-download-fixes 5.6 / design D2 + D9) Paused download — a
+  // HELD pause (worker alive, phase `paused` from status.scraperPaused) or
+  // a PARKED pause (worker died while paused; the phase-`paused` checkpoint
+  // routed here). Localized Paused card with Resume + Stop — interrupted
+  // wording is NEVER used for a paused download.
+  // -----------------------------------------------------------------------
+  if (pausedDownload || serverModeState?.phase === "paused") {
+    return (
+      <div className="pt-8 animate-fade-in">
+        <div className="card p-6 bg-gradient-to-b from-amber-50 to-white border-amber-200 space-y-4">
+          <div className="flex items-center gap-3">
+            <PauseCircle className="w-8 h-8 text-amber-500 flex-shrink-0" />
+            <div>
+              <h3 className="font-bold text-slate-800">
+                {t("status.pausedTitle")}
+              </h3>
+              <p className="text-sm text-slate-600 mt-1">
+                {t("status.pausedMessage")}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {onResumePaused && (
+              <button
+                onClick={onResumePaused}
+                className="btn-primary w-full flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Play className="w-4 h-4" />
+                {t("actions.resume")}
+              </button>
+            )}
+            {onStopScraping && (
+              <button
+                onClick={onStopScraping}
+                className="btn-secondary w-full flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {t("actions.stop")}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // -----------------------------------------------------------------------
@@ -509,12 +582,21 @@ export function DownloadStatus({
   // (15.2) Server assembly status display
   // -----------------------------------------------------------------------
   if (serverModeState && serverModeState.phase === "assembling") {
-    const phaseLabel = serverModeState.assemblyPhase
-      ? t(
-          `status.assemblyPhase${capitalizePhase(serverModeState.assemblyPhase)}`,
-          serverModeState.assemblyPhase,
-        )
-      : "";
+    // (multipage-download-fixes 5.7) Honest merge wording: when the session
+    // options have downloadHtml=false, the merging_html subtitle explains
+    // the merge prepares the text/markdown conversion instead of implying
+    // an unexpected HTML download.
+    const isTextConversionMerge =
+      serverModeState.assemblyForTextConversion === true &&
+      serverModeState.assemblyPhase === "merging_html";
+    const phaseLabel = isTextConversionMerge
+      ? t("status.assemblyPhaseMerging_html_text")
+      : serverModeState.assemblyPhase
+        ? t(
+            `status.assemblyPhase${capitalizePhase(serverModeState.assemblyPhase)}`,
+            serverModeState.assemblyPhase,
+          )
+        : "";
     const progressPct = serverModeState.assemblyProgressPct ?? 0;
     // Assembly-timeout envelope (task 6.1): surface elapsed time so a long
     // cloud push reads as "progressing", not stuck. Undefined-safe — older
@@ -628,9 +710,36 @@ export function DownloadStatus({
   // -----------------------------------------------------------------------
   // Show buttons during any scraping activity (main page or linked pages)
   if (isScraping || isScrapingLinkedPages) {
+    // (multipage-download-fixes 5.5) Prominent per-page counter —
+    // first-class state lifted from status.linkedPageProgress. Absent
+    // state (no linked scrape in progress) renders nothing.
+    const hasPageCounter =
+      typeof serverModeState?.linkedPageCurrent === "number" &&
+      typeof serverModeState?.linkedPageTotal === "number";
     return (
       <div className="pt-8">
         <h3 className="pb-2 font-bold">{t("status.scraping")}</h3>
+        {hasPageCounter && (
+          <div className="pb-2">
+            <p
+              className="text-lg font-semibold text-indigo-600"
+              data-testid="linked-page-counter"
+            >
+              {t("status.pageCounter", {
+                current: serverModeState!.linkedPageCurrent,
+                total: serverModeState!.linkedPageTotal,
+              })}
+            </p>
+            {serverModeState!.linkedPagePhase && (
+              <p className="text-xs text-slate-400">
+                {t(
+                  `status.linkedPagePhase.${serverModeState!.linkedPagePhase}`,
+                  serverModeState!.linkedPagePhase,
+                )}
+              </p>
+            )}
+          </div>
+        )}
         <ScrapingControls
           tabId={controlsTabId}
           isPaused={isPaused}

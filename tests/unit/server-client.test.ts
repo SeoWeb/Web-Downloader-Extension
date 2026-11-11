@@ -548,6 +548,100 @@ describe("ServerClient", () => {
   });
 
   // -----------------------------------------------------------------------
+  // multipage-download-fixes D4 / task 3.1 — uploadPageContent
+  // -----------------------------------------------------------------------
+  describe("uploadPageContent", () => {
+    it("POSTs {page_url, text} to the per-page content endpoint (linked page)", async () => {
+      let seenPath = "";
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/content/pages")) {
+            seenPath = urlStr;
+            const body = JSON.parse((init as RequestInit).body as string);
+            expect(body).toEqual({
+              page_url: "https://example.com/about",
+              text: "About page text",
+            });
+            return mockResponse(201, {
+              message: "Page content stored",
+              page_url_hash: "abc123def4567890",
+              replaced: false,
+              size: 15,
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      const res = await client.uploadPageContent(
+        "sess-1",
+        "https://example.com/about",
+        "About page text",
+      );
+      expect(seenPath).toContain("/sessions/sess-1/content/pages");
+      expect(res.page_url_hash).toBe("abc123def4567890");
+      expect(res.replaced).toBe(false);
+      expect(res.size).toBe(15);
+    });
+
+    it("sends page_url null for the MAIN page", async () => {
+      fetchSpy.mockImplementation(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = typeof url === "string" ? url : url.toString();
+          if (urlStr.includes("/auth/register")) {
+            return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+          }
+          if (urlStr.includes("/content/pages")) {
+            const body = JSON.parse((init as RequestInit).body as string);
+            expect(body.page_url).toBeNull();
+            return mockResponse(201, {
+              message: "Page content stored",
+              page_url_hash: "main",
+              replaced: false,
+              size: 9,
+              api_version: "v1",
+            });
+          }
+          return mockResponse(404, {});
+        },
+      );
+
+      const client = createClient();
+      const res = await client.uploadPageContent("sess-1", null, "Main text");
+      expect(res.page_url_hash).toBe("main");
+    });
+
+    it("413 (content_too_large / session_size_exceeded) throws and is NOT retried", async () => {
+      let attempts = 0;
+      fetchSpy.mockImplementation(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/register")) {
+          return mockResponse(200, { api_key: "key-1", client_id: "c1" });
+        }
+        if (urlStr.includes("/content/pages")) {
+          attempts++;
+          return mockResponse(413, {
+            detail: { error: "content_too_large", message: "too large" },
+          });
+        }
+        return mockResponse(404, {});
+      });
+
+      const client = createClient();
+      await expect(
+        client.uploadPageContent("sess-1", null, "Big text"),
+      ).rejects.toThrow();
+      expect(attempts).toBe(1);
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // 8.8 — finalizeSession
   // -----------------------------------------------------------------------
   describe("finalizeSession", () => {
