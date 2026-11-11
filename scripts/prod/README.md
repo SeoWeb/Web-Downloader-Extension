@@ -844,6 +844,48 @@ deduplicated=false`; in-container storage audit: **OLD marker in 0 files**
   surface: :8000/:33060/:8090 all closed. Probe client row from the 2026-10-30
   record reused; probe sessions deleted after each check.
 
+### Deploy record — 2026-11-11 (multipage-download-fixes, `74edcc9`)
+
+- Change: 41/44 tasks shipped in one change across four deployables — linked-page
+  asset gating (option-snapshot per category); true pause + parked state (queue
+  snapshot, resume-from-park, checkpoint `paused`); liveness-proof completion/
+  interruption (persisted heartbeat 90 s staleness, merge heartbeat — kills the
+  false "Done!" and false "service was restarted" cards); per-page text streaming
+  (main-first, `accumulatedText` deleted, new `POST …/content/pages` endpoint,
+  hash-keyed replace-on-rewrite); text zip `index.txt` + `pages/<slug>.txt`;
+  cloud push carries per-page md/text `PageDocument`s + meta.json pages manifest
+  (proto additive, archive-service storage, gateway detail + share validation);
+  pagepocket viewer subpage sidebar (`?page=`) + retryable load failures;
+  page counter / paused card / honest merge wording / 413 partial note; i18n ×45.
+- Ship path: `ce40bdc` pushed (CI backend job FAILED — lint; ci-gate correctly
+  blocked deploy-backend; deploy-frontend + extension-artifact still shipped).
+  Root cause: CI's floating ruff flags SIM102 on `api-gateway/middleware/
+rate_limit.py:259` — a file UNCHANGED since the last green CI (tooling drift,
+  not a regression). Fixed `74edcc9` (combine nested if; 30 rate-limit tests
+  pass) → CI green both branches → Deploy ✓ (ci-gate ✓, deploy-backend ✓ 2m44s;
+  deploy-frontend + extension-artifact correctly path-skipped — frontend was
+  already live from the first run, same content).
+- Monolith manual §3 step 3b: host reset `74edcc9` → `build app` → alembic
+  (no-op, no migrations) → `up -d`. Health ok (mysql ok); new code in container
+  (8 refs `content_pages` routes / assembler helpers).
+- §7 confinement re-verified (archive/auth OK; search/library/share blocked).
+- **Wire probe (content/pages)**: create session → main (`page_url=null` →
+  `hash="main"`) → about V1 → about V2 → `201 replaced=true`, hash matches
+  computed `sha256[:16]` (`746af0ced5836908`); legacy append endpoint still 200.
+  In-container storage audit: `content_pages/` = exactly `main.txt` +
+  `746af0ced5836908.txt`; **V1 content in 0 files** (replace-on-rewrite live),
+  V2 ×1, main ×1, legacy content.txt ×1. Probe session deleted (zero residue).
+- Zip-layout + cloud-push behaviors not exercised on prod (need full multi-page
+  sessions) — suite-covered (monolith 731, archive-service 160, gateway 282).
+  External surface: :8000/:33060/:8090 all closed. Probe client row reused;
+  probe sessions deleted.
+- Extension: artifact built by CI (`extension-artifact ✓`, run 43039873767);
+  installation is the operator's local rebuild + reload (also clears the
+  `chrome.alarms` warnings — manifest re-read).
+- Note for follow-up: CI backend lint floats with unpinned ruff ("Install
+  tooling") — consider pinning the ruff version to stop unrelated style-drift
+  failures like this one.
+
 ## 15. Extension ID & Google OAuth redirect URI (easier-auth)
 
 The extension ID is pinned by the `key` field in `public/manifest.json`
