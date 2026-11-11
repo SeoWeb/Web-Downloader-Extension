@@ -256,8 +256,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 return self._rate_limited()
 
         # Authenticated routes: per-user limit
-        elif hasattr(request.state, "user_id"):
-            if not self.limiter.check("user", request.state.user_id, self.authenticated_limit):
-                return self._rate_limited()
+        elif hasattr(request.state, "user_id") and not self.limiter.check(
+            "user", request.state.user_id, self.authenticated_limit
+        ):
+            return self._rate_limited()
 
         return await call_next(request)
