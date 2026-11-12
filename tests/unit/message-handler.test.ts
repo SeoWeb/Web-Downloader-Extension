@@ -12,6 +12,10 @@
 import { messageWorker } from "../../src/background/message";
 import { messageActions } from "../../src/common/message";
 import { serverClient } from "../../src/background/server-client";
+import {
+  launchGoogleSignIn,
+  GoogleSignInError,
+} from "../../src/background/google-auth";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -76,6 +80,24 @@ vi.mock("../../src/background/scraper-state", () => ({
   resumeScraping: vi.fn(),
   stopScraping: vi.fn(),
 }));
+
+vi.mock("../../src/background/google-auth", () => {
+  return {
+    __esModule: true,
+    launchGoogleSignIn: vi.fn(),
+    // Plain class (NOT a vi.fn()) — the GOOGLE_SIGN_IN handler
+    // discriminates failures with `instanceof`, so the fake must be a real
+    // constructor sharing identity with the class these tests import.
+    GoogleSignInError: class GoogleSignInError extends Error {
+      readonly code: string;
+      constructor(code: string) {
+        super(`Google sign-in error: ${code}`);
+        this.name = "GoogleSignInError";
+        this.code = code;
+      }
+    },
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -648,6 +670,81 @@ describe("messageWorker — server-mode message actions", () => {
       );
 
       expect(result).toEqual({ success: false, error: "Connection refused" });
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // (google-sign-in-via-background) GOOGLE_SIGN_IN — the background service
+  // worker owns the PKCE launchWebAuthFlow (chrome.identity is unreliable
+  // from a side panel); the panel drives it with this message. Success
+  // returns the {code, codeVerifier, redirectUri} payload for the backend
+  // exchange; failure returns the STRUCTURED {googleSignInError: code}
+  // reply so the typed, user-safe code survives the message channel
+  // (a thrown Error would be flattened to a string by listenMessage's
+  // catch). The service-worker console must carry the diagnosis.
+  // -----------------------------------------------------------------------
+  describe("GOOGLE_SIGN_IN", () => {
+    const launchMock = launchGoogleSignIn as unknown as vi.Mock;
+
+    const AUTH_PAYLOAD = {
+      code: "auth-code-1",
+      codeVerifier: "verifier-1",
+      redirectUri: "https://aeojmgngnebhbjpncamiplkimkbnmpmk.chromiumapp.org/",
+    };
+
+    it("returns the auth-code payload on success", async () => {
+      launchMock.mockResolvedValue(AUTH_PAYLOAD);
+
+      const result = await messageWorker(
+        messageActions.GOOGLE_SIGN_IN,
+        {},
+        addMessage,
+      );
+
+      expect(launchMock).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(AUTH_PAYLOAD);
+    });
+
+    it("returns the structured error payload and warns with the code", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        launchMock.mockRejectedValue(new GoogleSignInError("failed"));
+
+        const result = await messageWorker(
+          messageActions.GOOGLE_SIGN_IN,
+          {},
+          addMessage,
+        );
+
+        expect(result).toEqual({ googleSignInError: "failed" });
+        expect(warnSpy).toHaveBeenCalledWith(
+          "[GoogleSignIn] failed:",
+          "failed",
+        );
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it("maps unavailable and cancelled through identically", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        for (const code of ["unavailable", "cancelled"] as const) {
+          warnSpy.mockClear();
+          launchMock.mockRejectedValue(new GoogleSignInError(code));
+
+          const result = await messageWorker(
+            messageActions.GOOGLE_SIGN_IN,
+            {},
+            addMessage,
+          );
+
+          expect(result).toEqual({ googleSignInError: code });
+          expect(warnSpy).toHaveBeenCalledWith("[GoogleSignIn] failed:", code);
+        }
+      } finally {
+        warnSpy.mockRestore();
+      }
     });
   });
 

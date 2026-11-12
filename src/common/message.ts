@@ -36,7 +36,11 @@ export type MessageAction =
   | "PAGEPOCKET_UPLOAD_START"
   | "PAGEPOCKET_UPLOAD_PROGRESS"
   | "PAGEPOCKET_UPLOAD_COMPLETE"
-  | "PAGEPOCKET_UPLOAD_ERROR";
+  | "PAGEPOCKET_UPLOAD_ERROR"
+  // (google-sign-in-via-background) Run the Google PKCE sign-in flow in the
+  // background service worker — chrome.identity is unreliable from a side
+  // panel, and the background owns all chrome.* plumbing.
+  | "GOOGLE_SIGN_IN";
 
 export const messageActions: Record<MessageAction, MessageAction> = {
   PANEL_MESSAGE: "PANEL_MESSAGE",
@@ -76,4 +80,6 @@ export const messageActions: Record<MessageAction, MessageAction> = {
   PAGEPOCKET_UPLOAD_PROGRESS: "PAGEPOCKET_UPLOAD_PROGRESS",
   PAGEPOCKET_UPLOAD_COMPLETE: "PAGEPOCKET_UPLOAD_COMPLETE",
   PAGEPOCKET_UPLOAD_ERROR: "PAGEPOCKET_UPLOAD_ERROR",
+  // (google-sign-in-via-background)
+  GOOGLE_SIGN_IN: "GOOGLE_SIGN_IN",
 };

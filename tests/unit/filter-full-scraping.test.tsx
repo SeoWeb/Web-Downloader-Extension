@@ -31,6 +31,23 @@ if (typeof globalThis.chrome?.storage === "object") {
   };
 }
 
+// pagepocketStore now sends messages via client/message → common/chrome →
+// background/message, whose import graph self-initializes chrome plumbing the
+// jsdom env's minimal chrome mock cannot satisfy: download.ts registers
+// chrome.downloads listeners at import, and (via download-core)
+// cleanupHandlers registers chrome.runtime/tabs listeners when `self` exists
+// (it does under jsdom). Keep both heavy background modules out — this test
+// only exercises the Filter UI; same pattern as message-handler.test.ts.
+vi.mock("../../src/background/jobs", () => ({
+  scrollDownAndScrape: vi.fn(),
+  startDownload: vi.fn(),
+}));
+vi.mock("../../src/background/download-core", () => ({
+  resumeServerDownload: vi.fn(),
+  resumeFromParkedScrape: vi.fn(),
+  finalizeParkedDownload: vi.fn(),
+}));
+
 const storeMocks = vi.hoisted(() => {
   const defaultOptions = () => ({
     downloadHTML: true,

@@ -9,7 +9,12 @@ import {
   pagepocketClient,
   PagePocketAuthError,
 } from "../background/pagepocket-client";
-import { launchGoogleSignIn } from "../background/google-auth";
+import {
+  GoogleSignInError,
+  type GoogleSignInErrorCode,
+} from "../background/google-auth";
+import { sendMessageToBackground } from "../client/message";
+import { messageActions } from "../common/message";
 import {
   linkCloudAccount,
   clearCloudBinding,
@@ -121,16 +126,33 @@ export const usePagePocketStore = create<PagePocketState>()(
     },
 
     /**
-     * easier-auth D4/D7 (task 3.5): passwordless sign-in. Runs the PKCE
-     * launchWebAuthFlow (google-auth.ts), exchanges the code via
-     * POST /api/v1/auth/google, and finishes through the exact same
-     * post-auth path as password login — saveAuth (session storage +
-     * opt-in keep-signed-in mirror) and the fire-and-forget cloud binding.
+     * easier-auth D4/D7 (task 3.5): passwordless sign-in. The PKCE
+     * launchWebAuthFlow is owned by the BACKGROUND service worker
+     * (google-sign-in-via-background): chrome.identity is unreliable from
+     * a side panel across Chrome builds, so the panel sends the
+     * GOOGLE_SIGN_IN message instead of calling chrome.identity directly.
+     * The flow's result (or the structured {googleSignInError: code}
+     * failure reply) is exchanged via POST /api/v1/auth/google, and the
+     * action finishes through the exact same post-auth path as password
+     * login — saveAuth (session storage + opt-in keep-signed-in mirror)
+     * and the fire-and-forget cloud binding.
      */
     googleLogin: async (keepSignedIn) => {
       set({ isAuthLoading: true });
       try {
-        const { code, codeVerifier, redirectUri } = await launchGoogleSignIn();
+        const reply = await sendMessageToBackground(
+          messageActions.GOOGLE_SIGN_IN,
+          {},
+        );
+        if (reply?.googleSignInError) {
+          // Re-raise the structured reply as the typed error so the
+          // instanceof mapping in PagePocketAuth keeps working — a thrown
+          // Error would have been flattened to a string by the channel.
+          throw new GoogleSignInError(
+            reply.googleSignInError as GoogleSignInErrorCode,
+          );
+        }
+        const { code, codeVerifier, redirectUri } = reply;
         const authState = await pagepocketClient.googleLogin(
           { code, code_verifier: codeVerifier, redirect_uri: redirectUri },
           keepSignedIn,

@@ -80,6 +80,13 @@ export function PagePocketAuth() {
     try {
       await googleLogin(keepSignedIn);
     } catch (err) {
+      // (google-sign-in-via-background) Panel-side diagnosis: the typed code
+      // (or the raw failure if it is not a GoogleSignInError) lands in the
+      // panel console alongside the background's own [GoogleSignIn] warn.
+      console.warn(
+        "[GoogleSignIn] failed:",
+        (err as { code?: string } | null)?.code ?? err,
+      );
       if (err instanceof GoogleSignInError) {
         setError(
           err.code === "cancelled"

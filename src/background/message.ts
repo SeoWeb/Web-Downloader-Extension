@@ -27,6 +27,7 @@ import {
   ServerUnavailableError,
   AuthenticationError,
 } from "./server-client";
+import { launchGoogleSignIn, GoogleSignInError } from "./google-auth";
 
 interface ServerSessionState {
   sessionId: string | null;
@@ -853,6 +854,26 @@ export async function messageWorker(
           error: error instanceof Error ? error.message : "Unknown error",
         };
       }
+
+    case messageActions.GOOGLE_SIGN_IN: {
+      // (google-sign-in-via-background) chrome.identity.launchWebAuthFlow is
+      // unreliable from a side panel across Chrome builds — the background
+      // service worker owns all chrome.* plumbing, so the PKCE flow
+      // (google-auth.ts, reused as-is) runs HERE and the panel drives it
+      // with this message. Success returns the
+      // {code, codeVerifier, redirectUri} payload for the backend exchange.
+      // Failure returns a STRUCTURED {googleSignInError: code} reply instead
+      // of throwing: a thrown Error is flattened to a string by the message
+      // channel's catch, losing the typed, user-safe code the panel maps
+      // to i18n strings. The service-worker console carries the diagnosis.
+      try {
+        return await launchGoogleSignIn();
+      } catch (err) {
+        const code = err instanceof GoogleSignInError ? err.code : "failed";
+        console.warn("[GoogleSignIn] failed:", code);
+        return { googleSignInError: code };
+      }
+    }
 
     default:
       return null;

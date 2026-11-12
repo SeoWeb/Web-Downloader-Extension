@@ -17,6 +17,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const logoutMock = vi.fn();
 
+// pagepocketStore now sends messages via client/message → common/chrome →
+// background/message, which transitively loads background/jobs → download.ts;
+// download.ts calls initializeDownloadListener() at module init, which needs
+// chrome.downloads (not in the setup.cjs mock). Keep that graph out — same
+// pattern as message-handler.test.ts.
+vi.mock("../../src/background/jobs", () => ({
+  scrollDownAndScrape: vi.fn(),
+  startDownload: vi.fn(),
+}));
+
 vi.mock("../../src/background/pagepocket-client", () => ({
   pagepocketClient: {
     logout: (...args: unknown[]) => logoutMock(...args),
