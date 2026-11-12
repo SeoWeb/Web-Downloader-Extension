@@ -41,6 +41,39 @@ function decodeStateCookie(res: Awaited<RouteResult>): {
   );
 }
 
+/** State cookies minted by a response ([] when the response sets none). */
+function mintedStateCookies(res: Awaited<RouteResult>): string[] {
+  return res.headers.getSetCookie().filter((c) => c.startsWith("pp_g_oauth="));
+}
+
+function callGetWithHeaders(
+  search = "",
+  headers: Record<string, string> = {},
+): Promise<RouteResult> {
+  return GET(
+    new NextRequest(`http://localhost:3000/api/auth/google/start${search}`, {
+      headers,
+    }),
+  );
+}
+
+// Canonical redirect_uri override (the prod app host — see the cross-host
+// describe below).
+const CANONICAL_OVERRIDE =
+  "https://app.pagepocket.app/api/auth/google/callback";
+
+/** Temporarily set GOOGLE_OAUTH_REDIRECT_URI (per-test env flip, no reload). */
+async function withCanonicalOverride(run: () => Promise<void>): Promise<void> {
+  const original = process.env.GOOGLE_OAUTH_REDIRECT_URI;
+  process.env.GOOGLE_OAUTH_REDIRECT_URI = CANONICAL_OVERRIDE;
+  try {
+    await run();
+  } finally {
+    if (original === undefined) delete process.env.GOOGLE_OAUTH_REDIRECT_URI;
+    else process.env.GOOGLE_OAUTH_REDIRECT_URI = original;
+  }
+}
+
 describe("GET /api/auth/google/start — PKCE + state bootstrap (D9)", () => {
   it("302s to Google's authorization endpoint with all required params", async () => {
     const res = await callGet();
@@ -101,19 +134,19 @@ describe("GET /api/auth/google/start — PKCE + state bootstrap (D9)", () => {
   });
 
   it("honors GOOGLE_OAUTH_REDIRECT_URI for the redirect_uri passthrough", async () => {
-    const original = process.env.GOOGLE_OAUTH_REDIRECT_URI;
-    process.env.GOOGLE_OAUTH_REDIRECT_URI =
-      "https://app.pagepocket.app/api/auth/google/callback";
-    try {
-      const res = await callGet();
+    // The flow must run on the redirect_uri's host (app.pagepocket.app) —
+    // a request from any other host is bounced there first (see the
+    // cross-host describe below).
+    await withCanonicalOverride(async () => {
+      const res = await callGetWithHeaders("", {
+        host: "app.pagepocket.app",
+        "x-forwarded-proto": "https",
+      });
       const location = new URL(res.headers.get("location")!);
       expect(location.searchParams.get("redirect_uri")).toBe(
         "https://app.pagepocket.app/api/auth/google/callback",
       );
-    } finally {
-      if (original === undefined) delete process.env.GOOGLE_OAUTH_REDIRECT_URI;
-      else process.env.GOOGLE_OAUTH_REDIRECT_URI = original;
-    }
+    });
   });
 
   it("returns 404 when GOOGLE_CLIENT_ID is unset (feature OFF)", async () => {
@@ -125,6 +158,105 @@ describe("GET /api/auth/google/start — PKCE + state bootstrap (D9)", () => {
       expect(res.headers.get("location")).toBeNull();
     } finally {
       process.env.GOOGLE_CLIENT_ID = original;
+    }
+  });
+});
+
+describe("GET /api/auth/google/start — cross-host canonical-start redirect", () => {
+  // Prod bug (2026-11-12): TWO public hosts serve this Next app — the
+  // marketing site (pagepocket.app) and the app host (app.pagepocket.app).
+  // The state cookie is host-only by design (no Domain) while
+  // GOOGLE_OAUTH_REDIRECT_URI pins the OAuth callback to the app host, so a
+  // flow started on the marketing host left its state cookie there, Google
+  // returned to the app host, the cookie was missing, and the state check
+  // failed before the gateway was ever called — sign-in from pagepocket.app
+  // was impossible. The dance must run entirely on the callback's host.
+
+  it("302s a marketing-host /start to the canonical /start before minting anything (no state cookie on the hop)", async () => {
+    await withCanonicalOverride(async () => {
+      const res = await callGetWithHeaders("?redirect=/app/settings", {
+        host: "pagepocket.app",
+        "x-forwarded-proto": "https",
+      });
+      expect(res.status).toBe(302);
+
+      const location = new URL(res.headers.get("location")!);
+      expect(location.origin).toBe("https://app.pagepocket.app");
+      expect(location.pathname).toBe("/api/auth/google/start");
+      // The post-login target rides along; the canonical hop re-validates it.
+      expect(location.searchParams.get("redirect")).toBe("/app/settings");
+
+      // Cookie-free hop: state is minted only on the canonical /start (the
+      // host Google will actually return to).
+      expect(mintedStateCookies(res)).toEqual([]);
+    });
+  });
+
+  it("omits the redirect param on the hop when the caller sent none", async () => {
+    await withCanonicalOverride(async () => {
+      const res = await callGetWithHeaders("", {
+        host: "pagepocket.app",
+        "x-forwarded-proto": "https",
+      });
+      expect(res.status).toBe(302);
+      const location = new URL(res.headers.get("location")!);
+      expect(location.pathname).toBe("/api/auth/google/start");
+      expect(location.searchParams.has("redirect")).toBe(false);
+    });
+  });
+
+  it("falls back to request.url origin when the Host header is absent", async () => {
+    await withCanonicalOverride(async () => {
+      // No Host header (the exact shape behind a Host-rewriting proxy):
+      // public origin comes from request.url (localhost:3000) ≠ canonical
+      // → hop to the canonical /start.
+      const res = await callGet();
+      expect(res.status).toBe(302);
+      const location = new URL(res.headers.get("location")!);
+      expect(location.origin).toBe("https://app.pagepocket.app");
+      expect(location.pathname).toBe("/api/auth/google/start");
+    });
+  });
+
+  it("never redirects to itself: on the canonical host the flow proceeds unchanged (loop guard)", async () => {
+    await withCanonicalOverride(async () => {
+      const res = await callGetWithHeaders("", {
+        host: "app.pagepocket.app",
+        "x-forwarded-proto": "https",
+      });
+      expect(res.status).toBe(302);
+      const location = new URL(res.headers.get("location")!);
+      // Straight to Google — NOT a self-referential /start hop.
+      expect(location.origin).toBe("https://accounts.google.com");
+      expect(location.pathname).toBe("/o/oauth2/v2/auth");
+      expect(location.searchParams.get("redirect_uri")).toBe(
+        CANONICAL_OVERRIDE,
+      );
+      // And the state cookie IS minted here (host Google returns to).
+      expect(mintedStateCookies(res)).toHaveLength(1);
+    });
+  });
+
+  it("no absolute override configured (dev): immediate Google redirect regardless of host", async () => {
+    const original = process.env.GOOGLE_OAUTH_REDIRECT_URI;
+    delete process.env.GOOGLE_OAUTH_REDIRECT_URI;
+    try {
+      const res = await callGetWithHeaders("", {
+        host: "pagepocket.app",
+        "x-forwarded-proto": "https",
+      });
+      expect(res.status).toBe(302);
+      const location = new URL(res.headers.get("location")!);
+      expect(location.origin).toBe("https://accounts.google.com");
+      // redirect_uri still derives from the request origin (unchanged dev
+      // behavior — no canonical hop without an absolute override).
+      expect(location.searchParams.get("redirect_uri")).toBe(
+        "http://localhost:3000/api/auth/google/callback",
+      );
+      expect(mintedStateCookies(res)).toHaveLength(1);
+    } finally {
+      if (original === undefined) delete process.env.GOOGLE_OAUTH_REDIRECT_URI;
+      else process.env.GOOGLE_OAUTH_REDIRECT_URI = original;
     }
   });
 });
