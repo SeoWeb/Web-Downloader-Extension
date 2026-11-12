@@ -159,7 +159,7 @@ function runStartupCleanupOnce(): Promise<void> {
 function setupAlarmHandler(): void {
   if (!chrome.alarms) {
     console.warn(
-      "[Cleanup] chrome.alarms unavailable — add the 'alarms' permission to the manifest",
+      "[Cleanup] chrome.alarms unavailable — permission missing at runtime; fully remove and re-add the extension so Chrome re-grants manifest permissions",
     );
     return;
   }

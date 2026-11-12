@@ -52,7 +52,8 @@ export class GoogleSignInError extends Error {
 }
 
 const GOOGLE_ERROR_MESSAGES: Record<GoogleSignInErrorCode, string> = {
-  unavailable: "Google sign-in is not available",
+  unavailable:
+    "Google sign-in is not available (no build-time client ID, or chrome.identity missing at runtime — if the manifest already has the 'identity' permission, fully remove and re-add the extension so Chrome re-grants manifest permissions)",
   cancelled: "Google sign-in was cancelled",
   state_mismatch: "Google sign-in failed (state mismatch)",
   stale_flow: "Google sign-in expired, please try again",
