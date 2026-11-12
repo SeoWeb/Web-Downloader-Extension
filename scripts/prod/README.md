@@ -886,6 +886,35 @@ rate_limit.py:259` — a file UNCHANGED since the last green CI (tooling drift,
   tooling") — consider pinning the ruff version to stop unrelated style-drift
   failures like this one.
 
+### Deploy record — 2026-11-12 (Google sign-in hotfixes, `545efaa` frontend `93667d2`)
+
+- Operator report: "Google sign-in failed. Please try again." on BOTH pagepocket.app
+  and the extension. Two independent root causes found and fixed:
+  1. **Web (proven on prod): cross-host state-cookie loss.** `/start` sets the
+     host-only `pp_g_oauth` state cookie on the initiating host, but the OAuth
+     redirect_uri is pinned to `app.pagepocket.app/api/auth/google/callback`.
+     Initiated from `pagepocket.app` (marketing /login), the cookie landed on
+     pagepocket.app while the callback ran on app.pagepocket.app → state check
+     failed pre-gateway (differential curl proof: cross-host callback with a
+     matching state → `/login?error=google` with ZERO gateway traffic;
+     same-host control → gateway called). Broken since easier-auth for any
+     marketing-host initiation. Fix `93667d2`: `/start` hops to the canonical
+     origin (derived from the absolute `GOOGLE_OAUTH_REDIRECT_URI`) when the
+     public Host header differs — cookie + callback now always cohabit.
+     Live-verified: pagepocket.app/start → 302 hop → canonical start → Google
+     with `pp_g_oauth` set for app.pagepocket.app (cookie host == callback host).
+  2. **Extension: chrome.identity unavailable in the sidepanel.** The flow ran
+     in the panel context (its only chrome.identity consumer); clicking the
+     button hit the `unavailable` branch with no popup. Fix `545efaa`: the flow
+     moved to the background service worker via a new `GOOGLE_SIGN_IN` message
+     (structured typed-error reply + `console.warn("[GoogleSignIn] failed:",
+code)` in both SW and panel consoles so any residual failure names itself).
+- Server-side auth pipeline verified healthy during diagnosis (gateway →
+  auth-service → Google token endpoint round-trips; 401s are per-contract).
+  CI green both branches; deploy-frontend shipped the fix; extension ships
+  with the operator's rebuild + reload. Runbook note: CI backend lint floats
+  with unpinned ruff (see 2026-11-11 record) — pinning still recommended.
+
 ## 15. Extension ID & Google OAuth redirect URI (easier-auth)
 
 The extension ID is pinned by the `key` field in `public/manifest.json`
